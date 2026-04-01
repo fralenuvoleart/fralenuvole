@@ -1,0 +1,32 @@
+=== Fralenuvole ===
+
+
+
+=== GOLDEN RATIO LOGO ===
+
+The Golden Ratio (φ) is approximately 1.618034.
+
+The final logo is built on a unified system where every parameter is derived from a single starting value and the Golden Ratio (φ).
+
+Formula for Final Generative Logo
+1. Core Constants:
+Golden Ratio (φ): 1.618034
+Anchor Value (Center Dot Radius): R_center = 12.00
+2. Dot Radii Formulas:
+The radius of each ring of dots is determined by dividing the previous ring's radius by φ:
+Center Dot Radius (R_center): 12.00
+Middle Dot Radius (R_middle): R_center / φ ≈ 7.42
+Outer Dot Radius (R_outer): R_middle / φ (or R_center / φ²) ≈ 4.58
+3. Ring Position Formulas (Path Radii):
+The positions of the rings are determined by the φ³ relationship to the center dot, which establishes the outermost ring's path. The inner ring's path is then derived from that. PathRadius is the distance from the canvas center to the center of any dot on that ring.
+Outer Ring Path Radius (P_outer): R_center * φ³ ≈ 50.83
+Middle Ring Path Radius (P_middle): P_outer / φ (or R_center / φ²) ≈ 31.42
+4. Final Canvas and Center Formulas:
+The canvas must be large enough to contain the outermost path plus the radius of the dots on it.
+Total Logo Radius: P_outer + R_outer ≈ 55.42
+Canvas Width/Height: Total Logo Radius * 2 = 110.83
+Center X/Y: Total Logo Radius = 55.42
+5. Coordinate Formula:
+The (cx, cy) coordinates for any dot are calculated using standard trigonometry, where θ is the angle for that dot (e.g., 0°, 30°, 60°...).
+cx = CenterX + PathRadius * cos(θ)
+cy = CenterY + PathRadius * sin(θ)

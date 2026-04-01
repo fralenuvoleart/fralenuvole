@@ -1,0 +1,224 @@
+<?php
+
+/**
+ * Fralenuvole Dashboard Renderer Class
+ *
+ * Provides reusable methods for rendering dashboard widgets and UI elements.
+ */
+
+// Exit if accessed directly.
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class Frl_Dashboard_Renderer
+{
+
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        // Initialization, if needed
+    }
+
+    /**
+     * Render a standard widget section with a title.
+     *
+     * @param string $title The title/header for the section (e.g., 'Submissions Today').
+     * @param string $content_html The HTML content for the section.
+     * @param string $section_class Optional CSS class for the section wrapper.
+     */
+    public function render_section($title, $content_html, $section_class = 'frl-widget-section')
+    {
+        echo '<div class="' . esc_attr($section_class) . '">';
+        if (!empty($title)) {
+            // Use h4 consistent with previous widget structure
+            echo '<h4>' . wp_kses_post($title) . '</h4>';
+        }
+        // Use wp_kses_post for allowing reasonable HTML in content
+        // Filter removed as inline styles are no longer part of the content
+        echo wp_kses_post($content_html);
+        echo '</div>';
+    }
+
+    /**
+     * Render a generic data table.
+     *
+     * @param array $headers Array of header strings.
+     * @param array $rows    Array of row data. Each item is an associative array:
+     *                       ['cells' => [cell1_content, cell2_content,...], // Required
+     *                        'cell_tag' => 'td'|'th' (default: 'td'),      // Optional, overrides config['cell_tag'] for this row
+     *                        '_row_class' => 'my-custom-class'             // Optional, added to <tr> class attribute
+     *                       ] Cell content strings can contain safe HTML.
+     * @param array $config  Optional configuration array:
+     *                       'table_class' => string (default: 'wp-list-table widefat striped') - CSS classes for <table>
+     *                       'header_class' => string (default: '') - CSS class for <thead>
+     *                       'body_class' => string (default: '') - CSS class for <tbody>
+     *                       'row_class' => string (default: '') - Base CSS class for <tr> in <tbody> (deprecated if using _row_class in $rows)
+     *                       'cell_tag' => string (default: 'td') - Default tag for body cells ('td' or 'th')
+     *                       'id' => string (default: '') - Optional ID attribute for the table
+     * @return string The generated HTML table.
+     */
+    public function render_table(array $headers, array $rows, array $config = [])
+    {
+        $defaults = [
+            'table_class'  => 'wp-list-table widefat striped',
+            'header_class' => '',
+            'body_class'   => '',
+            'row_class'    => '',
+            'cell_tag'     => 'td',
+            'id'           => '',
+        ];
+        $config = wp_parse_args($config, $defaults);
+
+        $table_id = !empty($config['id']) ? ' id="' . esc_attr($config['id']) . '"' : '';
+        $output = '<table class="' . esc_attr($config['table_class']) . '"' . $table_id . '>';
+
+        if (!empty($headers)) {
+            $output .= '<thead class="' . esc_attr($config['header_class']) . '"><tr>';
+            foreach ($headers as $header) {
+                $output .= '<th scope="col">' . esc_html($header) . '</th>';
+            }
+            $output .= '</tr></thead>';
+        }
+
+        $output .= '<tbody class="' . esc_attr($config['body_class']) . '">';
+        if (!empty($rows)) {
+            foreach ($rows as $row_data) {
+                if (!isset($row_data['cells']) || !is_array($row_data['cells'])) continue;
+
+                $row_classes = [];
+                if (!empty($row_data['_row_class'])) {
+                    $row_classes[] = $row_data['_row_class'];
+                }
+                if (!empty($row_data['_row_type'])) {
+                    $row_classes[] = 'frl-table-row-' . sanitize_html_class($row_data['_row_type']);
+                }
+
+                $output .= '<tr class="' . esc_attr(implode(' ', $row_classes)) . '">';
+
+                $cell_tag = isset($row_data['cell_tag']) && in_array($row_data['cell_tag'], ['td', 'th'])
+                    ? $row_data['cell_tag']
+                    : $config['cell_tag'];
+
+                foreach ($row_data['cells'] as $cell_content) {
+                    $cell_output = ('th' === $cell_tag) ? '<th scope="row">' : '<' . $cell_tag . '>';
+                    $cell_output .= wp_kses_post($cell_content);
+                    $cell_output .= ('th' === $cell_tag) ? '</th>' : '</' . $cell_tag . '>';
+                    $output .= $cell_output;
+                }
+                $output .= '</tr>';
+            }
+        } else {
+            $num_columns = !empty($headers) ? count($headers) : 1;
+            $output .= '<tr><td colspan="' . esc_attr($num_columns) . '">' . __('No data found.', FRL_PREFIX) . '</td></tr>';
+        }
+        $output .= '</tbody>';
+
+        // Table Footer (Optional) - Generally mirrors header if used
+
+        $output .= '</table>';
+
+        return $output;
+    }
+
+    /**
+     * Renders a complete dashboard widget, handling caching and orchestration.
+     *
+     * This method orchestrates the rendering by:
+     * 1. Checking widget configuration for caching parameters.
+     * 2. Using frl_cache_remember (or _with_refresh) to get widget HTML.
+     * 3. The cache callback handles lazy-loading and executing the specific render_callback.
+     * 4. Echoing the final (potentially cached) HTML.
+     *
+     * @param array $widget_config The configuration array for the widget.
+     *                             Expected keys: 'key', 'title', 'render_callback'.
+     *                             Optional keys: 'render_file', 'cacheable' (bool), 'cache_ttl' (int),
+     *                                          'cache_refreshable' (bool), 'cache_group' (string).
+     */
+    public static function render_widget(array $widget_config)
+    {
+        $id = $widget_config['key'] ?? 'unknown_' . uniqid();
+
+        $cache_key = 'widget_' . $id;
+        $refresh_button = $widget_config['refresh_button'] ?? false;
+        $cache_ttl = $widget_config['cache_ttl'] ?? 15 * MINUTE_IN_SECONDS;
+
+        $widget_html = frl_cache_remember(
+            'admin',
+            $cache_key,
+            function () use ($widget_config, $id, $cache_key, $refresh_button) {
+                // Lazy load core widget file if path is provided
+                if (!empty($widget_config['render_file'])) {
+                    if (is_readable($widget_config['render_file'])) {
+                        require_once $widget_config['render_file'];
+                    } else {
+                        frl_log("Could not read render file for widget '{id}': {file}", ['id' => $id, 'file' => $widget_config['render_file']]);
+                        // Return error HTML string
+                        return "<div class='widget-error'><p class='error'>Error loading widget '{$id}'.</p></div>";
+                    }
+                }
+
+                // Check if the specific render callback is callable
+                if (isset($widget_config['render_callback']) && is_callable($widget_config['render_callback'])) {
+                    // Execute the designated callback function and RETURN its string output
+                    $content = call_user_func($widget_config['render_callback']);
+
+                    if ($refresh_button) {
+                        $refresh_button_html = '';
+
+                        // Add refresh widget button
+                        $refresh_button_html = self::_render_refresh_button('admin', $cache_key);
+
+                        $refresh_button_html = '<div class="frl-widget-action">' . $refresh_button_html . '</div>';
+
+                        $content .= '<div class="frl-dashboard-widget-footer">' . $refresh_button_html . '</div>';
+                    }
+                } else {
+                    // Log error or display message if callback is invalid/missing
+                    frl_log("Invalid or missing render_callback for widget '{id}'. Provided: {callback}", ['id' => $id, 'callback' => $widget_config['render_callback'] ?? 'N/A']);
+                    // Return error HTML string
+                    return "<div class='widget-error'><p class='error'>Error rendering widget '{$id}': Invalid callback.</p></div>";
+                }
+
+                $final_html = '<div class="frl-dashboard-widget">' . $content . '</div>';
+                return $final_html;
+            },
+            $cache_ttl
+        );
+
+        echo $widget_html;
+    }
+
+    /**
+     * Renders the refresh button form for a cacheable widget.
+     *
+     * @param string $group The widget cache group.
+     * @param string $key The widget cache key.
+     * @param string $button_class Optional CSS classes for the button.
+     * @return string HTML for the button form, or empty string if user lacks permissions.
+     */
+    private static function _render_refresh_button(string $group, string $key, string $button_class = 'button-small frl-widget-refresh')
+    {
+        if (!frl_has_access('manage_options')) { // Capability check
+            return '';
+        }
+
+        $type = 'refresh_cache';
+        $label = __('Refresh', FRL_PREFIX);
+        $action = 'frl_post_action_dashboard_widgets'; // The admin-post action hook
+        $nonce_action = "dashboard_widget_{$type}_{$group}_{$key}"; // Unique nonce action
+
+        $output = '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="frl-widget-action-form">';
+        $output .= '<input type="hidden" name="action" value="' . esc_attr($action) . '">';
+        $output .= '<input type="hidden" name="type" value="' . esc_attr($type) . '">';
+        $output .= '<input type="hidden" name="widget_group" value="' . esc_attr($group) . '">';
+        $output .= '<input type="hidden" name="widget_key" value="' . esc_attr($key) . '">';
+        $output .= frl_nonce_field($nonce_action, '_wpnonce', true, false);
+        $output .= '<button type="submit" class="button ' . esc_attr($button_class) . '">' . esc_html($label) . '</button>';
+        $output .= '</form>';
+
+        return $output;
+    }
+}

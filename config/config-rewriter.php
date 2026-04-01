@@ -1,0 +1,95 @@
+<?php
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Rewriter Feature Priorities
+ *
+ * Defines the execution order for all rewriter features. Lower numbers run first.
+ * The keys are the class names, and the values are the integer priorities.
+ */
+if (!defined('FRL_REWRITER_PRIORITIES')) {
+    define('FRL_REWRITER_PRIORITIES', [
+        'Frl_Post_Archive_Base_Translation_Feature' => 10,
+        'Frl_Post_Static_Base_Enforcer_Feature'     => 12,
+        'Frl_CPT_Archive_Base_Translation_Feature'  => 15,
+        'Frl_Post_Single_Base_Translation_Feature'  => 20,
+        // Ensure child-under-parent runs before base removal
+        'Frl_CPT_CPT_Hierarchy_Feature'             => 28,
+        'Frl_CPT_Single_Base_Translation_Feature'   => 25,
+        'Frl_CPT_Blog_Integrator_Feature'           => 30,
+        'Frl_Taxonomy_Base_Removal_Feature'         => 35,
+        'Frl_CPT_Base_Removal_Feature'              => 40,
+    ]);
+}
+
+/**
+ * Defines the custom post types that support multilingual slugs.
+ *
+ * The rewriter system will dynamically create translation features for each CPT listed here.
+ * The actual translations are still managed via the options panel.
+ */
+if (!defined('FRL_REWRITER_MULTILINGUAL_CPT')) {
+    define('FRL_REWRITER_MULTILINGUAL_CPT', [
+        'service',
+    ]);
+}
+
+/**
+ * Defines the list of available rewriter features.
+ *
+ * This constant centralizes the management of rewriter features, allowing for
+ * easy addition or removal without modifying the core coordinator logic. The order
+ * in this array does not matter, as features are sorted by their internal priority.
+ */
+if (!defined('FRL_REWRITER_FEATURES')) {
+    define('FRL_REWRITER_FEATURES', [
+        Frl_Post_Archive_Base_Translation_Feature::class,
+        Frl_Post_Single_Base_Translation_Feature::class,
+        Frl_CPT_CPT_Hierarchy_Feature::class,
+        Frl_CPT_Blog_Integrator_Feature::class,
+        Frl_Taxonomy_Base_Removal_Feature::class,
+        Frl_CPT_Base_Removal_Feature::class,
+    ]);
+}
+
+/**
+ * Configuration for CPT→CPT hierarchy feature.
+ *
+ * child_cpt:      the child post type slug to be nested (default 'service')
+ * parent_cpt:     the parent post type slug providing the path (default 'jurisdiction')
+ * relation_meta:  meta key on child that stores parent ID(s) (default 'jurisdiction')
+ */
+if (!defined('FRL_REWRITER_CPT_CPT_HIERARCHY')) {
+    define('FRL_REWRITER_CPT_CPT_HIERARCHY', [
+        'parent_cpt' => 'jurisdiction',
+        'child_cpt' => 'service',
+        'relation_meta' => 'jurisdiction',
+    ]);
+}
+
+/**
+ * Enable fast prefix-based pattern conflict detection to avoid O(n²) exhaustive regex probes.
+ * Does not change any runtime feature behaviour; only affects admin-side validation.
+ */
+if (!defined('FRL_REWRITER_USE_FAST_CONFLICT')) {
+    define('FRL_REWRITER_USE_FAST_CONFLICT', true);
+}
+
+/**
+ * Cap for number of top-level pages considered in catch-all exclusion generation.
+ * Keeping this bounded avoids excessively large regex alternations on very large sites.
+ */
+if (!defined('FRL_REWRITER_PAGE_TOPLEVEL_CAP')) {
+    define('FRL_REWRITER_PAGE_TOPLEVEL_CAP', 500);
+}
+
+/**
+ * Control logging of duplicate cross-feature pattern messages.
+ * When false, duplicate pattern logs are suppressed (useful to reduce noise).
+ */
+if (!defined('FRL_REWRITER_LOG_DUPLICATES')) {
+    define('FRL_REWRITER_LOG_DUPLICATES', false);
+}

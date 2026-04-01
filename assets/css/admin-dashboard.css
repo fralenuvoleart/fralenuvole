@@ -1,0 +1,891 @@
+/**
+ * Fralenuvole
+ * admin-dashboard.css - Admin Dashboard Styles
+ */
+
+/* ============================================================
+   Outermost Layout Containers & Widths
+   ============================================================ */
+
+#tabs-dashboard {
+    padding: 0;
+    border: none;
+}   
+
+.frl-flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.frl-flex-item {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Specific styling for different column counts */
+.frl-columns-2 .frl-flex-item {
+    flex-basis: calc(50% - 10px);
+}
+
+.frl-columns-3 .frl-flex-item {
+    flex-basis: calc(33.33% - 14px);
+}
+
+.frl-columns-4 .frl-flex-item {
+    flex-basis: calc(25% - 15px);
+}
+
+.frl-widget.after-section {
+    margin-top: 30px;
+}
+
+.frl-widget {
+    background: #fff;
+    flex: 1;
+    min-width: 300px;
+    margin-bottom: 30px;
+}
+
+/* ==========================================================================
+   Widget Structure
+   ========================================================================== */
+
+.frl-widget h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+/* Simple Header Bar */
+.frl-simple-header {
+    padding: 8px 15px;
+    border-top: 4px solid #fff;
+    background-color: #f0f0f0;
+}
+
+.frl-simple-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.frl-simple-header-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* General Widget Row */
+.frl-widget-row {
+    display: flex;
+    gap: 20px;
+}
+
+/* ==========================================================================
+   Generic Table Structure (Div-based) - MODIFICATIONS
+   ========================================================================== */
+
+/* Base Table Container */
+.widget-table {
+    border: 1px solid #ddd;
+    margin-bottom: 30px;
+    /* Default bottom margin */
+    border-radius: 4px;
+}
+
+/* Reduced margin when table is inside a flex container */
+.frl-flex-container .widget-table,
+.widget-table:has( + .action-row) {
+    margin-bottom: 10px;
+}
+
+/* Table Row */
+.widget-table-row {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    border-left: 0;
+    border-bottom: 1px solid #f0f0f0;
+    /* Align items top by default */
+    position: relative;
+}
+
+.widget-table-row:last-child {
+    border-bottom: none;
+    /* Remove border for last row */
+}
+
+/* Table Header Row */
+.widget-table-header {
+    font-weight: 600;
+    background-color: var(--admin-secondary-color) !important;
+    line-height: 1.4;
+}
+
+/* Table Cells */
+.widget-table-cell-name,
+.widget-table-cell-value {
+    padding: 8px;
+    display: flex;
+    flex-basis: 0;
+    /* Allow content to influence initial size before growing/shrinking */
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 50px;
+    /* Prevent excessive shrinking */
+    word-wrap: break-word;
+    /* Prevent overflow */
+    line-height: inherit;
+}
+
+.widget-table-cell-name {
+    color: #444;
+    border-left: 4px solid transparent;
+    padding-left: 10px;
+    font-weight: bold;
+}
+
+.widget-table-row:not(.action-row) .widget-table-cell-name:not(:last-child) {
+    border-right: 1px solid #ddd;
+}
+
+.info-text .widget-table-cell-name {
+    font-weight: normal;
+    border-right: 0;
+}
+
+/* Cell padding adjustments for specific content */
+.frl-flex-container .widget-table-cell-name:has(.button-small),
+.frl-flex-container .widget-table-cell-value:has(.button-small) {
+    padding-top: 0px;
+    padding-bottom: 0px;
+    align-self: center;
+}
+
+.frl-flex-container .widget-table-row:has(code) .widget-table-cell-name,
+.frl-flex-container .widget-table-row:has(code) .widget-table-cell-value {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    align-content: center;
+}
+
+/* ==========================================================================
+   Multicolumn Table Structure (Extends Generic Table)
+   ========================================================================== */
+
+.frl-flex-container .widget-table-cell-name {
+    flex-basis: 35%;
+    flex-grow: 0;
+    border-right: 0 !important;
+}
+
+/* Section containing a multicolumn table */
+.multicolumn-section {
+    margin-top: 10px;
+}
+
+/* Base multicolumn table adjustments */
+.multicolumn-table {
+    width: 100%;
+}
+
+.multicolumn-table .widget-table-cell-name {
+    flex-basis: 40%;
+    flex-grow: 0;
+    /* Override generic grow */
+    flex-shrink: 0;
+    /* Override generic shrink */
+    overflow: hidden;
+    min-width: 0;
+    /* Allow shrinking below default min */
+}
+
+.multicolumn-table .widget-table-cell-value-1,
+.multicolumn-table .widget-table-cell-value-2 {
+    flex-basis: 29%;
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
+}
+
+.multicolumn-table .widget-table-cell-value:last-child {
+    flex-basis: auto;
+}
+
+/* ==========================================================================
+   Common UI Components & Content Styling
+   ========================================================================
+   */
+
+.widget-table-row .button {
+    align-self: center;
+    font-weight: 400;
+}
+
+/* --- Status Indicators --- */
+.status-dot {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    flex-grow: 1;
+}
+
+.status-dot:before {
+    content: "";
+    border-radius: 50%;
+    width: 1em;
+    height: 1em;
+    background-color: #fff;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.status-dot.enabled:before {
+    background-color: #00b300;
+    /* Green */
+}
+
+.status-dot.disabled:before {
+    background-color: #e6571a;
+    /* Red/Orange */
+}
+
+.status-dot.uninstalled:before {
+    background-color: #bbbbbb;
+    /* Grey */
+}
+
+.status-dot.warning:before {
+    background-color: #ffb900;
+    /* Yellow/Orange */
+}
+
+/* --- Code Display --- */
+.button.toggle-example:focus {
+    box-shadow: none;
+}
+
+.button.toggle-example[data-state="open"] {
+    background: var(--admin-secondary-color);
+}
+
+.widget-code {
+    /* Container for code blocks */
+    display: grid;
+}
+
+.widget-code pre {
+    /* General pre formatting */
+    margin-top: 0 !important;
+    background-color: rgba(0, 0, 0, 0.04) !important;
+    border: 1px solid #ddd !important;
+    border-top: 0 !important;
+    padding: 10px !important;
+    border-radius: 4px;
+    overflow-y: auto !important;
+    resize: vertical !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    max-width: 100%;
+}
+
+.widget-code code,
+.widget-table-cell-value code {
+    /* General code formatting */
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+    display: block;
+    line-height: 1.4 !important;
+}
+
+.tag-example-content .widget-code code {
+    font-size: 14px;
+}
+
+/* Specific code highlighting (example) */
+.widget-code .language-current-error-level {
+    padding: 2px;
+}
+
+.env-error-level {
+    font-family: monospace;
+    font-size: 11px;
+    color: #905;
+}
+
+/* --- Message/Notice Styling --- */
+.frl-warning-message {
+    background-color: #FFF3CD;
+    color: #856404;
+    border: 1px solid #FFEEBA;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+.frl-error-message {
+    color: #dc3232;
+    padding: 10px;
+    background: #fcf0f0;
+    border-left: 4px solid #dc3232;
+    margin-bottom: 15px;
+}
+
+/* ==========================================================================
+   Specific Widget/Section Styling
+   ========================================================================== */
+
+/* --- Options Comparison Table --- */
+.option-different {
+    background-color: #ffeeee !important;
+}
+
+.option-not-cached {
+    background-color: #fffbeb !important;
+}
+
+.not-cached {
+    /* Text style for 'not cached' indicator */
+    color: #888;
+    font-style: italic;
+}
+
+/* --- Transient/Options Count Rows --- */
+.transient-count-row .widget-table-cell-value,
+.options-count-row .widget-table-cell-value,
+.widget-table-cell-value:has(.button.align-right) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* --- Legacy Form Table --- */
+.frl-section .form-table th {
+    min-width: 230px;
+}
+
+/* ==========================================================================
+   Module: Tag Validator
+   ========================================================================== */
+
+.tag-validator-loading-results {
+    padding: 15px 0;
+}
+
+#tag-validator-results-container .validation-metadata-table,
+#tag-validator-results-container .validation-metadata {
+    /* Reset table styles */
+    background-color: transparent;
+    border: none;
+    margin-bottom: 0;
+}
+
+#tag-validator-results-container .validation-metadata {
+    /* Row containing metadata */
+    gap: 5px;
+    align-items: center;
+}
+
+#tag-validator-results-container .validation-metadata .widget-table-cell-name {
+    /* Name cell within metadata */
+    font-weight: normal;
+    flex-grow: initial;
+    padding-left: 38px;
+}
+
+#tag-validator-results-container .validation-metadata code {
+    /* Code elements in metadata */
+    margin: 0;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* --- Form --- */
+#tag-validator-form .form-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#tag-validator-form.frl-widget {
+    margin-bottom: 5px;
+}
+
+#tag-validator-form .form-row label {
+    display: block;
+    font-weight: 600;
+}
+
+#tag-validator-form .form-url {
+    flex-grow: 1;
+}
+
+#tag-validator-form .form-url input {
+    width: 100%;
+}
+
+/* --- Results Table --- */
+#tag-validator-priority-tags {
+    margin-top: 5px;
+}
+
+#tag-validator-priority-tag .tag-examples {
+    margin-top: 10px;
+}
+
+#tag-validator-priority-tags .tag-examples.tag-priority {
+    border-left: 4px solid #2271b1;
+    padding-left: 10px;
+}
+
+/* --- Status Indicators (Tag Validator Specific) --- */
+#tag-validator-priority-tags .status-dot,
+#tag-validator-priority-tags .status-dot-container {
+    display: inline-flex;
+}
+
+#tag-validator-priority-tags .status-dot-container {
+    flex-direction: column;
+    min-width: 140px;
+    flex-grow: 1;
+}
+
+#tag-validator-priority-tags .status-dot:before {
+    width: 10px;
+    height: 10px;
+    margin-right: 5px;
+}
+
+#tag-validator-priority-tags .status-dot.active:before {
+    background-color: #46b450;
+    /* Green */
+}
+
+#tag-validator-priority-tags .status-dot.inactive:before {
+    background-color: #dc3232;
+    /* Red */
+}
+
+#tag-validator-priority-tags .status-dot.uninstalled:before {
+    background-color: #ffba00;
+    /* Yellow/Orange */
+}
+
+
+/* ==========================================================================
+   Module: Schema Validator
+   ========================================================================== */
+
+/* Container for all validation messages */
+.validation-messages {
+    padding: 10px 15px;
+    background-color: #ffffff;
+}
+
+.validation-messages ul {
+    /* Reset list margin */
+    margin: 0;
+}
+
+.validation-messages h4 {
+    /* Section titles within messages */
+    margin: 0px 0 10px 0;
+    font-weight: 600;
+}
+
+/* Specific placement */
+.schema-validation .validation-messages {
+    margin: 10px 0;
+    padding-left: 20px;
+    /* Indentation */
+}
+
+/* Styling for different message types */
+.validation-messages .validation-valid,
+.validation-messages .validation-warnings,
+.validation-messages .validation-errors {
+    padding: 10px;
+    margin-bottom: 5px;
+    border-left-width: 3px;
+    border-left-style: solid;
+}
+
+.validation-messages .validation-valid {
+    background-color: #f0f8f0;
+    border-left-color: #46b450;
+    /* Green */
+}
+
+.validation-messages .validation-warnings {
+    background-color: #fef8ee;
+    border-left-color: #ffb900;
+    /* Yellow/Orange */
+}
+
+.validation-messages .validation-errors {
+    background-color: #fef0f0;
+    border-left-color: #dc3232;
+    /* Red */
+}
+
+/* Source Code View */
+.frl-source-view {
+    margin: 15px 0;
+    border: 1px solid #ddd;
+    padding: 10px;
+    background: #f9f9f9;
+}
+
+.frl-html-source {
+    /* The actual code container */
+    max-height: 300px;
+    overflow: auto;
+    background: #f0f0f0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ==========================================================================
+   Responsive Styles
+   ========================================================================== */
+
+@media screen and (max-width: 782px) {
+
+    /* Layout adjustments */
+    .controls-container {
+        flex-direction: column;
+    }
+
+    .control-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .control-group {
+        margin-bottom: 10px;
+        width: 100%;
+    }
+
+    /* Responsive adjustments for div-based tables */
+    .widget-table .widget-table-row {
+        flex-direction: column;
+        /* Stack cells vertically */
+        gap: 0;
+        /* Remove gap for stacked layout */
+        border-bottom: 1px solid #ccc;
+        /* Thicker border between stacked rows */
+    }
+
+    .widget-table .widget-table-cell-name,
+    .widget-table .widget-table-cell-value {
+        width: 100%;
+        /* Full width */
+        max-width: 100%;
+        padding: 8px 10px;
+        /* Adjust padding */
+        border-left: none;
+        /* Remove left border */
+    }
+
+    .widget-table .widget-table-cell-name {
+        background-color: #f8f8f8;
+        /* Add background to name cell */
+        border-bottom: 1px dashed #eee;
+        /* Separator */
+    }
+}
+
+/* ===================================================================
+    Column Layout - SPECIFIC OVERRIDES
+   =================================================================== */
+.frl-widget-title:has(.inline-button) {
+    display: flex;
+    justify-content: space-between;
+}
+
+.frl-widget-title .inline-button {
+    font-weight: 400;
+}
+
+#options-table.multicolumn-table .widget-table-cell-name {
+    flex-basis: 25%;
+}
+
+#options-table.multicolumn-table .widget-table-cell-value-1,
+#options-table.multicolumn-table .widget-table-cell-value-2 {
+    padding: 0;
+    /* Remove padding to allow code block full space */
+    overflow: hidden;
+}
+
+#options-table.multicolumn-table .widget-table-row:first-child .widget-table-cell-value {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+#options-table.multicolumn-table .widget-table-cell-value code {
+    padding: 8px;
+    width: 100%;
+    height: calc(100% - 4px);
+    /* Adjust height based on padding */
+    box-sizing: border-box;
+    font-size: 10px;
+    letter-spacing: -0.5px;
+    font-size: 12px;
+}
+
+#env-plugin-options-table {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+#env-plugin-options-table .widget-table-row,
+#env-plugin-options-table .widget-table-cell-name,
+#env-plugin-options-table .widget-table-cell-value{
+    flex-basis: calc(50% - 1px);
+}
+
+#env-plugin-options-table .widget-table-row.widget-table-header,
+#env-plugin-options-table .widget-code{
+    flex-basis: 100%;
+}
+
+#env-plugin-options-table,
+#env-plugin-options-table .widget-table-cell-name
+{
+    border-right: 0;
+}
+
+#env-plugin-options-table .widget-table-row:not(.widget-table-header)
+{
+    border-right: 1px solid #ddd;
+    background-color: #fff;
+}
+
+#transients-table.multicolumn-table .widget-table-cell-name {
+    flex-basis: 48%;
+}
+
+#cache-groups-table.multicolumn-table .widget-table-cell-name {
+    flex-direction: column;
+    flex-basis: 30%;
+}
+
+#cache-groups-table.multicolumn-table .widget-table-cell-name .group-dependencies {
+    font-weight: normal;
+}
+
+#cache-groups-table.multicolumn-table .widget-table-cell-value-1 {
+    flex-basis: 15%;
+}
+
+#cache-groups-table.multicolumn-table .widget-table-cell-value-2,
+#cache-groups-table.multicolumn-table .widget-table-cell-value-3,
+#cache-groups-table.multicolumn-table .widget-table-cell-value-4 {
+        flex-basis: 8%;
+        flex-grow: 0;
+}
+
+/* Column 1: Hook Name */
+.widget-table.frl-hooks-table .widget-table-row>.widget-table-cell-name {
+    flex-basis: 30%;
+    /* Adjusted */
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+/* Column 2: Type */
+.widget-table.frl-hooks-table .widget-table-row>.widget-table-cell-value-1 {
+    flex-basis: 7%;
+    /* Adjusted */
+    flex-grow: 0;
+    flex-shrink: 0;
+    text-align: center;
+    overflow: hidden;
+}
+
+/* Column 3: Callback */
+.widget-table.frl-hooks-table .widget-table-row>.widget-table-cell-value-2 {
+    flex-basis: 55%;
+    /* Adjusted */
+    flex-grow: 1;
+    flex-shrink: 1;
+    word-break: break-all;
+    min-width: 100px;
+    font-style: italic;
+}
+
+.widget-table.wordpress-hooks-table .widget-table-row>.widget-table-cell-value-1 {
+    flex-basis: 8%;
+    /* Adjusted */
+}
+
+#frontend-logged-out .widget-table-row>.widget-table-cell-value-4,
+#frontend-logged-in .widget-table-row>.widget-table-cell-value-4,
+#admin-hooks .widget-table-row>.widget-table-cell-value-4,
+#other-hooks .widget-table-row>.widget-table-cell-value-4 {
+    overflow: hidden;
+}
+
+.widget-table.wordpress-hooks-table .widget-table-row>.widget-table-cell-value-2,
+#hook-reference-links .widget-table-cell-value {
+    flex-basis: 60%;
+    /* Adjusted */
+}
+
+/* Style the header row specifically */
+.widget-table.frl-hooks-table .hooks-header-row>div[class*="widget-table-cell"] {
+    font-weight: 600;
+    background-color: var(--admin-secondary-color);
+}
+
+.hook-args-passed {
+    display: inline-block;
+    margin-left: 10px;
+}
+
+.hook-args-mismatch,
+.hook-above-avg,
+.hook-overlap-critical {
+    background-color: #fff6cc;
+    padding-right: 5px;
+    border-radius: 4px;
+}
+
+/* Add some space below context headings */
+.developer-tab-content h3 {
+    /* Assuming the tab container has this class */
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+}
+
+.developer-tab-content h3:first-of-type {
+    margin-top: 1em;
+    /* Less margin for the very first heading */
+}
+
+/* Apply group style (border, padding, bg) to ALL rows within a multi-row group */
+.frl-hooks-table>div.hook-group-start,
+.frl-hooks-table>div.hook-group-member,
+.frl-hooks-table>div.hook-group-end {
+    border-left: 3px solid #e0e0e0;
+}
+
+/* Apply border to the start of a multi-row group */
+.frl-hooks-table>div.hook-group-start {
+    border-top: 2px solid #e0e0e0;
+}
+
+/* Apply border to the end of a multi-row group */
+.frl-hooks-table>div.hook-group-end {
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.frl-hooks-table>.hook-type-action .widget-table-cell-value-1 {
+    color: #008d23;
+    font-weight: 500;
+}
+
+.frl-hooks-table>.hook-type-filter .widget-table-cell-value-1 {
+    color: #be6602;
+    font-weight: 500;
+}
+
+.button-container .button-description {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 12px;
+    letter-spacing: -0.1px;
+}
+
+.button-container .button-description:empty {
+    display: none;
+}
+
+.button.secondary-important {
+    font-weight: bold;
+}
+
+.action-row>* {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 2px;
+    margin-bottom: 10px;
+    width: 50%;
+    border-left: 0;
+}
+
+.action-row>*:has(+ *:empty) {
+    flex-basis: 100%;
+    flex-shrink: 0;
+}
+
+.action-row>*:has(+ *:not(:empty)) {
+    justify-content: flex-start;
+}
+
+.action-row button {
+    text-align: center;
+    font-weight: 400;
+}
+
+.wp-config-debug-settings {
+    background: var(--frl-widget-bg-color, #f8f9fa);
+    border-radius: 4px;
+}
+
+.wp-config-debug-settings .debug-options-section,
+.wp-config-debug-settings .error-types-section {
+    margin-bottom: 15px;
+}
+
+.wp-config-debug-settings .widget-table {
+    margin-bottom: 0;
+    border: none;
+}
+
+.wp-config-debug-settings .widget-table-header {
+    background-color: var(--frl-header-bg-color, #f0f0f1);
+    font-weight: 600;
+    color: var(--frl-header-text-color, #23282d);
+}
+
+.wp-config-debug-settings .option-row {
+    border-bottom: 1px solid var(--frl-border-color, #e2e4e7);
+}
+
+.wp-config-debug-settings .option-row:last-child {
+    border-bottom: none;
+}
+
+.wp-config-debug-settings label {
+    display: block;
+    padding: 8px 0;
+    font-weight: 500;
+}
+
+.wp-config-debug-settings input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.wp-config-debug-settings .description {
+    margin-top: 3px;
+    margin-bottom: 5px;
+    color: #666;
+    font-style: italic;
+    font-size: 13px;
+}
+
+.wp-config-debug-settings .submit-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--frl-border-color, #e2e4e7);
+    text-align: right;
+}

@@ -1,0 +1,12 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "{{PERSON_NAME}}",
+  "image": "{{PERSON_IMAGE}}",
+  "url": "{{PERSON_URL}}",
+  "description": "{{PERSON_DESCRIPTION}}",
+  "jobTitle": "{{PERSON_ROLE}}",    
+  "sameAs":[
+    "{{PERSON_SAMEAS}}"
+  ]
+}

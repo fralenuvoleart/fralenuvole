@@ -1,0 +1,69 @@
+/**
+ * Fralenuvole
+ * public-login.css - Login page CSS Styles
+ */
+
+:root {
+    --wp--preset--color--secondary: #0e5690;
+}
+
+#login h1 a,
+.login h1 a {
+    background-image: var(--login-logo-url);
+    width: var(--login-logo-width);
+    height: var(--login-logo-height);
+    background-size: contain;
+    background-repeat: no-repeat;
+    margin-bottom: 10px;
+}
+
+.login.wp-core-ui :is(a, a:hover, a:focus, .button, .button:hover),
+.login.wp-core-ui #backtoblog a:hover,
+.login.wp-core-ui #nav a:hover,
+.login.wp-core-ui select:hover {
+    color: var(--wp--preset--color--secondary);
+}
+
+.login.wp-core-ui a:focus,
+.login.wp-core-ui .button:focus,
+.login.wp-core-ui select:focus,
+.login.wp-core-ui .button.wp-hide-pw:focus,
+.login.wp-core-ui input:is([type=text], [type=password], [type=checkbox]):focus {
+    border-color: var(--wp--preset--color--secondary);
+    box-shadow: 0 0 0 1px var(--wp--preset--color--secondary);
+}
+
+.login.wp-core-ui :is(.button-primary, .button-primary:hover, .button-primary:focus) {
+    background: var(--wp--preset--color--secondary);
+    border-color: var(--wp--preset--color--secondary);
+    color: #fff;
+}
+
+.login.wp-core-ui a:focus,
+.wp-core-ui :is(.button:hover, .button-secondary:hover),
+.login.wp-core-ui a:is(:active, :hover),
+.login.wp-core-ui .button-primary:is(:hover, :focus) {
+    opacity: .8;
+}
+
+.login.wp-core-ui input[type=checkbox] {
+    line-height: inherit;
+}
+
+.login.wp-core-ui input[type=checkbox]:checked::before {
+    content: "âœ”";
+    color: #555555;
+}
+
+.login.wp-core-ui select option {
+    color: #333;
+}
+
+.login.wp-core-ui .language-switcher {
+    display: none;
+}
+
+.login #backtoblog,
+.login #nav {
+    text-align: center;
+}

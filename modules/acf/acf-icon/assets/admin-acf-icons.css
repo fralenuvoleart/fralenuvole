@@ -1,0 +1,162 @@
+/* Dropdown results - 2 column layout */
+.frl-icons .select2-results__options {
+    display:flex;
+    flex-wrap:wrap;
+    background:#fff;
+    border:1px solid#bbb;
+    border-left:none;
+    min-width:500px;
+    /* Performance optimizations */
+    will-change:scroll-position;
+    transform:translateZ(0);
+}
+.frl-icons .select2-results__option {
+    width:50%;
+    box-sizing:border-box
+}
+.frl-icons .select2-results__option .frl-icon-option {
+    display:contents
+}
+.frl-icons .select2-results__option[role=option] {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    content-visibility:auto;
+    contain-intrinsic-size:auto 40px;
+}
+.frl-icons .select2-results__option[role=option] img {
+    width:24px;
+    height:24px;
+    object-fit:contain;
+}
+/* Selected value */
+.frl-icons .select2-selection__rendered .frl-icon-selected {
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+.frl-icons .select2-selection__rendered .frl-icon-selected img {
+    width:16px;
+    height:16px;
+    object-fit:contain;
+    flex-shrink:0;
+}
+.frl-icons .select2-selection__rendered .frl-icon-label {
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+/* Field layout */
+[data-name="frl_icon"] .acf-input {
+    display:flex;
+    gap:8px;
+    flex-wrap: wrap;
+}
+/* Icon preview */
+.frl-acf-icon-preview {
+    display:inline-block;
+    vertical-align:middle;
+    margin-left:8px;
+    min-width:28px;
+    min-height:28px
+}
+.frl-acf-icon-preview img {
+    width:28px;
+    height:28px;
+    object-fit:contain;
+    display:block;
+}
+.frl-acf-icon-preview.is-out-of-scope img {
+    opacity: .45;
+    filter: grayscale(1);
+}
+.frl-icon-option img,
+.frl-icon-selected img,
+.frl-acf-icon-preview img {
+    image-rendering:crisp-edges;image-rendering:-webkit-optimize-contrast;
+}
+
+/* Counter preview badge */
+.frl-icon-badge {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:28px;
+    height:28px;
+    border:2px solid #c4a26e;
+    border-radius:999px;
+    font-size:16px;
+    font-weight: 600;
+    line-height:1;
+    color:#c4a26e;
+    background:#fff;
+}
+
+/* Match sizes to SVGs in dropdown results and selected value */
+.frl-icons .select2-results__option[role=option] .frl-icon-badge { width:24px; height:24px; font-size:12px; }
+.frl-icons .select2-selection__rendered .frl-icon-badge { width:16px; height:16px; font-size:12px;}
+
+.select2-selection--single.frl-icons {
+    border-color: #8c8f94;
+}
+
+.select2-selection--single.frl-icons .select2-selection__rendered {
+    min-width: 180px;
+}
+
+.select2-selection--single.frl-icons .select2-selection__clear {
+    margin-left: 0.75em; /* avoid touching text */
+    margin-top: -0.08em;
+}
+.acf-field-group:has(.icon-color-select select option[value="mono"]:checked) .frl-acf-icon-preview img {
+    filter: sepia(1) saturate(2);
+}
+
+.acf-field-group.default-icon .acf-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+}
+
+.acf-field-group.default-icon .acf-fields .acf-field-frl-icon {
+    width: 67% !important;
+}
+
+.acf-field-group.default-icon .acf-fields .icon-color-select {
+    width: 33% !important;
+}
+
+.acf-field-group.default-icon .acf-fields .acf-field-frl-icon > .acf-label {
+    display: none;
+}
+
+/* Tabs above the select */
+.frl-icon-tabs {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    width:100%;
+    order:-1;
+    border-bottom:1px solid #dcdcde;
+}
+.frl-icon-tab {
+    appearance:none;
+    background:none;
+    border:0;
+    margin:0;
+    padding:6px 10px;
+    font-size:13px;
+    line-height:1.4;
+    color:#50575e;
+    border-bottom:2px solid transparent;
+    border-radius:3px 3px 0 0;
+    cursor:pointer;
+}
+.frl-icon-tab:hover, .frl-icon-tab:focus {
+    color:#1d2327;
+}
+.frl-icon-tab.active {
+    color:#2271b1;
+    border-bottom-color:#2271b1;
+    background:#fff;
+}

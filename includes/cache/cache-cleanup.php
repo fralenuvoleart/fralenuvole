@@ -1,0 +1,277 @@
+<?php
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Fralenuvole
+ * cache-cleanup.php - Cache cleanup functionality
+ *
+ * This file handles core cache cleanup hooks and functions.
+ */
+
+// ----- Cache Management Hooks -----
+// Register term-change hooks that require a rewrite flush
+frl_hook_add('action', 'init', 'frl_register_hooks_rewrite_flush', 10, 0);
+
+// increment translation version and clear cache when strings are updated
+frl_hook_add('action', 'pll_save_strings_translations', 'frl_clear_translation_cache', 10, 0, 'admin', false);
+
+// Clear permalink cache when terms are updated
+frl_hook_add('action', 'edited_term', 'frl_clear_term_permalink_cache', 10, 1, 'admin', false);
+
+// Clear post cache when posts are updated
+frl_hook_add('action', 'save_post', 'frl_clear_post_cache', 10, 1, 'admin', false);
+
+// Clear cache when navigation is updated (both block and classic)
+frl_hook_add('action', 'save_post_wp_navigation', 'frl_clear_navigation_cache', 10, 1, 'admin', false);
+frl_hook_add('action', 'wp_update_nav_menu', 'frl_clear_navigation_cache', 10, 1, 'admin', false);
+
+// Clear user cache when a profile is updated
+frl_hook_add('action', 'profile_update', 'frl_clear_user_cache', 10, 1, 'admin', false);
+
+// Clear transients when options are updated
+frl_hook_add('action', 'update_option', 'frl_clear_option_transient', 10, 1, 'core', false);
+
+// Clear translated option cache when an option is updated
+frl_hook_add('action', 'updated_option', 'frl_clear_option_cache', 10, 1, 'admin', false);
+frl_hook_add('action', 'updated_option', 'frl_clear_acf_option_icon_cache', 10, 1, 'admin', false);
+
+function frl_register_hooks_rewrite_flush(): void
+{
+    foreach (['category', 'post_tag'] as $taxonomy) {
+        frl_hook_add('action', "created_{$taxonomy}", 'frl_schedule_rewrite_flush', 10, 0, 'core', false);
+        frl_hook_add('action', "edited_{$taxonomy}",  'frl_schedule_rewrite_flush', 10, 0, 'core', false);
+        frl_hook_add('action', "deleted_{$taxonomy}", 'frl_schedule_rewrite_flush', 10, 0, 'core', false);
+    }
+}
+
+/**
+ * Clear schema cache when post is saved
+ *
+ * This function is hooked to save_post (see line 23) and clears the schema
+ * cache for a specific post. It handles multilingual sites by clearing the cache
+ * for all translations of the post.
+ *
+ * @param int $post_id Post ID
+ */
+function frl_clear_post_cache($post_id)
+{
+    // Validate post ID
+    if (empty($post_id) || !is_numeric($post_id)) {
+        return;
+    }
+    $post_id = absint($post_id);
+
+    $translations_key = "post_{$post_id}_translations";
+    frl_cache_clear('postdata', $translations_key);
+
+    $permalinks_key = "post_{$post_id}";
+    frl_cache_clear('permalinks', $permalinks_key);
+
+    // Clear all tracked translated meta fields for this post
+    frl_clear_tracked_meta_cache('post', $post_id);
+
+    // Clear only post-scoped icon repeater caches within the 'icons' group
+    // Renderer caches include file mtimes and do not need clearing on post save
+    $icon_keys = frl_cache_get_multi('icons');
+    if (is_array($icon_keys)) {
+        $prefix = 'repeater_' . $post_id . '_';
+        foreach (array_keys($icon_keys) as $key) {
+            if (is_string($key) && str_starts_with($key, $prefix)) {
+                frl_cache_clear('icons', $key, false);
+            }
+        }
+    }
+
+    // Clear specific schema transients for this post
+    if (defined('FRL_SCHEMA_TYPES') && frl_is_array_not_empty(FRL_SCHEMA_TYPES)) {
+        foreach (FRL_SCHEMA_TYPES as $schema_type) {
+            $cache_key = "schema_{$schema_type}_post_{$post_id}";
+            frl_cache_clear('metadata', $cache_key); // Clear specific key within the group
+        }
+    }
+
+    // Clear Language switcher for post
+    $type = frl_get_option('langswitcher_dropdown') ? 'dropdown' : 'flags';
+    $langswitch_key = 'langswitcher_' . $type . '_post_' . $post_id;
+
+    frl_cache_clear('shortcodes', $langswitch_key);
+
+    // Clear featured image cache for this post using centralized size logic
+    $cache_key = "featured_img_post_{$post_id}_";
+
+    $image_size = frl_get_featured_image_size($post_id);
+    frl_cache_clear('postdata', $cache_key . $image_size);
+
+    // Also clear any potential other sizes that might have been cached
+    // This covers edge cases where the preload logic might have changed
+    $common_sizes = ['thumbnail', 'medium', 'large', 'full'];
+    foreach ($common_sizes as $size) {
+        if ($size !== $image_size) {
+            frl_cache_clear('postdata', $cache_key . $size);
+        }
+    }
+}
+
+/**
+ * Invalidate the translated cache for a specific option when it's updated.
+ *
+ * @param string $option_name The name of the option that was updated.
+ */
+function frl_clear_option_cache($option_name)
+{
+    // Narrow to plugin-owned options only
+    $prefix = frl_prefix('');
+    if (!str_starts_with($option_name, $prefix)) {
+        return; // Not our option – leave caches intact
+    }
+
+    // This function must clear the cache for all possible languages.
+    /** @disregard P1010 Undefined type */
+    $active_languages = frl_get_active_languages();
+
+    if (empty($active_languages)) {
+        // Fallback to default if no languages are returned.
+        $default_language = function_exists('frl_get_default_language') ? frl_get_default_language() : null;
+        if ($default_language) {
+            $active_languages = [$default_language];
+        } else {
+            return; // Cannot proceed without language context.
+        }
+    }
+
+    $version = frl_get_option('translation_version') ?: 1;
+
+    foreach ($active_languages as $language) {
+        $cache_key = "translation_option_{$option_name}_{$language}_{$version}";
+
+        // Clear only this option-specific key (dependency cascades are skipped by the cache manager for key-level clears)
+        frl_cache_clear('options', $cache_key);
+    }
+}
+
+/**
+ * Clear ACF option cache used by icon shortcodes
+ * ACF stores options with keys like 'options_{field_name}'
+ *
+ * @param string $option_name Name of the updated option
+ */
+function frl_clear_acf_option_icon_cache($option_name)
+{
+    // Only handle ACF option keys (format: options_{field_name})
+    if (!str_starts_with($option_name, 'options_')) {
+        return;
+    }
+
+    // Clear entire icons group (includes both resolved paths and inline SVG)
+    // Since we use md5 hashes for keys, simpler to clear all
+    frl_cache_clear('icons');
+}
+
+/**
+ * Automatically clear transients with the same name as updated options
+ *
+ * @param string $option Name of the updated option
+ */
+function frl_clear_option_transient($option)
+{
+    // Extract the unprefixed option name
+    $prefix = frl_prefix('');
+    if (str_starts_with($option, $prefix)) {
+        $unprefixed = substr($option, strlen($prefix));
+
+        // Delete any transient with the same name as the option
+        frl_delete_transient($unprefixed);
+    }
+}
+
+/**
+ * Clear cache for a user when their profile is updated.
+ *
+ * @param int $user_id User ID.
+ */
+function frl_clear_user_cache($user_id)
+{
+    frl_clear_tracked_meta_cache('user', $user_id);
+}
+
+/**
+ * Increments the global block translation version and clear translation caches
+ * Called when Polylang translations are saved.
+ */
+function frl_clear_translation_cache()
+{
+    // Use the plugin's option setter for consistency & automatic cache handling
+    frl_update_option('translation_version', time());
+
+    // Clear translations cache group
+    // Dependencies will automatically clear nav and blocks groups
+    frl_cache_clear('translations');
+}
+
+/**
+ * Update navigation cache version when navigation is saved
+ */
+function frl_clear_navigation_cache($nav_id)
+{
+    // Simply clear the navigation cache group
+    $cache_key = "wp_navigation_{$nav_id}";
+
+    frl_cache_clear('permalinks', $cache_key);
+}
+
+/**
+ * Clear permalink cache when term is saved
+ *
+ * This function is hooked to edited_term (see line 24) and clears the permalink
+ * cache for a specific term.
+ *
+ * @param int $term_id Term ID
+ */
+function frl_clear_term_permalink_cache($term_id)
+{
+    // Get term data
+    $term = get_term($term_id);
+    if (!$term || is_wp_error($term)) {
+        return;
+    }
+
+    frl_cache_clear('permalinks');
+
+    // Also clear any tracked meta fields for this term.
+    frl_clear_tracked_meta_cache('term', $term->term_id);
+}
+
+/**
+ * Clears all tracked translated meta fields for a given object type and ID.
+ *
+ * @param string $type The object type ('post', 'term', 'user').
+ * @param int    $id   The object ID.
+ */
+function frl_clear_tracked_meta_cache(string $type, int $id)
+{
+    // Validate ID
+    if (empty($id) || !is_numeric($id)) {
+        return;
+    }
+    $id = absint($id);
+
+    // Get the current translation version to build the correct cache key.
+    $version = frl_get_option('translation_version') ?: 1;
+
+    // Construct the tracking key and retrieve the list of cached meta keys.
+    $tracking_key = "translation_{$type}meta_keys_{$id}";
+    $tracked_keys = frl_cache_get('metafields', $tracking_key, null);
+
+    if (frl_is_array_not_empty($tracked_keys)) {
+        foreach ($tracked_keys as $meta_key) {
+            // Construct the data key for each meta field, including the version, and clear it.
+            $cache_key = "translation_{$type}meta_{$id}_{$meta_key}_{$version}";
+            frl_cache_clear('metafields', $cache_key);
+        }
+        // After clearing all individual entries, remove the tracking key itself.
+        frl_cache_clear('metafields', $tracking_key);
+    }
+}

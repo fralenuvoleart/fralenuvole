@@ -1,0 +1,39 @@
+<svg width="110.83" height="110.83" viewBox="0 0 110.83 110.83" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Generative logo with full Golden Ratio proportions.
+    - V17-final: Definitive version anchored to R_center = 12.00.
+    - All proportions are derived from this single value and φ.
+  -->
+  <defs>
+    <style>
+      .logo-dot {
+        fill: #B8860B;
+      }
+    </style>
+  </defs>
+
+  <!-- Center Dot -->
+  <circle cx="55.42" cy="55.42" r="12.00" class="logo-dot" />
+
+  <!-- Middle Ring (6 dots) -->
+  <circle cx="86.83" cy="55.42" r="7.42" class="logo-dot" />
+  <circle cx="71.13" cy="80.37" r="7.42" class="logo-dot" />
+  <circle cx="39.71" cy="80.37" r="7.42" class="logo-dot" />
+  <circle cx="24.00" cy="55.42" r="7.42" class="logo-dot" />
+  <circle cx="39.71" cy="30.46" r="7.42" class="logo-dot" />
+  <circle cx="71.13" cy="30.46" r="7.42" class="logo-dot" />
+
+  <!-- Outer Ring (12 dots) -->
+  <circle cx="106.25" cy="55.42" r="4.58" class="logo-dot" />
+  <circle cx="99.48" cy="80.73" r="4.58" class="logo-dot" />
+  <circle cx="80.73" cy="99.48" r="4.58" class="logo-dot" />
+  <circle cx="55.42" cy="106.25" r="4.58" class="logo-dot" />
+  <circle cx="30.11" cy="99.48" r="4.58" class="logo-dot" />
+  <circle cx="11.36" cy="80.73" r="4.58" class="logo-dot" />
+  <circle cx="4.58" cy="55.42" r="4.58" class="logo-dot" />
+  <circle cx="11.36" cy="30.11" r="4.58" class="logo-dot" />
+  <circle cx="30.11" cy="11.36" r="4.58" class="logo-dot" />
+  <circle cx="55.42" cy="4.58" r="4.58" class="logo-dot" />
+  <circle cx="80.73" cy="11.36" r="4.58" class="logo-dot" />
+  <circle cx="99.48" cy="30.11" r="4.58" class="logo-dot" />
+</svg>

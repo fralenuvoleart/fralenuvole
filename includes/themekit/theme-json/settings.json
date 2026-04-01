@@ -1,0 +1,58 @@
+{
+	"settings": {
+		"useRootPaddingAwareAlignments": true,
+		"appearanceTools": true,
+		"color": {
+			"custom": false,
+			"defaultPalette": false,
+			"gradients": [],
+			"defaultGradients": false,
+			"customGradient": false,
+			"duotone": [],
+			"defaultDuotone": false,
+			"customDuotone": false
+		},
+		"typography": {
+			"customFontSize": false,
+			"defaultFontSizes": false,
+			"fluid": true,
+			"lineHeight": true,
+			"dropCap": true,
+			"writingMode": false
+		},
+        "custom": {
+            "line-height": {
+                "frl-hero-title": 1.1
+            }
+        },
+ 		"blocks": {
+			"core/button": {
+				"border": {
+					"color": false,
+					"radius": false,
+					"style": false,
+					"width": false
+				},
+				"color": {
+					"text": false,
+					"background": false
+				},
+				"typography": {
+					"dropCap": false,
+					"fontStyle": false,
+					"fontWeight": false,
+					"letterSpacing": false,
+					"textDecoration": false,
+					"fontSizes": [],
+					"fontFamilies": []
+				},
+				"spacing": {
+					"padding": false
+				},
+				"shadow": {
+					"defaultPresets": false
+				}
+			}
+		}
+	}
+}

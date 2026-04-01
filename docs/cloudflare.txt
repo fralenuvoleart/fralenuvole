@@ -1,0 +1,28 @@
+Global API Token for Wordpress
+cfut_g5aTdrrSXodE3W8nChOI7WvCW6t28d0yCQAreQsu03967420
+
+curl "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+-H "Authorization: Bearer cfut_g5aTdrrSXodE3W8nChOI7WvCW6t28d0yCQAreQsu03967420"
+
+
+pbservices.ge Zone ID
+e6b16467dcac2ff04984c5c321d7c52e
+
+
+Disable Ech API Token
+kgRJHJ6F5Bpn86FThv2Lb1J6V8rllO4Jh0cenEDp
+
+Disable Ech
+curl -X PATCH "https://api.cloudflare.com/client/v4/zones/e6b16467dcac2ff04984c5c321d7c52e/settings/ech" \
+     -H "Authorization: Bearer kgRJHJ6F5Bpn86FThv2Lb1J6V8rllO4Jh0cenEDp" \
+     -H "Content-Type: application/json" \
+     --data '{"value": "off"}'
+
+Disable IPV6
+curl -X PATCH "https://api.cloudflare.com/client/v4/zones/e6b16467dcac2ff04984c5c321d7c52e/settings/ipv6" \
+     -H "Authorization: Bearer kgRJHJ6F5Bpn86FThv2Lb1J6V8rllO4Jh0cenEDp" \
+     -H "Content-Type: application/json" \
+     --data '{"value":"off"}'
+
+     Why not WP Rocket?
+WP Rocket is great for beginners, but developers often find it "bloated" because it injects its own code to handle things that Nginx already does better at the server level.

@@ -1,0 +1,10 @@
+:root :where(.is-layout-flow) > :last-child {
+    max-height: 500px;
+    transition: 0.3s;
+}
+.wp-block-accordion-panel[aria-hidden=true],
+.wp-block-accordion-panel[inert] {
+    display: block;
+    max-height: 0;
+    overflow: hidden;
+}

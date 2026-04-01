@@ -1,0 +1,177 @@
+/**
+ * Fralenuvole
+ * shared-logged-user.css - CSS Styles for logged-in users
+ */
+
+:root {
+    --admin-bg-color: #003652;
+    --admin-menu-color: #00293d;
+    --admin-color: #ffffffdd;
+    --admin-highlight-color: #4dc3ff;
+    --admin-accent-color: #e6571a;
+    --admin-accent-hover-color: #ff5e1a;
+    --admin-alert-color: #e6571a;
+    --admin-secondary-color: #bcdcf5;
+;
+}
+
+#wpadminbar {
+    z-index: 100001 !important;
+}
+
+#wpadminbar .frl-plugin-logo {
+    display: inline-block;
+    height: 26px !important;
+    min-width: 26px;
+    /* padding-left: 30px; */
+    filter: grayscale(1) brightness(2.1);
+    background-image: url('../images/fralenuvole.svg');
+    background-position: 0 bottom;
+    background-size: 24px;
+    background-repeat: no-repeat;
+    text-indent: -999px;
+    overflow: hidden;
+}
+#wpadminbar .frl-menu-secondary > .ab-item:before {
+    content: "\f103";
+    font-size: 19px;
+    top: 2px;
+}
+
+#wpadminbar:not(.mobile) .ab-top-menu>li:hover>.ab-item .frl-plugin-logo,
+#wpadminbar:not(.mobile) .ab-top-menu>li:focus>.ab-item .frl-plugin-logo,
+
+/* Style for menu items with bubbles to ensure proper horizontal alignment */
+#wpadminbar #wp-admin-bar-frl-menu-child-debug-log .ab-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px
+}
+
+#wpadminbar .debug-log-text {
+    display: inline-block;
+}
+
+/* Count bubble styling for admin bar */
+#wpadminbar .frl-count-bubble {
+    /* Basic dimensions and appearance */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 5px;
+    border-radius: 50%;
+    background-color: var(--admin-accent-color);
+
+    /* Text styling */
+    color: white;
+    font-size: 12px;
+    line-height: 0;
+    /* Critical for vertical alignment */
+    text-align: center;
+
+    /* Fix positioning and centering */
+    position: relative;
+    overflow: visible;
+    /* Allow for number overflow */
+    box-sizing: border-box;
+
+    /* Prevent text from wrapping */
+    white-space: nowrap;
+
+    /* Ensure no extra spacing */
+    padding: 0;
+    padding-top: 1px;
+}
+
+/* Highlight parent menu when logs exist */
+#wpadminbar #wp-admin-bar-frl-menu-primary.frl-has-logs>a{
+    color: var(--admin-accent-hover-color) !important;
+}
+
+#wpadminbar #wp-admin-bar-frl-menu-primary.frl-has-logs>a>.frl-plugin-logo {
+    filter: saturate(2);
+}
+
+#wp-admin-bar-user-info .avatar,
+#wpadminbar #wp-admin-bar-my-account.with-avatar>.ab-empty-item img,
+#wpadminbar #wp-admin-bar-my-account.with-avatar>a img {
+    border-radius: 999px;
+}
+
+#wp-toolbar,
+#wp-toolbar #wp-admin-bar-top-secondary {
+    background-color: inherit;
+}
+
+#wpadminbar #wp-admin-bar-my-account.with-avatar>.ab-empty-item img,
+#wpadminbar #wp-admin-bar-my-account.with-avatar>a img {
+    min-height: 24px;
+}
+
+#wp-admin-bar-search {
+    display: none;
+}
+
+.frl-ab-separator {
+    max-height: 8px;
+}
+
+.ab-top-menu {
+    display: inline-flex;
+}
+
+#wpadminbar #wp-admin-bar-frl-server {
+    order: -999;
+}
+
+#wpadminbar #wp-admin-bar-frl-server .ab-item {
+    display: flex;
+    gap: 9px;
+    text-transform: uppercase;
+    padding: 0 9px;
+    margin-right: 5px;
+    border-top-right-radius: 16px;
+    border-bottom-right-radius: 16px;
+    font-size: 11px;
+    align-items: center;
+    font-weight: 500;
+    line-height: 2;
+    background: hsl(40 100% 70% / 90%);
+    color: hsl(0 0% 0% / 50%) !important;
+}
+
+#wpadminbar #wp-admin-bar-frl-server .ab-item:after {
+    content: "";
+    padding: 0;
+    height: 8px;
+    width: 8px;
+    display: inline-flex;
+    border: 1px solid hsl(0 0% 0% / 5%);
+    border-radius: 999px;
+}
+
+#wpadminbar #wp-admin-bar-frl-server.indexing-on .ab-item:after {
+    background: #00b300;
+}
+
+#wpadminbar #wp-admin-bar-frl-server.indexing-off .ab-item:after {
+    background: #e6571a;
+}
+
+#wpadminbar #wp-admin-bar-frl-server.production .ab-item {
+    background: hsl(120 100% 35% / 70%);
+    color: #f0f0f1 !important;
+}
+
+#wpadminbar #wp-admin-bar-frl-server.production .ab-item:after {
+    border-color: hsl(0 0% 100% / 30%);
+
+}
+
+@media screen and (max-width: 782px) {
+    body:is(.stage, .staging, .dev, .test) #wp-admin-bar-root-default:before {
+        height: 46px;
+    }
+}

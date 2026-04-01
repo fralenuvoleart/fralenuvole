@@ -1,0 +1,184 @@
+/**
+ * Fralenuvole
+ * thirdparty - admin.css - Backend CSS Styles
+ */
+
+:root body {
+    background-color: #f0f0f1;
+}
+
+.wp-list-table .ac-image:not(body) {
+    border-radius: 8px;
+}
+
+/* AIP Styles */
+.aipkit-inline-actions .page-title-action {
+    background-color: #f6f7f7 !important;
+    border-color: #2271b1 !important;
+    color: #2271b1 !important;
+    font-weight: 400 !important;
+    padding-left: 10px !important;
+}
+.aipkit-inline-actions .page-title-action:before {
+    content: "AI" !important;
+    position: initial !important;
+    transform: none !important;
+    margin-right: 5px !important;
+}
+
+.aipkit_ai_enhance .aipkit_enhancer_trigger {
+    text-indent: -20px;
+    clip-path: inset(0 0 0 0);
+}
+
+#toplevel_page_wpaicg .wp-menu-name,
+#toplevel_page_wpaicg .wp-menu-image img,
+.pro-feature-label,
+.aipower-pro-feature-label,
+.wpaicg-role-item input[type="checkbox"][disabled] + span[style*="background: #ffb30a"] {
+    display: none !important;
+}
+
+ #toplevel_page_wpaicg .wp-menu-image {
+    filter: grayscale(1) brightness(2.1);
+    background-image: url(../../../../assets/images/fralenuvole.svg);
+    background-position: 8px 3px;
+    background-size: 23px;
+    background-repeat: no-repeat;
+    text-indent: -999px;
+    overflow: hidden;
+}
+.wpaicg_editor_icon button {
+    background-image: url(../../../../assets/images/fralenuvole.svg) !important;
+    background-size: 24px !important;
+}
+
+#toplevel_page_wpaicg > a:before {
+    content: "AI NOVA";
+    line-height: 34px;
+}
+
+h1.aipower-title {
+    text-indent: -999px;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+h1.aipower-title:before {
+    content: "AI NOVA";
+    text-indent: 0 !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+a.advanced-settings,
+a.safety-settings {
+    background: var(--admin-menu-color) !important;
+}
+
+a.advanced-settings:hover,
+a.safety-settings:hover {
+    filter: brightness(2);
+}
+
+.nice-form-group .button {
+    font-size: inherit !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+}
+
+.wpaicg-generating-title {
+    background-color: var(--admin-accent-color) !important;
+}
+
+div.wpcgai_lds-ellipsis {
+    background-color: var(--admin-menu-color) !important;
+    border-radius: 8px;
+}
+
+.wpaicg-generating-process {
+    padding-top: 10px;
+}
+
+.wpaicg-timer {
+    margin-bottom: 20px !important;
+}
+
+.wpaicg-generating-process div {
+    padding: 8px 20px !important;
+}
+
+.wpai-content-generator-textarea {
+    border: 1px solid #ccc !important;
+}
+
+.acf-fields>.acf-tab-wrap {
+    overflow: visible;
+}
+
+.acf-switch,
+.acf-switch .acf-switch-slider {
+    border-radius: 999px !important;
+}
+
+.acf-switch.-on:hover {
+    border-color: #00b300 !important;
+}
+
+.acf-switch.-on {
+    background: #00b300 !important;
+    border-color: #00b300 !important;
+}
+
+div.acf-switch .acf-switch-slider {
+    left: 2px;
+    right: 60%;
+}
+
+div.acf-switch.-on .acf-switch-slider {
+    right: 2px;
+    left: 60%;
+}
+.acf-field-image {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.acf-image-uploader .image-wrap img {
+    width: 100% !important;
+    max-width: 180px !important;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.acf-field.frl-section-preview {
+    float: right !important;
+    max-width: 320px;
+}
+
+.frl-inline-label .acf-label {
+    display: flex;
+    gap: 8px;
+}
+
+.frl-inline-label .acf-label .description {
+    margin-top: 0;
+}
+
+h1:has(.fd-title-info) {
+    width: 100%;
+    margin-top: 25px;
+}
+.fd-title-info {
+    display: none !important;
+}
+div.postbox[id^=fd_] .hndle.ui-sortable-handle {
+    color: inherit;
+}

@@ -1,0 +1,355 @@
+/**
+ * Fralenuvole Themekit Base Styles
+ */
+
+ :root {
+    --frl--large-size: 1920px;
+    --frl--max-size: 2400px;
+    --frl--column-padding: min(3vw,20px);
+    --frl--grid-gap: clamp(1.5rem, 3.5vw, 2.5rem);
+}
+
+/* REM to PX conversion
+    0.5rem      = 8px
+    0.5625rem   = 9px
+    0.625rem    = 10px
+    0.6875rem   = 11px
+    0.75rem     = 12px
+    0.8125rem   = 13px
+    0.875rem    = 14px
+    0.9375rem   = 15px
+    1rem        = 16px
+    1.0625rem   = 17px
+    1.125rem    = 18px
+    1.25rem     = 20px
+    1.3125rem   = 21px
+    1.375rem    = 22px
+    1.4375rem   = 23px
+    1.5rem      = 24px
+    1.625rem    = 26px
+    1.75rem     = 28px
+    1.875rem    = 30px
+    2rem        = 32px
+    2.125rem    = 34px
+    2.25rem     = 36px
+    2.375rem    = 38px
+    2.5rem      = 40px
+    2.625rem    = 42px
+    2.75rem     = 44px
+    2.875rem    = 46px
+    3rem        = 48px
+3.125rem        = 50px
+    3.25rem     = 52px
+    3.375rem    = 54px
+    3.5rem      = 56px
+    3.625rem    = 58px
+    3.75rem     = 60px
+    3.875rem    = 62px
+    4rem        = 64px
+    4.125rem    = 66px
+    4.25rem     = 68px
+    4.375rem    = 70px
+    4.5rem      = 72px
+    4.625rem    = 74px
+    4.75rem     = 76px
+    4.875rem    = 78px
+    5rem        = 80px
+    5.125rem    = 82px
+    5.25rem     = 84px
+    5.375rem    = 86px
+    5.5rem      = 88px
+    5.625rem    = 90px
+    5.75rem     = 92px
+    5.875rem    = 94px
+    6rem        = 96px
+    6.125rem    = 98px
+    6.25rem     = 100px
+    6.375rem    = 102px
+    6.5rem      = 104px
+    6.625rem    = 106px
+    6.75rem     = 108px
+    6.875rem    = 110px
+    7rem        = 112px
+    7.125rem    = 114px
+    7.25rem     = 116px
+    7.375rem    = 118px
+    7.5rem      = 120px
+    7.625rem    = 122px
+    7.75rem     = 124px
+    7.875rem    = 126px
+    8rem        = 128px
+*/
+
+.wp-site-blocks > main {
+    margin-block-start: 0;
+}
+
+.single-post .entry-content p {
+    font-size: var(--wp--preset--font-size--frl-readable);
+}
+
+.single-post .entry-content blockquote p {
+    font-size: calc(1.1 * var(--wp--preset--font-size--frl-readable));
+}
+
+.wp-block-query .wp-block-post-title {
+    font-size: var(--wp--preset--font-size--frl-list-title);
+}
+
+.wp-block-navigation-submenu .wp-block-navigation-submenu {
+    font-size: var(--wp--preset--font-size--frl-compact);
+}
+
+.clearfix {
+    margin-block: 0;
+}
+
+.shortcode-content p:empty {
+    display: none;
+}
+
+.frl-link-underline,
+.wp-block-navigation__container>.wp-block-navigation-item>a {
+    position: relative;
+    text-decoration: none;
+}
+
+.frl-link-underline:after,
+.wp-block-navigation__container>.wp-block-navigation-item:not(.has-child)>a:after {
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    content: "";
+    height: 2px;
+    width: 0;
+    transition: width .5s;
+    background-color: currentColor;
+}
+
+.frl-link-underline:hover:after,
+.wp-block-navigation__container>.wp-block-navigation-item:not(.has-child)>a:hover:after {
+    width: 100%;
+}
+
+/* Bento rows */
+.bento-post-list .wp-block-post-template  li:nth-of-type(1) {
+    grid-column-start: 1 !important;
+    grid-column-end: 3 !important;
+    grid-row-start: 1 !important;
+    grid-row-end: 2 !important;
+}
+.bento-post-list .wp-block-post-template >li:nth-of-type(2) {
+    grid-column-start: 3 !important;
+    grid-column-end: 4 !important;
+    grid-row-start: 1 !important;
+    grid-row-end: 2 !important;
+}
+
+.bento-post-list .wp-block-post-template >li:nth-of-type(3) {
+    grid-column-start: 1 !important;
+    grid-column-end: 2 !important;
+    grid-row-start: 2 !important;
+    grid-row-end: 3 !important;
+}
+.bento-post-list .wp-block-post-template >li:nth-of-type(4) {
+    grid-column-start: 2 !important;
+    grid-column-end: 4 !important;
+    grid-row-start: 2 !important;
+    grid-row-end: 3 !important;
+}
+
+
+/* Regular rows */
+.bento-post-list .wp-block-post-template >li:nth-of-type(5) {
+    grid-column-start: 1 !important;
+    grid-column-end: 2 !important;
+    grid-row-start: 3 !important;
+    grid-row-end: 4 !important;
+}
+.bento-post-list .wp-block-post-template >li:nth-of-type(6) {
+    grid-column-start: 2 !important;
+    grid-column-end: 3 !important;
+    grid-row-start: 3 !important;
+    grid-row-end: 4 !important;
+}
+.bento-post-list .wp-block-post-template >li:nth-of-type(7) {
+    grid-column-start: 3 !important;
+    grid-column-end: 4 !important;
+    grid-row-start: 3 !important;
+    grid-row-end: 4 !important;
+}
+
+.bento-post-list .wp-block-post-template >li:nth-of-type(8) {
+    grid-column-start: 1 !important;
+    grid-column-end: 2 !important;
+    grid-row-start: 4 !important;
+    grid-row-end: 5 !important;
+}
+.bento-post-list .wp-block-post-template >li:nth-of-type(9) {
+    grid-column-start: 2 !important;
+    grid-column-end: 3 !important;
+    grid-row-start: 4 !important;
+    grid-row-end: 5 !important;
+}
+.bento-post-list .wp-block-post-template >li:nth-of-type(10) {
+    grid-column-start: 3 !important;
+    grid-column-end: 4 !important;
+    grid-row-start: 4 !important;
+    grid-row-end: 5 !important;
+}
+
+.bento-post-list .wp-block-post-template >li:nth-of-type(11) {
+    grid-column-start: 1 !important;
+    grid-column-end: 2 !important;
+    grid-row-start: 5 !important;
+    grid-row-end: 6 !important;
+}
+.bento-post-list .wp-block-post-template >li:nth-of-type(12) {
+    grid-column-start: 2 !important;
+    grid-column-end: 3 !important;
+    grid-row-start: 5 !important;
+    grid-row-end: 6 !important;
+}
+.bento-post-list .wp-block-post-template >li:nth-of-type(13) {
+    grid-column-start: 3 !important;
+    grid-column-end: 4 !important;
+    grid-row-start: 5 !important;
+    grid-row-end: 6 !important;
+}
+
+.bento-post-list .wp-block-post-template >li:nth-of-type(14) {
+    grid-column-start: 1 !important;
+    grid-column-end: 2 !important;
+    grid-row-start: 6 !important;
+    grid-row-end: 7 !important;
+}
+.bento-post-list .wp-block-post-template >li:nth-of-type(15) {
+    grid-column-start: 2 !important;
+    grid-column-end: 3 !important;
+    grid-row-start: 6 !important;
+    grid-row-end: 7 !important;
+}
+.bento-post-list .wp-block-post-template >li:nth-of-type(16) {
+    grid-column-start: 3 !important;
+    grid-column-end: 4 !important;
+    grid-row-start: 6 !important;
+    grid-row-end: 7 !important;
+}
+
+.list-bullet-counter,
+.frl-counter-list {
+    counter-reset: frl-counter;
+}
+
+.frl-counter-list .frl-counter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid currentColor;
+    border-radius: 999px;
+    color: currentColor;
+    font-size: 1.125em;
+    font-weight: 700;
+    color: inherit;
+}
+
+.list-bullet-counter .bullet-counter:before,
+.frl-counter-list .frl-counter:before {
+    content: counter(frl-counter);
+    counter-increment: frl-counter;
+}
+
+/*
+ * Icon system usage:
+ * 1. Default (1em): [frl_icon]
+ * 2. Custom size: <span style="--frl-icon-size: 48px">[frl_icon]</span>
+ * 3. Fill container: <div style="width:80px">[frl_icon class="frl-icon-fill"]</div>
+ * 4. Container wrapper: <div class="frl-icon-container" style="width:80px">[frl_icon]</div>
+ */
+
+/* Icon base styles - applies to both inline (svg.frl-icon) and URL (span.frl-icon) modes */
+.frl-icon {
+    display: inline-block;
+    width: var(--frl-icon-size, 2rem);
+    height: var(--frl-icon-size, 2rem);
+    vertical-align: -0.125em;
+    flex-shrink: 0; /* Prevent squishing in flex containers */
+}
+
+/* Inline mode: svg.frl-icon - direct fill with currentColor */
+svg.frl-icon {
+    fill: currentColor;
+}
+
+/* URL mode: span.frl-icon with mask-image for currentColor support */
+span.frl-icon[style*="mask-image"] {
+    background-color: currentColor;
+    mask-image: var(--frl-icon-url);
+    -webkit-mask-image: var(--frl-icon-url);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+}
+
+/* Native-color mode via wrapper attribute */
+[data-color="default"] .frl-icon,
+.frl-icon[data-color="default"] {
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+    background: none !important;
+    background-image: var(--frl-icon-url) !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+}
+
+/* Native-color override for inline SVG icons */
+[data-color="default"] svg.frl-icon,
+svg.frl-icon[data-color="default"] {
+    fill: unset !important;
+    stroke: unset !important;
+}
+
+/* Fill container mode: icon takes 100% of parent dimensions */
+.frl-icon-fill {
+    width: 100%;
+    height: 100%;
+    --frl-icon-size: 100%;
+}
+
+/* Container wrapper: parent controls icon size */
+.frl-icon-container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+}
+
+.frl-icon-container .frl-icon {
+    width: 100%;
+    height: 100%;
+}
+
+.frl-icon.icon-arrow-right,
+.frl-icon-container:has(.frl-icon.icon-arrow-right) {
+    max-width: 1.25rem;
+    min-width: 1.25rem;
+    max-height: 1.25rem;
+}
+
+.frl-icon.icon-checkmark-cool,
+.frl-icon-container:has(.frl-icon.icon-checkmark-cool) {
+    max-width: 1.5rem;
+    min-width: 1.5rem;
+    max-height: 1.5rem;
+}
+
+@media (max-width: 575.98px) {
+    .frl-title-icon {
+        flex-direction: column;
+        align-items: start !important;
+    }
+}

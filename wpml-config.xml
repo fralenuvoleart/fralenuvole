@@ -1,0 +1,67 @@
+<wpml-config>
+  <custom-types>
+    <custom-type translate="1">service</custom-type>
+    <custom-type translate="1">team-member</custom-type>
+    <custom-type translate="1">university</custom-type>
+    <custom-type translate="1">gd_place</custom-type>
+  </custom-types>
+  <taxonomies>
+    <taxonomy translate="1">post_tag</taxonomy>
+    <taxonomy translate="1">service_category</taxonomy>
+    <taxonomy translate="0">service_tag</taxonomy>
+    <taxonomy translate="1">team_category</taxonomy>
+    <taxonomy translate="0">team_tag</taxonomy>
+  </taxonomies>
+  <custom-fields>
+
+    <custom-field action="copy">post-settings_post-authors</custom-field>
+    <custom-field action="copy-once">service-settings_service-type</custom-field>
+    <custom-field action="copy-once">service-settings_service-partners</custom-field>
+    <custom-field action="copy-once">service-usecases_section-title</custom-field>
+    <custom-field action="copy-once">service-usecases_section-description</custom-field>
+    <custom-field action="copy-once">service-usecases_usecase</custom-field>
+    <custom-field action="translate">service-faqs_service-faq</custom-field>
+    <custom-field action="translate">team-settings_team-role</custom-field>
+    <custom-field action="copy">team-settings_team-email</custom-field>
+    <custom-field action="copy">team-settings_team-linkedin</custom-field>
+    <custom-field action="translate">team-settings_team-linkedin_label</custom-field>
+    <custom-field action="copy">team-settings_team-whatsapp</custom-field>
+    <custom-field action="translate">team-settings_team-whatsapp_label</custom-field>
+    <custom-field action="copy">team-settings_team-facebook</custom-field>
+    <custom-field action="translate">team-settings_team-facebook_label</custom-field>
+    <custom-field action="copy">team-settings_team-website</custom-field>
+    <custom-field action="translate">team-settings_team-website_label</custom-field>
+  </custom-fields>
+  <admin-texts>
+    <key name="website-options_general-settings_phone" action="copy-once"/>
+    <key name="website-options_general-settings_phone_label" action="translate"/>
+    <key name="website-options_general-settings_email" action="copy-once"/>
+    <key name="website-options_general-settings_email_label" action="translate"/>
+    <key name="website-options_general-settings_whatsapp" action="copy"/>
+    <key name="website-options_general-settings_whatsapp_label" action="translate"/>
+    <key name="website-options_general-settings_telegram" action="copy"/>
+    <key name="website-options_general-settings_telegram_label" action="translate"/>
+    <key name="website-options_general-settings_address" action="copy-once"/>
+    <key name="website-options_general-settings_opening-hours" action="copy-once"/>
+    <key name="website-options_general-settings_address-street" action="copy-once"/>
+    <key name="website-options_general-settings_address-city" action="copy-once"/>
+    <key name="website-options_general-settings_address-zip" action="copy"/>
+    <key name="website-options_general-settings_address-country" action="copy-once"/>
+    <key name="website-options_general-settings_address-country-code" action="copy"/>
+    <key name="website-options_general-settings_map" action="copy"/>
+    <key name="website-options_general-settings_map_label" action="translate"/>
+    <key name="website-options_google-reviews_reviews-number" action="copy"/>
+    <key name="website-options_google-reviews_reviews-rating" action="copy"/>
+    <key name="website-options_google-reviews_reviews-url" action="copy"/>
+    <key name="website-options_google-reviews_reviews-url_label" action="translate"/>
+    <key name="website-options_google-reviews_reviews" action="copy"/>
+    <key name="website-options_social-media_linkedin" action="copy"/>
+    <key name="website-options_social-media_linkedin_label" action="translate"/>
+    <key name="website-options_social-media_facebook" action="copy"/>
+    <key name="website-options_social-media_facebook_label" action="translate"/>
+    <key name="website-options_social-media_instagram" action="copy"/>
+    <key name="website-options_social-media_instagram_label" action="translate"/>
+    <key name="website-options_social-media_x-twitter" action="copy"/>
+    <key name="website-options_social-media_x-twitter_label" action="translate"/>
+  </admin-texts>
+</wpml-config>

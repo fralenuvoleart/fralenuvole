@@ -1,0 +1,204 @@
+{
+	"settings": {
+		"typography": {
+			"fluid": true,
+			"fontFamilies": [
+				{
+					"name": "Frl Primary",
+					"slug": "frl-primary",
+					"fontFamily": "var:preset|font-family|frl-sans-serif",
+					"fontFace": []
+				},
+				{
+					"name": "Frl Secondary",
+					"slug": "frl-secondary",
+					"fontFamily": "var:preset|font-family|frl-serif",
+					"fontFace": []
+				},
+				{
+					"name": "Frl Sans-serif",
+					"slug": "frl-sans-serif",
+					"fontFamily": "'System Sans Adjusted', -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif, Liberation Sans"
+				},
+				{
+					"name": "Frl Serif",
+					"slug": "frl-serif",
+					"fontFamily": "'System Serif Adjusted', Iowan Old Style, Apple Garamond, Baskerville, Times New Roman, Droid Serif, Times, Source Serif Pro, serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Liberation Serif"
+				},
+				{
+					"name": "Frl Mono",
+					"slug": "frl-mono",
+					"fontFamily": "Menlo, Consolas, Monaco, Liberation Mono, Lucida Console, monospace"
+				}
+			],
+			"fontSizes": [
+				{
+					"name": "Frl Smallest",
+					"slug": "frl-smallest",
+					"size": "13px",
+					"fluid": false
+				},
+				{
+					"name": "Frl Small",
+					"slug": "frl-small",
+					"size": "0.875rem",
+					"fluid": {
+						"min": "0.75rem",
+						"max": "0.875rem"
+					}
+				},
+				{
+					"name": "Frl Compact",
+					"slug": "frl-compact",
+					"size": "0.9375rem",
+					"fluid": {
+						"min": "0.8125rem",
+						"max": "0.9375rem"
+					}
+				},
+				{
+					"name": "Frl Medium",
+					"slug": "frl-medium",
+					"size": "1.125rem",
+					"fluid": {
+						"min": "0.9375rem",
+						"max": "1.125rem"
+					}
+				},
+				{
+					"name": "Frl Readable",
+					"slug": "frl-readable",
+					"size": "1.25rem",
+					"fluid": {
+						"min": "1rem",
+						"max": "1.25rem"
+					}
+				},
+				{
+					"name": "Frl Subtitle",
+					"slug": "frl-subtitle",
+					"size": "1.375rem",
+					"fluid": {
+						"min": "1.125rem",
+						"max": "1.375rem"
+					}
+				},
+				{
+					"name": "Frl Post List Title",
+					"slug": "frl-list-title",
+					"size": "1.625rem",
+					"fluid": {
+						"min": "1.375rem",
+						"max": "1.625rem"
+					}
+				},
+				{
+					"name": "Frl Large",
+					"slug": "frl-large",
+					"size": "1.875rem",
+					"fluid": {
+						"min": "1.25rem",
+						"max": "1.875rem"
+					}
+				},
+				{
+					"name": "Frl Big",
+					"slug": "frl-big",
+					"size": "2.25rem",
+					"fluid": {
+						"min": "1.75rem",
+						"max": "2.25rem"
+					}
+				},
+				{
+					"name": "Frl Post Title",
+					"slug": "frl-post-title",
+					"size": "3.125rem",
+					"fluid": {
+						"min": "2rem",
+						"max": "3.125rem"
+					}
+				},
+				{
+					"name": "Frl Hero Title",
+					"slug": "frl-hero-title",
+					"size": "5.5rem",
+					"fluid": {
+						"min": "2.5rem",
+						"max": "5.5rem"
+					}
+				}
+			]
+		}
+	},
+	"styles": {
+		"elements": {
+			"link": {
+				":hover": {
+					"typography": {
+						"textDecoration": "none"
+					}
+				}
+			},
+			"button": {
+				"typography": {
+					"fontSize": "var:preset|font-size|frl-compact",
+					"fontFamily": "var:preset|font-family|frl-primary",
+					"fontWeight": "500"
+				}
+			},
+			"heading": {
+				"typography": {
+					"fontWeight": "500",
+					"lineHeight": "1.2",
+					"letterSpacing": "-0.1px"
+				}
+			}
+		},
+		"blocks": {
+			"core/post-title": {
+				"typography": {
+					"fontSize": "var:preset|font-size|frl-post-title"
+				}
+			},
+			"core/navigation": {
+				"typography": {
+					"fontFamily": "var:preset|font-family|frl-primary"
+				}
+			},
+			"core/site-title": {
+				"typography": {
+					"fontFamily": "inherit",
+					"fontWeight": "inherit",
+					"fontSize": "inherit",
+					"letterSpacing": "inherit"
+				}
+			},
+			"core/site-tagline": {
+				"typography": {
+					"fontFamily": "inherit !important",
+					"fontSize": "inherit"
+				}
+			},
+			"core/quote": {
+				"typography": {
+					"fontSize": "1.1em",
+					"fontWeight": "300",
+					"fontStyle": "italic",
+					"lineHeight": "1.7"
+				}
+			},
+			"core/post-terms": {
+				"elements": {
+					"link": {
+						"typography": {
+							"fontSize": "var:preset|font-size|frl-compact",
+							"fontWeight": "500",
+							"textDecoration": "none"
+						}
+					}
+				}
+			}
+		}
+	}
+}

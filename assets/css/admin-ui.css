@@ -1,0 +1,554 @@
+/**
+ * Fralenuvole
+ * admin-ui.css - General Backend UI Styles (Tabs, Forms, etc.)
+ */
+
+ :root {
+    --toggle-height: 24px;
+    --toggle-margin: 2px;
+}
+
+/* ==========================================================================
+   Vertical Tabs Layout
+   ========================================================================== */
+
+.frl-tabs {
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    grid-template-areas:
+        "header header"
+        "nav content";
+    gap: 15px 0; /* Vertical gap, no horizontal gap */
+    margin-top: 20px;
+    max-width: 1010px;
+}
+
+.frl-tabs:has(.tab-developer.ui-tabs-active) {
+    max-width: 1360px;
+}
+
+#widget-admin-actions .widget-admin-actions .frl-widget-content{
+    display: flex;
+    gap: 20px 15px;
+    flex-wrap: wrap;
+}
+
+#widget-admin-actions .button-container {
+    flex-basis: calc((100% - 80px)/5);
+    width: 100%;
+}
+
+@media screen and (min-width: 1576px) {
+    #widget-admin-actions {
+        position: absolute;
+        right: -395px;
+        top: -20px;
+        z-index: 2;
+        width: 330px;
+        padding: 20px 15px 20px 15px;
+        border: 1px solid #dddddd;
+        border-radius: 4px;
+    }
+
+    #widget-admin-actions .button-container:has( .button-primary) {
+        filter: saturate(0) brightness(1.8);
+        transition: filter 0.35s ease;
+    }
+
+    #widget-admin-actions:hover .button-container:has( .button-primary) {
+        filter: saturate(1) brightness(1);
+    }
+
+    #widget-admin-actions h3 {
+        margin-bottom: 15px;
+    }
+
+    #widget-admin-actions .button-container {
+        flex-basis: calc((100% - 20px)/2);
+    }
+}
+
+#widget-admin-actions .button {
+    text-align: center;
+    width: 100%;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+/* --- Header Area --- */
+.frl-tabs .frl-header {
+    grid-area: header;
+    padding-left: 5px;
+    display: flex;
+    gap: 10px;
+    position: relative;
+}
+
+.frl-tabs .frl-header-logo {
+    min-width: 50px;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.frl-tabs .frl-header-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    margin-top: -10px;
+}
+
+.frl-tabs .frl-header-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+.frl-tabs .frl-header h1 {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: 23px;
+    color: #1d2327;
+}
+
+.frl-tabs .frl-header-description {
+    font-size: 14px;
+    margin: 0 0 0 2px;
+}
+.frl-tabs .frl-header-side {
+    width: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+    margin: 0;
+}
+/* Custom notices within header */
+.settings_page_fralenuvole #wpbody-content .notice {
+    display: none;
+}
+
+.settings_page_fralenuvole #wpbody-content .frl-header h1 ~ .notice {
+    display: flex;
+    order: 2;
+    margin-top: 15px;
+    margin-bottom: 0;
+    margin-left: -65px; /* Adjust based on logo/text width */
+    margin-right: -191px;
+}
+
+/* --- Navigation Area (Left Tabs) --- */
+.frl-tabs>.ui-tabs-nav {
+    grid-area: nav;
+    align-self: start;
+    position: sticky;
+    top: 32px;
+    z-index: 2;
+    background: #f8f8f8;
+    border: 1px solid #dddddd;
+    border-right: 0;
+    border-radius: 4px 0 0 4px; /* Rounded left */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    margin: 0;
+    padding: 0; /* Reset padding */
+    list-style: none; /* Reset list style */
+}
+
+.frl-tabs>.ui-tabs-nav li {
+    margin: 0;
+    border-bottom: 1px solid #ccd0d4;
+}
+.frl-tabs>.ui-tabs-nav li:last-child {
+    border-bottom: none;
+}
+
+.frl-tabs>.ui-tabs-nav li a {
+    display: block;
+    padding: 13px 15px;
+    text-decoration: none;
+    border-left: 5px solid transparent;
+    text-align: left;
+    font-weight: 500;
+    transition: all 0.1s ease-in-out;
+}
+
+.frl-tabs>.ui-tabs-nav li:hover a {
+    background: white;
+    border-left-color: #ccd0d4;
+    color: var(--admin-accent-color);
+}
+
+.frl-tabs>.ui-tabs-nav li.ui-tabs-active a {
+    background: white;
+    color: var(--admin-accent-color);
+    border-left-color: var(--admin-accent-color);
+    margin-right: -1px; /* Overlap border */
+    position: relative;
+    z-index: 2;
+    box-shadow: none;
+}
+
+.frl-tabs>.ui-tabs-nav li a:focus {
+    border-left-color: var(--admin-accent-color);
+    box-shadow: none;
+    outline: none;
+}
+
+/* --- Content Area (Right Panel) --- */
+#frl-tabs-content,
+.frl-section {
+    grid-area: content;
+    background: white;
+    border: 1px solid #dddddd;
+    border-radius: 0 4px 4px 0; /* Rounded right */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+    position: relative;
+}
+
+.frl-section h2,
+.wrap>h2:first-child,
+.frl-widget.has-section-title :where(h2, h3),
+.frl-section-header.has-section-title :where(h2, h3) {
+    padding: 12px 20px;
+    font-size: 18px;
+    border-radius: 0 4px 0 0;
+    border-bottom: 1px solid #dddddd;
+    margin: -20px -20px 20px -20px; /* Extend to edges */
+    background-color: var(--admin-secondary-color);
+    font-weight: 500;
+}
+
+.frl-widget.has-section-title {
+    margin-bottom: 60px;
+}
+
+.frl-section h2:not(:first-child) {
+    margin-top: 20px;
+}
+
+/* Fallback/General title/paragraph padding if outside structure */
+.frl-tabs>h1,
+.frl-tabs>p {
+    padding-left: 1rem;
+}
+
+.frl-section h3 {
+    font-size: 18px;
+    color: #333333;
+}
+
+/* ==================================================================
+   Form Elements & Tables
+   ================================================================== */
+
+.frl-wrap .form-table th {
+    font-weight: 500;
+}
+
+.frl-wrap .regular-text,
+.frl-wrap .textlist {
+    width: 99%;
+}
+
+.frl-wrap .regular-number {
+    width: 120px;
+}
+
+/* Inputs general */
+.frl-wrap input {
+    margin-right: .5em;
+}
+
+.frl-wrap input+label {
+    margin-right: 1.5em;
+    line-height: 1.8;
+}
+
+.frl-wrap :is(input, textarea)::placeholder {
+    color: #888;
+}
+
+/* Custom Checkbox Toggle */
+.frl-wrap input:where([type="checkbox"]) {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    position: relative;
+    color: inherit;
+    font-size: inherit;
+    min-width: calc(2*var(--toggle-height));
+    height: var(--toggle-height);
+    box-sizing: content-box;
+    border-radius: var(--toggle-height);
+    vertical-align: text-bottom;
+    margin-bottom: calc(-1*var(--toggle-margin));
+    background: #bbb;
+    border: 0;
+    box-shadow: none;
+    transition: background 0.2s ease-in-out; /* Added transition */
+}
+
+.frl-wrap input:where([type="checkbox"])::before {
+    content: "" !important;
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translate(0, -50%);
+    box-sizing: border-box;
+    width: calc(var(--toggle-height) - 2*var(--toggle-margin)) !important;
+    height: calc(var(--toggle-height) - 2*var(--toggle-margin)) !important;
+    margin: 0 var(--toggle-margin) !important;
+    border-radius: 50%;
+    background: #fff;
+    transition: left 0.2s ease-in-out; /* Added transition */
+}
+
+.frl-wrap input:where([type="checkbox"]):checked {
+    background: #00b300;
+}
+
+.frl-wrap input:where([type="checkbox"]):checked::before {
+    left: var(--toggle-height);
+}
+
+/* Custom Radio Buttons */
+.frl-wrap input:where([type="radio"]) {
+    outline: 5px solid #bbb;
+    margin-right: 1.5em;
+    /* Add other radio styles if needed */
+}
+
+.frl-wrap input:where([type="radio"]):checked {
+    outline-color: #8bc34a;
+}
+
+/* Specific Input Widths */
+.frl-wrap input:where([id*="link_"]) {
+    width: 50em;
+}
+
+/* CodeMirror Styling */
+.frl-wrap .CodeMirror {
+    height: 240px;
+    border: 1px solid #ddd;
+}
+
+/* WP Form Table adjustments */
+.frl-wrap .form-table td:has(input:where([type="checkbox"], [type="select"])) {
+    display: flex;
+    gap: .5em;
+}
+
+/* Row Backgrounds & Section Titles */
+.form-table tr:has(.format-section-title)  {
+    background-color: #f0f0f0;
+    border-bottom: 2px solid #eee;
+}
+
+.form-table tr:has(.format-section-title) th {
+    font-size: 17px;
+    padding-left: 3px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    vertical-align: bottom;
+}
+
+.form-table tr:has(.format-section-title) td {
+    padding-bottom: 10px;
+    vertical-align: bottom;
+}
+
+/* Spacing around section title rows */
+.form-table tr:has(+ tr th .format-section-title) th,
+.form-table tr:has(+ tr td .format-section-title) td {
+    padding-bottom: 40px;
+}
+
+.form-table tr:has(.format-section-title) + tr th,
+.form-table tr:has(.format-section-title) + tr td {
+    padding-top: 30px;
+}
+
+/* General table row striping (example) */
+.widget-table:not(.widget-table-tags ) .widget-table-row:not(:first-of-type):nth-child(odd) {
+    background-color: #f5f5f5;
+}
+.widget-table-tags .widget-table-row:nth-child(4n) {
+    background-color: #f5f5f5;
+}
+
+/* Header background for log tables */
+.widget-table.log-table .widget-table-header {
+    background-color: #f5f5f5;
+}
+
+.frl-admin-menu-info p {
+    margin: 1em 0 !important;
+}
+.frl-menu-slug-list {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.frl-menu-item-row {
+    display: flex;
+    gap: 30px;
+}
+
+.frl-menu-item-row span {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+}
+
+.frl-menu-item-row span:first-child {
+    flex-basis: 20%;
+}
+
+.frl-menu-item-row span:nth-child(3) {
+    flex-basis: 35%;
+}
+
+.frl-menu-item-row input:read-only {
+    background-color: #f5f5f5;
+    color: #555;
+    border-color: #ccc;
+    width: 100%;
+}
+
+/* ==========================================================================
+   Conditional Field Visibility (:has)
+   ========================================================================== */
+
+.form-table:has(#frl_preload_featured:not(:checked)) tr:has([name*="preload_featured_webp"]),
+.form-table:has(#frl_defer_css:not(:checked)) tr:has([name*="defer_css_handles"]),
+.form-table:has(#frl_image_sizes:not(:checked)) tr:has([name*="image_sizes_list"]),
+.form-table:has(#frl_ab_remove_links:not(:checked)) tr:has([name*="ab_remove_links_handles"]),
+.form-table:has(#frl_am_remove_links:not(:checked)) tr:has([name*="am_remove_links_handles"]),
+.form-table:has(#frl_custom_ab_menu:not(:checked)) tr:has([name*="custom_ab_links"]),
+.form-table:has(#frl_remove_dash_widg:not(:checked)) tr:has([name*="remove_dash_widg_handles"]),
+.form-table:has(#frl_custom_dash_widg:not(:checked)) tr:has([name*="custom_dash_widg_html"]),
+.form-table:has(#frl_disable_environment:not(:checked)) tr:has( :where([name*="env_subdomain"], [name*="env_noindex"], [name*="env_plugins_production_only"])),
+.form-table:has(#frl_schema_person:not(:checked)) tr:has( :where([name*="schema_owner_"], [class*="schema_owner_"])),
+.form-table:has(#frl_debug:not(:checked)) tr:has( :where([name*="debug_"], [class*="debug_"])),
+.form-table:has(#frl_themekit_theme_json:not(:checked)) tr:has( :where([name*="themekit_theme_json_overwrite"])),
+.form-table tr:has(#frl_themekit_fonts:not(:checked)) ~ tr:has( [id*="themekit_fonts"]),
+.form-table tr:has(#frl_themekit_fonts_system_fonts:checked) ~ tr:has( [id*="themekit_fonts_"]:not([id*="_size_adjust"])),
+.form-table tr:has(#frl_themekit_fonts_plugin_fonts:not(:checked)) ~ tr:has( [id*="themekit_fonts_"]:not([id*="_size_adjust"])),
+.form-table:has(tr #frl_themekit_fonts_system_fonts:not(:checked)):has(tr #frl_themekit_fonts_plugin_fonts:not(:checked)) tr:has( [id*="_size_adjust"]),
+.form-table:has(#frl_themekit_fonts_plugin_fonts:checked) tr:has(#frl_themekit_fonts_system_fonts)
+ {
+    display: none;
+}
+
+/* Exception for schema owner name when portfolio is checked */
+.form-table:has(#frl_schema_portfolio:checked) tr:has( :where([name="frl_schema_owner_name"], [class*="schema_owner_"])) {
+    display: table-row;
+}
+
+/* ==========================================================================
+   Restricted Field Styling
+   ========================================================================== */
+
+.frl-restricted-field {
+    background-color: #f5f5f5 !important;
+    border-color: #ddd !important;
+    color: #888 !important;
+    cursor: not-allowed !important;
+    opacity: 0.8 !important;
+}
+
+.frl-restricted-field[type="checkbox"] {
+    pointer-events: none;
+}
+
+.frl-restricted-field option {
+    color: #888;
+}
+
+.frl-restricted-message {
+    color: #777;
+    background-color: #fff9e6; /* Light yellow */
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-top: 5px;
+    display: inline-block;
+}
+
+td:has( .frl-restricted-message) {
+    /* Ensure message displays correctly relative to field */
+    /* align-items: center; Might not be needed */
+    position: relative;
+}
+
+td:has( input[type="checkbox"] ~ .frl-restricted-message) {
+    display: flex;
+    align-items: center;
+}
+
+/* Restricted CodeMirror */
+textarea.frl-restricted-field ~ .CodeMirror {
+    opacity: 0.7;
+    pointer-events: none;
+    background-color: #eee;
+}
+
+/* Position message relative to CodeMirror or textarea */
+textarea.frl-restricted-field ~ .frl-restricted-message,
+textarea.frl-restricted-field ~ .CodeMirror ~ .frl-restricted-message {
+    position: absolute;
+    bottom: 20px;
+    right: 18px;
+}
+
+textarea.frl-restricted-field ~  .description ~ .frl-restricted-message {
+    bottom: 45px;
+}
+
+/* ==========================================================================
+   Responsive Overrides
+   ========================================================================== */
+
+@media screen and (max-width: 782px) {
+    .frl-tabs {
+        display: block; /* Stack header, nav, content */
+        grid-template-columns: 1fr; /* Reset grid columns */
+        grid-template-areas: /* Reset grid areas */
+            "header"
+            "nav"
+            "content";
+        gap: 15px; /* Consistent gap */
+    }
+
+    #frl-tabs-nav {
+        position: relative;
+    }
+
+    #frl-tabs-nav,
+    .frl-section {
+        border-radius: 4px; /* Full rounding on mobile */
+        border-right: 1px solid #dddddd; /* Add right border back to nav */
+        margin-right: 0;
+    }
+
+    #frl-tabs-nav li a,
+    #frl-tabs-nav li.ui-tabs-active a {
+        margin-right: 0;
+        border-left-width: 3px; /* Slightly thinner border */
+    }
+
+    .frl-header-logo img {
+         margin-top: 0; /* Reset negative margin */
+    }
+
+    .settings_page_fralenuvole #wpbody-content .frl-header h1 ~ .notice {
+        margin-left: 0; /* Reset negative margin */
+        order: initial; /* Reset order */
+    }
+}
