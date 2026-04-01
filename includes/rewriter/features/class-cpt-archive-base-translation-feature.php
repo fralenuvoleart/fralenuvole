@@ -130,3 +130,4 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
         Frl_Rewriter_Path_Utils::maybe_redirect_if_needed($canonical);
     }
 }
+
