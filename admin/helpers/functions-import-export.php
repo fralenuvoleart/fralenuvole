@@ -127,21 +127,9 @@ function frl_post_export_settings()
         wp_die(__('You do not have sufficient permissions to access this page.', FRL_PREFIX));
     }
 
-    // Get plugin options
+    // Get plugin options and prepare for export.
     $plugin_settings = frl_get_plugin_options_db();
-
-    // Add prefix and clean up whitespace in settings values
-    $export_settings = [];
-    foreach ($plugin_settings as $key => $value) {
-        if (is_string($value)) {
-            // Convert newlines to \n and remove extra whitespace
-            $value = str_replace(["\r\n", "\r"], "\n", $value);
-            $lines = explode("\n", $value);
-            $lines = array_map('trim', $lines);
-            $value = implode("\n", array_filter($lines));
-        }
-        $export_settings[frl_prefix($key)] = $value;
-    }
+    $export_settings = frl_prepare_settings_for_export($plugin_settings);
 
     // Create unique filename
     $filename = FRL_NAME . '-settings-' . date('Ymd-His') . '-' . parse_url(get_site_url(), PHP_URL_HOST);

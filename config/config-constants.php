@@ -45,6 +45,10 @@ const FRL_OPTIONS_RUNTIME = [
 		'type' => 'textlist',
 		'default' => ''
 	],
+	'plugin_version' => [
+		'type' => 'text',
+		'default' => '0.0.0'
+	],
 ];
 
 // Email notifications

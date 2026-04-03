@@ -132,7 +132,7 @@ function frl_render_clear_cache_buttons()
     $output .= frl_render_action_button(
         'clear_plugin_transients',
         'clear_plugin_transients button-secondary',
-        'Clear Plugin Transients',
+        'Clear Plugin Transients'
     );
 
     $output .= frl_render_action_button(
@@ -146,7 +146,9 @@ function frl_render_clear_cache_buttons()
         'clear_cache_all',
         'clear_cache_all button-secondary secondary-important',
         'Clear Caches (All)',
-        'Including Heavy Groups'
+        'Including Heavy Groups',
+        '',
+        ''
     );
 
 
@@ -161,11 +163,14 @@ function frl_render_admin_actions_buttons()
 {
     $output = '';
 
+    // Plugin Admin only (delete_plugins via empty string)
     $output .= frl_render_action_button(
         'clear_cache_hard',
         'reset_plugin button-primary',
         'Clear Caches (Hard)',
         'WARNING: Clears all Plugin and WP Caches, Website Transients and flushes rewrite rules.',
+        '',
+        ''
     );
 
     $output .= frl_render_action_button(
@@ -190,56 +195,41 @@ function frl_render_admin_actions_buttons()
         'delete_orphan_options',
         'delete_orphan_options button-secondary',
         'Delete Orphan Options',
-        'Delete orphaned options from the database',
-        '',
-        ''
+        'Delete orphaned options from the database'
     );
 
     $output .= frl_render_action_button(
         'reset_environment',
         'reset_environment button-secondary',
         'Reset Environment',
-        'Resets current environment to its default configuration.',
-        '',
-        ''
+        'Resets current environment to its default configuration.'
     );
 
     $output .= frl_render_action_button(
         'reset_environment_ignored',
         'reset_environment_ignored button-secondary',
         'Reset Ignored Plugins',
-        'Resets manually ignored plugins.',
-        '',
-        ''
+        'Resets manually ignored plugins.'
     );
 
     $output .= frl_render_action_button(
         'clear_website_transients',
         'clear_website_transients button-secondary',
-        'Clear Website Transients',
-        '',
-        '',
-        'skip_nonce'
-     );
+        'Clear Website Transients'
+    );
 
-     $output .= frl_render_action_button(
+    $output .= frl_render_action_button(
         'flush_rewrite_rules',
         'flush_rewrite_rules button-secondary',
-        'Flush Rewrite Rules',
-        '',
-        '',
-        ''
-     );
+        'Flush Rewrite Rules'
+    );
 
     /*
     $output .= frl_render_action_button(
         'clear_cache_opcache',
         'reset_plugin button-primary',
         'Clear Caches (OPcache)',
-        'WARNING: May affect other sites on same server.',
-        '',
-        '',
-        ''
+        'WARNING: May affect other sites on same server.'
     );
     */
 

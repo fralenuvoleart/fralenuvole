@@ -533,7 +533,7 @@ class Frl_Hook_Manager
      */
     private static function process_hook_tracking($hook_data, $category)
     {
-        // Only track hooks when superadmin is viewing the site
+        // Only track hooks when plugin admin is viewing the site
         if (!frl_has_access()) {
             return;
         }

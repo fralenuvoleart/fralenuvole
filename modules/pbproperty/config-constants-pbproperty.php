@@ -1,7 +1,8 @@
 <?php
 
 /**
- * WS Form module settings
+ * PB Property Module - Configuration Constants
+ * Site-specific settings for PBProperty (Polylang + GeoDirectory)
  */
 
 // Exit if accessed directly.
@@ -10,25 +11,15 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Constants
+ * Translation: CSS classes that trigger block translation
  */
-
 const PBP_TRANSLATE_CLASSES = [
     "wp-block-blockstrap-blockstrap-widget-container",
 ];
 
-const PBP_GEODIR_MARKERS = [
-    'geodir_bestof_widget',
-    'geodir-tabs-content',
-    'geo-bestof-contentwrap',
-    'geodir-bestof-cat-list',
-    'geodir_widget_listings',
-    'gd-bestof-tabs',
-];
-
-const PBP_SEARCH_SLUGS = [
-    "ru" => "search",
-];
+/**
+ * Translation: Hardcoded strings to translate in output
+ */
 const PBP_TRANSLATE_STRINGS = [
     "Apartment",
     "Properties",
@@ -44,4 +35,41 @@ const PBP_TRANSLATE_STRINGS = [
     "Monthly HOA Fees",
     "Monthly",
     "Area (m2)",
+];
+
+/**
+ * Search: Language-specific search page slugs
+ */
+const PBP_SEARCH_SLUGS = [
+    "ru" => "search",
+];
+
+/**
+ * GeoDirectory: HTML markers to identify GD widget content
+ */
+const PBP_GEODIR_MARKERS = [
+    'geodir_bestof_widget',
+    'geodir-tabs-content',
+    'geo-bestof-contentwrap',
+    'geodir-bestof-cat-list',
+    'geodir_widget_listings',
+    'gd-bestof-tabs',
+];
+
+/**
+ * GeoDirectory: Field htmlvar_names to translate via geodir_get_cf_value filter
+ *
+ * - Empty array = NO fields are translated (fail-safe, explicit opt-in)
+ * - Supports % wildcard matching
+ * - Only string values are processed
+ *
+ * Examples:
+ * - 'property_description'     - Exact match
+ * - '%_details'                - Suffix wildcard
+ * - 'amenities_%'              - Prefix wildcard
+ */
+const FRL_GEODIR_TRANSLATOR_FIELDS = [
+    // Add field htmlvar_names here to enable translation 
+    'property_%',
+    // Example: '%_description',
 ];

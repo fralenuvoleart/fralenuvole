@@ -833,13 +833,13 @@ function frl_error($code, $message, $context = [], $error_data = '')
 }
 
 /**
- * Dump variables to screen (superadmin only)
+ * Dump variables to screen (plugin admin only)
  * Buffers output and displays at end of body via wp_footer hook
  * @param mixed $var Data to dump to screen
  */
 function frl_dump($var)
 {
-    // Security check: only allow superadmin access
+    // Security check: only allow plugin admin access
     if (!frl_has_access()) {
         return;
     }
@@ -871,7 +871,7 @@ function frl_dump($var)
             }
 
             echo '</div>';
-            echo '<div style="text-align: center; padding: 8px; background: #f1f1f1; border-top: 1px solid #ddd; font-size: 11px; color: #666;">Debug panel (superadmin only)</div>';
+            echo '<div style="text-align: center; padding: 8px; background: #f1f1f1; border-top: 1px solid #ddd; font-size: 11px; color: #666;">Debug panel (plugin admin only)</div>';
             echo '</div>';
         }, 999);
         $hook_added = true;
@@ -1335,4 +1335,29 @@ function frl_email($email_to, $subject, $body, $header)
         $body .= "\n\nEmail sent by mail()";
         return mail($email_to, $subject, $body, $headers);
     }
+}
+
+/**
+ * Prepare plugin settings for export.
+ *
+ * Adds prefix to keys and cleans up whitespace in values.
+ * Matches the format used by manual export for import compatibility.
+ *
+ * @param array $settings Raw settings from frl_get_plugin_options_db()
+ * @return array Formatted settings ready for JSON export
+ */
+function frl_prepare_settings_for_export(array $settings): array
+{
+    $export = [];
+    foreach ($settings as $key => $value) {
+        if (is_string($value)) {
+            // Convert newlines to \n and remove extra whitespace
+            $value = str_replace(["\r\n", "\r"], "\n", $value);
+            $lines = explode("\n", $value);
+            $lines = array_map('trim', $lines);
+            $value = implode("\n", array_filter($lines));
+        }
+        $export[frl_prefix($key)] = $value;
+    }
+    return $export;
 }

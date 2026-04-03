@@ -2,11 +2,11 @@
 
 /**
  * Plugin Name: Fralenuvole
- * Description: Admin Swiss-Army Knife.
+ * Description: Swiss-Army Knife for Administrators.
  * Author: Francesco Castronovo
  * Author URI: https://fralenuvole.art
  * Plugin URI: https://fralenuvole.art
- * Version: 4.0.0
+ * Version: 4.1.0
  * Text Domain: fralenuvole
  * License: GPL2+
  * License URI: https://www.gnu.org/licenses/gpl-2.0.txt

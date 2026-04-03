@@ -45,7 +45,7 @@ frl_tab_register_tab(
     ]
 );
 
-// Hide tabs if user is not superadmin
+// Hide tabs if user is not plugin admin
 frl_tab_hide_tabs_by_capability(['developer'], frl_has_access());
 
 // Critical hooks marked for immediate registration

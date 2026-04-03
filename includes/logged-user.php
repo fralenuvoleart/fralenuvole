@@ -312,7 +312,7 @@ function frl_admin_bar_add_menu_secondary($data)
 
     // Environment links
     foreach ($links_secondary as $key => $domain) {
-        if (!frl_has_access() && str_contains($domain, FRL_NAME)) {
+        if (!frl_has_access('superadmin') && str_contains($domain, FRL_NAME)) {
             continue;
         }
         $href = 'https://' . $domain;

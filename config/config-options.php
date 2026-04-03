@@ -420,7 +420,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'autoload' => 'no',
 			),
 			'ab_remove_links_handles_user' => array(
-				'label' => 'Adminbar links to remove except for superadmin',
+				'label' => 'Adminbar links to remove except for plugin admins',
 				'description' => 'One link handle per line.',
 				'type' => 'textlist',
 				'default' => '
@@ -468,7 +468,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'autoload' => 'no',
 			),
 			'am_remove_links_handles_user' => array(
-				'label' => 'Admin links to remove except for superadmin',
+				'label' => 'Admin links to remove except for plugin admins',
 				'description' => 'One link per line. Format: "menu_handle" for menus. "menu_handle|submenu_handle" for submenus. You can use also a string with part of the URL or the CSS class.',
 				'type' => 'textlist',
 				'default' => '

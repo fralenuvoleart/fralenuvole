@@ -18,6 +18,7 @@ const FRL_ENV_CLEAR_WEBSITE_TRANSIENTS = true;
 // --- Environment Map ---
 const FRL_ENV_MAP = [
     'pbservices.ge'             => 'FRL_ENV_PBS_PRODUCTION',
+    'ru.pbservices.ge'          => 'FRL_ENV_PBS_PRODUCTION',
     'pbproperty.ge'             => 'FRL_ENV_PBP_PRODUCTION',
     'pbnova.com'                => 'FRL_ENV_PBNOVA_PRODUCTION',
     'fralenuvole.art'           => 'FRL_ENV_FRALENUVOLE_PRODUCTION',

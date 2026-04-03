@@ -75,10 +75,6 @@ function frl_has_access($capability = FRL_PLUGIN_ACCESS)
         $capability = FRL_PLUGIN_ACCESS;
     }
 
-    if ($capability === 'everybody') {
-        return true;
-    }
-
     // Bypass access check if in migrate mode (break-glass mechanism)
     if (defined('FRL_MODE') && FRL_MODE === 'migrate') {
         return true;
@@ -87,7 +83,12 @@ function frl_has_access($capability = FRL_PLUGIN_ACCESS)
     // Get the current user (already cached by frl_get_current_user)
     $user = frl_get_current_user();
 
-    // Check for user ID 1 (first admin)
+    // Dedicated superadmin check - ONLY user ID 1
+    if ($capability === 'superadmin') {
+        return $user->ID === 1;
+    }
+
+    // Check for user ID 1 (first admin) - bypass for all other capabilities
     if ($user->ID === 1) {
         return true;
     }
