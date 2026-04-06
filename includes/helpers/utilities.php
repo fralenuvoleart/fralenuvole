@@ -547,9 +547,9 @@ function frl_build_cache_key(string $key, string $type = 'slug'): string
  * Process PHP string
  * @param string $string The string to process
  * @param string $context The context of the string (function name)
- * @return html processed string
+ * @return string processed HTML string
  */
-function frl_process_php_string($string, $context = null)
+function frl_process_php_string($string, $context = null): string
 {
     if (empty($string) || !str_contains($string, '<?'))
         return $string;
@@ -569,6 +569,7 @@ function frl_process_php_string($string, $context = null)
         return "<!-- {$context} PHP error: check logs -->";
     } catch (Throwable $e) {
         frl_log("{context} HTML runtime error: {error}", ['context' => $context, 'error' => $e->getMessage()]);
+        ob_end_clean();
         return "<!-- {$context} PHP error: " . $e->getMessage() . " -->";
     }
 
