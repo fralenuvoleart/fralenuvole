@@ -18,7 +18,7 @@ const FRL_ENV_CLEAR_WEBSITE_TRANSIENTS = true;
 // --- Environment Map ---
 const FRL_ENV_MAP = [
     'pbservices.ge'             => 'FRL_ENV_PBS_PRODUCTION',
-    'ru.pbservices.ge'          => 'FRL_ENV_PBS_PRODUCTION',
+    'ru.pbservices.ge'          => 'FRL_ENV_PBS_RU_SUBDOMAIN',  // RU subdomain has separate config
     'pbproperty.ge'             => 'FRL_ENV_PBP_PRODUCTION',
     'pbnova.com'                => 'FRL_ENV_PBNOVA_PRODUCTION',
     'fralenuvole.art'           => 'FRL_ENV_FRALENUVOLE_PRODUCTION',
@@ -71,7 +71,16 @@ const FRL_ENV_DEFAULT = [
         'error_reporting_notice' => true,
         'error_reporting_warning' => true,
         'error_reporting_deprecated' => true,
-    ]
+    ],
+    // Multilingual URL strategy: default to subdirectory (standard Polylang)
+    'multilingual' => [
+        'enabled' => false,           // Default: disabled, enable per-site
+        'strategy' => 'subdirectory',  // 'subdirectory' | 'subdomain' | 'domain'
+        'server_role' => 'standalone', // 'standalone' | 'primary' | 'subdomain'
+        'default_language' => 'en',
+        'domain_mapping' => [],        // 'lang' => 'domain.com'
+        'external_redirects' => [],     // 'lang' => 'https://other-domain.com/'
+    ],
 ];
 
 /** Production Diffs from FRL_ENV_DEFAULT */
@@ -108,7 +117,50 @@ const FRL_ENV_PBS_PRODUCTION = [
     'prefix' => 'pbs',
     'plugin_options' => [
         'wsform_webhook' => true,
-    ]
+    ],
+    // Multilingual: main site handles canonical URLs, redirects RU to subdomain
+    'multilingual' => [
+        'enabled' => true,
+        'strategy' => 'subdirectory',
+        'server_role' => 'primary',
+        'default_language' => 'en',
+        'domain_mapping' => [
+            'ru' => 'ru.pbservices.ge',
+            'en' => 'pbservices.ge',
+            'ar' => 'pbservices.ge',
+            'zh' => 'pbservices.ge',
+        ],
+        'external_redirects' => [
+            'ru' => 'https://ru.pbservices.ge',
+        ],
+    ],
+];
+
+/** RU Subdomain - Separate behavior from main site */
+const FRL_ENV_PBS_RU_SUBDOMAIN = [
+    'prefix' => 'pbs',
+    'type' => 'production',
+    'plugin_options' => [
+        'wsform_webhook' => true,
+    ],
+    // Multilingual: RU is local, others link to main domain
+    'multilingual' => [
+        'enabled' => true,
+        'strategy' => 'subdirectory',
+        'server_role' => 'subdomain',
+        'default_language' => 'ru',
+        'domain_mapping' => [
+            'ru' => 'ru.pbservices.ge',
+            'en' => 'pbservices.ge',
+            'ar' => 'pbservices.ge',
+            'zh' => 'pbservices.ge',
+        ],
+        'external_links' => [
+            'en' => 'https://pbservices.ge/',
+            'ar' => 'https://pbservices.ge/ar/',
+            'zh' => 'https://pbservices.ge/zh/',
+        ],
+    ],
 ];
 
 /** Overrides for PBS Staging */
