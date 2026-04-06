@@ -1,0 +1,37 @@
+# Force consistent line endings and treat all files as text
+* text=auto eol=lf
+
+# Don't let Git track file mode changes
+# This works with core.fileMode=false
+
+# PHP files
+*.php text eol=lf diff=php
+
+# CSS/JS files  
+*.css text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+
+# HTML/XML
+*.html text eol=lf diff=html
+*.xml text eol=lf
+*.svg text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# Ensure binary files are never modified
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
