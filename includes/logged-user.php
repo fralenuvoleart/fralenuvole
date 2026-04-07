@@ -277,10 +277,12 @@ function frl_admin_bar_add_menu_secondary($data)
         $links_secondary = array_keys(FRL_ENV_MAP);
 
         $env_config = frl_environment_get_config();
-        $current_host = $env_config['env_host'];
+        $current_host = $env_config['env_host'] ?? '';
 
         // Remove current host from links
-        $links_secondary = frl_filter_array_by_substring($links_secondary, $current_host);
+        if ($current_host !== '') {
+            $links_secondary = frl_filter_array_by_substring($links_secondary, $current_host);
+        }
 
         // Remove staging from links for non-admins
         if (!frl_has_access()) {
