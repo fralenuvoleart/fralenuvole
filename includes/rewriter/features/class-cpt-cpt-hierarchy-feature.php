@@ -34,9 +34,9 @@ class Frl_CPT_CPT_Hierarchy_Feature extends Frl_Rewriter_Feature_Base
     public function __construct()
     {
         // Load CPT/meta configuration after CPTs are registered
-        frl_hook_add('action', 'init', [$this, 'load_config'], 20, 0);
+        add_action('init', [$this, 'load_config'], 20, 0);
         // Canonical redirect enforcement for child CPT
-        frl_hook_add('action', 'template_redirect', [$this, 'maybe_redirect_canonical'], 2, 0);
+        add_action('template_redirect', [$this, 'maybe_redirect_canonical'], 2, 0);
     }
 
     public function get_name(): string

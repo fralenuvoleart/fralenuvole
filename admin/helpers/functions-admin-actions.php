@@ -27,7 +27,7 @@ function frl_autodiscover_admin_actions()
         return;
     }
     // Register critical handler explicitly
-    frl_hook_add('action', 'admin_post_frl_save_options', 'frl_settings_fields_handle_save_options', 10, 0, 'admin');
+    add_action('admin_post_frl_save_options', 'frl_settings_fields_handle_save_options', 10, 0);
 
     // action handler like dashboard widget
     // frl_post_action_dashboard_widgets is auto-discovered
@@ -39,12 +39,12 @@ function frl_autodiscover_admin_actions()
         if (str_starts_with($func, frl_prefix('post_'))) {
             // Register all frl_post_ functions to admin-post system
             $hook_name = 'admin_post_' . $func;
-            frl_hook_add('action', $hook_name, $func, 10, 0, 'admin');
+            add_action($hook_name, $func, 10, 0);
 
             // Check if this is also an AJAX handler (has "ajax_" after the prefix)
             if (str_starts_with($func, frl_prefix('post_ajax_'))) {
                 $ajax_hook = 'wp_ajax_' . $func;
-                frl_hook_add('action', $ajax_hook, $func, 10, 0, 'ajax');
+                add_action($ajax_hook, $func, 10, 0);
             }
         }
     }

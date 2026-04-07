@@ -6,7 +6,7 @@
  * Author: Francesco Castronovo
  * Author URI: https://fralenuvole.art
  * Plugin URI: https://fralenuvole.art
- * Version: 4.1.0
+ * Version: 5.2.0
  * Text Domain: fralenuvole
  * License: GPL2+
  * License URI: https://www.gnu.org/licenses/gpl-2.0.txt
@@ -32,21 +32,14 @@ register_activation_hook(__FILE__, 'frl_activate_plugin');
 register_deactivation_hook(__FILE__, 'frl_deactivate_plugin');
 register_uninstall_hook(__FILE__, 'frl_uninstall_plugin');
 
-// Register core hooks with the Hook Manager
-frl_hook_add(
-    'action',
-    'plugins_loaded',
+add_action('plugins_loaded',
     'frl_plugins_loaded',
     5,
-    0
-);
-frl_hook_add(
-    'action',
-    'init',
+    0);
+add_action('init',
     'frl_environment_enforce_settings',
     10,
-    0
-);
+    0);
 
 /**
  * Initialize plugin and register hooks
@@ -64,8 +57,6 @@ function frl_plugins_loaded()
 
     // Exit early if plugin is disabled or request context is invalid
     if (frl_get_option('disable_plugin') || (defined('FRL_MODE') && FRL_MODE === 'core')) {
-        // Register hooks before plugin exit
-        frl_hook_register_hooks();
         return;
     }
 
@@ -80,8 +71,6 @@ function frl_plugins_loaded()
     // Load modules file and apply filters to FRL_DEFAULT_FIELDS
     frl_modules_init();
 
-    // Register all hooks with WordPress after all files and modules have been loaded
-    frl_hook_register_hooks();
 }
 
 /**
@@ -110,21 +99,15 @@ function frl_load_core_components()
         Frl_Rewriter::init_with_di();
     }
 
-    frl_hook_add(
-        'action',
-        'init',
+    add_action('init',
         'frl_shortcodes_init',
         10,
-        0
-    );
+        0);
 
-    frl_hook_add(
-        'action',
-        'init',
+    add_action('init',
         'frl_themekit_init',
         20,
-        0
-    );
+        0);
 }
 
 /**
@@ -133,7 +116,7 @@ function frl_load_core_components()
 function frl_load_admin_components()
 {
     /**
-     * Critical hooks marked for immediate registration:
+     * Critical hooks for immediate registration:
      * - admin_menu: for frl_custom_admin_menu() in admin.php
      * - admin_post_frl_save_options: for frl_save_options() in admin.php
      */

@@ -159,14 +159,14 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
         $hook_priority = 100 + $this->get_priority();
 
         // Register rewrite rules and request filter
-        frl_hook_add('action', 'init', [$this, 'add_rules'], $hook_priority, 0);
-        frl_hook_add('filter', 'request', [$this, 'filter_request'], $hook_priority, 1);
+        add_action('init', [$this, 'add_rules'], $hook_priority, 0);
+        add_filter('request', [$this, 'filter_request'], $hook_priority, 1);
 
         // Register independent catch-all mechanism if this feature uses it
         if ($this->uses_catch_all()) {
-            frl_hook_add('action', 'init', [$this, 'add_catch_all_rules'], $hook_priority + 50, 0); // Lower priority than normal rules
-            frl_hook_add('filter', 'request', [$this, 'filter_catch_all_request'], $hook_priority + 50, 1);
-            frl_hook_add('filter', 'query_vars', [$this, 'add_catch_all_query_var'], 10, 1);
+            add_action('init', [$this, 'add_catch_all_rules'], $hook_priority + 50, 0); // Lower priority than normal rules
+            add_filter('request', [$this, 'filter_catch_all_request'], $hook_priority + 50, 1);
+            add_filter('query_vars', [$this, 'add_catch_all_query_var'], 10, 1);
         }
     }
 
@@ -662,7 +662,7 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
      */
     final public function self_register(): void
     {
-        frl_hook_add('action', 'frl_rewriter_register_features', function ($coordinator) {
+        add_action('frl_rewriter_register_features', function ($coordinator) {
             if ($coordinator instanceof Frl_Rewriter_Coordinator) {
                 $coordinator->add_feature($this);
             }

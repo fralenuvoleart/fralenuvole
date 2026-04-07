@@ -81,11 +81,8 @@ class Frl_Settings_Fields
 			}
 		}
 
-		// Register sections setup with higher priority (5) to ensure it runs early
-		frl_hook_add('admin_init', array($this, 'frl_setup_sections'), 5, 0, 'admin');
-
-		// Register fields setup with normal priority (10) to run after sections are ready
-		frl_hook_add('admin_init', array($this, 'frl_setup_fields'), 10, 0, 'admin');
+		// Sections and fields are registered when frl_get_settings_page() runs (admin_init),
+		// which calls frl_setup_sections() and frl_setup_fields() directly after construction.
 
 		// Fire widget registration hook during construction
 		do_action('frl_register_section_widgets', $this);
@@ -119,9 +116,7 @@ class Frl_Settings_Fields
 
 				// Create a stable closure that will call all callbacks for this section
 				// Note: Using direct reference to $this to avoid closure issues with object references
-				frl_hook_add(
-					'action',
-					$action_name,
+				add_action($action_name,
 					function ($section) use ($section_id, $position) {
 						// Early return if section doesn't match
 						if ($section['id'] !== $section_id || empty($this->widgets[$position][$section_id])) {

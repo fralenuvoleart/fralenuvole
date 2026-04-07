@@ -27,17 +27,17 @@ function frl_translator_init()
 
     // Add hooks for enabled sub-features.
     if ($is_posts_enabled) {
-        frl_hook_add('filter', 'get_post_metadata', 'frl_translator_post_meta', 20, 4);
+        add_filter('get_post_metadata', 'frl_translator_post_meta', 20, 4);
     }
     if ($is_terms_enabled) {
-        frl_hook_add('filter', 'get_term_metadata', 'frl_translator_term_meta', 20, 4);
+        add_filter('get_term_metadata', 'frl_translator_term_meta', 20, 4);
     }
     if ($is_users_enabled) {
-        frl_hook_add('filter', 'get_user_metadata', 'frl_translator_user_meta', 20, 4);
+        add_filter('get_user_metadata', 'frl_translator_user_meta', 20, 4);
     }
     if ($is_options_enabled) {
         foreach (FRL_TRANSLATOR_OPTIONS as $option_name) {
-            frl_hook_add('filter', "pre_option_{$option_name}", 'frl_translator_pre_option', 10, 2);
+            add_filter("pre_option_{$option_name}", 'frl_translator_pre_option', 10, 2);
         }
     }
 
@@ -45,7 +45,7 @@ function frl_translator_init()
     if ($is_posts_enabled || $is_terms_enabled || $is_users_enabled || $is_options_enabled) {
         foreach (FRL_TRANSLATOR_FIELDS_ACF as $type => $handler) {
             if (is_callable($handler)) {
-                frl_hook_add('filter', "acf/format_value/type={$type}", $handler, 20, 3);
+                add_filter("acf/format_value/type={$type}", $handler, 20, 3);
             }
         }
     }
@@ -53,9 +53,9 @@ function frl_translator_init()
     // Auto-translate taxonomy term name/description when enabled
     if (frl_get_option('translator_taxonomies') === '1') {
         // Lists of terms
-        frl_hook_add('filter', 'get_terms', 'frl_translator_filter_get_terms', 20, 3);
+        add_filter('get_terms', 'frl_translator_filter_get_terms', 20, 3);
         // Single term fetch
-        frl_hook_add('filter', 'get_term', 'frl_translator_filter_get_term', 20, 2);
+        add_filter('get_term', 'frl_translator_filter_get_term', 20, 2);
     }
 }
 
@@ -392,7 +392,7 @@ function frl_translator_track_cached_meta(string $type, int $id, string $key): v
 
     // The shutdown action only needs to be added once per request.
     if (!$shutdown_hook_added) {
-        frl_hook_add('action', 'shutdown', 'frl_translator_process_tracking_queue', 10, 0);
+        add_action('shutdown', 'frl_translator_process_tracking_queue', 10, 0);
         $shutdown_hook_added = true;
     }
 }
@@ -470,7 +470,7 @@ function frl_translator_get_cache_callback(string $type, array $args, ?bool &$is
         // Centralized unhook/re-hook logic
         remove_filter($filter, $callback, $priority);
         $raw_value = ($getter)(...$getter_args);
-        frl_hook_add('filter', $filter, $callback, $priority, $num_args);
+        add_filter($filter, $callback, $priority, $num_args);
 
         if (is_string($raw_value) && !empty($raw_value)) {
             return frl_translator_apply($raw_value);

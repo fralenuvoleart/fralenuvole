@@ -32,12 +32,12 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
     {
         // Configuration must be loaded on the 'init' hook. CPTs are registered on 'init',
         // so post_type_exists() would fail earlier. The callback must be public.
-        frl_hook_add('action', 'init', [$this, 'ensure_config_loaded'], 20, 0);
+        add_action('init', [$this, 'ensure_config_loaded'], 20, 0);
 
         // Add canonical redirect after main query is set up.
-        frl_hook_add('action', 'template_redirect', [$this, 'maybe_redirect_canonical'], 1, 0);
+        add_action('template_redirect', [$this, 'maybe_redirect_canonical'], 1, 0);
         // Safety-net: late rescue at low priority. Runs only when catch-all missed and WP produced 404.
-        frl_hook_add('action', 'pre_get_posts', [$this, 'late_rescue'], 999, 1);
+        add_action('pre_get_posts', [$this, 'late_rescue'], 999, 1);
     }
 
     /**

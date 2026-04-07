@@ -20,7 +20,7 @@ class Frl_Metabox
 
 	public function __construct()
 	{
-		frl_hook_add('action', 'add_meta_boxes', array($this, 'add_meta_boxes'));
+		add_action('add_meta_boxes', array($this, 'add_meta_boxes'));
 	}
 
 	public function add_meta_boxes()

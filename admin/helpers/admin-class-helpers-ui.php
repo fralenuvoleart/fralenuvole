@@ -50,14 +50,16 @@ function frl_tab_register_tab($tab, $args)
 }
 
 /**
- * Get the active tab
+ * Get the active tab index (0-based).
+ *
+ * @return int
  */
 function frl_tab_get_active_tab()
 {
     if (!frl_class_exists('Frl_Tab_Manager', __FUNCTION__)) {
-        return;
+        return 0;
     }
-    Frl_Tab_Manager::get_active_tab();
+    return Frl_Tab_Manager::get_active_tab();
 }
 
 /**
@@ -325,29 +327,6 @@ function frl_debug_display_render()
     }
     $debug_display = new Frl_Debug_Display();
     return $debug_display->render();
-}
-
-/**
- * Get all registered hooks
- */
-function frl_hook_manager_get_all_registered_hooks()
-{
-    if (!frl_class_exists('Frl_Hook_Manager', __FUNCTION__)) {
-        return;
-    }
-    return Frl_Hook_Manager::get_all_registered_hooks();
-}
-
-/**
- * Render the hooks display
- */
-function frl_hooks_display_render()
-{
-    if (!frl_class_exists('Frl_Hooks_Display', __FUNCTION__)) {
-        return;
-    }
-    $hooks_display = new Frl_Hooks_Display();
-    return $hooks_display->render();
 }
 
 /**

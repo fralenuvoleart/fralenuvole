@@ -30,18 +30,18 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
     public function __construct()
     {
         // Configuration must be loaded on the 'init' hook because taxonomies are registered on 'init'.
-        frl_hook_add('action', 'init', [$this, 'load_configuration'], 20, 0);
+        add_action('init', [$this, 'load_configuration'], 20, 0);
 
         // Canonical redirect for legacy taxonomy URLs.
-        frl_hook_add('action', 'template_redirect', [$this, 'maybe_redirect_canonical'], 1, 0);
+        add_action('template_redirect', [$this, 'maybe_redirect_canonical'], 1, 0);
         // Safety-net: late 404 rescue if catch-all missed.
-        frl_hook_add('action', 'parse_request', [$this, 'late_rescue'], 99, 1);
+        add_action('parse_request', [$this, 'late_rescue'], 99, 1);
         // Also run the same rescue after the main query is prepared, when 404 is known.
-        frl_hook_add('action', 'wp', [$this, 'late_rescue'], 99, 1);
+        add_action('wp', [$this, 'late_rescue'], 99, 1);
 
         // Deterministic disambiguation: if core parsed a post request under the static base but no post exists,
         // re-map to taxonomy when the slug matches a handled term. Runs very early in request parsing.
-        frl_hook_add('filter', 'request', [$this, 'disambiguate_static_base_category'], 5, 1);
+        add_filter('request', [$this, 'disambiguate_static_base_category'], 5, 1);
     }
 
     /**

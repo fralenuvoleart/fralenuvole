@@ -10,46 +10,30 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-frl_hook_add(
-    'filter',
-    'wsf_pre_render',
+add_filter('wsf_pre_render',
     'frl_wsf_set_language',
     10,
-    2,
-    'public'
-);
+    2);
 
-frl_hook_add(
-    'action',
-    'wsf_submit_post_complete',
+add_action('wsf_submit_post_complete',
     'frl_wsf_submit_webhook',
     10,
-    1,
-    'public'
-);
+    1);
 
-frl_hook_add(
-    'filter',
-    'wsf_submit_validate',
+add_filter('wsf_submit_validate',
     'frl_wsf_spam_filter_submission',
     10,
-    3,
-    'public'
-);
+    3);
 
 /**
  * Fix: Remove validation errors for field 249 (channel_content/utm_content).
  * This field is populated by channel tracking and should never block form submission.
  * Hook runs at priority 100 (after WS Form's validation at 10) to filter out errors.
  */
-frl_hook_add(
-    'filter',
-    'wsf_submit_validate',
+add_filter('wsf_submit_validate',
     'frl_wsf_clear_field_249_errors',
     100,
-    3,
-    'public'
-);
+    3);
 
 function frl_wsf_clear_field_249_errors($field_error_action_array, $post_mode, $submit)
 {
@@ -77,32 +61,20 @@ function frl_wsf_clear_field_249_errors($field_error_action_array, $post_mode, $
 }
 
 // This action hook will be triggered by WP-Cron to process the webhook in the background.
-frl_hook_add(
-    'action',
-    'frl_wsf_send_form_submission_webhook',
+add_action('frl_wsf_send_form_submission_webhook',
     'frl_wsf_execute_webhook_submission',
     10,
-    1,
-    'public'
-);
+    1);
 
 // Button-click webhook AJAX handlers (logged-in and logged-out users)
-frl_hook_add(
-    'action', 
-    'wp_ajax_frl_button_webhook', 
+add_action('wp_ajax_frl_button_webhook', 
     'frl_wsf_button_webhook_handler', 
     10, 
-    0, 
-    'public'
-);
-frl_hook_add(
-    'action', 
-    'wp_ajax_nopriv_frl_button_webhook', 
+    0);
+add_action('wp_ajax_nopriv_frl_button_webhook', 
     'frl_wsf_button_webhook_handler', 
     10, 
-    0, 
-    'public'
-);
+    0);
 
 /**
  * Gets the matching webhook configurations based on the environment and form ID.

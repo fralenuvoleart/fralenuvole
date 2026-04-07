@@ -9,19 +9,13 @@ if (!defined('ABSPATH')) {
  * custom-post-types.php
  */
 
-frl_hook_add(
-	"action",
-	"init",
+add_action("init",
 	"frl_pbs_register_custom_post_types",
 	0,
-	0
-);
+	0);
 
-frl_hook_add(
-	"filter",
-	"pre_get_posts",
-	"frl_pbs_kill_taxonomy_archives"
-);
+add_filter("pre_get_posts",
+	"frl_pbs_kill_taxonomy_archives");
 
 function frl_pbs_register_custom_post_types()
 {

@@ -118,15 +118,12 @@ function frl_update_option($key, $value_param, $clear_cache = true, $autoload_pa
         frl_cache_clear('options', 'all_options, false');
     }
 
-    frl_hook_add(
-        'filter',
-        'pre_option_' . $prefixed_key,
+    add_filter('pre_option_' . $prefixed_key,
         function () use ($normalized_value) {
             return $normalized_value;
         },
         9999,
-        1
-    );
+        1);
 
     return $result;
 }

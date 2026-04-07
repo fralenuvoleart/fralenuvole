@@ -35,14 +35,14 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 
         // Load configuration early so it is available when rewrite rules are being generated.
         // CPTs are registered on 'init', but post_type_exists() will still be true for public CPTs at default priorities.
-        frl_hook_add('action', 'init', [$this, 'load_configuration'], 20, 0);
+        add_action('init', [$this, 'load_configuration'], 20, 0);
 
         // Canonical redirect for CPT single URLs
-        frl_hook_add('action', 'template_redirect', [$this, 'maybe_redirect_canonical'], 11, 0);
+        add_action('template_redirect', [$this, 'maybe_redirect_canonical'], 11, 0);
 
         // Ensure translated-base rules are prioritized over generic CPT rules from other plugins.
         // This filter runs only when rules are (re)built, not on every request.
-        frl_hook_add('filter', 'rewrite_rules_array', [$this, 'prioritize_translated_cpt_rules'], 9999, 1);
+        add_filter('rewrite_rules_array', [$this, 'prioritize_translated_cpt_rules'], 9999, 1);
     }
 
     public function get_name(): string

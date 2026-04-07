@@ -78,12 +78,6 @@ function frl_display_all_admin_notices()
         $message[] = __('Cache Manager is currently disabled.', FRL_PREFIX);
     }
 
-    // Check Hook Manager status using the dedicated helper function
-    if (frl_get_option('disable_hook_manager')) {
-        // Display a generic cache inactive warning
-        $message[] = __('Hook Manager is currently disabled.', FRL_PREFIX);
-    }
-
     if (!empty($message)) {
         frl_display_persistent_warning(implode("<br>", $message));
     }

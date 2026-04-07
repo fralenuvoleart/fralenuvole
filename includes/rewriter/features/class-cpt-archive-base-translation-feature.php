@@ -20,10 +20,10 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
     {
         $this->cpt_slug = $cpt_slug;
         // Load configuration at standard timing
-        frl_hook_add('action', 'init', [$this, 'load_configuration'], 20, 0);
+        add_action('init', [$this, 'load_configuration'], 20, 0);
 
         // Canonical redirect for CPT archive URLs
-        frl_hook_add('action', 'template_redirect', [$this, 'maybe_redirect_canonical'], 11, 0);
+        add_action('template_redirect', [$this, 'maybe_redirect_canonical'], 11, 0);
     }
 
     public function get_name(): string

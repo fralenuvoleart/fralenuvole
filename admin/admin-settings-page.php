@@ -25,7 +25,6 @@ require_once(__DIR__ . '/components/class-tag-validator.php');
 require_once(__DIR__ . '/components/class-settings-fields.php');
 require_once(__DIR__ . '/components/class-display-log.php');
 require_once(__DIR__ . '/components/class-display-debug.php');
-require_once(__DIR__ . '/components/display-hooks/class-display-hooks.php');
 
 // Functions with frl_post_ prefix are auto-registered in frl_autodiscover_admin_actions() in admin.php
 require_once(__DIR__ . '/helpers/functions-import-export.php');
@@ -48,42 +47,26 @@ frl_tab_register_tab(
 // Hide tabs if user is not plugin admin
 frl_tab_hide_tabs_by_capability(['developer'], frl_has_access());
 
-// Critical hooks marked for immediate registration
-frl_hook_add(
-    'action',
-    'frl_dashboard_content',
+// Critical hooks for immediate registration
+add_action('frl_dashboard_content',
     'frl_dashboard_content_render',
     20,
-    0,
-    'admin'
-);
+    0);
 
-frl_hook_add(
-    'action',
-    'frl_after_section_settings_content',
+add_action('frl_after_section_settings_content',
     'frl_settings_content_render',
     10,
-    0,
-    'admin'
-);
+    0);
 
-frl_hook_add(
-    'action',
-    'frl_before_section_developer_content',
+add_action('frl_before_section_developer_content',
     'frl_before_developer_content_render',
     10,
-    0,
-    'admin'
-);
+    0);
 
-frl_hook_add(
-    'action',
-    'frl_after_section_developer_content',
+add_action('frl_after_section_developer_content',
     'frl_after_developer_content_render',
     10,
-    0,
-    'admin'
-);
+    0);
 
 /**
  * Add a custom widgets to the dashboard tab
@@ -114,12 +97,6 @@ function frl_before_developer_content_render()
     echo frl_debug_display_render();
 }
 
-/**
- * Render the Logs tab content
- * Used as a callback for the logs tab action hook.
- * @return void
- */
 function frl_after_developer_content_render()
 {
-    echo frl_hooks_display_render();
 }

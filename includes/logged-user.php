@@ -9,7 +9,7 @@ if (frl_is_administrator_action()) {
     require_once FRL_DIR_PATH . 'includes/helpers/functions-plugin-actions.php';
 
     // Register the hook only when the function is available
-    frl_hook_add('action', 'init', 'frl_process_plugin_actions', 10, 0, 'logged');
+    add_action('init', 'frl_process_plugin_actions', 10, 0);
 }
 
 /**
@@ -18,15 +18,11 @@ if (frl_is_administrator_action()) {
  * Priority 100 ensures it's added after other admin bar items
  */
 
-// Register hooks with Hook Manager, categorized as 'logged'
-frl_hook_add('action', 'wp_loaded', 'frl_load_logged_user_scripts', 10, 0, 'logged');
-// Restore hook for the single wrapper function
-frl_hook_add('action', 'admin_notices', 'frl_display_all_admin_notices', 10, 0, 'logged', false);
-frl_hook_add('action', 'admin_bar_menu', 'frl_admin_bar_custom_menu', 9999, 0, 'logged');
-
-// Add tracking to both admin and front-end footer
-frl_hook_add('action', 'wp_footer', 'frl_trace_logged_user_visits', 99, 0, 'logged', false);
-frl_hook_add('action', 'admin_footer', 'frl_trace_logged_user_visits', 99, 0, 'logged', false);
+add_action('wp_loaded',     'frl_load_logged_user_scripts',    10,   0);
+add_action('admin_bar_menu', 'frl_admin_bar_custom_menu',      9999, 0);
+add_action('admin_notices', 'frl_display_all_admin_notices',   10,   0);
+add_action('wp_footer',     'frl_trace_logged_user_visits',    99,   0);
+add_action('admin_footer',  'frl_trace_logged_user_visits',    99,   0);
 
 /**
  * Add common scripts

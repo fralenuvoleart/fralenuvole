@@ -11,39 +11,24 @@ if (!defined('ABSPATH')) {
  * This file handles core cache cleanup hooks and functions.
  */
 
-// ----- Cache Management Hooks -----
 // Register term-change hooks that require a rewrite flush
-frl_hook_add('action', 'init', 'frl_register_hooks_rewrite_flush', 10, 0);
-
-// increment translation version and clear cache when strings are updated
-frl_hook_add('action', 'pll_save_strings_translations', 'frl_clear_translation_cache', 10, 0, 'admin', false);
-
-// Clear permalink cache when terms are updated
-frl_hook_add('action', 'edited_term', 'frl_clear_term_permalink_cache', 10, 1, 'admin', false);
-
-// Clear post cache when posts are updated
-frl_hook_add('action', 'save_post', 'frl_clear_post_cache', 10, 1, 'admin', false);
-
-// Clear cache when navigation is updated (both block and classic)
-frl_hook_add('action', 'save_post_wp_navigation', 'frl_clear_navigation_cache', 10, 1, 'admin', false);
-frl_hook_add('action', 'wp_update_nav_menu', 'frl_clear_navigation_cache', 10, 1, 'admin', false);
-
-// Clear user cache when a profile is updated
-frl_hook_add('action', 'profile_update', 'frl_clear_user_cache', 10, 1, 'admin', false);
-
-// Clear transients when options are updated
-frl_hook_add('action', 'update_option', 'frl_clear_option_transient', 10, 1, 'core', false);
-
-// Clear translated option cache when an option is updated
-frl_hook_add('action', 'updated_option', 'frl_clear_option_cache', 10, 1, 'admin', false);
-frl_hook_add('action', 'updated_option', 'frl_clear_acf_option_icon_cache', 10, 1, 'admin', false);
+add_action('init',                        'frl_register_hooks_rewrite_flush', 10, 0);
+add_action('update_option',               'frl_clear_option_transient',       10, 1);
+add_action('pll_save_strings_translations', 'frl_clear_translation_cache',     10, 0);
+add_action('edited_term',                 'frl_clear_term_permalink_cache',    10, 1);
+add_action('save_post',                   'frl_clear_post_cache',              10, 1);
+add_action('save_post_wp_navigation',     'frl_clear_navigation_cache',        10, 1);
+add_action('wp_update_nav_menu',          'frl_clear_navigation_cache',        10, 1);
+add_action('profile_update',              'frl_clear_user_cache',              10, 1);
+add_action('updated_option',              'frl_clear_option_cache',            10, 1);
+add_action('updated_option',              'frl_clear_acf_option_icon_cache',   10, 1);
 
 function frl_register_hooks_rewrite_flush(): void
 {
     foreach (['category', 'post_tag'] as $taxonomy) {
-        frl_hook_add('action', "created_{$taxonomy}", 'frl_schedule_rewrite_flush', 10, 0, 'core', false);
-        frl_hook_add('action', "edited_{$taxonomy}",  'frl_schedule_rewrite_flush', 10, 0, 'core', false);
-        frl_hook_add('action', "deleted_{$taxonomy}", 'frl_schedule_rewrite_flush', 10, 0, 'core', false);
+        add_action("created_{$taxonomy}", 'frl_schedule_rewrite_flush', 10, 0);
+        add_action("edited_{$taxonomy}",  'frl_schedule_rewrite_flush', 10, 0);
+        add_action("deleted_{$taxonomy}", 'frl_schedule_rewrite_flush', 10, 0);
     }
 }
 

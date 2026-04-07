@@ -13,32 +13,22 @@ if (!defined('ABSPATH')) {
 }
 
 // Register the deferred flush hook for rewrite rules.
-frl_hook_add(
-    'action',
-    'frl_execute_rewrite_flush',
+add_action('frl_execute_rewrite_flush',
     'frl_execute_rewrite_flush',
     10,
-    0
-);
+    0);
 
 // Register the checker for the safe admin flush.
-frl_hook_add(
-    'action',
-    'admin_init',
+add_action('admin_init',
     'frl_execute_scheduled_admin_flush',
     99,
-    0
-);
+    0);
 
 // Register automatic backup on version change.
-frl_hook_add(
-    'action',
-    'admin_init',
+add_action('admin_init',
     'frl_auto_backup_on_upgrade',
     5,
-    0,
-    'admin'
-);
+    0);
 
 /**
  * Plugin activation callback.
@@ -191,7 +181,7 @@ function frl_flush_force_rewrite_rules(): void
         static $deferred_once = false;
         if (!$deferred_once) {
             $deferred_once = true;
-            frl_hook_add('action', 'init', 'frl_execute_rewrite_flush', 99, 0);
+            add_action('init', 'frl_execute_rewrite_flush', 99, 0);
         }
         return;
     }

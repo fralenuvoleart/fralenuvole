@@ -21,33 +21,18 @@ require_once FRL_DIR_PATH . 'admin/helpers/functions-admin.php';
  * HOOK REGISTRATIONS
  * ======================================================================
  */
-// Register admin hooks with the Hook Manager
-// ----- Core Admin UI Hooks -----
-// Main admin menu with high priority to ensure it runs after other plugins
-
-// Critical hooks marked for immediate registration
-frl_hook_add('action', 'plugins_loaded', 'frl_admin_plugins_loaded', 10, 0, 'admin');
-frl_hook_add('action', 'admin_menu', 'frl_set_custom_admin_menu', 999, 0, 'admin');
-
-// Only load the metabox class on post edit screens to improve performance
-frl_hook_add('action', 'current_screen', 'frl_maybe_load_metabox_class', 10, 1, 'admin', false);
-
-// Load admin init hook, featured images for pages and post types
-frl_hook_add('action', 'init', 'frl_admin_init', 10, 0, 'admin');
-
-// Load admin CSS/JS with high priority (0) to ensure it loads before other scripts
-frl_hook_add('action', 'admin_enqueue_scripts', 'frl_admin_scripts', -999, 0, 'admin', false);
-// Add theme styles to Gutenberg editor with lowest priority to override other styles
-frl_hook_add('action', 'enqueue_block_editor_assets', 'frl_gutenberg_editor_css', 9999, 0, 'admin', false);
-
-frl_hook_add('filter', 'sanitize_file_name', 'frl_get_file_nicename', 10, 1, 'admin', false);
-frl_hook_add('action', 'add_attachment', 'frl_update_image_metadata', 10, 1, 'admin', false);
-frl_hook_add('filter', 'upload_mimes', 'frl_enable_mime_support', 10, 1, 'admin', false);
-// Customize dashboard with lowest priority to override other plugins
-frl_hook_add('action', 'wp_dashboard_setup', 'frl_custom_dashboard_widgets', 9999, 0, 'admin', false);
-
-// Plugin settings link in plugins list
-frl_hook_add('filter', 'plugin_action_links_' . FRL_NAME . '/' . FRL_PLUGIN_FILE, 'frl_plugin_settings_link', 10, 1, 'admin', false);
+add_action('plugins_loaded',          'frl_admin_plugins_loaded',          10,   0);
+add_action('admin_menu',              'frl_set_custom_admin_menu',          999,  0);
+add_action('init',                    'frl_admin_init',                     10,   0);
+add_action('current_screen',          'frl_maybe_load_metabox_class',       10,   1);
+add_action('admin_enqueue_scripts',   'frl_admin_scripts',                  -999, 0);
+add_action('enqueue_block_editor_assets', 'frl_gutenberg_editor_css',       9999, 0);
+add_filter('sanitize_file_name',      'frl_get_file_nicename',              10,   1);
+add_action('add_attachment',          'frl_update_image_metadata',          10,   1);
+add_filter('upload_mimes',            'frl_enable_mime_support',            10,   1);
+add_action('wp_dashboard_setup',      'frl_custom_dashboard_widgets',       9999, 0);
+add_filter('plugin_action_links_' . FRL_NAME . '/' . FRL_PLUGIN_FILE, 'frl_plugin_settings_link', 10, 1);
+add_action('wp_print_footer_scripts', 'frl_add_prism_init_script',          1000, 0);
 
 
 /**
@@ -90,27 +75,14 @@ function frl_load_plugin_ui()
     // Load required files
     require_once FRL_DIR_PATH . 'admin/admin-settings-page.php';
 
-    // Add a hook for admin initialization
-    frl_hook_add(
-        'action',
-        'admin_init',
-        'frl_get_settings_page',
-        10,
-        0,
-        'admin',
-        false
-    );
+    add_action('admin_init', 'frl_get_settings_page', 10, 0);
     // The hook MUST be available on admin-post.php:
     // Settings form submissions go through admin-post.php
     // frl_settings_updated hook is fired during the admin-post processing
-    frl_hook_add(
-        'action',
-        'frl_settings_updated',
+    add_action('frl_settings_updated',
         'frl_handle_settings_update',
         10,
-        1,
-        'admin'
-    );
+        1);
 }
 
 /**
@@ -121,11 +93,11 @@ function frl_admin_init()
     if (!frl_get_option('admin_featured_post_list')) {
         return;
     }
-    frl_hook_add('filter', 'manage_posts_columns', 'frl_add_column_featured', 10, 1, 'admin', true);
-    frl_hook_add('filter', 'manage_pages_columns', 'frl_add_column_featured', 10, 1, 'admin');
+    add_filter('manage_posts_columns', 'frl_add_column_featured', 10, 1);
+    add_filter('manage_pages_columns', 'frl_add_column_featured', 10, 1);
 
-    frl_hook_add('filter', 'manage_posts_custom_column', 'frl_add_column_featured_image', 10, 2, 'admin');
-    frl_hook_add('filter', 'manage_pages_custom_column', 'frl_add_column_featured_image', 10, 2, 'admin');
+    add_filter('manage_posts_custom_column', 'frl_add_column_featured_image', 10, 2);
+    add_filter('manage_pages_custom_column', 'frl_add_column_featured_image', 10, 2);
 }
 
 /**
@@ -446,16 +418,12 @@ function frl_remove_admin_menus_item($handle)
         }
     }
     if (!empty($style)) {
-        frl_hook_add(
-            'action',
-            'admin_print_styles',
+        add_action('admin_print_styles',
             function () use ($style, $menu) {
                 echo '<style id="' . FRL_PREFIX . '-remove-adminmenu-' . $menu . '">' . $style . '</style>';
             },
             10,
-            0,
-            'admin'
-        );
+            0);
     }
 }
 

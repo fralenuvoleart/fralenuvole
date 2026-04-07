@@ -9,81 +9,15 @@ if (!defined('ABSPATH')) {
  * Fralenuvole
  * public.php - Code executed only on frontend pages
  */
-
-// Performance filters and actions
-frl_hook_add(
-    'action',
-    'pre_get_posts',
-    'frl_alter_query',
-    10,
-    1,
-    'public',
-    false
-);
-frl_hook_add(
-    'filter',
-    'rest_endpoints',
-    'frl_disable_rest_endpoints',
-    10,
-    1,
-    'public',
-    false
-);
-// Frontend public JS
-frl_hook_add(
-	'action',
-	'wp_loaded',
-	'frl_public_scripts',
-	10,
-	1,
-	'public',
-	false
-);
-frl_hook_add(
-    'action',
-    'wp_default_scripts',
-    'frl_remove_jquery_migrate',
-    10,
-    1,
-    'public',
-    false
-);
-frl_hook_add(
-    'filter',
-    'style_loader_tag',
-    'frl_defer_css',
-    10,
-    4,
-    'public',
-    false
-);
-// Login page branding
-frl_hook_add(
-    'action',
-	'login_enqueue_scripts',
-    'frl_login_page_branding',
-    10,
-    0,
-    'public',
-    false
-);
-// Header and Footer
-frl_hook_add(
-    'action',
-    'wp_head',
-    'frl_wp_head',
-    0,
-    0,
-    'public'
-);
-frl_hook_add(
-    'action',
-    'wp_footer',
-    'frl_wp_footer',
-    10,
-    0,
-    'public'
-);
+add_action('wp_head',               'frl_wp_head',                   0,  0);
+add_action('wp_footer',             'frl_wp_footer',                 10, 0);
+add_action('pre_get_posts',         'frl_alter_query',               10, 1);
+add_filter('rest_endpoints',        'frl_disable_rest_endpoints',    10, 1);
+add_action('wp_loaded',             'frl_public_scripts',            10, 1);
+add_action('wp_default_scripts',    'frl_remove_jquery_migrate',     10, 1);
+add_filter('style_loader_tag',      'frl_defer_css',                 10, 4);
+add_action('login_enqueue_scripts', 'frl_login_page_branding',       10, 0);
+add_action('wp_footer',             'frl_add_schema',                10, 0);
 
 /**
  * Add critical CSS, fonts, and preload featured image to header
@@ -353,14 +287,10 @@ function frl_login_page_branding(): void
         return;
     }
 
-    frl_hook_add(
-        'filter',
-        'login_headerurl',
+    add_filter('login_headerurl',
         'frl_login_headerurl',
         10,
-        1,
-        'public'
-    );
+        1);
 
     $assets = ['login-css' => 'assets/css/public-login.css'];
     frl_enqueue_scripts($assets, 'login_page');

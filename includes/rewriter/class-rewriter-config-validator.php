@@ -273,5 +273,5 @@ class Frl_Rewriter_Config_Validator {
 
 // Hook to display warnings in admin (only where relevant)
 if (is_admin()) {
-    frl_hook_add('action', 'admin_notices', [Frl_Rewriter_Config_Validator::class, 'display_admin_warnings'], 10, 0, 'admin');
+    add_action('admin_notices', [Frl_Rewriter_Config_Validator::class, 'display_admin_warnings'], 10, 0);
 }

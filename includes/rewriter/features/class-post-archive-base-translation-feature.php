@@ -30,7 +30,7 @@ class Frl_Post_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Bas
         // Configuration must be loaded on the 'init' hook. This is critical because
         // permalink structures are not available before this point.
         // The callback method must be public to be accessible by the hook.
-        frl_hook_add('action', 'init', [$this, 'load_configuration'], 20, 0);
+        add_action('init', [$this, 'load_configuration'], 20, 0);
     }
 
     public function load_configuration(): void

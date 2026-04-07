@@ -22,15 +22,12 @@ class Frl_Environment_Monitor
 
         foreach (array_keys($config['plugin_options']) as $option_name) {
             $prefixed_name = frl_prefix($option_name);
-            frl_hook_add(
-                'action',
-                "update_option_{$prefixed_name}",
+            add_action("update_option_{$prefixed_name}",
                 function ($old_value, $new_value) use ($option_name) {
                     Frl_Environment_Monitor::track_plugin_options($option_name, $old_value, $new_value);
                 },
                 10,
-                2
-            );
+                2);
         }
     }
 

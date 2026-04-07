@@ -20,9 +20,7 @@ if ( is_admin() || frl_is_doing_ajax() || frl_is_rest_api_request() ) {
     require_once __DIR__ . '/acf-icon-admin.php';
 
     // Add compatibility with ACF QuickEdit Fields
-    frl_hook_add(
-        'filter',
-        'acf_quick_edit_fields_types',
+    add_filter('acf_quick_edit_fields_types',
         function ($types) {
             $types['frl_icon'] = [
                 'column' => true,
@@ -34,28 +32,19 @@ if ( is_admin() || frl_is_doing_ajax() || frl_is_rest_api_request() ) {
             return $types;
         },
         10,
-        1,
-        'admin'
-    );
+        1);
 }
 
 // Hooks (use hook manager helper)
-frl_hook_add(
-    'action',
-    'acf/init',
+add_action('acf/init',
     'frl_register_icon_field_type',
     10,
-    0,
-);
+    0,);
 
 // Auto-format 'frl_icon' values (returns span|svg per FRL_ICONS_RENDER_VALUE)
-frl_hook_add(
-    'filter',
-    'acf/format_value/type=' . FRL_ACF_FIELD_TYPE_ICON, 'frl_acf_format_value_for_icon_field',
+add_filter('acf/format_value/type=' . FRL_ACF_FIELD_TYPE_ICON, 'frl_acf_format_value_for_icon_field',
     20,
-    3,
-    'public'
-);
+    3);
 
 // Register the custom ACF field type
 function frl_register_icon_field_type() {

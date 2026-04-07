@@ -30,7 +30,7 @@ class Frl_Post_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
         // Configuration must be loaded on the 'init' hook. This is critical because
         // other features and permalink structures are not available before this point.
         // The callback method must be public to be accessible by the hook.
-        frl_hook_add('action', 'init', [$this, 'load_configuration'], 20, 0);
+        add_action('init', [$this, 'load_configuration'], 20, 0);
     }
 
     public function get_name(): string {
@@ -60,12 +60,12 @@ class Frl_Post_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
         // rewriter decoupled while still allowing ##slug## placeholders to
         // resolve to post-base URLs.
         if ($this->is_enabled()) {
-            frl_hook_add('filter', 'frl_translate_custom_permalink', [$this, 'translate_base_permalink'], 10, 3, 'core', false);
+            add_filter('frl_translate_custom_permalink', [$this, 'translate_base_permalink'], 10, 3);
         }
 
         // Add a redirect hook to handle canonical URL enforcement.
         if ($this->is_enabled() && $this->has_category_structure) {
-            frl_hook_add('action', 'template_redirect', [$this, 'redirect_canonical'], 11, 1);
+            add_action('template_redirect', [$this, 'redirect_canonical'], 11, 1);
         }
     }
 

@@ -14,14 +14,8 @@ if (! defined('ABSPATH')) {
  */
 function frl_errors_init()
 {
-// Hook into `doing_it_wrong` with the highest possible priority to intercept notices.
-frl_hook_add(
-    'action',
-    'doing_it_wrong_run',
-    'frl_errors_handle_doing_it_wrong',
-    -999,
-    3
-);
+    // Hook into `doing_it_wrong` with the highest possible priority to intercept notices.
+    add_action('doing_it_wrong_run', 'frl_errors_handle_doing_it_wrong', -999, 3);
 
     // Temporary diagnostics: confirm init and WP_DEBUG_LOG state (writes to current error channel)
     // (debug lines removed)
@@ -43,8 +37,8 @@ frl_hook_add(
         }
     };
 
-    frl_hook_add('action', 'muplugins_loaded', $rebind, PHP_INT_MAX, 0);
-    frl_hook_add('action', 'plugins_loaded', $rebind, PHP_INT_MAX, 0);
+    add_action('muplugins_loaded', $rebind, PHP_INT_MAX, 0);
+    add_action('plugins_loaded', $rebind, PHP_INT_MAX, 0);
 }
 
 /**
@@ -264,11 +258,8 @@ function frl_errors_handle_doing_it_wrong($function_name, $message, $version)
         // Check if this should be suppressed by calling the main error handler
         if (frl_errors_handle_error(E_USER_NOTICE, $error, $file, $line)) {
             // If suppressed, prevent WordPress from triggering the actual error
-            frl_hook_add(
-                'filter',
-                'doing_it_wrong_trigger_error',
-                '__return_false'
-            );
+            add_filter('doing_it_wrong_trigger_error',
+                '__return_false');
         }
     } finally {
         $is_handling = false;

@@ -117,22 +117,6 @@ const FRL_FIELD_FORMATTERS = [
 	'description'
 ];
 
-// Default immediate flag for hook registration globally
-const FRL_HOOKS_IMMEDIATE = true;
-
-// Enable lightweight hook profiler (execution-time / conflict diagnostics)
-// Set to true to collect timings; falls back to WP_DEBUG
-const FRL_HOOKS_PROFILER = false;
-
-// Hooks context map
-const FRL_HOOKS_CONTEXT_MAP = [
-	'core'   => ['admin', 'frontend_logged_in', 'frontend_logged_out'],
-	'public' => ['frontend_logged_in', 'frontend_logged_out'],
-	'logged' => ['admin', 'frontend_logged_in'],
-	'admin'  => ['admin'],
-	'ajax'   => ['admin'],
-];
-
 // Hooks context map
 const FRL_AB_CPT_LIST = [
 	'page' 		=> [

@@ -12,15 +12,15 @@ if (!defined('ABSPATH')) {
 }
 
 // Critical hooks marked for immediate registration
-frl_hook_add('action', 'admin_enqueue_scripts', 'frl_asset_loader_scripts', -999, 0, 'admin');
+add_action('admin_enqueue_scripts', 'frl_asset_loader_scripts', -999, 0);
 
 // Inline critical CSS to prevent FOUC
-frl_hook_add('action', 'admin_head', 'frl_inline_critical_admin_css', 1, 0, 'admin');
+add_action('admin_head', 'frl_inline_critical_admin_css', 1, 0);
 
 // Load Prism.js scripts with the lowest possible priority to ensure it loads after all content
-frl_hook_add('action', 'admin_footer', 'frl_enqueue_prism_scripts', 999, 0, 'admin');
-frl_hook_add('action', 'admin_footer', 'frl_enqueue_codemirror_scripts', 999, 0, 'admin');
-frl_hook_add('action', 'wp_print_footer_scripts', 'frl_add_prism_init_script', 1000, 0, 'admin', false);
+add_action('admin_footer', 'frl_enqueue_prism_scripts', 999, 0);
+add_action('admin_footer', 'frl_enqueue_codemirror_scripts', 999, 0);
+// wp_print_footer_scripts hook registered in admin/admin.php
 
 // Direct function call is still needed to maintain original behavior
 
@@ -117,23 +117,14 @@ function frl_enqueue_prism_scripts()
     );
 
     // Add async loading attribute to CSS
-    frl_hook_add(
-        'filter',
-        'style_loader_tag',
-        function ($tag, $handle) {
-            if ($handle === FRL_PREFIX . '-prism-css') {
-                // Check if already async to prevent duplicates
-                if (!str_contains($tag, 'media="print"')) {
-                    return str_replace(' rel=', ' media="print" onload="this.media=\'all\'" rel=', $tag);
-                }
+    add_filter('style_loader_tag', function ($tag, $handle) {
+        if ($handle === FRL_PREFIX . '-prism-css') {
+            if (!str_contains($tag, 'media="print"')) {
+                return str_replace(' rel=', ' media="print" onload="this.media=\'all\'" rel=', $tag);
             }
-            return $tag;
-        },
-        10,
-        2,
-        'core',
-        false
-    );
+        }
+        return $tag;
+    }, 10, 2);
 
     // Load Prism.js script with defer attribute
     wp_enqueue_script(
@@ -145,23 +136,14 @@ function frl_enqueue_prism_scripts()
     );
 
     // Add defer attribute to script
-    frl_hook_add(
-        'filter',
-        'script_loader_tag',
-        function ($tag, $handle) {
-            if ($handle === FRL_PREFIX . '-prism-js') {
-                // Check if already deferred
-                if (!str_contains($tag, ' defer')) {
-                    return str_replace(' src=', ' defer src=', $tag);
-                }
+    add_filter('script_loader_tag', function ($tag, $handle) {
+        if ($handle === FRL_PREFIX . '-prism-js') {
+            if (!str_contains($tag, ' defer')) {
+                return str_replace(' src=', ' defer src=', $tag);
             }
-            return $tag;
-        },
-        10,
-        2,
-        'core',
-        false
-    );
+        }
+        return $tag;
+    }, 10, 2);
 
     // Load HTML language support with defer
     wp_enqueue_script(
@@ -173,23 +155,14 @@ function frl_enqueue_prism_scripts()
     );
 
     // Add defer attribute to script
-    frl_hook_add(
-        'filter',
-        'script_loader_tag',
-        function ($tag, $handle) {
-            if ($handle === FRL_PREFIX . '-prism-markup') {
-                // Check if already deferred
-                if (!str_contains($tag, ' defer')) {
-                    return str_replace(' src=', ' defer src=', $tag);
-                }
+    add_filter('script_loader_tag', function ($tag, $handle) {
+        if ($handle === FRL_PREFIX . '-prism-markup') {
+            if (!str_contains($tag, ' defer')) {
+                return str_replace(' src=', ' defer src=', $tag);
             }
-            return $tag;
-        },
-        10,
-        2,
-        'core',
-        false
-    );
+        }
+        return $tag;
+    }, 10, 2);
 }
 
 /**

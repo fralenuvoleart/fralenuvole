@@ -172,20 +172,12 @@ class Frl_Tab_Manager
         // Add the header if a title is provided
         if (!empty($title)) {
             // Register title/description directly with the correct hook name
-            frl_hook_add(
-                'action',
-                $action_hook,
-                function () use ($title, $description) {
-                    echo '<h2>' . esc_html($title) . '</h2>';
-                    if (!empty($description)) {
-                        echo '<p>' . esc_html($description) . '</p>';
-                    }
-                },
-                $args['title_priority'],
-                0,
-                'admin',
-                false
-            );
+            add_action($action_hook, function () use ($title, $description) {
+                echo '<h2>' . esc_html($title) . '</h2>';
+                if (!empty($description)) {
+                    echo '<p>' . esc_html($description) . '</p>';
+                }
+            }, $args['title_priority'], 0);
         }
 
         // Register the callback if provided
@@ -196,38 +188,18 @@ class Frl_Tab_Manager
             // 1. For simple string function names, register them directly
             //    (optimizes performance and ensures proper execution)
             if (is_string($callback) && function_exists($callback)) {
-                frl_hook_add(
-                    'action',
-                    $action_hook,
-                    $callback,
-                    $args['priority'],
-                    1,
-                    'admin',
-                    false
-                );
+                add_action($action_hook, $callback, $args['priority'], 1);
             }
             // 2. For other callback types (closures, class methods, etc.) or not-yet-defined functions,
             //    use the delayed execution approach with helpful debug output
             else {
-                frl_hook_add(
-                    'action',
-                    $action_hook,
-                    function () use ($callback, $tab_id) {
-                        // Check if the callback is callable at the time of execution
-                        if (is_callable($callback)) {
-                            call_user_func($callback);
-                        } else {
-                            // Output a helpful message in development environments
-                            if (defined('WP_DEBUG') && WP_DEBUG) {
-                                echo '<p class="error">Error: Callback "' . esc_html(is_string($callback) ? $callback : 'Object') . '" for tab "' . esc_html($tab_id) . '" is not callable.</p>';
-                            }
-                        }
-                    },
-                    $args['priority'],
-                    2,
-                    'admin',
-                    false
-                );
+                add_action($action_hook, function () use ($callback, $tab_id) {
+                    if (is_callable($callback)) {
+                        call_user_func($callback);
+                    } elseif (defined('WP_DEBUG') && WP_DEBUG) {
+                        echo '<p class="error">Error: Callback "' . esc_html(is_string($callback) ? $callback : 'Object') . '" for tab "' . esc_html($tab_id) . '" is not callable.</p>';
+                    }
+                }, $args['priority'], 2);
             }
         }
 
@@ -425,17 +397,9 @@ class Frl_Tab_Manager
      */
     public function _add_tab_content($tab_id, $content, $priority = 10)
     {
-        frl_hook_add(
-            'action',
-            FRL_PREFIX . '_' . $tab_id . '_content',
-            function () use ($content, $tab_id) {
-                echo apply_filters(FRL_PREFIX . '_' . $tab_id . '_content_html', $content);
-            },
-            $priority,
-            0,
-            'admin',
-            false
-        );
+        add_action(FRL_PREFIX . '_' . $tab_id . '_content', function () use ($content, $tab_id) {
+            echo apply_filters(FRL_PREFIX . '_' . $tab_id . '_content_html', $content);
+        }, $priority, 0);
     }
 
     /**
@@ -1129,9 +1093,7 @@ class Frl_Tab_Manager
         foreach ($hidden_tabs as $tab_id) {
             if (!$has_access) {
                 // Filter to mark the section itself as restricted if access is denied
-                frl_hook_add(
-                    'filter',
-                    'frl_is_section_restricted',
+                add_filter('frl_is_section_restricted',
                     function ($is_restricted, $section_id_to_check) use ($tab_id) {
                         if ($section_id_to_check === $tab_id) {
                             return true; // Mark this section as restricted
@@ -1139,9 +1101,7 @@ class Frl_Tab_Manager
                         return $is_restricted; // Pass through otherwise
                     },
                     10, // Standard priority
-                    2,
-                    'admin'
-                );
+                    2);
             }
         }
 

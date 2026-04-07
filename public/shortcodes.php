@@ -43,60 +43,36 @@ if (!defined('ABSPATH')) {
 function frl_shortcodes_init()
 {
     // Process shortcodes BEFORE translation with higher priority (lower number)
-    frl_hook_add(
-        'filter',
-        'render_block',
+    add_filter('render_block',
         'frl_shortcode_render_block_translation',
         10,
-        2,
-        'public'
-    );
+        2);
     // Process shortcodes AFTER translation with lower priority (higher number)
-    frl_hook_add(
-        'filter',
-        'render_block',
+    add_filter('render_block',
         'apply_shortcodes',
         20,
-        2,
-        'public'
-    );
+        2);
 
     // Title and description filters
-    frl_hook_add(
-        'filter',
-        'the_title',
+    add_filter('the_title',
         'apply_shortcodes',
         10,
-        2,
-        'public'
-    );
+        2);
 
-    frl_hook_add(
-        'filter',
-        'the_excerpt',
+    add_filter('the_excerpt',
         'apply_shortcodes',
         10,
-        2,
-        'public'
-    );
+        2);
 
-    frl_hook_add(
-        'filter',
-        'the_seo_framework_title_from_generation',
+    add_filter('the_seo_framework_title_from_generation',
         'apply_shortcodes',
         10,
-        2,
-        'public'
-    );
+        2);
 
-    frl_hook_add(
-        'filter',
-        'the_seo_framework_custom_field_description',
+    add_filter('the_seo_framework_custom_field_description',
         'frl_shortcode_apply_excerpt',
         10,
-        2,
-        'public'
-    );
+        2);
 
     // Register shortcodes
     add_shortcode('frl', 'frl_shortcode_translation');

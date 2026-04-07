@@ -14,15 +14,7 @@ require_once __DIR__ . '/config-constants-frl.php';
 require_once __DIR__ . '/bible.php';
 require_once __DIR__ . '/menu-sitemap.php';
 
-frl_hook_add(
-    'action',
-    'wp_loaded',
-    'frl_module_public_scripts',
-    10,
-    1,
-    'public',
-    false
-);
+add_action('wp_loaded', 'frl_module_public_scripts', 10, 1);
 
 /**
  * Enqueue frl-specific styles and scripts

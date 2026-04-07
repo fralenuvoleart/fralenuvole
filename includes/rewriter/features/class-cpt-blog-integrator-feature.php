@@ -16,18 +16,18 @@ final class Frl_CPT_Blog_Integrator_Feature extends Frl_Rewriter_Feature_Base
     public function __construct()
     {
         // Canonical redirect for integrated CPT singles
-        frl_hook_add('action', 'template_redirect', [$this, 'maybe_redirect_canonical'], 11, 0);
+        add_action('template_redirect', [$this, 'maybe_redirect_canonical'], 11, 0);
 
         // Ensure generated archive links reflect integration
-        frl_hook_add('filter', 'post_type_archive_link', [$this, 'filter_archive_link'], 10, 2);
-        frl_hook_add('filter', 'get_post_type_archive_link', [$this, 'filter_archive_link'], 10, 2);
-        frl_hook_add('filter', 'post_type_archive_feed_link', [$this, 'filter_archive_link'], 10, 2);
+        add_filter('post_type_archive_link', [$this, 'filter_archive_link'], 10, 2);
+        add_filter('get_post_type_archive_link', [$this, 'filter_archive_link'], 10, 2);
+        add_filter('post_type_archive_feed_link', [$this, 'filter_archive_link'], 10, 2);
 
         // Provide CPT archive permalinks for translator placeholders when enabled
         if ($this->is_enabled()) {
-            frl_hook_add('filter', 'frl_translate_custom_permalink', [$this, 'provide_cpt_archive_permalink'], 10, 3, 'core', false);
+            add_filter('frl_translate_custom_permalink', [$this, 'provide_cpt_archive_permalink'],          10, 3);
             // Final guard: filter each language link emitted by the switcher
-            frl_hook_add('filter', 'pll_the_language_link', [$this, 'filter_pll_language_link_for_cpt_archive'], 10, 2, 'core', false);
+            add_filter('pll_the_language_link',          [$this, 'filter_pll_language_link_for_cpt_archive'], 10, 2);
         }
     }
 

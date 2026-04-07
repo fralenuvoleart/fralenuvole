@@ -44,16 +44,12 @@ class Frl_Environment_Manager
                 // If force reload flag is set (now using stable cookie-based check)
                 if (frl_check_and_clear_force_reload_flag()) {
                     // Add script to force reload
-                    frl_hook_add(
-                        'action',
-                        'wp_footer',
+                    add_action('wp_footer',
                         function () {
                             echo '<script>window.location.reload(true);</script>';
                         },
                         99999,
-                        0,
-                        'public'
-                    );
+                        0);
                 }
 
                 // Trigger URL check for admins or migrate mode
@@ -64,29 +60,18 @@ class Frl_Environment_Manager
             }
 
             // Register hooks needed even if initialized? Revisit this maybe.
-            frl_hook_add(
-                'action',
-                'admin_bar_menu',
+            add_action('admin_bar_menu',
                 [self::class, 'add_environment_switcher'],
                 9999,
-                1
-            );
-            frl_hook_add(
-                'action',
-                'activated_plugin',
+                1);
+            add_action('activated_plugin',
                 [self::class, 'track_plugins_activation_status'],
                 10,
-                1,
-                'admin'
-            );
-            frl_hook_add(
-                'action',
-                'deactivated_plugin',
+                1);
+            add_action('deactivated_plugin',
                 [self::class, 'track_plugins_activation_status'],
                 10,
-                1,
-                'admin'
-            );
+                1);
         }
     }
 

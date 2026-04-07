@@ -21,55 +21,29 @@ function frl_pbproperty_geodir_init(): void
     }
 
     // Filter: Query modifications for language-specific listings
-    frl_hook_add(
-        'filter',
-        'geodir_filter_widget_listings_where',
-        'frl_pbproperty_geodir_filter_widget_listings_where',
-        10,
-        2,
-        'core',
-        false
-    );
-
-    frl_hook_add(
-        'filter',
-        'geodir_posts_where',
-        'frl_pbproperty_geodir_posts_where',
-        10,
-        2,
-        'core',
-        false
-    );
+    add_filter('geodir_filter_widget_listings_where', 'frl_pbproperty_geodir_filter_widget_listings_where', 10, 2);
+    add_filter('geodir_posts_where',                  'frl_pbproperty_geodir_posts_where',                  10, 2);
 
     // Action: AJAX listings output translation
-    frl_hook_add(
-        'action',
-        'geodir_widget_ajax_listings_after',
+    add_action('geodir_widget_ajax_listings_after',
         'frl_pbproperty_translate_ajax_listings_output',
         10,
-        1
-    );
+        1);
 
     // Filter: Widget content translation via the_content
-    frl_hook_add(
-        'filter',
-        'the_content',
+    add_filter('the_content',
         'frl_pbproperty_translate_geodir_the_content',
         999,
-        1
-    );
+        1);
 
     // Filter: Custom field output translation for select/multiselect fields (labels, not values)
     if (!empty(FRL_GEODIR_TRANSLATOR_FIELDS)) {
         $field_types = ['select', 'multiselect', 'radio'];
         foreach ($field_types as $type) {
-            frl_hook_add(
-                'filter',
-                "geodir_custom_field_output_{$type}",
+            add_filter("geodir_custom_field_output_{$type}",
                 'frl_pbproperty_geodir_translate_option_label',
                 20,
-                5
-            );
+                5);
         }
     }
 }

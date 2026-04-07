@@ -513,11 +513,8 @@ final class Frl_Translation_Service
 
         // Schedule the shutdown action only once per request.
         if (!$this->shutdown_hook_added) {
-            frl_hook_add(
-                'action',
-                'shutdown',
-                [$this, 'process_string_registration_queue']
-            );
+            add_action('shutdown',
+                [$this, 'process_string_registration_queue']);
             $this->shutdown_hook_added = true;
         }
     }

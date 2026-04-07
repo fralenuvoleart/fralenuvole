@@ -14,32 +14,20 @@ if (!defined('ABSPATH')) {
 require_once __DIR__ . '/config-constants-pbnova.php';
 
 // Load public scripts
-frl_hook_add(
-    'action',
-    'init',
+add_action('init',
     'frl_pbnova_load_public_scripts',
     10,
-    0,
-    'public'
-);
+    0);
 
-frl_hook_add(
-    'filter',
-    'wsf_pre_render',
+add_filter('wsf_pre_render',
     'frl_pbnova_set_monday_field',
     10,
-    2,
-    'public'
-);
+    2);
 
-frl_hook_add(
-    'action',
-    'wp_after_insert_post',
+add_action('wp_after_insert_post',
     'frl_pbnova__acf_update_has_content',
     20,
-    3,
-    'admin'
-);
+    3);
 
 /**
  * Add common scripts

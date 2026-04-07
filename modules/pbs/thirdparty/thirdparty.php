@@ -12,59 +12,11 @@ if (!defined('ABSPATH')) {
 
 require_once __DIR__ . '/config-constants-thirdparty.php';
 
-// Load admin CSS/JS with high priority (0) to ensure it loads before other scripts
-frl_hook_add(
-    'action',
-    'wp_loaded',
-    'frl_thirdparty_public_scripts',
-    10,
-    1,
-    'public'
-);
-
-// Load admin CSS/JS with high priority (0) to ensure it loads before other scripts
-frl_hook_add(
-    'action',
-    'admin_enqueue_scripts',
-    'frl_thirdparty_admin_scripts',
-    0,
-    0,
-    'admin',
-    false
-);
-
-//Remove Shortpixel plugin feature 'Remove background'
-frl_hook_add(
-    'filter',
-    'emr/feature/background',
-    '__return_false',
-    10,
-    0,
-    'admin',
-    false
-);
-
-// Remove litespeed_meta_boxes
-frl_hook_add(
-    'action',
-    'add_meta_boxes',
-    'frl_remove_litespeed_meta_boxes',
-    999,
-    0,
-    'admin',
-    false
-);
-
-// Fix invalid REST schemas in third-party endpoints (e.g., Greenshift)
-frl_hook_add(
-	'filter',
-	'rest_endpoints',
-	'frl_greenshift_fix_rest_schemas',
-	10,
-	1,
-	'public',
-	false
-);
+add_action('wp_loaded',              'frl_thirdparty_public_scripts',    10,  1);
+add_action('admin_enqueue_scripts',  'frl_thirdparty_admin_scripts',      0,   0);
+add_filter('emr/feature/background', '__return_false',                    10,  0);
+add_action('add_meta_boxes',         'frl_remove_litespeed_meta_boxes',   999, 0);
+add_filter('rest_endpoints',         'frl_greenshift_fix_rest_schemas',   10,  1);
 
 /**
  * Enqueue thirdparty-specific styles and scripts
@@ -149,11 +101,11 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 
 // --- Inbound: third-party purge → clear fralenuvole caches ---
 foreach (array_keys(FRL_THIRDPARTY_INBOUND_HOOKS) as $hook) {
-    frl_hook_add('action', $hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
+    add_action($hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
 }
 
 // --- Query-param based purge detection (for plugins that don't fire actions) ---
-frl_hook_add('action', 'admin_init', 'frl_thirdparty_check_query_triggers', 5, 0, 'admin', false);
+add_action('admin_init', 'frl_thirdparty_check_query_triggers', 5, 0);
 
 /**
  * Check for query-param based cache purges that don't fire action hooks.
@@ -403,5 +355,4 @@ function frl_thirdparty_display_notification_notice(): void
     frl_add_admin_notice($message, 'success', 30);
 }
 
-// Register the notification display handler
-frl_hook_add('action', 'admin_init', 'frl_thirdparty_display_notification_notice', 20, 0, 'admin', false);
+add_action('admin_init', 'frl_thirdparty_display_notification_notice', 20, 0);

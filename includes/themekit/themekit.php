@@ -17,26 +17,8 @@ if (!defined('ABSPATH')) {
 * FONT MERGING LOGIC: Base (Plugin) -> Theme -> Dynamic (Plugin Options)
   */
 
-// Invalidate theme.json cache when theme is switched or updated,
-frl_hook_add(
-    'action',
-    'switch_theme',
-    'frl_themekit_invalidate_theme_json_cache',
-    10,
-    1,
-    'core',
-    false
-);
-
-frl_hook_add(
-    'action',
-    'upgrader_process_complete',
-    'frl_themekit_invalidate_theme_json_cache',
-    10,
-    2,
-    'core',
-    false
-);
+add_action('switch_theme',              'frl_themekit_invalidate_theme_json_cache', 10, 1);
+add_action('upgrader_process_complete', 'frl_themekit_invalidate_theme_json_cache', 10, 2);
 
 /**
  * Initialize themekit features
@@ -49,24 +31,16 @@ function frl_themekit_init()
 
     // Register admin body class hook
     if (frl_get_option('themekit_body_classes')) {
-        frl_hook_add(
-            'filter',
-            'admin_body_class',
+        add_filter('admin_body_class',
             'frl_themekit_admin_body_classes',
             9999,
-            1,
-            'admin'
-        );
+            1);
 
         // Register frontend body class hook
-        frl_hook_add(
-            'filter',
-            'body_class',
+        add_filter('body_class',
             'frl_themekit_frontend_body_classes',
             10,
-            1,
-            'public'
-        );
+            1);
     }
 
     // Exit if themekit is disabled or request context is invalid
@@ -78,38 +52,27 @@ function frl_themekit_init()
     // We hook this independently of other options because if themekit is active,
     // its base styles should likely apply.
     if (frl_get_option('themekit_base_css')) {
-        frl_hook_add(
-            'action',
-            'wp_enqueue_scripts',
+        add_action('wp_enqueue_scripts',
             'frl_themekit_enqueue_base_styles',
             9, // Right after WO global styles with priority 8
-            0,
-            'public'
-        );
+            0);
     }
 
     // HOOK 1: Merges the plugin's static theme.json file into the theme's.
     if (frl_get_option('themekit_settings') || frl_get_option('themekit_styles') || frl_get_option('themekit_colors') || frl_get_option('themekit_fonts')) {
-        frl_hook_add(
-            'filter',
-            'wp_theme_json_data_theme',
+        add_filter('wp_theme_json_data_theme',
             'frl_themekit_apply_theme_json',
             100,
-            1
-        );
+            1);
     }
 
     // HOOKS 2 & 3: Handle all dynamic font functionality.
     if (frl_get_option('themekit_fonts_system_fonts') || frl_get_option('themekit_fonts_plugin_fonts')) {
         // Renders font preloads and metric-adjusted fallback styles in the <head>.
-        frl_hook_add(
-            'action',
-            'wp_head',
+        add_action('wp_head',
             'frl_themekit_fonts_render_markup',
             0, // Run early in the head
-            0,
-            'public'
-        );
+            0);
     }
 
     // Load base patterns
@@ -130,39 +93,28 @@ function frl_themekit_init()
 
 	// Dequeue global styles added by theme.json file
 	if (frl_get_option('themekit_remove_wp_default_colors')) {
-        frl_hook_add(
-            'filter',
-            'wp_theme_json_data_default',
+        add_filter('wp_theme_json_data_default',
             'frl_themekit_remove_wp_colors',
             10,
-            1,
-            'public'
-        );
+            1);
     }
 
 	// Remove provider-specific styles (themes/plugins/global-styles) if configured
 	$provider_styles_raw = frl_get_option('themekit_remove_provider_styles') ?: '';
 	if (!empty($provider_styles_raw)) {
-		frl_hook_add(
-			'action',
-			'wp_enqueue_scripts',
+		add_action('wp_enqueue_scripts',
 			'frl_themekit_remove_provider_styles',
 			99999,
-			0,
-			'public'
-		);
+			0);
 	}
 
 	// Remove provider-specific block patterns (themes/plugins) if configured
 	$provider_patterns_raw = frl_get_option('themekit_remove_provider_patterns') ?: '';
 	if (!empty($provider_patterns_raw)) {
-		frl_hook_add(
-			'action',
-			'init',
+		add_action('init',
 			'frl_themekit_remove_provider_block_patterns',
 			999,
-			0
-		);
+			0);
 	}
 
 }
@@ -478,7 +430,7 @@ function frl_themekit_remove_core_block_patterns()
     // Remove and unregister patterns from core, Dotcom, and plugins.
     // See https://github.com/Automattic/jetpack/blob/d032fbb807e9cd69891e4fcbc0904a05508a1c67/projects/packages/jetpack-mu-wpcom/src/features/block-patterns/block-patterns.php#L107
 
-    frl_hook_add('filter', 'should_load_remote_block_patterns', '__return_false', 10, 0);
+    add_filter('should_load_remote_block_patterns', '__return_false', 10, 0);
 }
 
 /**

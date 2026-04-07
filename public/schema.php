@@ -9,16 +9,7 @@ if (!defined('ABSPATH')) {
  * schema.php - Code executed only on frontend pages
  */
 
-// Schema Hook in Footer
-frl_hook_add(
-    'action',
-    'wp_footer',
-    'frl_add_schema',
-    10,
-    0,
-    'public',
-    false
-);
+// wp_footer hook registered in public/public.php
 
 /**
  * Add Schema markup

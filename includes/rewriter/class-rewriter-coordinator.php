@@ -128,7 +128,7 @@ class Frl_Rewriter_Coordinator
     private function register_hooks(): void
     {
         // Delay feature registration until after CPTs are registered (on init)
-        frl_hook_add('action', 'init', function () {
+        add_action('init', function () {
             foreach ($this->features as $feature) {
                 $feature->register();
             }

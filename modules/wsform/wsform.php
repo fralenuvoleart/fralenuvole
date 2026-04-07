@@ -15,33 +15,22 @@ require_once __DIR__ . '/config-constants-wsform.php';
 require_once __DIR__ . '/config-constants-webhooks.php';
 
 // Register WS Form Stats widget and tab
-frl_hook_add(
-    'action',
-    'plugins_loaded',
+add_action('plugins_loaded',
     'frl_wsf_init',
     10,
-    0
-);
+    0);
 
 // Pre-render fields for translation
-frl_hook_add(
-    'filter',
-    'wsf_pre_render',
+add_filter('wsf_pre_render',
     'frl_wsf_translate_fields',
     10,
-    2,
-    'public'
-);
+    2);
 
 // Add filter for invalid feedback text
-frl_hook_add(
-    'filter',
-    'wsf_field_invalid_feedback_text',
+add_filter('wsf_field_invalid_feedback_text',
     'frl_wsf_translate_invalid_text',
     10,
-    1,
-    'public'
-);
+    1);
 
 /**
  * Initialize WS Form additional features
@@ -109,16 +98,12 @@ function frl_wsf_translate_fields($form, $preview)
 
 	// Register a single head hook once per request (skip previews to avoid duplicates)
 	if (!$preview && !$frl_wsf_success_style_added && $frl_wsf_success_message !== null) {
-		frl_hook_add(
-			'action',
-			'wp_head',
+		add_action('wp_head',
 			function () use ($frl_wsf_success_message) {
 				frl_wsf_translate_form_success($frl_wsf_success_message);
 			},
 			100,
-			0,
-			'public'
-		);
+			0);
 		$frl_wsf_success_style_added = true;
 	}
     /** @disregard P1010 Undefined type */
@@ -248,12 +233,8 @@ function frl_wsf_init_stats()
     require_once __DIR__ . '/stats/wsform-widget.php';
 
     // Use the central filter to add widget configuration
-    frl_hook_add(
-        'filter',
-        'frl_add_dashboard_widgets',
+    add_filter('frl_add_dashboard_widgets',
         'frl_wsf_add_dashboard_widget',
         10,
-        1,
-        'admin'
-    );
+        1);
 }

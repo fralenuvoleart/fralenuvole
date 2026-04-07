@@ -13,23 +13,15 @@ if (!defined('ABSPATH')) {
 require_once __DIR__ . '/config-constants-pbs.php';
 require_once ( __DIR__ . '/custom-post-types.php' );
 
-frl_hook_add(
-    'action',
-    'init',
+add_action('init',
     'frl_pbs_load_public_scripts',
     10,
-    0,
-    'public'
-);
+    0);
 
-frl_hook_add(
-    'filter',
-    'wsf_pre_render',
+add_filter('wsf_pre_render',
     'frl_pbs_set_monday_field',
     10,
-    2,
-    'public'
-);
+    2);
 
 /**
  * Add common scripts

@@ -18,27 +18,27 @@ if (!defined('ABSPATH')) {
  * main.php - Code executed in both frontend and backend pages
  */
 
-// Register core hooks with Hook Manager
-frl_hook_add('action', 'init', 'frl_main_init', 10, 0);
-// Register FRL Icon Gutenberg block (server-rendered)
-frl_hook_add('action', 'init', 'frl_register_icon_block', 10, 0);
+add_action('init', 'frl_main_init', 10, 0);
+add_action('init', 'frl_register_icon_block', 10, 0);
 //Critical CSS
-frl_hook_add('action', 'wp_head', 'frl_add_critical_css', -999, 1, 'public');
-// Register polylang integration hooks
-frl_hook_add('filter', 'pll_get_post_types', 'frl_making_wp_navigation_translatable', 10, 2, 'core', false);
-frl_hook_add('filter', 'block_type_metadata_settings', 'frl_render_block_core_navigation_translation', 10, 2, 'core', false);
-
-// Register authentication and comments hooks
-frl_hook_add('filter', 'auth_cookie_expiration', 'frl_extend_admin_cookie', 10, 1, 'logged', false);
-
-// Process batched cache writes from Cache Manager::$deferred_writes at the end of request to optimize performance
-frl_hook_add('action', 'shutdown', 'frl_process_deferred_writes', 10, 0, 'core', false);
+add_action('wp_head', 'frl_add_critical_css', -999, 1);
 
 // Register logger capture hooks
-frl_hook_add('filter', 'render_block_data', 'frl_log_capture_render_block_enter', 10, 1);
-frl_hook_add('filter', 'render_block', 'frl_log_capture_render_block_exit', 10, 2);
-frl_hook_add('action', 'pre_get_posts', 'frl_log_capture_query', 1, 1);
-frl_hook_add('filter', 'do_shortcode_tag', 'frl_log_capture_shortcode', 10, 4);
+add_filter('render_block_data', 'frl_log_capture_render_block_enter', 10, 1);
+add_filter('render_block', 'frl_log_capture_render_block_exit', 10, 2);
+add_action('pre_get_posts', 'frl_log_capture_query', 1, 1);
+add_filter('do_shortcode_tag', 'frl_log_capture_shortcode', 10, 4);
+
+add_action('init', 'frl_disable_oembed_discovery', 5, 0);
+add_filter('pll_get_post_types',          'frl_making_wp_navigation_translatable',        10, 2);
+add_filter('block_type_metadata_settings', 'frl_render_block_core_navigation_translation', 10, 2);
+add_filter('auth_cookie_expiration',       'frl_extend_admin_cookie',                      10, 1);
+add_action('shutdown',                     'frl_process_deferred_writes',                  10, 0);
+
+function frl_disable_oembed_discovery(): void
+{
+    add_filter('embed_oembed_discover', '__return_false', 10, 0);
+}
 
 /**
  * Initialize main plugin functionality
@@ -240,7 +240,7 @@ function frl_disable_oembed()
     remove_action('wp_head', 'wp_oembed_add_discovery_links');
     remove_action('wp_head', 'wp_oembed_add_host_js');
 
-    frl_hook_add('filter', 'embed_oembed_discover', '__return_false', 10, 0, 'core', false);
+    add_filter('embed_oembed_discover', '__return_false', 10, 0);
 }
 
 /**
@@ -264,8 +264,8 @@ function frl_remove_emojis()
 
     // Avoid registering callbacks that live in public components when the plugin front-end is disabled.
     if (!frl_get_option('disable_plugin')) {
-        frl_hook_add('filter', 'tiny_mce_plugins', 'frl_disable_emojis_tinymce', 10, 1, 'public', false);
-        frl_hook_add('filter', 'wp_resource_hints', 'frl_disable_emojis_remove_dns_prefetch', 10, 2, 'public', false);
+        add_filter('tiny_mce_plugins',  'frl_disable_emojis_tinymce',             10, 1);
+        add_filter('wp_resource_hints', 'frl_disable_emojis_remove_dns_prefetch', 10, 2);
     }
 }
 
@@ -302,23 +302,23 @@ function frl_disable_comments()
     );
 
     // Hide existing comments menu and admin bar items
-    frl_hook_add('action', 'admin_menu', function () {
+    add_action('admin_menu', function () {
         remove_menu_page('edit-comments.php');
-    }, 10, 0, 'admin');
+    }, 10, 0);
 
-    frl_hook_add('action', 'admin_bar_menu', function ($wp_admin_bar) {
+    add_action('admin_bar_menu', function ($wp_admin_bar) {
         $wp_admin_bar->remove_node('comments');
-    }, 999, 1, 'admin');
+    }, 999, 1);
 
     // Disable comments REST API endpoints
-    frl_hook_add('filter', 'rest_endpoints', function ($endpoints) {
+    add_filter('rest_endpoints', function ($endpoints) {
         unset($endpoints['/wp/v2/comments']);
         unset($endpoints['/wp/v2/comments/(?P<id>[\d]+)']);
         return $endpoints;
     });
 
     // Disable comment feed
-    frl_hook_add('action', 'template_redirect', function () {
+    add_action('template_redirect', function () {
         if (is_comment_feed()) {
             $redirect_url = home_url();
             if (!empty($_GET)) {
@@ -330,19 +330,19 @@ function frl_disable_comments()
     }, 999, 0);
 
     // Remove comment-related widgets
-    frl_hook_add('action', 'widgets_init', function () {
+    add_action('widgets_init', function () {
         unregister_widget('WP_Widget_Recent_Comments');
-    }, 10, 0, 'admin');
+    }, 10, 0);
 
     // Disable comment form and display
-    frl_hook_add('filter', 'comments_open', '__return_false', 20, 2, 'core', false);
-    frl_hook_add('filter', 'pings_open', '__return_false', 20, 2, 'core', false);
-    frl_hook_add('filter', 'comments_array', '__return_empty_array', 10, 2, 'core', false);
+    add_filter('comments_open',  '__return_false',       20, 2);
+    add_filter('pings_open',     '__return_false',       20, 2);
+    add_filter('comments_array', '__return_empty_array', 10, 2);
 
     // Remove comments from admin dashboard
-    frl_hook_add('action', 'admin_init', function () {
+    add_action('admin_init', function () {
         remove_meta_box('dashboard_recent_comments', 'dashboard', 'normal');
-    }, 10, 0, 'admin');
+    }, 10, 0);
 }
 
 /**
@@ -434,18 +434,18 @@ function frl_enable_custom_avatar()
     }
 
     // Add fields to user profile
-    frl_hook_add('action', 'show_user_profile', 'frl_add_avatar_upload_field', 10, 1, 'admin');
-    frl_hook_add('action', 'edit_user_profile', 'frl_add_avatar_upload_field', 10, 1, 'admin');
+    add_action('show_user_profile', 'frl_add_avatar_upload_field', 10, 1);
+    add_action('edit_user_profile', 'frl_add_avatar_upload_field', 10, 1);
 
     // Save custom fields
-    frl_hook_add('action', 'personal_options_update', 'frl_save_custom_avatar', 10, 1, 'admin');
-    frl_hook_add('action', 'edit_user_profile_update', 'frl_save_custom_avatar', 10, 1, 'admin');
+    add_action('personal_options_update', 'frl_save_custom_avatar', 10, 1);
+    add_action('edit_user_profile_update', 'frl_save_custom_avatar', 10, 1);
 
     // Enqueue necessary scripts
-    frl_hook_add('action', 'admin_enqueue_scripts', 'frl_enqueue_avatar_scripts', 10, 1, 'admin');
+    add_action('admin_enqueue_scripts', 'frl_enqueue_avatar_scripts', 10, 1);
 
     // Filter avatar - use the existing function from your code
-    frl_hook_add('filter', 'get_avatar_data', 'frl_get_avatar_data', 100, 2);
+    add_filter('get_avatar_data', 'frl_get_avatar_data', 100, 2);
 }
 
 /**

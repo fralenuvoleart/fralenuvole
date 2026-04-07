@@ -857,7 +857,7 @@ function frl_dump($var)
 
     // Add footer hook only once
     if (!$hook_added && !frl_is_doing_ajax()) {
-        frl_hook_add('action', 'wp_footer', function () use (&$debug_buffer) {
+        add_action('wp_footer', function () use (&$debug_buffer) {
             if (empty($debug_buffer)) return;
 
             echo '<div id="frl-debug-panel" style="position: fixed; bottom: 10px; right: 10px; width: 420px; max-height: 420px; overflow-y: auto; z-index: 999999; background: white; border: 2px solid var(--admin-accent-color); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">';

@@ -92,7 +92,7 @@ class Frl_Environment_Plugin_Manager
             }
         }
 
-        frl_hook_add('action', 'activated_plugin', [Frl_Environment_Manager::class, 'track_plugins_activation_status'], 10, 1);
-        frl_hook_add('action', 'deactivated_plugin', [Frl_Environment_Manager::class, 'track_plugins_activation_status'], 10, 1);
+        add_action('activated_plugin', [Frl_Environment_Manager::class, 'track_plugins_activation_status'], 10, 1);
+        add_action('deactivated_plugin', [Frl_Environment_Manager::class, 'track_plugins_activation_status'], 10, 1);
     }
 }

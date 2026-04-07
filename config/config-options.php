@@ -909,13 +909,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'default' => 0,
 				'restricted' => true,
 			),
-			'disable_hook_manager' => array(
-				'label' => 'Disable Hook Manager',
-				'description' => 'Bypass the plugin hook manager and use the native WordPress hooks.',
-				'type' => 'checkbox',
-				'default' => 0,
-				'restricted' => true,
-			),
 			'disable_translator' => array(
 				'type' => 'checkbox',
 				'label' => 'Disable Translator',

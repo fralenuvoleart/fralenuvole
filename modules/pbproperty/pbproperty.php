@@ -16,29 +16,20 @@ require_once __DIR__ . '/config-constants-pbproperty.php';
 require_once __DIR__ . '/geodirectory.php';
 
 // General search redirect by language
-frl_hook_add(
-    "action",
-    "template_redirect",
+add_action("template_redirect",
     "frl_pbproperty_redirect_search_by_language",
     5,
-    0
-);
+    0);
 
 // Register GeoDirectory CPT with Polylang
-frl_hook_add(
-    "filter",
-    "pll_get_post_types",
+add_filter("pll_get_post_types",
     "add_cpt_to_pll",
     10,
-    2
-);
+    2);
 
 // Block translation filter (shared with GeoDirectory output)
-frl_hook_add(
-    'filter',
-    'frl_block_translation_filter',
-    'frl_pbproperty_block_translation_filter'
-);
+add_filter('frl_block_translation_filter',
+    'frl_pbproperty_block_translation_filter');
 
 function add_cpt_to_pll($post_types, $is_settings)
 {

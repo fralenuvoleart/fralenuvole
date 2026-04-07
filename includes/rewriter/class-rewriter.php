@@ -94,15 +94,15 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         }
 
         // URL transformation hooks (for generating URLs)
-        frl_hook_add('filter', 'post_link', [$this, 'filter_post_link'], 10, 2);
-        frl_hook_add('filter', 'post_type_link', [$this, 'filter_post_link'], 10, 2);
-        frl_hook_add('filter', 'term_link', [$this, 'filter_term_link'], 10, 3);
+        add_filter('post_link', [$this, 'filter_post_link'], 10, 2);
+        add_filter('post_type_link', [$this, 'filter_post_link'], 10, 2);
+        add_filter('term_link', [$this, 'filter_term_link'], 10, 3);
 
         // Archive and feed link hooks
-        frl_hook_add('filter', 'post_type_archive_link', [$this, 'filter_generic_link'], 10, 2);
-        frl_hook_add('filter', 'get_post_type_archive_link', [$this, 'filter_generic_link'], 10, 2);
-        frl_hook_add('filter', 'post_type_archive_feed_link', [$this, 'filter_generic_link'], 10, 2);
-        frl_hook_add('filter', 'term_feed_link', [$this, 'filter_generic_link'], 10, 3);
+        add_filter('post_type_archive_link', [$this, 'filter_generic_link'], 10, 2);
+        add_filter('get_post_type_archive_link', [$this, 'filter_generic_link'], 10, 2);
+        add_filter('post_type_archive_feed_link', [$this, 'filter_generic_link'], 10, 2);
+        add_filter('term_feed_link', [$this, 'filter_generic_link'], 10, 3);
 
         self::$hooks_registered = true;
     }
@@ -374,36 +374,24 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         $cache_hooks_registered = true;
 
         // Defer hook registration until 'wp_loaded' to ensure all plugins and themes are loaded
-        frl_hook_add(
-            'action',
-            'wp_loaded',
-            function () {
-                frl_hook_add('action', 'update_option_permalink_structure', [self::class, 'clear_rewriter_caches'], 10, 1, 'core', false);
-                frl_hook_add('action', 'update_option_category_base', [self::class, 'clear_rewriter_caches'], 10, 1, 'core', false);
-                frl_hook_add('action', 'update_option_tag_base', [self::class, 'clear_rewriter_caches'], 10, 1, 'core', false);
+        add_action('wp_loaded', function () {
+            add_action('update_option_permalink_structure',    [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_category_base',          [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_tag_base',               [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_translate_post_base',    [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_remove_cpt_base',        [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_remove_tax_base',        [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_integrate_cpt_with_blog', [self::class, 'clear_rewriter_caches'], 10, 1);
 
-                // Hooks for rewriter option changes (cache invalidation)
-                frl_hook_add('action', 'update_option_translate_post_base', [self::class, 'clear_rewriter_caches'], 10, 1, 'core', false);
-                frl_hook_add('action', 'update_option_remove_cpt_base', [self::class, 'clear_rewriter_caches'], 10, 1, 'core', false);
-                frl_hook_add('action', 'update_option_remove_tax_base', [self::class, 'clear_rewriter_caches'], 10, 1, 'core', false);
-                frl_hook_add('action', 'update_option_integrate_cpt_with_blog', [self::class, 'clear_rewriter_caches'], 10, 1, 'core', false);
-
-                // Hook CPT translation option changes
-                if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
-                    foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
-                        frl_hook_add('action', "update_option_translate_cpt_slugs_{$cpt_slug}", [self::class, 'clear_rewriter_caches'], 10, 1, 'core', false);
-                    }
+            if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
+                foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
+                    add_action("update_option_translate_cpt_slugs_{$cpt_slug}", [self::class, 'clear_rewriter_caches'], 10, 1);
                 }
+            }
 
-                // Additional check for flushed rules
-                if (get_option('rewrite_rules') === false) {
-                    self::clear_rewriter_caches();
-                }
-            },
-            10,
-            1,
-            'core',
-            false
-        );
+            if (get_option('rewrite_rules') === false) {
+                self::clear_rewriter_caches();
+            }
+        }, 10, 1);
     }
 }
