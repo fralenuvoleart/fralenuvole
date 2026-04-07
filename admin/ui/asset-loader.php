@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Critical hooks marked for immediate registration
+// Critical hooks for immediate registration
 add_action('admin_enqueue_scripts', 'frl_asset_loader_scripts', -999, 0);
 
 // Inline critical CSS to prevent FOUC
