@@ -51,9 +51,8 @@ if (defined('FRL_MODE') && FRL_MODE === 'disable') {
     return;
 }
 
-// Load core features: translation, hook, environment and cache manager
+// Load core features: translation, environment and cache manager
 require_once FRL_DIR_PATH . 'includes/translator/class-translation-service.php';
-require_once FRL_DIR_PATH . 'includes/class-hook-manager.php';
 require_once FRL_DIR_PATH . 'includes/environment/class-environment-manager.php';
 
 // Load and initialize the cache manager immediately.
