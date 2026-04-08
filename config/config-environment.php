@@ -26,6 +26,7 @@ const FRL_ENV_MAP = [
     'staging.pbproperty.ge'     => 'FRL_ENV_PBP_STAGING',
     'staging.pbnova.com'        => 'FRL_ENV_PBNOVA_STAGING',
     'staging.fralenuvole.art'   => 'FRL_ENV_FRALENUVOLE_STAGING',
+    'master.fralenuvole.art'    => 'FRL_ENV_FRALENUVOLE_MASTER',
 ];
 
 // --- Default Configurations ---
@@ -258,9 +259,18 @@ const FRL_ENV_FRALENUVOLE_PRODUCTION = [
 ];
 
 // --- Environment-Specific Configurations ---
-/** Overrides for FRL Production */
+/** Overrides for FRL Staging */
 const FRL_ENV_FRALENUVOLE_STAGING = [
     'prefix' => 'frl',
+    'modules' => [
+        'pbs' => false,
+    ],
+];
+
+/** Overrides for FRL Master (branch-based staging environment) */
+const FRL_ENV_FRALENUVOLE_MASTER = [
+    'prefix' => 'frl',
+    'type'   => 'staging',
     'modules' => [
         'pbs' => false,
     ],

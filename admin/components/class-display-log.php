@@ -633,8 +633,9 @@ class Frl_Log_Manager
 				$remaining_content = '';
 			}
 
-			// First column: Type and date
-			$meta_content = '<span class="log-type">' . esc_html(ucfirst($entry['type'])) . '</span>';
+		// First column: Type and date
+		$type_label = ($entry['type'] === FRL_PREFIX) ? strtoupper(FRL_PREFIX) . ' Message' : ucfirst($entry['type']);
+		$meta_content = '<span class="log-type">' . esc_html($type_label) . '</span>';
 			if (!empty($entry['date'])) {
 				// Format the date
 				$date_parts = explode(' ', $entry['date']);
@@ -652,7 +653,7 @@ class Frl_Log_Manager
 				} else {
 					// It's another day - use full day name (l) instead of abbreviated (D)
 					$day_name = date('l', $timestamp);
-					$formatted_date = '<span class="log-day">' . esc_html($day_name) . '</span>, ' . esc_html(date('F j, Y', $timestamp));
+					$formatted_date = '<span class="log-day">' . esc_html($day_name) . '</span>, ' . esc_html(date('F j, Y', $timestamp)) . ' - ' . esc_html(date('H:i:s', $timestamp));
 				}
 
 				$meta_content .= '<span class="log-date">' . $formatted_date . '</span>';
