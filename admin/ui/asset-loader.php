@@ -18,11 +18,9 @@ add_action('admin_enqueue_scripts', 'frl_asset_loader_scripts', -999, 0);
 add_action('admin_head', 'frl_inline_critical_admin_css', 1, 0);
 
 // Load Prism.js scripts with the lowest possible priority to ensure it loads after all content
-add_action('admin_footer', 'frl_enqueue_prism_scripts', 999, 0);
 add_action('admin_footer', 'frl_enqueue_codemirror_scripts', 999, 0);
-// wp_print_footer_scripts hook registered in admin/admin.php
-
-// Direct function call is still needed to maintain original behavior
+add_action('admin_footer', 'frl_enqueue_prism_scripts', 999, 0);
+add_action('wp_print_footer_scripts', 'frl_add_prism_init_script', 1000, 0);
 
 /**
  * Inline critical CSS to prevent FOUC (Flash of Unstyled Content)

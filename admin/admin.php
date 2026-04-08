@@ -32,7 +32,6 @@ add_action('add_attachment',          'frl_update_image_metadata',          10, 
 add_filter('upload_mimes',            'frl_enable_mime_support',            10,   1);
 add_action('wp_dashboard_setup',      'frl_custom_dashboard_widgets',       9999, 0);
 add_filter('plugin_action_links_' . FRL_NAME . '/' . FRL_PLUGIN_FILE, 'frl_plugin_settings_link', 10, 1);
-add_action('wp_print_footer_scripts', 'frl_add_prism_init_script',          1000, 0);
 
 
 /**
