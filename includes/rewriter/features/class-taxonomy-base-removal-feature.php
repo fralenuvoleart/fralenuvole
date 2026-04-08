@@ -29,40 +29,60 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     public function __construct()
     {
-        // Configuration must be loaded on the 'init' hook because taxonomies are registered on 'init'.
+        // Property initialisation only. All hook registration happens in register_additional_hooks(),
+        // which is called by the coordinator via register() at init priority 15.
+    }
+
+    protected function register_additional_hooks(): void
+    {
+        // Configuration must be loaded on 'init' because taxonomies are registered on 'init'.
         add_action('init', [$this, 'load_configuration'], 20, 0);
 
-        // Canonical redirect for legacy taxonomy URLs.
+        // Canonical redirect for legacy taxonomy URLs that still contain the base slug.
         add_action('template_redirect', [$this, 'maybe_redirect_canonical'], 1, 0);
-        // Safety-net: late 404 rescue if catch-all missed.
-        add_action('parse_request', [$this, 'late_rescue'], 99, 1);
-        // Also run the same rescue after the main query is prepared, when 404 is known.
-        add_action('wp', [$this, 'late_rescue'], 99, 1);
 
-        // Deterministic disambiguation: if core parsed a post request under the static base but no post exists,
-        // re-map to taxonomy when the slug matches a handled term. Runs very early in request parsing.
+        // Safety-net: inject correct query vars before the main query runs so the 404
+        // state is never reached in the first place. Runs at very late pre_get_posts
+        // priority (999) so all other query modifications complete first.
+        add_action('pre_get_posts', [$this, 'late_rescue'], 999, 1);
+
+        // Early disambiguation: if core parsed a post request under the static base but no
+        // post exists, re-map to taxonomy when the slug matches a handled term.
         add_filter('request', [$this, 'disambiguate_static_base_category'], 5, 1);
     }
 
     /**
-     * Late rescue: resolve taxonomy URLs that lost their base only if WP produced a 404.
+     * Late rescue: inject correct taxonomy query vars before the main query executes.
+     *
+     * Runs on pre_get_posts (same pattern as Frl_CPT_Base_Removal_Feature::late_rescue)
+     * so that WP never reaches the 404 state for resolvable taxonomy URLs. The previous
+     * approach hooked on 'wp' (after handle_404), which only updated WP::$is_404 but not
+     * WP_Query::$is_404 — the property the template loader actually reads — producing
+     * soft 404s (200 HTTP status, 404 template content).
      */
-    public function late_rescue($wp): void
+    public function late_rescue(\WP_Query $query): void
     {
-        if (!$this->is_enabled()) {
+        if (!$this->is_enabled() || !$query->is_main_query() || !frl_is_valid_frontend_page_request()) {
             return;
         }
 
-        // Allow 404 rescue on frontend while still skipping non-frontend contexts.
-        // We cannot use frl_is_valid_frontend_page_request() here because it returns false on 404s.
-        if (frl_is_admin() || frl_is_rest_api_request() || frl_is_cron_job_request() || frl_is_doing_ajax()) {
-            return;
+        // Performance: bail early when filter_request() / catch-all already resolved the
+        // URL into one of the taxonomy query vars handled by this feature. Avoids the DB
+        // lookup inside applies_to_request() on every page view.
+        foreach ($this->taxonomy_slugs as $tax) {
+            $tax_obj   = get_taxonomy($tax);
+            $query_var = ($tax_obj && !empty($tax_obj->query_var)) ? $tax_obj->query_var : $tax;
+            if ($query->get($query_var) !== '') {
+                return;
+            }
         }
 
-        // Ensure we are working with a WP instance and it actually represents a 404.
-        if (!is_object($wp) || !property_exists($wp, 'is_404') || !$wp->is_404) {
+        // One-shot guard: prevents re-entry if parse_query() is called recursively.
+        static $rescued = false;
+        if ($rescued) {
             return;
         }
+        $rescued = true;
 
         $request_uri = $_SERVER['REQUEST_URI'] ?? '';
         if (!$this->applies_to_request($request_uri)) {
@@ -75,21 +95,8 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         }
 
         foreach ($vars as $k => $v) {
-            $wp->query_vars[$k] = $v;
+            $query->set($k, $v);
         }
-
-        // Clear error flag and matched properties so WordPress treats as resolved.
-        $wp->query_vars['error'] = '';
-        $wp->matched_rule  = ''; // prevents canonical redirect collisions
-        $wp->matched_query = '';
-
-        // Explicitly set taxonomy/query flags for later template loading
-        if (isset($vars['lang'])) {
-            $wp->query_vars['lang'] = $vars['lang'];
-        }
-
-        status_header(200);
-        $wp->is_404 = false;
     }
 
     public function get_name(): string
@@ -159,10 +166,11 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
             if (empty(Frl_Rewriter_Path_Utils::get_post_base_mappings())) {
                 $static_base = $this->get_static_permalink_base();
                 if ($static_base !== '') {
-                    $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex($static_base, '#');
+                    // Use the default '/' delimiter so lang-grouping optimization in add_catch_all_rules() applies.
+                    $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex($static_base);
                     $langs = Frl_Rewriter_Path_Utils::get_active_languages_safe();
                     foreach ($langs as $lc) {
-                        $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex("{$lc}/{$static_base}", '#');
+                        $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex("{$lc}/{$static_base}");
                     }
                 }
             }
@@ -227,13 +235,17 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
     }
 
     /**
-     * Get configured prefixes from configuration (independent of other features)
+     * Get configured prefixes from other active rewriter features.
+     *
+     * CPT translation features contribute their prefixes via the frl_rewriter_url_prefixes
+     * filter (registered in their register_additional_hooks()). This keeps the taxonomy
+     * feature decoupled from FRL_REWRITER_MULTILINGUAL_CPT and any future features.
      */
     private function get_configured_prefixes(): array
     {
         $prefixes = [];
 
-        // Get post base translation prefixes if configured - use consolidated config
+        // Post base translation prefixes (still read directly — this is taxonomy-agnostic config).
         $post_mappings = Frl_Rewriter_Path_Utils::get_post_base_mappings();
         foreach ($post_mappings as $mapping) {
             if (is_array($mapping) && count($mapping) >= 2) {
@@ -244,22 +256,11 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
             }
         }
 
-        // Get CPT translation prefixes if configured - use consolidated config
-        if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
-            foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
-                $cpt_mappings = Frl_Rewriter_Path_Utils::get_cpt_mappings($cpt_slug);
-                foreach ($cpt_mappings as $mapping) {
-                    if (is_array($mapping) && count($mapping) >= 2) {
-                        $lang = $mapping[0];
-                        $base = $mapping[1];
-                        $prefixes[] = $base;
-                        $prefixes[] = "{$lang}/{$base}";
-                    }
-                }
-            }
-        }
+        // CPT translation prefixes contributed by individual CPT features via filter.
+        // Frl_CPT_Archive_Base_Translation_Feature::contribute_url_prefixes() populates this.
+        $prefixes = (array) apply_filters('frl_rewriter_url_prefixes', $prefixes);
 
-        // Include static first segment from permalink structure if present (e.g., 'blog' in /blog/%postname%/)
+        // Include static first segment from permalink structure if present (e.g., 'blog' in /blog/%postname%/).
         $static_base = $this->get_static_permalink_base();
         if ($static_base !== '') {
             $prefixes[] = $static_base;
@@ -326,6 +327,9 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     public function resolve_request(string $request_uri): array
     {
+        if (!$this->is_enabled()) {
+            return [];
+        }
 
         $path = Frl_Rewriter_Path_Utils::extract_request_path($request_uri);
 
@@ -339,9 +343,9 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         $parts = explode('/', trim($path, '/'));
         $lang = frl_get_default_language(); // Assume default lang
 
-        // Detect language code - with validation
+        // Detect language code — no length restriction to support locales like pt-br, zh-tw.
         $available_langs = Frl_Rewriter_Path_Utils::get_active_languages_safe();
-        if (isset($parts[0]) && strlen($parts[0]) === 2 && in_array($parts[0], $available_langs, true)) {
+        if (isset($parts[0]) && in_array($parts[0], $available_langs, true)) {
             $lang = array_shift($parts);
         }
 
@@ -445,9 +449,15 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         $slug = implode('/', $parts);
 
         // If a post truly exists with this name (when provided), keep as-is.
+        // Cached via frl_cache_remember to match frl_get_cpt_id_by_slug() / frl_get_term_id_by_slug()
+        // which also use persistent caching; get_page_by_path() alone is only per-request.
         if (!empty($query_vars['name'])) {
-            $post = get_page_by_path($query_vars['name'], OBJECT, get_post_types(['public' => true]));
-            if ($post && isset($post->ID)) {
+            $name        = $query_vars['name'];
+            $post_exists = frl_cache_remember('rewriter', 'disambig_page_' . md5($name), function () use ($name) {
+                $post = get_page_by_path($name, OBJECT, get_post_types(['public' => true]));
+                return ($post && isset($post->ID));
+            });
+            if ($post_exists) {
                 return $query_vars;
             }
         }
@@ -473,71 +483,6 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
     }
 
     /**
-     * Late rescue for static-base taxonomy paths (e.g., /blog/<term>) only when posts don't match.
-     * Runs once at a very late priority to avoid interfering with core post resolution.
-     */
-    public function late_rescue_static_base(\WP_Query $query): void
-    {
-        if (!$this->is_enabled() || !$query->is_main_query() || !frl_is_valid_frontend_page_request()) {
-            return;
-        }
-
-        // Only act on 404s; do not interfere with successful post matches
-        if (!$query->is_404) {
-            return;
-        }
-
-        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
-        $path = Frl_Rewriter_Path_Utils::extract_request_path($request_uri);
-        if ($path === '') {
-            return;
-        }
-
-        $parts = explode('/', trim($path, '/'));
-        if (empty($parts)) {
-            return;
-        }
-
-        // Remove language prefix
-        $langs = Frl_Rewriter_Path_Utils::get_active_languages_safe();
-        $first = $parts[0];
-        $lang = '';
-        if (in_array($first, $langs, true)) {
-            $lang = array_shift($parts);
-        }
-
-        // Require static base
-        $static_base = $this->get_static_permalink_base();
-        if ($static_base === '' || empty($parts) || !isset($parts[0]) || $parts[0] !== $static_base) {
-            return;
-        }
-        array_shift($parts); // remove static base
-
-        if (empty($parts)) {
-            return;
-        }
-
-        $slug = implode('/', $parts);
-
-        foreach ($this->taxonomy_slugs as $taxonomy) {
-            $term_id = frl_get_term_id_by_slug($slug, $taxonomy);
-            if ($term_id) {
-                $tax_obj   = get_taxonomy($taxonomy);
-                $query_var = is_object($tax_obj) && !empty($tax_obj->query_var) ? $tax_obj->query_var : $taxonomy;
-
-                $query->set($query_var, $slug);
-                if (!empty($lang)) {
-                    $query->set('lang', $lang);
-                }
-                $query->set('error', '');
-                $query->is_404 = false;
-                $query->parse_query($query->query_vars);
-                return;
-            }
-        }
-    }
-
-    /**
      * Get configured taxonomy slugs for exclusion pattern generation
      */
     public function get_taxonomy_slugs(): array
@@ -555,10 +500,12 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         if (!$has_post_base) {
             $static_base = $this->get_static_permalink_base();
             if ($static_base !== '') {
-                $patterns[] = preg_quote($static_base);
+                // Use escape_for_regex() with default '/' delimiter so lang-grouping optimization
+                // in add_catch_all_rules() can group these patterns (requires '\/' not '/').
+                $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex($static_base);
                 $languages = Frl_Rewriter_Path_Utils::get_active_languages_safe();
                 foreach ($languages as $lc) {
-                    $patterns[] = preg_quote("{$lc}/{$static_base}");
+                    $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex("{$lc}/{$static_base}");
                 }
             }
         }

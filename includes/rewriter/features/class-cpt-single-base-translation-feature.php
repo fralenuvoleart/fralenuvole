@@ -30,17 +30,19 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
     public function __construct(string $cpt_slug)
     {
         $this->cpt_slug = $cpt_slug;
+        // Property initialisation only. All hook registration happens in register_additional_hooks(),
+        // which is called by the coordinator via register() at init priority 15.
+    }
 
-
-
-        // Load configuration early so it is available when rewrite rules are being generated.
-        // CPTs are registered on 'init', but post_type_exists() will still be true for public CPTs at default priorities.
+    protected function register_additional_hooks(): void
+    {
+        // Load configuration after CPTs are registered on 'init'.
         add_action('init', [$this, 'load_configuration'], 20, 0);
 
-        // Canonical redirect for CPT single URLs
+        // Canonical redirect for CPT single URLs to the translated base.
         add_action('template_redirect', [$this, 'maybe_redirect_canonical'], 11, 0);
 
-        // Ensure translated-base rules are prioritized over generic CPT rules from other plugins.
+        // Ensure translated-base rules are prioritised over generic CPT rules from other plugins.
         // This filter runs only when rules are (re)built, not on every request.
         add_filter('rewrite_rules_array', [$this, 'prioritize_translated_cpt_rules'], 9999, 1);
     }
@@ -124,13 +126,19 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 
     public function resolve_request(string $request_uri): array
     {
+        // Keyed by cpt_slug to prevent cross-instance cache pollution when multiple CPTs are multilingual.
         static $cache = [];
-        if (isset($cache[$request_uri])) {
-            return $cache[$request_uri];
+        if (isset($cache[$this->cpt_slug][$request_uri])) {
+            return $cache[$this->cpt_slug][$request_uri];
+        }
+        // Memory guard: bound per-CPT-slug entries to avoid unbounded growth in long-running
+        // CLI/cron contexts. Uses count() which is O(1) in PHP (array size is tracked internally).
+        if (isset($cache[$this->cpt_slug]) && count($cache[$this->cpt_slug]) > 4096) {
+            $cache[$this->cpt_slug] = [];
         }
 
         if (!$this->is_enabled()) {
-            return $cache[$request_uri] = [];
+            return $cache[$this->cpt_slug][$request_uri] = [];
         }
 
         $uri = Frl_Rewriter_Path_Utils::extract_request_path($request_uri);
@@ -139,60 +147,97 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
         foreach ($this->mappings as $lang => $translated_base) {
             $lang_esc = Frl_Rewriter_Path_Utils::escape_for_regex($lang, '#');
             $base_esc = Frl_Rewriter_Path_Utils::escape_for_regex($translated_base, '#');
-            // Check for comment pagination first
+
+            // Comment pagination
             if (preg_match("#^{$lang_esc}/{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$#", $uri, $matches)) {
-                return $cache[$request_uri] = [
-                    'post_type' => $this->cpt_slug,
-                    'name'      => $matches[1],
+                return $cache[$this->cpt_slug][$request_uri] = [
+                    'post_type'    => $this->cpt_slug,
+                    'name'         => $matches[1],
                     $cpt_query_var => $matches[1],
-                    'cpage'     => (int)$matches[2],
-                    'lang'      => $lang
+                    'cpage'        => (int) $matches[2],
+                    'lang'         => $lang,
                 ];
             }
             if (preg_match("#^{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$#", $uri, $matches)) {
-                return $cache[$request_uri] = [
-                    'post_type' => $this->cpt_slug,
-                    'name'      => $matches[1],
+                return $cache[$this->cpt_slug][$request_uri] = [
+                    'post_type'    => $this->cpt_slug,
+                    'name'         => $matches[1],
                     $cpt_query_var => $matches[1],
-                    'cpage'     => (int)$matches[2],
-                    'lang'      => $lang
+                    'cpage'        => (int) $matches[2],
                 ];
             }
-            // Check for main post slug (support hierarchical CPTs by using pagename if hierarchical)
+
+            // Feed
+            if (preg_match("#^{$lang_esc}/{$base_esc}/(.+?)/feed/?$#", $uri, $matches)) {
+                return $cache[$this->cpt_slug][$request_uri] = [
+                    'post_type'    => $this->cpt_slug,
+                    'name'         => $matches[1],
+                    $cpt_query_var => $matches[1],
+                    'feed'         => 'feed',
+                    'lang'         => $lang,
+                ];
+            }
+            if (preg_match("#^{$base_esc}/(.+?)/feed/?$#", $uri, $matches)) {
+                return $cache[$this->cpt_slug][$request_uri] = [
+                    'post_type'    => $this->cpt_slug,
+                    'name'         => $matches[1],
+                    $cpt_query_var => $matches[1],
+                    'feed'         => 'feed',
+                ];
+            }
+
+            // Embed
+            if (preg_match("#^{$lang_esc}/{$base_esc}/(.+?)/embed/?$#", $uri, $matches)) {
+                return $cache[$this->cpt_slug][$request_uri] = [
+                    'post_type'    => $this->cpt_slug,
+                    'name'         => $matches[1],
+                    $cpt_query_var => $matches[1],
+                    'embed'        => 'true',
+                    'lang'         => $lang,
+                ];
+            }
+            if (preg_match("#^{$base_esc}/(.+?)/embed/?$#", $uri, $matches)) {
+                return $cache[$this->cpt_slug][$request_uri] = [
+                    'post_type'    => $this->cpt_slug,
+                    'name'         => $matches[1],
+                    $cpt_query_var => $matches[1],
+                    'embed'        => 'true',
+                ];
+            }
+
+            // Main post slug (support hierarchical CPTs by using pagename)
             if (preg_match("#^{$lang_esc}/{$base_esc}/(.+?)/?$#", $uri, $matches)) {
                 $slug = $matches[1];
                 if (is_post_type_hierarchical($this->cpt_slug)) {
-                    return $cache[$request_uri] = [
+                    return $cache[$this->cpt_slug][$request_uri] = [
                         'post_type' => $this->cpt_slug,
                         'pagename'  => $slug,
-                        'lang'      => $lang
+                        'lang'      => $lang,
                     ];
                 }
-                return $cache[$request_uri] = [
-                    'post_type' => $this->cpt_slug,
-                    'name'      => $slug,
+                return $cache[$this->cpt_slug][$request_uri] = [
+                    'post_type'    => $this->cpt_slug,
+                    'name'         => $slug,
                     $cpt_query_var => $slug,
-                    'lang'      => $lang
+                    'lang'         => $lang,
                 ];
             }
             if (preg_match("#^{$base_esc}/(.+?)/?$#", $uri, $matches)) {
                 $slug = $matches[1];
                 if (is_post_type_hierarchical($this->cpt_slug)) {
-                    return $cache[$request_uri] = [
+                    return $cache[$this->cpt_slug][$request_uri] = [
                         'post_type' => $this->cpt_slug,
                         'pagename'  => $slug,
-                        'lang'      => $lang
                     ];
                 }
-                return $cache[$request_uri] = [
-                    'post_type' => $this->cpt_slug,
-                    'name'      => $slug,
+                return $cache[$this->cpt_slug][$request_uri] = [
+                    'post_type'    => $this->cpt_slug,
+                    'name'         => $slug,
                     $cpt_query_var => $slug,
-                    'lang'      => $lang
                 ];
             }
         }
-        return $cache[$request_uri] = [];
+        return $cache[$this->cpt_slug][$request_uri] = [];
     }
 
     /**

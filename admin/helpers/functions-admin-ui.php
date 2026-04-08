@@ -476,8 +476,6 @@ function frl_render_rewrite_cpts() {
 function frl_render_rewrite_multilingual_cpts() {
     $configurable_cpts = defined('FRL_REWRITER_MULTILINGUAL_CPT') ? FRL_REWRITER_MULTILINGUAL_CPT : [];
     $configurable_cpts = array_filter($configurable_cpts, 'post_type_exists');
-    $saved_options = frl_get_option('translate_cpt_slugs');
-    $saved_options = is_array($saved_options) ? $saved_options : [];
 
     if (empty($configurable_cpts)) {
         return sprintf('<p><em>%s</em></p>', __('No CPTs available for multilingual slugs.', FRL_PREFIX));

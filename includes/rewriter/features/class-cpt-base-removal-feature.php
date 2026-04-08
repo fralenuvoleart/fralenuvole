@@ -30,52 +30,52 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     public function __construct()
     {
-        // Configuration must be loaded on the 'init' hook. CPTs are registered on 'init',
-        // so post_type_exists() would fail earlier. The callback must be public.
+        // Property initialisation only. All hook registration happens in register_additional_hooks(),
+        // which is called by the coordinator via register() at init priority 15.
+    }
+
+    protected function register_additional_hooks(): void
+    {
+        // CPTs are registered on 'init', so post_type_exists() would fail earlier.
         add_action('init', [$this, 'ensure_config_loaded'], 20, 0);
 
-        // Add canonical redirect after main query is set up.
+        // Canonical redirect for CPT singles that still contain the base slug.
         add_action('template_redirect', [$this, 'maybe_redirect_canonical'], 1, 0);
-        // Safety-net: late rescue at low priority. Runs only when catch-all missed and WP produced 404.
+
+        // Safety-net: late rescue. Runs only when catch-all missed and WP produced a 404.
         add_action('pre_get_posts', [$this, 'late_rescue'], 999, 1);
     }
 
     /**
-     * Late rescue: if WP ended with a 404 but this feature can resolve the URL,
-     * convert the 404 into proper query vars.
+     * Late rescue: if WP would 404 but this feature can resolve the URL,
+     * inject the correct query vars before the main query executes.
      */
     public function late_rescue(\WP_Query $query): void
     {
-        // ==================================================================
-        // Guard-clauses to avoid the infinite pre_get_posts recursion loop
-        // that occurs when the request is NOT for one of the CPTs we handle.
-        // Guard-clause block above may still bail out; defer checks until after the first-segment check
-
-        // 1) Must be main frontend query and feature enabled
-        if ( !$this->is_enabled() || !$query->is_main_query() || !frl_is_valid_frontend_page_request() ) {
+        // Must be main frontend query with feature enabled.
+        if (!$this->is_enabled() || !$query->is_main_query() || !frl_is_valid_frontend_page_request()) {
             return;
         }
 
-        // 2) Allow exactly one execution per request.
+        // Performance: bail early when filter_request() / catch-all already resolved this URL
+        // to one of our CPTs. Avoids the DB lookup inside applies_to_request() on every page view.
+        $resolved_post_type = $query->get('post_type');
+        if (is_string($resolved_post_type) && in_array($resolved_post_type, $this->cpt_slugs, true)) {
+            return;
+        }
+
+        // One-shot guard: prevents re-entry if parse_query() is called recursively.
         static $rescued = false;
-        if ( $rescued ) {
-            return; // already attempted rescue in this request
-        }
-        $rescued = true; // mark immediately – prevents any further recursion
-
-        // 3) Exit early if URL still contains an explicit CPT base that
-        //    this feature is NOT supposed to remove (e.g. /service/slug/).
-        $request_path  = Frl_Rewriter_Path_Utils::extract_request_path( $_SERVER['REQUEST_URI'] ?? '' );
-        $first_segment = explode( '/', $request_path )[0] ?? '';
-
-        if ( ! in_array( $first_segment, $this->cpt_slugs, true ) ) {
+        if ($rescued) {
             return;
         }
+        $rescued = true;
 
-        // ------------------------------------------------------------------
-        // From here on we *know* the URL could belong to a base-less CPT and
-        // late_rescue can safely try to resolve it once.
-        // ------------------------------------------------------------------
+        // The previous guard compared the first URL segment against $this->cpt_slugs (CPT type
+        // names, e.g. 'service'). For base-removed URLs like /my-post-slug/, the first segment
+        // is a post slug, never the CPT type name, so the guard always returned early — making
+        // late_rescue effectively inoperative. The guard is removed; applies_to_request() below
+        // performs the correct (and only necessary) check via a cached DB lookup.
 
         $request_uri = $_SERVER['REQUEST_URI'] ?? '';
         if (!$this->applies_to_request($request_uri)) {
@@ -158,49 +158,60 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     protected function get_catch_all_exclusions(): array
     {
-        // Merge parent reserved exclusions with configuration-derived patterns
-        $patterns = parent::get_catch_all_exclusions();
+        // Cache the full exclusion list cross-request. The list depends on:
+        //   - the configured CPT slugs ($this->cpt_slugs)
+        //   - all public CPTs registered in this WP install
+        //   - generate_standard_exclusion_patterns() (which has its own cache)
+        // All of the above are stable between deploys; frl_cache_clear('rewriter') in
+        // clear_rewriter_caches() invalidates this whenever permalink options change.
+        $cache_key = 'cpt_base_catch_all_exclusions_' . md5(implode(',', $this->cpt_slugs));
 
-        // Add standard configuration-driven exclusions (translated bases, CPT/tax bases, pages)
-        $patterns = array_merge($patterns, Frl_Rewriter_Path_Utils::generate_standard_exclusion_patterns());
+        return frl_cache_remember('rewriter', $cache_key, function () {
+            // Merge parent reserved exclusions with configuration-derived patterns
+            $patterns = parent::get_catch_all_exclusions();
 
-        // Add this feature's own explicit prefixes to protect archive pagination, etc.
-        foreach ($this->cpt_slugs as $cpt) {
-            $obj = get_post_type_object($cpt);
-            if ($obj && !empty($obj->rewrite['slug'])) {
-                $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex($obj->rewrite['slug'], '#');
-            }
-        }
+            // Add standard configuration-driven exclusions (translated bases, CPT/tax bases, pages)
+            $patterns = array_merge($patterns, Frl_Rewriter_Path_Utils::generate_standard_exclusion_patterns());
 
-        // Exclude base slugs of *all* other public CPTs so the catch-all rule
-        // does not hijack URLs that still retain their base. This prevents
-        // infinite request-resolution loops (e.g. /service/slug/) when only a
-        // subset of CPTs are configured for base removal.
-        foreach (get_post_types(['public' => true], 'objects') as $pt_obj) {
-            if (in_array($pt_obj->name, $this->cpt_slugs, true)) {
-                continue; // We purposely process these CPTs
-            }
-
-            // Initialize to avoid undefined variable notices when rewrite slug is absent
-            $rewrite_slug = '';
-
-            if (!empty($pt_obj->rewrite['slug'])) {
-                $rewrite_slug = $pt_obj->rewrite['slug'];
-                $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex($rewrite_slug, '#');
-            }
-            // Exclude the CPT slug itself (object name) to catch cases where rewrite slug differs.
-            $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex($pt_obj->name, '#');
-            // Add lang-prefixed variants of the slug to cover multilingual URLs (e.g., it/service).
-            $langs = Frl_Rewriter_Path_Utils::get_active_languages_safe();
-            foreach ($langs as $lang_code) {
-                if (!empty($rewrite_slug)) {
-                    $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex("{$lang_code}/{$rewrite_slug}", '#');
+            // Add this feature's own explicit prefixes to protect archive pagination, etc.
+            // Use the default '/' delimiter so lang-grouping optimization in add_catch_all_rules() applies.
+            foreach ($this->cpt_slugs as $cpt) {
+                $obj = get_post_type_object($cpt);
+                if ($obj && !empty($obj->rewrite['slug'])) {
+                    $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex($obj->rewrite['slug']);
                 }
-                $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex("{$lang_code}/{$pt_obj->name}", '#');
             }
-        }
 
-        return array_values(array_unique($patterns));
+            // Exclude base slugs of *all* other public CPTs so the catch-all rule
+            // does not hijack URLs that still retain their base. This prevents
+            // infinite request-resolution loops (e.g. /service/slug/) when only a
+            // subset of CPTs are configured for base removal.
+            foreach (get_post_types(['public' => true], 'objects') as $pt_obj) {
+                if (in_array($pt_obj->name, $this->cpt_slugs, true)) {
+                    continue; // We purposely process these CPTs
+                }
+
+                // Initialize to avoid undefined variable notices when rewrite slug is absent
+                $rewrite_slug = '';
+
+                if (!empty($pt_obj->rewrite['slug'])) {
+                    $rewrite_slug = $pt_obj->rewrite['slug'];
+                    $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex($rewrite_slug);
+                }
+                // Exclude the CPT slug itself (object name) to catch cases where rewrite slug differs.
+                $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex($pt_obj->name);
+                // Add lang-prefixed variants of the slug to cover multilingual URLs (e.g., it/service).
+                $langs = Frl_Rewriter_Path_Utils::get_active_languages_safe();
+                foreach ($langs as $lang_code) {
+                    if (!empty($rewrite_slug)) {
+                        $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex("{$lang_code}/{$rewrite_slug}");
+                    }
+                    $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex("{$lang_code}/{$pt_obj->name}");
+                }
+            }
+
+            return array_values(array_unique($patterns));
+        });
     }
 
     public function generate_rules(): array
@@ -246,20 +257,22 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
             $slug = $matches[1];
         }
 
-        // Cache per-request lookups (positive and negative) to minimize DB work
+        // Per-request caches to minimize DB work. Note: PHP static variables are
+        // method-scoped, so these are NOT shared with resolve_request()'s statics.
+        // The persistent frl_cache_remember layer IS shared (same cache key), so both
+        // methods store the same shape: ['cpt', 'id', 'name'] or false.
         static $slug_hit_map = [];
         static $multi_index = [];
 
-        // Fast path: single multi-CPT resolution
+        // Fast path: single multi-CPT resolution via get_page_by_path
         if (!array_key_exists($slug, $multi_index)) {
-            // Persistent cache to avoid repeated DB hits across requests
             $multi_index[$slug] = frl_cache_remember(
                 'permalinks',
                 'rewriter_cpt_multislug_' . md5($slug),
                 function () use ($slug) {
                     $found = get_page_by_path($slug, OBJECT, $this->cpt_slugs);
                     return ($found && isset($found->ID, $found->post_type))
-                        ? ['cpt' => $found->post_type, 'id' => (int) $found->ID]
+                        ? ['cpt' => $found->post_type, 'id' => (int) $found->ID, 'name' => basename($slug)]
                         : false;
                 }
             );
@@ -324,11 +337,12 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
             $paged = (int) $matches[2];
         }
 
-        // Share the per-request map with applies_to_request to benefit from previous checks
+        // Per-request caches. The persistent frl_cache_remember layer is shared with
+        // applies_to_request() via the same cache key; both store ['cpt','id','name'] or false.
         static $slug_hit_map = [];
         static $multi_index = [];
 
-        // Fast path: single multi-CPT resolution
+        // Fast path: single multi-CPT resolution via get_page_by_path
         if (!array_key_exists($slug, $multi_index)) {
             $multi_index[$slug] = frl_cache_remember(
                 'permalinks',

@@ -47,10 +47,10 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
      * Feature priority (lower number = higher priority)
      *
      * Priority ranges:
-     * 10-19: Post Base Translation (highest specificity)
-     * 20-29: CPT Slug Translation
-     * 30-39: Taxonomy Base Removal
-     * 40-49: CPT Base Removal
+     * 15:    CPT Archive Base Translation
+     * 25:    CPT Single Base Translation
+     * 35:    Taxonomy Base Removal
+     * 40:    CPT Base Removal
      * 50+:   WordPress Defaults (lowest priority)
      */
     final public function get_priority(): int
@@ -168,6 +168,23 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
             add_filter('request', [$this, 'filter_catch_all_request'], $hook_priority + 50, 1);
             add_filter('query_vars', [$this, 'add_catch_all_query_var'], 10, 1);
         }
+
+        // Allow each feature to register its own additional hooks (config loader,
+        // canonical redirects, etc.) without breaking the final register() contract.
+        $this->register_additional_hooks();
+    }
+
+    /**
+     * Register feature-specific WordPress hooks.
+     *
+     * Called by register() at WordPress init priority 15, after CPTs are registered
+     * and after the core rule/request hooks have been added. Override this method
+     * in concrete features instead of using __construct() for hook registration.
+     * The constructor must remain reserved exclusively for property initialisation.
+     */
+    protected function register_additional_hooks(): void
+    {
+        // Default: no additional hooks beyond what register() already wires.
     }
 
     /**
@@ -230,8 +247,11 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
             add_rewrite_rule($pattern, $rewrite, 'top');
             $global_patterns[$pattern] = $this->get_name();
 
-            // reset after very large rule sets to avoid memory blow-up
-            if (count($global_patterns) > 5000) {
+            // Safety valve for extreme edge cases (e.g. CLI bulk generation).
+            // Threshold is intentionally high: resetting clears the cross-feature
+            // deduplication memory, so it must never happen in normal operation.
+            if (count($global_patterns) > 50000) {
+                frl_log('Rewriter: global_patterns guard exceeded 50 000 entries — resetting. Check for runaway rule generation.', [], true);
                 $global_patterns = [];
             }
         }
@@ -466,26 +486,28 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
             }
             $excluded_pattern = $alternation_cache[$alt_key];
 
-            $rule_pattern = "^(?!(?:{$excluded_pattern})(?:/|$))(.+?)/?$";
-
-            // Catch-all that excludes known patterns
-            add_rewrite_rule(
-                $rule_pattern,
-                "index.php?{$query_var}=\$matches[1]",
-                'top'
-            );
-
-            // Catch-all with pagination
+            // Pagination rule must be registered BEFORE the single-slug rule.
+            // Both use 'top' priority so they are inserted into extra_rules_top in insertion order.
+            // Apache/Nginx evaluate rules top-to-bottom; without this ordering the single rule
+            // (.+?)/?$ matches slug/page/2 before the pagination rule ever fires.
             $pagination_rule_pattern = "^(?!(?:{$excluded_pattern})(?:/|$))(.+?)/page/?([0-9]{1,})/?$";
             add_rewrite_rule(
                 $pagination_rule_pattern,
                 "index.php?{$query_var}=\$matches[1]&paged=\$matches[2]",
                 'top'
             );
+
+            $rule_pattern = "^(?!(?:{$excluded_pattern})(?:/|$))(.+?)/?$";
+            add_rewrite_rule(
+                $rule_pattern,
+                "index.php?{$query_var}=\$matches[1]",
+                'top'
+            );
         } else {
-            // Simple catch-all when no exclusions needed
-            add_rewrite_rule("(.+?)/?$", "index.php?{$query_var}=\$matches[1]", 'top');
+            // Simple catch-all when no exclusions needed.
+            // Pagination rule first for the same ordering reason as above.
             add_rewrite_rule("(.+?)/page/?([0-9]{1,})/?$", "index.php?{$query_var}=\$matches[1]&paged=\$matches[2]", 'top');
+            add_rewrite_rule("(.+?)/?$", "index.php?{$query_var}=\$matches[1]", 'top');
         }
     }
 
@@ -581,7 +603,9 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
         foreach ($langs as $lc) {
             if (is_string($lc) && $lc !== '') {
                 // Exclude only the bare language root (e.g., 'ru'), not all lang-prefixed paths (e.g., 'ru/…').
-                $patterns[] = preg_quote($lc, '#') . '$';
+                // Uses escape_for_regex() (default '/' delimiter) for consistency with every other
+                // exclusion pattern in the codebase. Functionally identical for alphanumeric lang codes.
+                $patterns[] = Frl_Rewriter_Path_Utils::escape_for_regex($lc) . '$';
             }
         }
 
@@ -631,10 +655,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
         // Add global configuration that affects this feature
         $config_data['global_config'] = [
-            'translate_post_base' => frl_get_option('translate_post_base'),
             'remove_tax_base' => frl_get_option('remove_tax_base'),
             'remove_cpt_base' => frl_get_option('remove_cpt_base'),
-            'integrate_cpt_with_blog' => frl_get_option('integrate_cpt_with_blog'),
         ];
 
         // Add CPT translation configs if applicable

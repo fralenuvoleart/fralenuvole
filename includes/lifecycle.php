@@ -218,6 +218,19 @@ function frl_execute_rewrite_flush(): void
         frl_cache_clear('options');
     }
 
+    // Delete the rewriter exclusion-patterns DB transient. This transient is used on
+    // sites without a persistent external object cache (no Redis/Memcached) and is
+    // NOT cleared by frl_cache_clear() because it lives outside the plugin's cache-group
+    // key space. Without this deletion the catch-all exclusion patterns for CPT/taxonomy
+    // base removal remain stale for up to 1 hour after every flush.
+    if (function_exists('frl_delete_transient')) {
+        frl_delete_transient('rewriter_excl_patterns');
+    } else {
+        // Fallback for the rare case this runs before helpers are loaded (e.g. very early cron).
+        // 'frl_rewriter_excl_patterns' = frl_prefix('rewriter_excl_patterns') where FRL_PREFIX='frl'.
+        delete_transient('frl_rewriter_excl_patterns');
+    }
+
     // Outbound: notify third-party cache plugins that rewrite rules changed.
     if (function_exists('frl_thirdparty_maybe_notify')) {
         frl_thirdparty_maybe_notify('rewrite_flush');

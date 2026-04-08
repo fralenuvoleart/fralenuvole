@@ -12,14 +12,8 @@ if (!defined('ABSPATH')) {
  */
 if (!defined('FRL_REWRITER_PRIORITIES')) {
     define('FRL_REWRITER_PRIORITIES', [
-        'Frl_Post_Archive_Base_Translation_Feature' => 10,
-        'Frl_Post_Static_Base_Enforcer_Feature'     => 12,
         'Frl_CPT_Archive_Base_Translation_Feature'  => 15,
-        'Frl_Post_Single_Base_Translation_Feature'  => 20,
-        // Ensure child-under-parent runs before base removal
-        'Frl_CPT_CPT_Hierarchy_Feature'             => 28,
         'Frl_CPT_Single_Base_Translation_Feature'   => 25,
-        'Frl_CPT_Blog_Integrator_Feature'           => 30,
         'Frl_Taxonomy_Base_Removal_Feature'         => 35,
         'Frl_CPT_Base_Removal_Feature'              => 40,
     ]);
@@ -46,27 +40,8 @@ if (!defined('FRL_REWRITER_MULTILINGUAL_CPT')) {
  */
 if (!defined('FRL_REWRITER_FEATURES')) {
     define('FRL_REWRITER_FEATURES', [
-        Frl_Post_Archive_Base_Translation_Feature::class,
-        Frl_Post_Single_Base_Translation_Feature::class,
-        Frl_CPT_CPT_Hierarchy_Feature::class,
-        Frl_CPT_Blog_Integrator_Feature::class,
         Frl_Taxonomy_Base_Removal_Feature::class,
         Frl_CPT_Base_Removal_Feature::class,
-    ]);
-}
-
-/**
- * Configuration for CPT→CPT hierarchy feature.
- *
- * child_cpt:      the child post type slug to be nested (default 'service')
- * parent_cpt:     the parent post type slug providing the path (default 'jurisdiction')
- * relation_meta:  meta key on child that stores parent ID(s) (default 'jurisdiction')
- */
-if (!defined('FRL_REWRITER_CPT_CPT_HIERARCHY')) {
-    define('FRL_REWRITER_CPT_CPT_HIERARCHY', [
-        'parent_cpt' => 'jurisdiction',
-        'child_cpt' => 'service',
-        'relation_meta' => 'jurisdiction',
     ]);
 }
 

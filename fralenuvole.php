@@ -95,9 +95,7 @@ function frl_load_core_components()
     // Explicitly initialize components
     frl_translator_init();
 
-    if (!frl_get_option('disable_rewriter')) {
-        Frl_Rewriter::init_with_di();
-    }
+    frl_rewriter_init();
 
     add_action('init',
         'frl_shortcodes_init',

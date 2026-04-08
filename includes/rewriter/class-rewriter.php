@@ -8,29 +8,35 @@
  */
 
 /**
- * New Independent Architecture (Strategy 1: Priority-Based Feature Architecture)
- * ============================================================================
+ * Priority-Based Feature Architecture
+ * =====================================
  *
- * Each feature operates completely independently with:
+ * Each feature is self-contained with:
  * - Its own configuration validation
  * - Independent rewrite rule generation
  * - Isolated URL request handling
  * - Clear priority assignment
- * - No cross-feature dependencies
  *
  * Feature Priority Order:
- *   Priority 10: Post Base Translation (highest specificity)
- *   Priority 20: CPT Slug Translation
- *   Priority 30: Taxonomy Base Removal
+ *   Priority 15: CPT Archive Base Translation
+ *   Priority 25: CPT Single Base Translation
+ *   Priority 35: Taxonomy Base Removal
  *   Priority 40: CPT Base Removal
  *   Priority 50+: WordPress Defaults (lowest priority)
  *
  * Benefits:
- * - 100% feature independence
+ * - No direct class-to-class coupling
  * - No pattern conflicts through priority-based resolution
  * - Easy feature addition/removal
  * - Clear debugging and maintenance
  * - Robust conflict detection
+ *
+ * Note on inter-feature coordination:
+ * Features communicate exclusively through named WordPress filters (loose coupling).
+ * Specifically, Frl_CPT_Archive_Base_Translation_Feature publishes its translated URL
+ * prefixes via the 'frl_rewriter_url_prefixes' filter, which Frl_Taxonomy_Base_Removal_Feature
+ * consumes to build correct catch-all exclusion lists. Absence of the CPT archive feature
+ * degrades gracefully (incomplete exclusions) rather than causing errors.
  */
 
 // Exit if accessed directly
@@ -41,8 +47,12 @@ if (!defined('ABSPATH')) {
 // Load dependencies
 require_once __DIR__ . '/interface-rewriter.php';
 require_once __DIR__ . '/class-rewriter-coordinator.php';
-require_once __DIR__ . '/class-rewriter-config-validator.php';
 require_once __DIR__ . '/trait-cache-key-generator.php';
+
+// Config validator is admin-only: heavy class with no frontend value.
+if (is_admin()) {
+    require_once __DIR__ . '/class-rewriter-config-validator.php';
+}
 
 /**
  * Main Rewriter class using independent feature architecture.
@@ -54,10 +64,6 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
 {
     use Frl_Rewriter_Cache_Key_Trait;
     private Frl_Rewriter_Coordinator $coordinator;
-    /**
-     * Cache enabled features list to avoid repeated array_filter calls on every URL.
-     */
-    private array $enabled_features = [];
 
     private static ?self $instance = null;
     private static bool $hooks_registered = false;
@@ -77,16 +83,6 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         return self::$instance;
     }
 
-    /**
-     * Initializes the rewriter subsystem using the new independent feature architecture
-     *
-     * @return Frl_Rewriter_Interface The fully initialized rewriter instance
-     */
-    public static function init_with_di(): Frl_Rewriter_Interface
-    {
-        return self::init();
-    }
-
     private function register_hooks(): void
     {
         if (self::$hooks_registered) {
@@ -94,15 +90,11 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         }
 
         // URL transformation hooks (for generating URLs)
-        add_filter('post_link', [$this, 'filter_post_link'], 10, 2);
         add_filter('post_type_link', [$this, 'filter_post_link'], 10, 2);
         add_filter('term_link', [$this, 'filter_term_link'], 10, 3);
 
-        // Archive and feed link hooks
-        add_filter('post_type_archive_link', [$this, 'filter_generic_link'], 10, 2);
-        add_filter('get_post_type_archive_link', [$this, 'filter_generic_link'], 10, 2);
-        add_filter('post_type_archive_feed_link', [$this, 'filter_generic_link'], 10, 2);
-        add_filter('term_feed_link', [$this, 'filter_generic_link'], 10, 3);
+        // Wire cache invalidation so changes to permalink options flush rewriter caches.
+        self::register_cache_invalidation_hooks();
 
         self::$hooks_registered = true;
     }
@@ -125,14 +117,6 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     }
 
     /**
-     * Generic link filter for archive and feed links
-     */
-    public function filter_generic_link(string $link, $object = null): string
-    {
-        return $this->transform_url($link, $object);
-    }
-
-    /**
      * Central URL transformation logic.
      *
      * Iterates through features in priority order and applies ALL
@@ -145,35 +129,45 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
             return $url;
         }
 
-        // Get enabled features dynamically to ensure system state (CPTs/Mappings) is ready
-        $features = $this->coordinator->get_enabled_features();
-        if (empty($features)) {
+        // REST API guard must come BEFORE the cache check.
+        // URL transformation is disabled for REST to preserve canonical, untransformed URLs for
+        // API clients. Placing this first ensures REST requests NEVER read a cached transformed
+        // URL that was stored by a prior frontend request — guaranteeing consistent REST output
+        // regardless of cache state.
+        if (frl_is_rest_api_request()) {
             return $url;
         }
 
-        // Re-entrancy protection: prevent recursive URL processing during ACF relationship queries
+        // Fast-path cache check: generate the key and return immediately on hit.
+        // This eliminates the get_enabled_features() array_filter call on every
+        // post_type_link / term_link filter invocation when the result is already cached.
+        $cache_key = $this->generate_cache_key($url, $object);
+        $cached = frl_cache_get('permalinks', $cache_key);
+        if (is_string($cached)) {
+            return $cached;
+        }
+
+        // Re-entrancy protection: prevent recursive URL processing during ACF relationship queries.
         // Use string concatenation for the key instead of md5 for maximum performance.
         static $processing_urls = [];
         $object_id = isset($object->ID) ? $object->ID : (isset($object->term_id) ? $object->term_id : 'unknown');
         $re_entrancy_key = $object_id . '_' . $url;
 
         if (isset($processing_urls[$re_entrancy_key])) {
-            // Return cached result if available, otherwise return original URL
-            $cache_key = $this->generate_cache_key($url, $object);
-            $cached = frl_cache_get('permalinks', $cache_key);
-            return (is_string($cached)) ? $cached : $url;
+            // Cache was already checked above and was a miss; no result available yet.
+            return $url;
         }
 
         $processing_urls[$re_entrancy_key] = true;
 
-        // Performance guard: Do not transform URLs in REST API contexts to preserve canonical URLs for clients.
-        if (frl_is_rest_api_request()) {
+        // Get enabled features (only reached on cache miss — avoids array_filter overhead on hits).
+        $features = $this->coordinator->get_enabled_features();
+        if (empty($features)) {
             unset($processing_urls[$re_entrancy_key]);
             return $url;
         }
 
-        // Performance optimization: Enhanced cache key for ACF relationship contexts
-        $cache_key = $this->generate_cache_key($url, $object);
+        // cache_key already generated above.
 
         $result = frl_cache_remember('permalinks', $cache_key, function () use ($url, $object, $features) {
             $transformed_url = $url;
@@ -266,8 +260,12 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     }
 
     /**
-     * Pre-populate cache for ACF relationship objects to optimize performance.
-     * This method can be called in templates to warm the cache for known relationship objects.
+     * Pre-populate permalink cache for ACF relationship objects.
+     *
+     * Calling get_permalink() for each post is sufficient: it fires the post_type_link
+     * filter which invokes transform_url(), which caches the transformed result via
+     * frl_cache_remember. No explicit transform_url() call is needed here — doing so
+     * would transform an already-transformed URL a second time, corrupting the cache.
      *
      * @param array $posts Array of WP_Post objects from ACF relationship fields
      * @return void
@@ -283,21 +281,10 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
                 continue;
             }
 
-            // Generate the URL that WordPress would normally generate
-            $original_url = get_permalink($post);
-            if (!$original_url) {
-                continue;
-            }
-
-            // Check if already cached
-            $cache_key = $this->generate_cache_key($original_url, $post);
-            $cached_value = frl_cache_get('permalinks', $cache_key);
-            if ($cached_value !== false && $cached_value !== null) {
-                continue; // Already cached
-            }
-
-            // Pre-transform and cache the URL
-            $this->transform_url($original_url, $post);
+            // get_permalink() fires post_type_link → filter_post_link() → transform_url(),
+            // which internally uses frl_cache_remember to store the result. A subsequent
+            // call in the same request for the same post will return the cached value.
+            get_permalink($post);
         }
     }
 
@@ -337,27 +324,35 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     {
         // Clear permalink-related caches using plugin's cache manager
         frl_cache_clear('permalinks');
+        frl_cache_clear('rewriter');
 
         // Clear options cache to refresh configuration
         frl_cache_clear('options');
 
-        // Also clear any transients related to rewriter
-        frl_delete_transient('rewrite_rules');
+        // Delete the exclusion-patterns DB transient used on sites without persistent object cache.
+        frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
 
         // Force WordPress to regenerate rewrite rules
         flush_rewrite_rules(false);
-
-        // Log cache clear for monitoring
-
     }
 
     /**
-     * Force rewrite rules refresh for the new independent feature architecture
+     * Force rewrite rules refresh for the new independent feature architecture.
+     *
+     * Delegates to clear_rewriter_caches() which performs a complete, consistent
+     * purge: both cache groups, the DB transient, and flush_rewrite_rules(). The
+     * previous implementation called coordinator->force_refresh() directly, which
+     * only reset the in-memory config hash and flushed WP rules while leaving all
+     * persistent frl_cache_remember() entries and the exclusion-patterns transient
+     * stale.
      */
     public static function force_rules_refresh(): void
     {
+        // Also reset coordinator's in-memory config hash so validation cache re-evaluates.
         $coordinator = Frl_Rewriter_Coordinator::init();
-        $coordinator->force_refresh();
+        $coordinator->invalidate_config_hash();
+
+        self::clear_rewriter_caches();
     }
 
     /**
@@ -375,13 +370,13 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
 
         // Defer hook registration until 'wp_loaded' to ensure all plugins and themes are loaded
         add_action('wp_loaded', function () {
-            add_action('update_option_permalink_structure',    [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('update_option_category_base',          [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('update_option_tag_base',               [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('update_option_translate_post_base',    [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('update_option_remove_cpt_base',        [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('update_option_remove_tax_base',        [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('update_option_integrate_cpt_with_blog', [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_permalink_structure', [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_category_base',       [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_tag_base',            [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_remove_cpt_base',     [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('update_option_remove_tax_base',     [self::class, 'clear_rewriter_caches'], 10, 1);
+            // Post base translation affects get_post_base_mappings(), taxonomy rules, and catch-all exclusions.
+            add_action('update_option_translate_post_base', [self::class, 'clear_rewriter_caches'], 10, 1);
 
             if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
                 foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
@@ -392,6 +387,6 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
             if (get_option('rewrite_rules') === false) {
                 self::clear_rewriter_caches();
             }
-        }, 10, 1);
+        }, 10, 0);
     }
 }

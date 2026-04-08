@@ -314,6 +314,42 @@ function frl_environment_reset_ignored(): array
 }
 
 /**
+ * Check whether the Rewriter subsystem is available and enabled.
+ *
+ * Mirrors frl_environment_is_loaded() / frl_cache_is_loaded(): centralises the
+ * class-existence check and the disable_rewriter option so every call site
+ * (fralenuvole.php, frl_optimize_acf_urls(), etc.) shares one canonical guard.
+ * Result is static-cached for the lifetime of the request.
+ *
+ * @return bool True if Frl_Rewriter is loaded and the rewriter is not disabled.
+ */
+function frl_rewriter_is_loaded(): bool
+{
+    static $is_available = null;
+    if ($is_available !== null) {
+        return $is_available;
+    }
+    if (frl_get_option('disable_rewriter')) {
+        return $is_available = false;
+    }
+    return $is_available = frl_class_exists('Frl_Rewriter', __FUNCTION__);
+}
+
+/**
+ * Initialise the Rewriter subsystem.
+ *
+ * Mirrors frl_environment_init() / frl_translator_init(): a thin, guarded wrapper
+ * so fralenuvole.php does not need to know about class names or disable options.
+ */
+function frl_rewriter_init(): void
+{
+    if (!frl_rewriter_is_loaded()) {
+        return;
+    }
+    Frl_Rewriter::init();
+}
+
+/**
  * Check if a class exists
  *
  * @param string $class Class name

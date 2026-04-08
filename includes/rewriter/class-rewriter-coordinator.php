@@ -36,7 +36,8 @@ class Frl_Rewriter_Coordinator
 
     private static ?self $instance = null;
 
-    private string $config_hash = '';
+    /** Computed lazily on first access, after init/20 config loaders have run. */
+    private ?string $config_hash = null;
 
     private function __construct()
     {
@@ -64,9 +65,7 @@ class Frl_Rewriter_Coordinator
         usort($this->features, function ($a, $b) {
             return $a->get_priority() <=> $b->get_priority();
         });
-
-        // Generate config hash for change detection
-        $this->config_hash = $this->generate_config_hash();
+        // Config hash is computed lazily on first access (after init/20 config loaders run).
     }
 
     /**
@@ -96,8 +95,8 @@ class Frl_Rewriter_Coordinator
                 }
 
                 (new $feature_class())->self_register();
-            } catch (Exception $e) {
-                // Safety net: Continue if feature registration fails
+            } catch (Throwable $e) {
+                // Safety net: Continue if feature registration fails (catches Exception and Error)
                 frl_log('Rewriter feature registration failed: {class} - {error}', [
                     'class' => $feature_class,
                     'error' => $e->getMessage()
@@ -113,8 +112,8 @@ class Frl_Rewriter_Coordinator
                     // Create features; each will verify post_type_exists() during init.
                     (new Frl_CPT_Archive_Base_Translation_Feature($cpt_slug))->self_register();
                     (new Frl_CPT_Single_Base_Translation_Feature($cpt_slug))->self_register();
-                } catch (Exception $e) {
-                    // Safety net: Continue if CPT feature registration fails
+                } catch (Throwable $e) {
+                    // Safety net: Continue if CPT feature registration fails (catches Exception and Error)
                     frl_log('Rewriter CPT feature registration failed: {cpt_slug} - {error}', [
                         'cpt_slug' => $cpt_slug,
                         'error' => $e->getMessage()
@@ -136,12 +135,24 @@ class Frl_Rewriter_Coordinator
     }
 
     /**
+     * Return the config hash, computing it on first call (after init/20 config loaders have run).
+     * This ensures features that load their enabled-state from the DB are correctly included.
+     */
+    private function get_config_hash(): string
+    {
+        if ($this->config_hash === null) {
+            $this->config_hash = $this->generate_config_hash();
+        }
+        return $this->config_hash;
+    }
+
+    /**
      * Validate that all features have non-conflicting patterns
      */
     public function validate_all_features(): bool
     {
         // Cache validation results based on configuration hash
-        return frl_cache_remember('rewriter', "features_validation_{$this->config_hash}", function () {
+        return frl_cache_remember('rewriter', "features_validation_{$this->get_config_hash()}", function () {
             $all_patterns = [];
 
             foreach ($this->features as $feature) {
@@ -153,8 +164,8 @@ class Frl_Rewriter_Coordinator
                     $feature->validate_patterns(array_keys($all_patterns));
                     $feature_patterns = $feature->generate_rules();
                     $all_patterns = array_merge($all_patterns, $feature_patterns);
-                } catch (Exception $e) {
-
+                } catch (Throwable $e) {
+                    // Catches both Exception and PHP Error (TypeError, ArgumentCountError, etc.)
                     return false;
                 }
             }
@@ -179,16 +190,45 @@ class Frl_Rewriter_Coordinator
     }
 
     /**
-     * Force a complete rewrite rules refresh
+     * Force a complete rewrite rules refresh.
+     *
+     * Delegates to Frl_Rewriter::clear_rewriter_caches() which performs the full
+     * consistent purge: both cache groups, the exclusion-patterns DB transient, and
+     * flush_rewrite_rules(). The in-memory config hash is also reset so the next
+     * validate_all_features() call recomputes with fresh option values.
+     *
+     * The previous implementation called delete_option + flush_rewrite_rules directly,
+     * bypassing all frl_cache_clear() calls and leaving persistent caches stale.
+     * Kept public for backwards compatibility with any external callers.
      */
     public function force_refresh(): void
     {
-        delete_option('rewrite_rules');
-        flush_rewrite_rules(false);
+        $this->config_hash = null;
+        if (class_exists('Frl_Rewriter')) {
+            Frl_Rewriter::clear_rewriter_caches();
+        } else {
+            // Fallback if called before Frl_Rewriter is loaded (should not happen in normal use).
+            delete_option('rewrite_rules');
+            flush_rewrite_rules(false);
+        }
     }
 
     /**
-     * Generate unique hash of feature configurations
+     * Invalidate the in-memory config hash so the next validate_all_features() call
+     * recomputes with the current option values. Used by force_rules_refresh() which
+     * delegates the full cache + WP-rules purge to clear_rewriter_caches().
+     */
+    public function invalidate_config_hash(): void
+    {
+        $this->config_hash = null;
+    }
+
+    /**
+     * Generate unique hash of feature configurations.
+     *
+     * Includes the actual option values (not just enabled/priority) so the
+     * validate_all_features() cache invalidates when configuration changes —
+     * e.g., when CPT slugs are added to remove_cpt_base without toggling any feature.
      */
     private function generate_config_hash(): string
     {
@@ -196,10 +236,23 @@ class Frl_Rewriter_Coordinator
 
         foreach ($this->features as $feature) {
             $config_data[] = [
-                'name' => $feature->get_name(),
-                'enabled' => $feature->is_enabled(),
-                'priority' => $feature->get_priority()
+                'name'     => $feature->get_name(),
+                'enabled'  => $feature->is_enabled(),
+                'priority' => $feature->get_priority(),
             ];
+        }
+
+        // Include the option values that drive feature behaviour.
+        $config_data['options'] = [
+            'remove_cpt_base'     => frl_get_option('remove_cpt_base'),
+            'remove_tax_base'     => frl_get_option('remove_tax_base'),
+            'translate_post_base' => frl_get_option('translate_post_base'),
+        ];
+
+        if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
+            foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
+                $config_data['options']["translate_cpt_slugs_{$cpt_slug}"] = frl_get_option("translate_cpt_slugs_{$cpt_slug}");
+            }
         }
 
         return md5(json_encode($config_data, JSON_THROW_ON_ERROR));

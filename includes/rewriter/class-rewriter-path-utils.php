@@ -22,15 +22,14 @@ final class Frl_Rewriter_Path_Utils
         $parsed = wp_parse_url($url);
         $path = $parsed['path'] ?? '';
 
-        // Extract language prefix if present
+        // Extract language prefix if present.
+        // array_values() re-indexes after array_filter so callers can safely use $segments[0].
         $lang_prefix = '';
-        $segments = array_filter(explode('/', trim($path, '/')));
+        $segments = array_values(array_filter(explode('/', trim($path, '/'))));
 
         $active_langs = self::get_active_languages_safe();
         if (
             !empty($segments)
-            && strlen($segments[0]) === 2
-            && ctype_alpha($segments[0])
             && in_array($segments[0], $active_langs, true)
         ) {
             $lang_prefix = array_shift($segments);
@@ -41,26 +40,6 @@ final class Frl_Rewriter_Path_Utils
             'lang_prefix' => $lang_prefix,
             'segments' => $segments
         ];
-    }
-
-    /**
-     * Normalize URL segments.
-     */
-    public static function normalize_segments(array $segments, array $known_bases, string $target_base): array
-    {
-        if (empty($segments) || empty($target_base)) {
-            return $segments;
-        }
-
-        // Replace first segment if it matches any known base
-        foreach ($known_bases as $base) {
-            if (!empty($base) && isset($segments[0]) && $segments[0] === $base) {
-                $segments[0] = $target_base;
-                break;
-            }
-        }
-
-        return $segments;
     }
 
     /**
@@ -159,7 +138,7 @@ final class Frl_Rewriter_Path_Utils
      */
     public static function extract_request_path(string $request_uri): string
     {
-        return ltrim((string)parse_url($request_uri, PHP_URL_PATH) ?? '', '/');
+        return ltrim((string)(parse_url($request_uri, PHP_URL_PATH) ?? ''), '/');
     }
 
     /**
@@ -204,79 +183,107 @@ final class Frl_Rewriter_Path_Utils
     }
 
     /**
-     * Generate configuration-based exclusion patterns (shared by catch-all features)
+     * Transient key used by generate_standard_exclusion_patterns() for persistent storage
+     * on sites without an external object cache. Exposed so clear_rewriter_caches() can
+     * delete it when permalink options change.
+     */
+    const EXCLUSION_PATTERNS_TRANSIENT = 'rewriter_excl_patterns';
+
+    /**
+     * Generate configuration-based exclusion patterns (shared by catch-all features).
      *
-     * Reads standard configuration options and generates regex patterns
-     * for exclusion from catch-all rules. This is stateless and feature-independent.
-     * Results are cached for performance.
+     * Results are cached in two layers:
+     *  - When a persistent object cache is active: keyed by posts:last_changed so slugs
+     *    added or removed automatically invalidate the cache (no DB transient needed).
+     *  - Without persistent object cache: stored in a DB transient (TTL = 1 hour).
+     *    The transient is deleted by Frl_Rewriter::clear_rewriter_caches() whenever
+     *    permalink structure or relevant options change, so stale data is bounded.
      *
      * @return array Array of escaped regex patterns
      */
     public static function generate_standard_exclusion_patterns(): array
     {
-        // Include posts:last_changed in cache key to auto-invalidate when page slugs change (#perf-fragility-fix)
-        if ( wp_using_ext_object_cache() ) {
-            $postsLastChanged = wp_cache_get( 'last_changed', 'posts' );
-            if ( ! $postsLastChanged ) {
+        if (wp_using_ext_object_cache()) {
+            // Fine-grained invalidation: re-key on posts last_changed counter.
+            $postsLastChanged = wp_cache_get('last_changed', 'posts');
+            if (!$postsLastChanged) {
                 $postsLastChanged = microtime();
-                wp_cache_set( 'last_changed', $postsLastChanged, 'posts' );
+                wp_cache_set('last_changed', $postsLastChanged, 'posts');
             }
             $cacheKey = "exclusion_patterns_{$postsLastChanged}";
-        } else {
-            // stable key
-            $cacheKey = 'exclusion_patterns';
+            return frl_cache_remember('rewriter', $cacheKey, [self::class, 'compute_exclusion_patterns']);
         }
 
-        return frl_cache_remember('rewriter', $cacheKey, function () {
-            $patterns = [];
+        // No persistent object cache: avoid the expensive get_pages() on every request
+        // by storing results in a DB transient. TTL is 1 hour; explicit deletion is wired
+        // to clear_rewriter_caches() which fires on permalink/option changes.
+        $cached = frl_get_transient(self::EXCLUSION_PATTERNS_TRANSIENT);
+        if ($cached !== false) {
+            return $cached;
+        }
 
-            // Use consolidated config parsing
-            $post_mappings = self::get_post_base_mappings();
-            $patterns = array_merge($patterns, self::get_lang_base_patterns($post_mappings));
+        $patterns = self::compute_exclusion_patterns();
+        frl_set_transient(self::EXCLUSION_PATTERNS_TRANSIENT, $patterns, HOUR_IN_SECONDS);
+        return $patterns;
+    }
 
-            // Exclude CPT translation bases if configured
-            if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
-                foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
-                    $cpt_mappings = self::get_cpt_mappings($cpt_slug);
-                    $patterns = array_merge($patterns, self::get_lang_base_patterns($cpt_mappings));
-                }
+    /**
+     * Compute exclusion patterns without any caching layer.
+     * Called by generate_standard_exclusion_patterns() and tests.
+     *
+     * @return array Array of unique escaped regex patterns
+     */
+    public static function compute_exclusion_patterns(): array
+    {
+        $patterns = [];
+
+        // Post base translation bases
+        $post_mappings = self::get_post_base_mappings();
+        $patterns = array_merge($patterns, self::get_lang_base_patterns($post_mappings));
+
+        // CPT translation bases contributed via filter (avoids coupling to FRL_REWRITER_MULTILINGUAL_CPT).
+        // Frl_CPT_Archive_Base_Translation_Feature::contribute_url_prefixes() populates this.
+        $contributed = (array) apply_filters('frl_rewriter_url_prefixes', []);
+        foreach ($contributed as $prefix) {
+            $prefix = trim((string) $prefix);
+            if ($prefix !== '') {
+                $patterns[] = self::escape_for_regex($prefix);
             }
+        }
 
-            // Exclude all registered public CPT base slugs to avoid catch-all hijack when no translation configured.
-            $cpts = get_post_types(['public' => true, '_builtin' => false], 'objects');
-            foreach ($cpts as $cpt_obj) {
-                if (isset($cpt_obj->rewrite['slug']) && $cpt_obj->rewrite['slug'] !== '') {
-                    $patterns[] = self::escape_for_regex($cpt_obj->rewrite['slug']);
-                }
+        // All registered public CPT base slugs (prevents catch-all from hijacking CPT archives).
+        $cpts = get_post_types(['public' => true, '_builtin' => false], 'objects');
+        foreach ($cpts as $cpt_obj) {
+            if (isset($cpt_obj->rewrite['slug']) && $cpt_obj->rewrite['slug'] !== '') {
+                $patterns[] = self::escape_for_regex($cpt_obj->rewrite['slug']);
             }
+        }
 
-            // Exclude public taxonomy rewrite bases (category, tag, custom tax). Prevents taxonomy-base removal catch-all capturing other archives.
-            $taxes = get_taxonomies(['public' => true], 'objects');
-            foreach ($taxes as $tax) {
-                if (isset($tax->rewrite['slug']) && $tax->rewrite['slug'] !== '') {
-                    $patterns[] = self::escape_for_regex($tax->rewrite['slug']);
-                }
+        // Public taxonomy rewrite bases (prevents catch-all from capturing taxonomy archives).
+        $taxes = get_taxonomies(['public' => true], 'objects');
+        foreach ($taxes as $tax) {
+            if (isset($tax->rewrite['slug']) && $tax->rewrite['slug'] !== '') {
+                $patterns[] = self::escape_for_regex($tax->rewrite['slug']);
             }
+        }
 
-            // Exclude top-level published page slugs (avoid hijacking standard pages)
-            $limit = defined('FRL_REWRITER_PAGE_TOPLEVEL_CAP') ? (int) FRL_REWRITER_PAGE_TOPLEVEL_CAP : 500;
-            $pages = get_pages(['post_status' => 'publish', 'number' => $limit, 'parent' => 0]);
-            if ($pages) {
-                $langs = self::get_active_languages_safe();
-                foreach ($pages as $page) {
-                    if (!empty($page->post_name)) {
-                        $slug = $page->post_name;
-                        $patterns[] = self::escape_for_regex($slug);
-                        // Include language-prefixed variants for multilingual setups
-                        foreach ($langs as $lang) {
-                            $patterns[] = self::escape_for_regex("{$lang}/{$slug}");
-                        }
+        // Top-level published page slugs (avoids hijacking standard pages).
+        $limit = defined('FRL_REWRITER_PAGE_TOPLEVEL_CAP') ? (int) FRL_REWRITER_PAGE_TOPLEVEL_CAP : 500;
+        $pages = get_pages(['post_status' => 'publish', 'number' => $limit, 'parent' => 0]);
+        if ($pages) {
+            $langs = self::get_active_languages_safe();
+            foreach ($pages as $page) {
+                if (!empty($page->post_name)) {
+                    $slug = $page->post_name;
+                    $patterns[] = self::escape_for_regex($slug);
+                    foreach ($langs as $lang) {
+                        $patterns[] = self::escape_for_regex("{$lang}/{$slug}");
                     }
                 }
             }
+        }
 
-            return array_unique($patterns);
-        });
+        return array_unique($patterns);
     }
 
     /**

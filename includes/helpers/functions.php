@@ -1264,7 +1264,7 @@ if (!function_exists('wp_array_recursive_merge')) {
  */
 function frl_optimize_acf_urls(array $posts): array
 {
-	if (empty($posts) || !class_exists('Frl_Rewriter')) {
+	if (empty($posts) || !frl_rewriter_is_loaded()) {
 		return $posts;
 	}
 
