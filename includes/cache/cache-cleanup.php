@@ -11,6 +11,8 @@ if (!defined('ABSPATH')) {
  * This file handles core cache cleanup hooks and functions.
  */
 
+// frl_cache_admin stores per-user admin-bar data; prefetching it would cross user boundaries.
+add_filter('objectcache_non_prefetchable_groups', 'frl_cache_register_non_prefetchable_groups', 10, 1);
 // Register term-change hooks that require a rewrite flush
 add_action('init',                        'frl_register_hooks_rewrite_flush', 10, 0);
 add_action('update_option',               'frl_clear_option_transient',       10, 1);
@@ -22,7 +24,11 @@ add_action('wp_update_nav_menu',          'frl_clear_navigation_cache',        1
 add_action('profile_update',              'frl_clear_user_cache',              10, 1);
 add_action('updated_option',              'frl_clear_option_cache',            10, 1);
 add_action('updated_option',              'frl_clear_acf_option_icon_cache',   10, 1);
-
+function frl_cache_register_non_prefetchable_groups(array $groups): array
+{
+    $groups[] = FRL_CACHE_PREFIX . 'admin';
+    return $groups;
+}
 function frl_register_hooks_rewrite_flush(): void
 {
     foreach (['category', 'post_tag'] as $taxonomy) {
