@@ -202,33 +202,26 @@ function frl_schedule_rewrite_flush()
 
 /**
  * Cron-safe hard flush executed by the deferred event.
+ *
+ * Delegates all rewriter cache clearing to Frl_Rewriter::clear_rewriter_caches(),
+ * which is the single canonical path that clears ALL three cache groups
+ * ('permalinks', 'rewriter', 'options'), the exclusion-patterns DB transient,
+ * and flushes WP rewrite rules. Duplicating the list here previously caused
+ * the 'rewriter' group to be skipped, leaving stale catch-all exclusion patterns
+ * in Redis/Memcached after a flush until a Hard Cache Reset was performed.
  */
 function frl_execute_rewrite_flush(): void
 {
-    // flush_rewrite_rules(false) already deletes the rewrite_rules option internally
-    // and regenerates the rules. No need for redundant delete_option() call.
-    flush_rewrite_rules(false);
-
-    if (function_exists('frl_cache_clear')) {
-        // Clear all caches related to URL structure and resolution
-        frl_cache_clear('permalinks');
-
-        // Clearing 'options' also clears the 'rewriter' group due to dependencies.
-        // This ensures all derived configs are rebuilt.
-        frl_cache_clear('options');
-    }
-
-    // Delete the rewriter exclusion-patterns DB transient. This transient is used on
-    // sites without a persistent external object cache (no Redis/Memcached) and is
-    // NOT cleared by frl_cache_clear() because it lives outside the plugin's cache-group
-    // key space. Without this deletion the catch-all exclusion patterns for CPT/taxonomy
-    // base removal remain stale for up to 1 hour after every flush.
-    if (function_exists('frl_delete_transient')) {
-        frl_delete_transient('rewriter_excl_patterns');
+    // Preferred path: let the rewriter facade do a complete, consistent purge.
+    // This clears 'permalinks', 'rewriter', and 'options' cache groups, deletes
+    // the exclusion-patterns DB transient, and calls flush_rewrite_rules().
+    if (class_exists('Frl_Rewriter')) {
+        Frl_Rewriter::clear_rewriter_caches();
     } else {
-        // Fallback for the rare case this runs before helpers are loaded (e.g. very early cron).
-        // 'frl_rewriter_excl_patterns' = frl_prefix('rewriter_excl_patterns') where FRL_PREFIX='frl'.
-        delete_transient('frl_rewriter_excl_patterns');
+        // Fallback: class not loaded (activation / deactivation / uninstall context).
+        // Rewriter caches don't exist yet (activation) or are irrelevant (removal),
+        // so a plain WP rules flush is sufficient. No duplication of clear_rewriter_caches().
+        flush_rewrite_rules(false);
     }
 
     // Outbound: notify third-party cache plugins that rewrite rules changed.
