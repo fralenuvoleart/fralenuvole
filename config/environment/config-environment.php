@@ -13,11 +13,11 @@ const FRL_ENV_MAP = [
     'pbproperty.ge'             => 'FRL_ENV_PBP_PRODUCTION',
     'pbnova.com'                => 'FRL_ENV_PBNOVA_PRODUCTION',
     'fralenuvole.art'           => 'FRL_ENV_FRALENUVOLE_PRODUCTION',
+    'master.fralenuvole.art'    => 'FRL_ENV_MASTER_TEMPLATE',
     'staging.pbservices.ge'     => 'FRL_ENV_PBS_STAGING',
     'staging.pbproperty.ge'     => 'FRL_ENV_PBP_STAGING',
     'staging.pbnova.com'        => 'FRL_ENV_PBNOVA_STAGING',
     'staging.fralenuvole.art'   => 'FRL_ENV_FRALENUVOLE_STAGING',
-    'master.fralenuvole.art'    => 'FRL_ENV_MASTER_TEMPLATE',
 ];
 
 // --- PBS ---
