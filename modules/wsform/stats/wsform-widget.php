@@ -199,9 +199,7 @@ function frl_wsf_render_dashboard_widget($form_id = null, $grouped_counts = null
  */
 function frl_wsf_render_combined_dashboard_widget()
 {
-    $env_config = frl_environment_get_config();
-    $env_prefix = $env_config['prefix'] ?? 'default';
-    $all_configs = WSFORM_ALL_WEBHOOKS_CONFIG[$env_prefix] ?? WSFORM_ALL_WEBHOOKS_CONFIG['pbs'] ?? [];
+    $all_configs = frl_wsf_get_all_webhook_configs();
 
     $form_ids = [];
     foreach ($all_configs as $cfg) {

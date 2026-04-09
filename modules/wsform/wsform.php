@@ -14,6 +14,35 @@ if (!defined('ABSPATH')) {
 require_once __DIR__ . '/config-constants-wsform.php';
 require_once __DIR__ . '/config-constants-webhooks.php';
 
+/**
+ * Returns the resolved webhook configs for the current environment.
+ * Always available regardless of whether the webhook subsystem is active.
+ *
+ * Lookup order for the config key:
+ *   1. env config 'webhook_config' (explicit, set per brand template)
+ *   2. env config 'prefix'         (fallback — covers stale cache with old env config)
+ *   3. false                        (no lookup, return empty)
+ *
+ * Applies any per-domain overrides from the env config 'webhooks' key
+ * on top of the base WSFORM_ALL_WEBHOOKS_CONFIG entry.
+ *
+ * @return array
+ */
+function frl_wsf_get_all_webhook_configs(): array
+{
+    $env_config = frl_environment_get_config();
+    $config_key = $env_config['webhook_config'] ?? $env_config['prefix'] ?? false;
+    $configs    = ($config_key && isset(WSFORM_ALL_WEBHOOKS_CONFIG[$config_key]))
+                      ? WSFORM_ALL_WEBHOOKS_CONFIG[$config_key]
+                      : [];
+
+    if (!empty($env_config['webhooks']) && is_array($env_config['webhooks'])) {
+        $configs = array_replace_recursive($configs, $env_config['webhooks']);
+    }
+
+    return $configs;
+}
+
 // Register WS Form Stats widget and tab
 add_action('plugins_loaded',
     'frl_wsf_init',

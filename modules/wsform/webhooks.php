@@ -84,10 +84,7 @@ add_action('wp_ajax_nopriv_frl_button_webhook',
  */
 function frl_wsf_get_matching_configs($form_id)
 {
-    $env_config = frl_environment_get_config();
-    $env_prefix = $env_config['prefix'] ?? 'default';
-
-    $all_configs = WSFORM_ALL_WEBHOOKS_CONFIG[$env_prefix] ?? WSFORM_ALL_WEBHOOKS_CONFIG['pbs'] ?? [];
+    $all_configs = frl_wsf_get_all_webhook_configs();
     $matching_configs = [];
 
     foreach ($all_configs as $webhook_config) {
@@ -306,9 +303,7 @@ function frl_wsf_spam_filter_submission($field_error_action_array, $post_mode, $
     }
 
     $form_id = $submit->form_id ?? 0;
-    $env_config = frl_environment_get_config();
-    $env_prefix = $env_config['prefix'] ?? 'default';
-    $configs = WSFORM_ALL_WEBHOOKS_CONFIG[$env_prefix] ?? WSFORM_ALL_WEBHOOKS_CONFIG['pbs'] ?? [];
+    $configs = frl_wsf_get_all_webhook_configs();
 
     foreach ($configs as $webhook_config) {
         // Skip if not matching form

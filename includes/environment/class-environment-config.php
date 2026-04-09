@@ -108,10 +108,30 @@ class Frl_Environment_Config
             $type_partial_config = $type_partial_config_raw;
         }
 
+        // Resolve single-level 'extends' inheritance from instance constant.
+        // Merge order: default → type → extends template → instance (bottom wins).
+        // Templates cannot themselves extend — any nested extends key is stripped.
+        $extends_partial_config = [];
+        $extends_const_name = $instance_partial_config['extends'] ?? null;
+        if ($extends_const_name !== null) {
+            if (!is_string($extends_const_name) || !defined($extends_const_name)) {
+                frl_log("Environment 'extends' constant '{constant}' is not defined.", ['constant' => (string) $extends_const_name]);
+            } else {
+                $extends_raw = constant($extends_const_name);
+                if (is_array($extends_raw)) {
+                    $extends_partial_config = array_diff_key($extends_raw, ['extends' => true]);
+                } else {
+                    frl_log("Environment 'extends' constant '{constant}' is not an array.", ['constant' => $extends_const_name]);
+                }
+            }
+            unset($instance_partial_config['extends']);
+        }
+
         $final_config = self::merge_environment_configs(
             $base_config,
             $type_partial_config,
-            $instance_partial_config
+            $instance_partial_config,
+            $extends_partial_config
         );
         $final_config['type'] = $type; // Ensure final type is set correctly
         $final_config['current_host'] = $raw_request_domain; // Add the current host (from request/siteurl option)
@@ -123,25 +143,29 @@ class Frl_Environment_Config
 
     /**
      * Merges environment configuration arrays with specific logic for plugins.
+     * Merge order (bottom wins): base → type_partial → extends_partial → instance_partial.
+     *
+     * @param array $extends_partial Optional template config from the 'extends' key.
      */
-    public static function merge_environment_configs(array $base, array $type_partial, array $instance_partial): array
+    public static function merge_environment_configs(array $base, array $type_partial, array $instance_partial, array $extends_partial = []): array
     {
         // Step 1: Merge associative arrays using array_replace_recursive for precedence.
-        $merged = array_replace_recursive($base, $type_partial, $instance_partial);
+        $merged = array_replace_recursive($base, $type_partial, $extends_partial, $instance_partial);
 
         // Step 2: Handle 'plugins' array with custom logic.
         // Ensure we start with arrays, even if keys are missing in source configs.
         $plugins_base = isset($base['plugins']) && is_array($base['plugins']) ? $base['plugins'] : ['active' => [], 'inactive' => []];
         $plugins_type = isset($type_partial['plugins']) && is_array($type_partial['plugins']) ? $type_partial['plugins'] : [];
+        $plugins_extends = isset($extends_partial['plugins']) && is_array($extends_partial['plugins']) ? $extends_partial['plugins'] : [];
         $plugins_instance = isset($instance_partial['plugins']) && is_array($instance_partial['plugins']) ? $instance_partial['plugins'] : [];
 
         // Refined plugin logic based on potential override keys:
         $final_active = $plugins_base['active'] ?? [];
         $final_inactive = $plugins_base['inactive'] ?? [];
-        if (!is_array($final_active)) $final_active = []; // Ensure array type
-        if (!is_array($final_inactive)) $final_inactive = []; // Ensure array type
+        if (!is_array($final_active)) $final_active = [];
+        if (!is_array($final_inactive)) $final_inactive = [];
 
-        // Apply Type Overrides (Ensure values are arrays before merging)
+        // Apply Type Overrides
         if (isset($plugins_type['active']) && is_array($plugins_type['active'])) {
             $final_active = $plugins_type['active'];
         }
@@ -155,21 +179,30 @@ class Frl_Environment_Config
             $final_inactive = array_unique(array_merge($final_inactive, $plugins_type['inactive_add']));
         }
 
-        // Apply Instance Overrides (highest precedence, ensure values are arrays)
-        // Use 'active' to replace the entire list
+        // Apply Extends Overrides (template layer, between type and instance)
+        if (isset($plugins_extends['active']) && is_array($plugins_extends['active'])) {
+            $final_active = $plugins_extends['active'];
+        }
+        if (isset($plugins_extends['inactive']) && is_array($plugins_extends['inactive'])) {
+            $final_inactive = $plugins_extends['inactive'];
+        }
+        if (frl_is_array_not_empty($plugins_extends, 'active_add')) {
+            $final_active = array_unique(array_merge($final_active, $plugins_extends['active_add']));
+        }
+        if (frl_is_array_not_empty($plugins_extends, 'inactive_add')) {
+            $final_inactive = array_unique(array_merge($final_inactive, $plugins_extends['inactive_add']));
+        }
+
+        // Apply Instance Overrides (highest precedence)
         if (isset($plugins_instance['active']) && is_array($plugins_instance['active'])) {
             $final_active = $plugins_instance['active'];
         }
-        // Then apply additions
         if (frl_is_array_not_empty($plugins_instance, 'active_add')) {
             $final_active = array_unique(array_merge($final_active, $plugins_instance['active_add']));
         }
-
-        // Use 'inactive' to replace the entire list
         if (isset($plugins_instance['inactive']) && is_array($plugins_instance['inactive'])) {
             $final_inactive = $plugins_instance['inactive'];
         }
-        // Then apply additions
         if (frl_is_array_not_empty($plugins_instance, 'inactive_add')) {
             $final_inactive = array_unique(array_merge($final_inactive, $plugins_instance['inactive_add']));
         }

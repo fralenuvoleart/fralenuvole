@@ -193,9 +193,7 @@ function frl_wsf_get_grouped_submission_data($days = 30, $form_id = null, $start
         }
 
         // Get dynamic field mappings from modular config
-        $env_config = frl_environment_get_config();
-        $env_prefix = $env_config['prefix'] ?? 'default';
-        $all_configs = WSFORM_ALL_WEBHOOKS_CONFIG[$env_prefix] ?? WSFORM_ALL_WEBHOOKS_CONFIG['pbs'] ?? [];
+        $all_configs = frl_wsf_get_all_webhook_configs();
 
         $fields_map = [];
         foreach ($all_configs as $webhook_config) {

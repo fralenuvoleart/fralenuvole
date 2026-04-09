@@ -445,8 +445,8 @@ class Frl_Environment_Manager
      * @param array $instance_partial Instance-specific partial overrides (e.g., FRL_ENV_PBS_PRODUCTION).
      * @return array The fully merged configuration.
      */
-    private static function merge_environment_configs(array $base, array $type_partial, array $instance_partial): array
+    private static function merge_environment_configs(array $base, array $type_partial, array $instance_partial, array $extends_partial = []): array
     {
-        return Frl_Environment_Config::merge_environment_configs($base, $type_partial, $instance_partial);
+        return Frl_Environment_Config::merge_environment_configs($base, $type_partial, $instance_partial, $extends_partial);
     }
 }
