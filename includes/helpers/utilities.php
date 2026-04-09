@@ -160,6 +160,33 @@ function frl_filter_array_by_substring($array, $needle)
 }
 
 /**
+ * Returns the base domain by stripping known prefixes, for staging/production sibling comparison.
+ *
+ * Strips in order:
+ *   1. Staging prefixes defined in FRL_ENV_STAGING_PREFIXES (config-driven, e.g. staging., dev.)
+ *   2. www. — universal canonical alias convention, not a staging indicator
+ *
+ * @param string $domain
+ * @return string
+ */
+function frl_strip_env_prefix(string $domain): string
+{
+    foreach (FRL_ENV_STAGING_PREFIXES as $prefix) {
+        if (stripos($domain, $prefix) === 0) {
+            $domain = substr($domain, strlen($prefix));
+            break;
+        }
+    }
+
+    // www. is the only conventional canonical prefix; not config-driven
+    if (stripos($domain, 'www.') === 0) {
+        $domain = substr($domain, 4);
+    }
+
+    return $domain;
+}
+
+/**
  * Check if a string contains any of the substrings in an array
  * @param string $string The string to check
  * @param array $substrings Array of potential substrings to look for

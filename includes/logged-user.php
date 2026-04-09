@@ -279,9 +279,15 @@ function frl_admin_bar_add_menu_secondary($data)
         $env_config = frl_environment_get_config();
         $current_host = $env_config['env_host'] ?? '';
 
-        // Remove current host from links
+        // Remove the current host and its staging/production sibling from links.
+        // The sibling is already shown via the environment switcher button in the admin bar.
+        // Base comparison via frl_strip_env_prefix() — strips FRL_ENV_STAGING_PREFIXES and www.
         if ($current_host !== '') {
-            $links_secondary = frl_filter_array_by_substring($links_secondary, $current_host);
+            $base_current    = frl_strip_env_prefix($current_host);
+            $links_secondary = array_filter(
+                $links_secondary,
+                fn($v) => $v !== $current_host && frl_strip_env_prefix($v) !== $base_current
+            );
         }
 
         // Remove staging from links for non-admins

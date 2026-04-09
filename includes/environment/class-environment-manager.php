@@ -371,8 +371,8 @@ class Frl_Environment_Manager
             // Compare with the current environment's type to find the opposite type
             if ($counterpart_env_type !== $current_env_type) {
 
-                $base_domain_current = preg_replace('/^(staging\\.|dev\\.|www\\.)/i', '', $current_domain); // Case-insensitive prefix removal
-                $base_domain_counterpart = preg_replace('/^(staging\\.|dev\\.|www\\.)/i', '', $domain); // Case-insensitive prefix removal
+                $base_domain_current     = frl_strip_env_prefix($current_domain);
+                $base_domain_counterpart = frl_strip_env_prefix($domain);
 
                 if ($base_domain_current === $base_domain_counterpart) {
                     // Found the counterpart domain (e.g., staging found production or vice-versa)
