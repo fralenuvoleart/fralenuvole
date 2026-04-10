@@ -38,7 +38,6 @@ class Frl_Rewriter_Config_Validator {
         $warnings = array_merge($warnings, self::check_duplicate_translations());
         $warnings = array_merge($warnings, self::check_semantic_overlaps());
         $warnings = array_merge($warnings, self::check_language_conflicts());
-        $warnings = array_merge($warnings, self::check_cpt_integration_conflicts());
         $warnings = array_merge($warnings, self::warn_missing_cpt_mappings_when_post_base_set());
         $warnings = array_merge($warnings, self::warn_when_top_level_pages_exceed_cap());
 
@@ -207,41 +206,6 @@ class Frl_Rewriter_Config_Validator {
             foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
                 if (in_array($cpt_slug, $active_languages, true)) {
                     $warnings[] = "CPT slug '{$cpt_slug}' matches language code. This may cause URL parsing conflicts.";
-                }
-            }
-        }
-
-        return $warnings;
-    }
-
-    /**
-     * Warn when CPT blog integration conflicts with CPT translation/removal for the same CPT.
-     */
-    private static function check_cpt_integration_conflicts(): array {
-        $warnings = [];
-        $integrate_raw = frl_get_option('integrate_cpt_with_blog');
-        if (empty($integrate_raw)) {
-            return $warnings;
-        }
-
-        $integrate_list = frl_textlist_to_array($integrate_raw);
-        $integrated_cpts = [];
-        foreach ($integrate_list as $row) {
-            if (!empty($row[0])) {
-                $integrated_cpts[] = trim($row[0]);
-            }
-        }
-
-        foreach ($integrated_cpts as $cpt) {
-            // Conflict with CPT base removal
-            $removal = frl_get_option('remove_cpt_base');
-            if (!empty($removal)) {
-                $rows = frl_textlist_to_array($removal);
-                foreach ($rows as $row) {
-                    if (!empty($row[0]) && $row[0] === $cpt) {
-                        $warnings[] = "CPT '{$cpt}' is configured for Blog Integration and Base Removal. These are mutually exclusive approaches.";
-                        break;
-                    }
                 }
             }
         }

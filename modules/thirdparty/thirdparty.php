@@ -2,7 +2,7 @@
 
 /**
  * Module Name: Third-Party
- * Description: Tweaks and customizations for third-party plugins
+ * Description: Cache Bridge for caching plugins, and tweaks for third-party plugins
  */
 
 // Exit if accessed directly.
@@ -99,13 +99,15 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 // Cache Bridge (Two-Way Sync)
 // =============================================================================
 
-// --- Inbound: third-party purge → clear fralenuvole caches ---
-foreach (array_keys(frl_thirdparty_get_inbound_hooks()) as $hook) {
-    add_action($hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
-}
+if (frl_get_option('thirdparty_cache_bridge', true)) {
+    // --- Inbound: third-party purge → clear fralenuvole caches ---
+    foreach (array_keys(frl_thirdparty_get_inbound_hooks()) as $hook) {
+        add_action($hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
+    }
 
-// --- Query-param based purge detection (for plugins that don't fire actions) ---
-add_action('admin_init', 'frl_thirdparty_check_query_triggers', 5, 0);
+    // --- Query-param based purge detection (for plugins that don't fire actions) ---
+    add_action('admin_init', 'frl_thirdparty_check_query_triggers', 5, 0);
+}
 
 /**
  * Check for query-param based cache purges that don't fire action hooks.
@@ -227,6 +229,10 @@ function frl_thirdparty_inbound_cache_clear(): void
  */
 function frl_thirdparty_maybe_notify(string $trigger): array
 {
+    if (!frl_get_option('thirdparty_cache_bridge', true)) {
+        return [];
+    }
+
     if (frl_is_already_running(__FUNCTION__)) {
         return [];
     }
@@ -349,4 +355,6 @@ function frl_thirdparty_display_notification_notice(): void
     frl_add_admin_notice($message, 'success', 30);
 }
 
-add_action('admin_init', 'frl_thirdparty_display_notification_notice', 20, 0);
+if (frl_get_option('thirdparty_cache_bridge', true)) {
+    add_action('admin_init', 'frl_thirdparty_display_notification_notice', 20, 0);
+}
