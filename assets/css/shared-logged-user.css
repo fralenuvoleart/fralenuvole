@@ -146,7 +146,7 @@
     border-bottom-right-radius: 4px;
 }
 
-#wpadminbar #wp-admin-bar-frl-server:hover {
+#wpadminbar #wp-admin-bar-frl-server:hover .ab-item {
     border-bottom-right-radius: 0;
 }
 
