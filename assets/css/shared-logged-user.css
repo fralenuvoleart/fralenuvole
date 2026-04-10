@@ -161,7 +161,7 @@
 
 #wpadminbar #wp-admin-bar-frl-server > .ab-item,
 #wpadminbar #wp-admin-bar-frl-server .ab-sub-wrapper {
-    background: #ffcc66e6;
+    background: #ffcc66e6 !important;
 }
 
 #wpadminbar #wp-admin-bar-frl-server.production .ab-sub-wrapper .ab-item:hover {
@@ -175,7 +175,7 @@
 
 #wpadminbar #wp-admin-bar-frl-server.production > .ab-item,
 #wpadminbar #wp-admin-bar-frl-server.production .ab-sub-wrapper {
-    background: #00b300b3;
+    background: #00b300b3 !important;
 }
 
 #wpadminbar #wp-admin-bar-frl-server.production .ab-sub-wrapper .ab-item:hover {
