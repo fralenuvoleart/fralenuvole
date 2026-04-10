@@ -152,7 +152,7 @@
     border-radius: 999px;
 }
 
-#wpadminbar #wp-admin-bar-frl-server > .ab-item .ab-item {
+#wpadminbar #wp-admin-bar-frl-server .ab-sub-wrapper .ab-item {
     color: #ffcc66e6;
 }
 
@@ -173,7 +173,7 @@
     border-color: #ffffff4d;
 }
 
-#wpadminbar #wp-admin-bar-frl-server.production > .ab-item .ab-item {
+#wpadminbar #wp-admin-bar-frl-server.production .ab-sub-wrapper .ab-item {
     color: #00b300b3;
 }
 @media screen and (max-width: 782px) {
