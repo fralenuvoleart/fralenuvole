@@ -138,6 +138,7 @@
     align-items: center;
     font-weight: 500;
     line-height: 2;
+    transition: 0.1s;
 }
 
 #wpadminbar #wp-admin-bar-frl-server .ab-sub-wrapper {
