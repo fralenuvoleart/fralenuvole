@@ -29,7 +29,6 @@ if (!defined('FRL_DIR_URL')) {
 // Define the plugin core constants
 const FRL_PREFIX = 'frl';
 const FRL_NAME = 'fralenuvole';
-const FRL_VERSION = '5.2.0';
 const FRL_PLUGIN_FILE = FRL_NAME . '.php';
 
 // Load required settings and functions

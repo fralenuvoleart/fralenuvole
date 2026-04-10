@@ -270,71 +270,17 @@ function frl_admin_bar_add_menu_primary($data)
  */
 function frl_admin_bar_add_menu_secondary($data)
 {
-    static $links_secondary = null;
     static $links_custom = null;
 
-     if ($links_secondary === null) {
-        $links_secondary = array_keys(FRL_ENV_MAP);
-
-        $env_config = frl_environment_get_config();
-        $current_host = $env_config['env_host'] ?? '';
-
-        // Remove the current host and its staging/production sibling from links.
-        // The sibling is already shown via the environment switcher button in the admin bar.
-        // Base comparison via frl_strip_env_prefix() — strips FRL_ENV_STAGING_PREFIXES and www.
-        if ($current_host !== '') {
-            $base_current    = frl_strip_env_prefix($current_host);
-            $links_secondary = array_filter(
-                $links_secondary,
-                fn($v) => $v !== $current_host && frl_strip_env_prefix($v) !== $base_current
-            );
-        }
-
-        // Remove staging from links for non-admins
-        if (!frl_has_access()) {
-            $links_secondary = frl_filter_array_by_substring($links_secondary, 'staging');
-            $links_secondary = frl_filter_array_by_substring($links_secondary, FRL_NAME);
-        }
-    }
-
-	$secondary_id = FRL_PREFIX . '-menu-secondary';
-	$parent = [
-		'id'     => $secondary_id,
-		'title'  => '',
-		'meta'   => [
-			'class' => $secondary_id,
-			'title' => __('Website Links', FRL_PREFIX),
-			'target' => '_blank'
-		],
-	];
-	$first_key = array_key_first($links_secondary);
-	if ($first_key !== null) {
-		$parent['href'] = 'https://' . $links_secondary[$first_key];
-	}
-
-	$data['menu_secondary']['parent'] = $parent;
-
-    // Environment links
-    foreach ($links_secondary as $key => $domain) {
-        if (!frl_has_access('superadmin') && str_contains($domain, FRL_NAME)) {
-            continue;
-        }
-        $href = 'https://' . $domain;
-        $data['menu_secondary']['env_submenu_' . $key] = [
-            'id' =>  FRL_PREFIX . '-menu-child-environment-' . $key,
-            'title' => ucfirst($domain),
-            'href' => $href,
-            'parent' => $secondary_id,
-            'meta' => ['target' => '_blank']
-        ];
-    }
-
-    // Separator
-    $data['menu_secondary']['separator-submenus'] = [
-        'id' => FRL_PREFIX . '-secondary-separator-submenus',
-        'parent' => $secondary_id,
+    $secondary_id = FRL_PREFIX . '-menu-secondary';
+    $data['menu_secondary']['parent'] = [
+        'id'   => $secondary_id,
         'title' => '',
-        'meta' => ['class' => FRL_PREFIX . '-ab-separator']
+        'meta' => [
+            'class'  => $secondary_id,
+            'title'  => __('Website Links', FRL_PREFIX),
+            'target' => '_blank',
+        ],
     ];
 
     // Custom submenu links
@@ -344,14 +290,13 @@ function frl_admin_bar_add_menu_secondary($data)
 
     if (frl_is_array_not_empty($links_custom)) {
         foreach ($links_custom as $key => $link) {
-            // $link is now always an array, so check if it has the expected structure for pipe-separated values
             if (frl_is_array_not_empty($link) && count($link) >= 2) {
                 $data['menu_secondary']['custom_submenu_' . $key] = [
-                    'id' => FRL_PREFIX . '-menu-child-custom-' . $key,
-                    'title' => $link[0],
-                    'href' => $link[1],
+                    'id'     => FRL_PREFIX . '-menu-child-custom-' . $key,
+                    'title'  => $link[0],
+                    'href'   => $link[1],
                     'parent' => $secondary_id,
-                    'meta' => ['target' => (str_contains($link[1], 'wp-admin') ? '_self' : '_blank')]
+                    'meta'   => ['target' => (str_contains($link[1], 'wp-admin') ? '_self' : '_blank')],
                 ];
             }
         }

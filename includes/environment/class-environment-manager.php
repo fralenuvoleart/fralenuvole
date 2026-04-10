@@ -401,6 +401,56 @@ class Frl_Environment_Manager
                 'title' => ucwords($type) . ' - Search Engines ' . ($is_public ? 'Allowed' : 'Blocked'),
             ],
         ]);
+
+        self::add_environment_switcher_submenus($wp_admin_bar, $current_domain);
+    }
+
+    /**
+     * Add environment domain submenus under the frl-server switcher button.
+     * Builds child nodes for every env domain except the current host and its
+     * direct counterpart (already reachable via the button's own href).
+     * Results are cached per user and per current domain.
+     */
+    private static function add_environment_switcher_submenus($wp_admin_bar, $current_domain)
+    {
+        $user_id   = frl_get_current_user()->ID;
+        $cache_key = 'env_server_submenus_' . md5($current_domain) . '_uid' . $user_id;
+
+        $nodes = frl_cache_remember('admin', $cache_key, function () use ($current_domain) {
+            $links        = array_keys(FRL_ENV_MAP);
+            $base_current = frl_strip_env_prefix($current_domain);
+
+            // Exclude the current host and its staging/production counterpart.
+            $links = array_filter(
+                $links,
+                fn($v) => $v !== $current_domain && frl_strip_env_prefix($v) !== $base_current
+            );
+
+            // Exclude staging domains for non-admins.
+            if (!frl_has_access()) {
+                $links = frl_filter_array_by_substring($links, 'staging');
+                $links = frl_filter_array_by_substring($links, FRL_NAME);
+            }
+
+            $nodes = [];
+            foreach ($links as $key => $domain) {
+                if (!frl_has_access('superadmin') && str_contains($domain, FRL_NAME)) {
+                    continue;
+                }
+                $nodes[] = [
+                    'id'     => FRL_PREFIX . '-menu-child-environment-' . $key,
+                    'title'  => ucfirst($domain),
+                    'href'   => 'https://' . $domain,
+                    'parent' => FRL_PREFIX . '-server',
+                    'meta'   => ['target' => '_blank'],
+                ];
+            }
+            return $nodes;
+        });
+
+        foreach ($nodes as $node) {
+            $wp_admin_bar->add_menu($node);
+        }
     }
 
     /**
