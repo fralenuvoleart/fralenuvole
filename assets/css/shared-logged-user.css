@@ -153,7 +153,7 @@
 }
 
 #wpadminbar #wp-admin-bar-frl-server .ab-sub-wrapper .ab-item {
-    color: #ffcc66e6;
+    color: #ffcc66;
 }
 
 #wpadminbar #wp-admin-bar-frl-server.indexing-on > .ab-item:after {
@@ -174,7 +174,7 @@
 }
 
 #wpadminbar #wp-admin-bar-frl-server.production .ab-sub-wrapper .ab-item {
-    color: #00b300b3;
+    color: #00b300;
 }
 @media screen and (max-width: 782px) {
     body:is(.stage, .staging, .dev, .test) #wp-admin-bar-root-default:before {
