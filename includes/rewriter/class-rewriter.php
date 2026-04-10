@@ -316,43 +316,69 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     }
 
     /**
-     * Clear rewriter caches when permalink structure changes.
+     * Flush routing-related caches and regenerate WP rewrite rules.
      *
-     * Hooked to relevant WordPress actions to ensure cache consistency.
+     * This is the correct path for all flush operations where plugin settings
+     * have NOT changed: button press, cron flush, code update after plugin upgrade.
+     * It does not touch the 'options' cache group, which avoids the WP alloptions
+     * race condition that arises when concurrent frontend requests lose their
+     * options object-cache entry mid-write.
+     *
+     * @param bool $hard Pass true in admin context to also rewrite .htaccess,
+     *                   matching the behaviour of WP's own "Save Permalinks" button.
+     *                   Pass false (default) from cron or frontend contexts.
      */
-    public static function clear_rewriter_caches(): void
+    public static function flush_rules(bool $hard = false): void
     {
-        // Clear permalink-related caches using plugin's cache manager
         frl_cache_clear('permalinks');
         frl_cache_clear('rewriter');
-
-        // Clear options cache to refresh configuration
-        frl_cache_clear('options');
-
-        // Delete the exclusion-patterns DB transient used on sites without persistent object cache.
         frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
-
-        // Force WordPress to regenerate rewrite rules
-        flush_rewrite_rules(false);
+        flush_rewrite_rules($hard);
     }
 
     /**
-     * Force rewrite rules refresh for the new independent feature architecture.
+     * Clear all rewriter-related caches including plugin option caches, then flush rules.
      *
-     * Delegates to clear_rewriter_caches() which performs a complete, consistent
-     * purge: both cache groups, the DB transient, and flush_rewrite_rules(). The
-     * previous implementation called coordinator->force_refresh() directly, which
-     * only reset the in-memory config hash and flushed WP rules while leaving all
-     * persistent frl_cache_remember() entries and the exclusion-patterns transient
-     * stale.
+     * Call this ONLY when plugin settings have actually changed (hooked to
+     * update_option_* actions). The 'options' clear is required here because
+     * feature config hashes are derived from frl_get_option() values: without
+     * clearing the option cache first, generate_rules() would produce a stale
+     * hash key and serve old cached rules even after the option was saved.
+     *
+     * For all other flush needs use flush_rules() instead.
+     *
+     * Re-entrancy guard: multiple update_option_* hooks can fire in one request
+     * when a settings page saves several fields simultaneously. The guard ensures
+     * flush_rewrite_rules() and the third-party notification run exactly once.
+     */
+    public static function clear_rewriter_caches(): void
+    {
+        if (frl_is_already_running(__METHOD__)) {
+            return;
+        }
+
+        // Clearing 'options' cascades into 'rewriter' via FRL_CACHE_DEPENDENCIES,
+        // so an explicit frl_cache_clear('rewriter') call is not needed here.
+        frl_cache_clear('options');
+        frl_cache_clear('permalinks');
+        frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
+        flush_rewrite_rules(true);
+
+        // Notify configured third-party cache plugins to purge stale pages.
+        if (function_exists('frl_thirdparty_maybe_notify')) {
+            frl_thirdparty_maybe_notify('rewrite_flush');
+        }
+    }
+
+    /**
+     * Force a full rewrite rules refresh, resetting the coordinator's in-memory
+     * config hash so the validation cache also re-evaluates.
      */
     public static function force_rules_refresh(): void
     {
-        // Also reset coordinator's in-memory config hash so validation cache re-evaluates.
         $coordinator = Frl_Rewriter_Coordinator::init();
         $coordinator->invalidate_config_hash();
-
-        self::clear_rewriter_caches();
+        self::flush_rules(true);
     }
 
     /**
@@ -384,8 +410,13 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
                 }
             }
 
-            if (get_option('rewrite_rules') === false) {
-                self::clear_rewriter_caches();
+            // Repair absent rewrite_rules (normal WP state during any flush cycle).
+            // Cooldown prevents repeated repairs across concurrent requests.
+            // No third-party notification: this is a WP-native event; each cache
+            // plugin handles its own purge via its own hooks.
+            if (get_option('rewrite_rules') === false && !frl_get_transient('rewrite_flush_cooldown')) {
+                frl_set_transient('rewrite_flush_cooldown', true, 60);
+                self::flush_rules(is_admin());
             }
         }, 10, 0);
     }

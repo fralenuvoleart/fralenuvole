@@ -258,17 +258,34 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
     }
 
     /**
+     * True when this feature is active and the current request is a public page request.
+     * Use as the single early-exit guard in all request-filter callbacks so the two
+     * conditions are never checked independently in different methods.
+     */
+    protected function is_active_page_request(): bool
+    {
+        return $this->is_enabled() && frl_is_valid_page_request();
+    }
+
+    /**
      * Filter WordPress request (called by request hook)
      */
     final public function filter_request(array $query_vars): array
     {
-        // Get the request URI for logging
-        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
-
-        // Performance: Do not run request resolution on non-page requests
-        if (!frl_is_valid_page_request()) {
+        if (!$this->is_active_page_request()) {
             return $query_vars;
         }
+
+        // When the URL was matched by this feature's catch-all rule, the catch-all
+        // query var is already set in $query_vars. filter_catch_all_request() owns
+        // that resolution path. Returning here prevents a redundant DB lookup and
+        // avoids leaving an ambiguous state (both catch-all var and resolved product
+        // vars set simultaneously) visible to other plugins' request filters.
+        if ($this->uses_catch_all() && isset($query_vars[$this->get_catch_all_query_var()])) {
+            return $query_vars;
+        }
+
+        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
 
         // Re-entrancy guard for request filtering
         static $processing_requests = [];
@@ -278,19 +295,9 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
         }
         $processing_requests[$feature_key] = true;
 
-        if (!$this->is_enabled()) {
-            unset($processing_requests[$feature_key]);
-            return $query_vars;
-        }
-
         try {
             if ($this->applies_to_request($request_uri)) {
-
-
                 $resolved = $this->resolve_request($request_uri);
-
-
-
                 if (!empty($resolved)) {
                     unset($processing_requests[$feature_key]);
                     return array_merge($query_vars, $resolved);
@@ -516,7 +523,7 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
      */
     final public function filter_catch_all_request(array $query_vars): array
     {
-        if (!$this->is_enabled() || !$this->uses_catch_all()) {
+        if (!$this->uses_catch_all() || !$this->is_active_page_request()) {
             return $query_vars;
         }
 

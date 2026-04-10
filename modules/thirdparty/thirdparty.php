@@ -100,7 +100,7 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 // =============================================================================
 
 // --- Inbound: third-party purge → clear fralenuvole caches ---
-foreach (array_keys(FRL_THIRDPARTY_INBOUND_HOOKS) as $hook) {
+foreach (array_keys(frl_thirdparty_get_inbound_hooks()) as $hook) {
     add_action($hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
 }
 
@@ -120,7 +120,7 @@ function frl_thirdparty_check_query_triggers(): void
         return; // Already handled by action hook
     }
 
-    foreach (FRL_THIRDPARTY_INBOUND_QUERIES as $key => $config) {
+    foreach (frl_thirdparty_get_inbound_queries() as $key => $config) {
         $query_key = $config['query_key'] ?? null;
         if (empty($query_key) || !isset($_GET[$query_key])) {
             continue;
@@ -172,6 +172,11 @@ function frl_thirdparty_check_query_triggers(): void
  * clear directives, so the first third-party purge in a request is
  * processed and any subsequent ones (even from different plugins
  * cascading among themselves) are skipped.
+ *
+ * Cascade prevention: a 60-second cooldown transient blocks rescheduling a
+ * rewrite flush that was already triggered by a prior third-party purge, breaking
+ * the cross-request bidirectional loop. The cooldown lives here so that legitimate
+ * callers — term changes, activation, settings saves — are never rate-limited.
  */
 function frl_thirdparty_inbound_cache_clear(): void
 {
@@ -180,7 +185,7 @@ function frl_thirdparty_inbound_cache_clear(): void
     }
 
     $hook = current_filter();
-    $config = FRL_THIRDPARTY_INBOUND_HOOKS[$hook] ?? null;
+    $config = frl_thirdparty_get_inbound_hooks()[$hook] ?? null;
     if (!$config) {
         return;
     }
@@ -191,7 +196,10 @@ function frl_thirdparty_inbound_cache_clear(): void
     }
 
     if (!empty($config['rewrite_flush']) && function_exists('frl_schedule_rewrite_flush')) {
-        frl_schedule_rewrite_flush();
+        if (!frl_get_transient('rewrite_flush_cooldown')) {
+            frl_set_transient('rewrite_flush_cooldown', true, 60);
+            frl_schedule_rewrite_flush();
+        }
     }
 
     $label = $config['label'] ?? $hook;
@@ -226,11 +234,14 @@ function frl_thirdparty_maybe_notify(string $trigger): array
     $notified = [];
 
     // Suspend inbound listeners so outbound actions don't re-enter our own handler.
-    foreach (array_keys(FRL_THIRDPARTY_INBOUND_HOOKS) as $inbound_hook) {
+    $inbound_hooks = frl_thirdparty_get_inbound_hooks();
+    $outbound_hooks = frl_thirdparty_get_outbound_hooks();
+
+    foreach (array_keys($inbound_hooks) as $inbound_hook) {
         remove_action($inbound_hook, 'frl_thirdparty_inbound_cache_clear', 10);
     }
 
-    foreach (FRL_THIRDPARTY_OUTBOUND_HOOKS as $key => $entry) {
+    foreach ($outbound_hooks as $key => $entry) {
         $triggers = $entry['triggers'] ?? [];
         if (!in_array($trigger, $triggers, true)) {
             continue;
@@ -239,46 +250,29 @@ function frl_thirdparty_maybe_notify(string $trigger): array
         $check = $entry['check'] ?? '';
         $label = $entry['label'] ?? $key;
 
-        // Determine if plugin is available and how
-        $has_handler = false;
-        $handler_type = '';
-
-        if (!empty($check) && function_exists($check)) {
-            $has_handler = true;
-            $handler_type = 'function';
-        } elseif (!empty($check) && class_exists($check)) {
-            $has_handler = true;
-            $handler_type = 'class';
-        } elseif ($entry['type'] === 'action' && has_action($entry['target'])) {
-            $has_handler = true;
-            $handler_type = 'action';
-        }
+        $has_handler =
+            (!empty($check) && (function_exists($check) || class_exists($check))) ||
+            ($entry['type'] === 'action' && has_action($entry['target']));
 
         if (!$has_handler) {
             continue;
         }
 
-        // Execute the notification
-        $executed = false;
         if ($entry['type'] === 'action') {
-            // For actions, check if handlers exist before firing
             $callback_count = has_action($entry['target']);
             if ($callback_count !== false) {
                 do_action($entry['target']);
-                $executed = true;
-                // Note: We can't confirm execution completed, only that handlers were registered
                 $notified[] = [
-                    'label' => $label,
-                    'status' => 'notified',
+                    'label'    => $label,
+                    'status'   => 'notified',
                     'handlers' => $callback_count,
-                    'target' => $entry['target'],
+                    'target'   => $entry['target'],
                 ];
             }
         } elseif ($entry['type'] === 'function' && function_exists($entry['target'])) {
             call_user_func($entry['target']);
-            $executed = true;
             $notified[] = [
-                'label' => $label,
+                'label'  => $label,
                 'status' => 'called',
                 'target' => $entry['target'],
             ];
@@ -286,7 +280,7 @@ function frl_thirdparty_maybe_notify(string $trigger): array
     }
 
     // Restore inbound listeners for any subsequent genuine third-party purges.
-    foreach (array_keys(FRL_THIRDPARTY_INBOUND_HOOKS) as $inbound_hook) {
+    foreach (array_keys($inbound_hooks) as $inbound_hook) {
         add_action($inbound_hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
     }
 

@@ -126,6 +126,10 @@ function frl_auto_backup_on_upgrade(): void
 
     // Update stored version to prevent repeated backups.
     frl_update_option('plugin_version', FRL_VERSION);
+
+    // Schedule a rules flush so routing is correct after the upgrade without
+    // requiring the user to manually press "Save Permalinks".
+    frl_schedule_admin_rewrite_flush();
 }
 
 /**
@@ -173,15 +177,15 @@ function frl_flush_force_rewrite_rules(): void
         return;
     }
 
-    /* 2. Called during the init hook *before* custom rewrite rules are registered.
-       The manual admin-action runs at priority 10, while custom rules are added at
-       priority 20 by Frl_Rewriter.  We defer the actual flush to priority 99 of
-       the same init cycle so that every rule is present. */
+    /* 2. Called during the init hook before custom rewrite rules are registered.
+       Features register their add_rewrite_rule() calls at init priority 115–190+,
+       so we defer the flush to priority 200 to guarantee every rule is present
+       in $wp_rewrite before flush_rewrite_rules() reads it. */
     if (doing_action('init') && current_filter() === 'init') {
         static $deferred_once = false;
         if (!$deferred_once) {
             $deferred_once = true;
-            add_action('init', 'frl_execute_rewrite_flush', 99, 0);
+            add_action('init', 'frl_execute_rewrite_flush', 200, 0);
         }
         return;
     }
@@ -192,8 +196,12 @@ function frl_flush_force_rewrite_rules(): void
 
 /**
  * Schedule a single cron event to flush rewrite rules after 15 seconds.
+ *
+ * Deduplication via wp_next_scheduled; this call is a no-op if already pending.
+ * Cascade prevention is the responsibility of the thirdparty inbound handler,
+ * which applies its own cooldown. Other callers are never rate-limited.
  */
-function frl_schedule_rewrite_flush()
+function frl_schedule_rewrite_flush(): void
 {
     if (!wp_next_scheduled('frl_execute_rewrite_flush')) {
         wp_schedule_single_event(time() + 15, 'frl_execute_rewrite_flush');
@@ -201,30 +209,20 @@ function frl_schedule_rewrite_flush()
 }
 
 /**
- * Cron-safe hard flush executed by the deferred event.
+ * Execute a rewrite rules flush.
  *
- * Delegates all rewriter cache clearing to Frl_Rewriter::clear_rewriter_caches(),
- * which is the single canonical path that clears ALL three cache groups
- * ('permalinks', 'rewriter', 'options'), the exclusion-patterns DB transient,
- * and flushes WP rewrite rules. Duplicating the list here previously caused
- * the 'rewriter' group to be skipped, leaving stale catch-all exclusion patterns
- * in Redis/Memcached after a flush until a Hard Cache Reset was performed.
+ * Routing-only flush: clears 'permalinks' and 'rewriter' caches without touching
+ * 'options', avoiding the alloptions race condition under concurrent requests.
+ * Passes is_admin() as $hard so admin flushes rewrite .htaccess; cron does not.
  */
 function frl_execute_rewrite_flush(): void
 {
-    // Preferred path: let the rewriter facade do a complete, consistent purge.
-    // This clears 'permalinks', 'rewriter', and 'options' cache groups, deletes
-    // the exclusion-patterns DB transient, and calls flush_rewrite_rules().
     if (class_exists('Frl_Rewriter')) {
-        Frl_Rewriter::clear_rewriter_caches();
+        Frl_Rewriter::flush_rules(is_admin());
     } else {
-        // Fallback: class not loaded (activation / deactivation / uninstall context).
-        // Rewriter caches don't exist yet (activation) or are irrelevant (removal),
-        // so a plain WP rules flush is sufficient. No duplication of clear_rewriter_caches().
-        flush_rewrite_rules(false);
+        flush_rewrite_rules(is_admin());
     }
 
-    // Outbound: notify third-party cache plugins that rewrite rules changed.
     if (function_exists('frl_thirdparty_maybe_notify')) {
         frl_thirdparty_maybe_notify('rewrite_flush');
     }

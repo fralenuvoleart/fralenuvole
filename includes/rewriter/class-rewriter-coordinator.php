@@ -192,24 +192,24 @@ class Frl_Rewriter_Coordinator
     /**
      * Force a complete rewrite rules refresh.
      *
-     * Delegates to Frl_Rewriter::clear_rewriter_caches() which performs the full
-     * consistent purge: both cache groups, the exclusion-patterns DB transient, and
-     * flush_rewrite_rules(). The in-memory config hash is also reset so the next
-     * validate_all_features() call recomputes with fresh option values.
+     * Resets the in-memory config hash so the next validate_all_features() call
+     * recomputes with current option values, then delegates to
+     * Frl_Rewriter::flush_rules(true) which clears the 'permalinks' and 'rewriter'
+     * cache groups, deletes the exclusion-patterns transient, and calls
+     * flush_rewrite_rules(true) to also rewrite .htaccess.
      *
-     * The previous implementation called delete_option + flush_rewrite_rules directly,
-     * bypassing all frl_cache_clear() calls and leaving persistent caches stale.
-     * Kept public for backwards compatibility with any external callers.
+     * Uses flush_rules() rather than clear_rewriter_caches() because this is not
+     * triggered by a settings change — option caches are still valid and must not
+     * be cleared (which would delete WP's alloptions from object cache and create
+     * a race window for concurrent requests). Kept public for external callers.
      */
     public function force_refresh(): void
     {
         $this->config_hash = null;
         if (class_exists('Frl_Rewriter')) {
-            Frl_Rewriter::clear_rewriter_caches();
+            Frl_Rewriter::flush_rules(true);
         } else {
-            // Fallback if called before Frl_Rewriter is loaded (should not happen in normal use).
-            delete_option('rewrite_rules');
-            flush_rewrite_rules(false);
+            flush_rewrite_rules(true);
         }
     }
 

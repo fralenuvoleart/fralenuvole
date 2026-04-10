@@ -395,7 +395,7 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
      */
     public function disambiguate_static_base_category(array $query_vars): array
     {
-        if (!$this->is_enabled()) {
+        if (!$this->is_active_page_request()) {
             return $query_vars;
         }
 
