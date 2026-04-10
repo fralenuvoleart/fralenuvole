@@ -440,9 +440,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'label' => 'Custom Adminbar links',
 				'description' => 'One link per line. Format: Label|URL',
 				'type' => 'textlist',
-				'default' => '
-					DB Cleaner|/wp-admin/tools.php?page=advanced_db_cleaner&aDBc_tab=general
-				',
+				'default' => '',
 				'cols' => 70,
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'autoload' => 'no',
