@@ -17,7 +17,6 @@ const FRL_ENV_MAP = [
     'staging.pbservices.ge'     => 'FRL_ENV_PBS_STAGING',
     'staging.pbproperty.ge'     => 'FRL_ENV_PBP_STAGING',
     'staging.pbnova.com'        => 'FRL_ENV_PBNOVA_STAGING',
-    'staging.fralenuvole.art'   => 'FRL_ENV_FRALENUVOLE_STAGING',
 ];
 
 // --- PBS ---
@@ -97,16 +96,6 @@ const FRL_ENV_PBNOVA_STAGING = [
 // --- Fralenuvole ---
 const FRL_ENV_FRALENUVOLE_PRODUCTION = [
     'extends' => 'FRL_ENV_MASTER_TEMPLATE',
-    'prefix' => 'frl',
-    'modules' => [
-        'frl' => true,
-    ],
-];
-
-/** FRL Staging - extends master template directly (no chaining allowed) */
-const FRL_ENV_FRALENUVOLE_STAGING = [
-    'extends' => 'FRL_ENV_MASTER_TEMPLATE',
-    'type' => 'staging',
     'prefix' => 'frl',
     'modules' => [
         'frl' => true,

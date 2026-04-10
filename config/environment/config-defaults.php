@@ -13,7 +13,7 @@ const FRL_IGNORE_OPTIONS_KEY = 'ignore_options';
 const FRL_ENV_FILES_PATH = 'config/environment/env-snippets/';
 // Clear all website transients on environment migration on admin visits.
 // Default true (safe with per-host throttle and admin-only guard).
-const FRL_ENV_CLEAR_WEBSITE_TRANSIENTS = true;
+const FRL_ENV_CLEAR_WEBSITE_TRANSIENTS = true; 
 
 // Subdomain prefixes that identify a staging environment.
 // Used for sibling-domain detection (switcher button and secondary links filter).
