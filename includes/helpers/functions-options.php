@@ -650,7 +650,6 @@ function frl_set_transient($key, $value, $expiration = 0)
 
     // Update WordPress transient
     $result = set_transient(frl_prefix($key), $value, $expiration);
-    // frl_cache_clear('staticdata', 'all_transients');
 
     return $result;
 }

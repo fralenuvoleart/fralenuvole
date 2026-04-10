@@ -895,12 +895,7 @@ class Frl_Cache_Manager
 
         // 3. Flush each cache group using the comprehensive method
         // This ensures consistent behavior across all clearing operations
-        foreach (array_keys(self::$TTL) as $group) {
-            // Exclude the 'permanent' group from being purged.
-            if ($group === 'permanent') {
-                continue;
-            }
-            
+        foreach (array_keys(self::$TTL) as $group) {            
             // If we already cleared all transients, we don't need to clear them again per group,
             // but we still need to clear runtime and WordPress caches via clear_group_with_dependencies.
             // However, clear_group_with_dependencies will try to delete transients again.
@@ -1618,8 +1613,8 @@ class Frl_Cache_Manager
         $all_groups = array_keys(self::$TTL);
 
         foreach ($all_groups as $group) {
-            // Skip heavy groups and our special permanent group.
-            if ($group === 'permanent' || isset(self::$heavy_groups_map[$group])) {
+            // Skip heavy groups
+            if (isset(self::$heavy_groups_map[$group])) {
                 continue;
             }
 

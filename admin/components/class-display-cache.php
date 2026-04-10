@@ -322,7 +322,7 @@ class Frl_Cache_Display
 
         // Header for groups table - now 7 columns with total in Count column
         $groups_table_rows .= frl_ui_render_multi_column_header(
-            ['Group Name', 'Count (' . number_format($total_count) . ')', 'Heavy Group', 'Language Group', 'Browser Group', 'TTL', 'Size'],
+            ['Cache Group', 'Count (' . number_format($total_count) . ')', 'Heavy Group', 'Language Group', 'Browser Group', 'TTL', 'Size'],
             'groups-header-row'
         );
 
@@ -556,15 +556,15 @@ class Frl_Cache_Display
                 }
             }
 
-            // Sort first by TTL (descending), then by count (descending)
+            // Sort first by count (descending), then by TTL (descending)
             usort($groups_info, function ($a, $b) {
-                // Primary sort: TTL descending
-                $ttl_comparison = $b['ttl'] <=> $a['ttl'];
-                if ($ttl_comparison !== 0) {
-                    return $ttl_comparison;
+                // Primary sort: count descending
+                $count_comparison = $b['count'] <=> $a['count'];
+                if ($count_comparison !== 0) {
+                    return $count_comparison;
                 }
-                // Secondary sort: count descending
-                return $b['count'] <=> $a['count'];
+                // Secondary sort: TTL descending
+                return $b['ttl'] <=> $a['ttl'];
             });
 
             return $groups_info;

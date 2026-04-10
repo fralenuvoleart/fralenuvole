@@ -14,12 +14,6 @@ const FRL_CACHE_PREFIX = FRL_PREFIX . '_cache_';
 
 // Cache groups that should persist across requests
 const FRL_CACHE_PERSISTENT_GROUPS = [
-    // 'permanent' is invalidated only by:
-    // 1. TTL expiration (1 year).
-    // 2. Global wp_cache_flush() or server-level flush (Redis/Memcached).
-    // 3. Plugin uninstall.
-    // 4. Hard cache reset
-    'permanent',    // Survives plugin cache clears
     'staticdata',   // Used for heavy/infrequently changing data
     'theme',        // Used for stable/infrequently changing data
     'html',         // Used for HTML fragments
@@ -40,7 +34,6 @@ const FRL_CACHE_PERSISTENT_GROUPS = [
 
 // Default TTL values for different cache groups
 const FRL_CACHE_TTL = [
-    'permanent'     => YEAR_IN_SECONDS,    // 1 year for permanent items
     'staticdata'    => WEEK_IN_SECONDS,     // 1 week (for heavy data)
     'theme'         => WEEK_IN_SECONDS,     // 1 week (for stable data)
     'html'          => WEEK_IN_SECONDS,     // 1 week
@@ -111,7 +104,6 @@ const FRL_CACHE_DEPENDENCIES = [
         'adminui',
     ],
     // Terminal groups (no dependencies)
-    'permanent'     => [],
     'admin'         => [],
     'adminui'       => [],
     'theme'         => [],
