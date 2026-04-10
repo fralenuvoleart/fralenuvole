@@ -126,7 +126,7 @@
     order: -999;
 }
 
-#wpadminbar #wp-admin-bar-frl-server .ab-item {
+#wpadminbar #wp-admin-bar-frl-server > .ab-item {
     display: flex;
     gap: 9px;
     text-transform: uppercase;
@@ -138,11 +138,11 @@
     align-items: center;
     font-weight: 500;
     line-height: 2;
-    background: hsl(40 100% 70% / 90%);
+    background: #ffcc66e6;
     color: hsl(0 0% 0% / 50%) !important;
 }
 
-#wpadminbar #wp-admin-bar-frl-server .ab-item:after {
+#wpadminbar #wp-admin-bar-frl-server > .ab-item:after {
     content: "";
     padding: 0;
     height: 8px;
@@ -152,24 +152,30 @@
     border-radius: 999px;
 }
 
-#wpadminbar #wp-admin-bar-frl-server.indexing-on .ab-item:after {
+#wpadminbar #wp-admin-bar-frl-server > .ab-item .ab-item {
+    color: #ffcc66e6;
+}
+
+#wpadminbar #wp-admin-bar-frl-server.indexing-on > .ab-item:after {
     background: #00b300;
 }
 
-#wpadminbar #wp-admin-bar-frl-server.indexing-off .ab-item:after {
+#wpadminbar #wp-admin-bar-frl-server.indexing-off >.ab-item:after {
     background: #e6571a;
 }
 
-#wpadminbar #wp-admin-bar-frl-server.production .ab-item {
-    background: hsl(120 100% 35% / 70%);
+#wpadminbar #wp-admin-bar-frl-server.production > .ab-item {
+    background: #00b300b3;
     color: #f0f0f1 !important;
 }
 
-#wpadminbar #wp-admin-bar-frl-server.production .ab-item:after {
-    border-color: hsl(0 0% 100% / 30%);
-
+#wpadminbar #wp-admin-bar-frl-server.production > .ab-item:after {
+    border-color: #ffffff4d;
 }
 
+#wpadminbar #wp-admin-bar-frl-server.production > .ab-item .ab-item {
+    color: #00b300b3;
+}
 @media screen and (max-width: 782px) {
     body:is(.stage, .staging, .dev, .test) #wp-admin-bar-root-default:before {
         height: 46px;
