@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 
 // Load post handlers for admin actions (only needed for logged users)
 if (frl_is_administrator_action()) {
-    require_once FRL_DIR_PATH . 'includes/helpers/functions-plugin-actions.php';
+    require_once FRL_DIR_PATH . 'helpers/functions-plugin-actions.php';
 
     // Register the hook only when the function is available
     add_action('init', 'frl_process_plugin_actions', 10, 0);

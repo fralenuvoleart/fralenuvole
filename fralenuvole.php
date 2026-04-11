@@ -81,11 +81,6 @@ function frl_plugins_loaded()
  */
 function frl_load_core_components()
 {
-    // Load logged user features
-    if (frl_is_logged_in()) {
-        require_once FRL_DIR_PATH . 'includes/logged-user.php';
-    }
-
     // Load required unconditional files first
     require_once FRL_DIR_PATH . 'includes/cache/cache-cleanup.php';
     require_once FRL_DIR_PATH . 'includes/main.php';
