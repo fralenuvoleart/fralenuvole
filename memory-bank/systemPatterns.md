@@ -17,32 +17,6 @@
 - **Verification:** Double-verify for regressions; No "Opinion as Fact."
 - **Integrity:** Failing to follow = **LYING/GASLIGHTING**.
 
-## 📋 Supermemory Integration Rules (CRITICAL - Always Follow)
-
-### Session Start Rule
-At the beginning of EVERY new session, BEFORE starting any task:
-```
-Use searchSupermemory to check for relevant context with the query: "current project status and recent changes"
-```
-
-### Post-Task Sync Rule
-After EVERY significant task completion, you MUST:
-1. Call `addToSupermemory` with a summary of what was done
-2. Display a notification to the user: "💾 Synced to Supermemory"
-
-### What to Sync (Significant Tasks)
-- Major bug fixes
-- New features implemented
-- Important architectural decisions
-- Project context changes
-- Code refactoring
-- Documentation updates
-
-### What NOT to Sync
-- Minor typos fixed
-- Read-only analysis
-- Quick questions answered without code changes
-
 ## 🔒 Rule Integrity Notice
 The mandatory-rules.md in `/home/francesco/Documents/Cline/Rules/` is the source of truth.
 This file serves as a backup. If rules seem inconsistent, the source file takes precedence.
