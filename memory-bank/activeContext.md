@@ -1,9 +1,14 @@
 # Active Context
 
-## 💡 Current Focus
+## 📚 Memory Configuration
+- Rules loaded from: `/home/francesco/Documents/Cline/Rules/`
+- Knowledge graph: memory-mcp (installed 2026-04-12)
+- Design principles stored in memory-mcp entity: UserDesignPrinciples
+
+## � Current Focus
 Memory-bank verified and confirmed properly initialized (2026-04-12).
 
-## 🛠️ Recent Changes & Solved Issues
+## �🛠️ Recent Changes & Solved Issues
 - **Fixed:** Resolved stale `alloptions` cache issues during concurrent requests by implementing a config hash check.
 - **Refinement:** Unified translation interception at `plugins_loaded/5`.
 - **Verified:** Memory-bank structure complete - 4 files confirmed: activeContext.md, productContext.md, progress.md, systemPatterns.md, CONTINUE.md
@@ -22,3 +27,4 @@ Memory-bank verified and confirmed properly initialized (2026-04-12).
 - ✅ .continue/rules/CONTINUE.md - Comprehensive project guide present
 - ✅ docs/HOOKS.md - Critical hook priority documentation present
 - ✅ docs/ACTION-PLAN.md - Full action plan with tiers 0-3
+
