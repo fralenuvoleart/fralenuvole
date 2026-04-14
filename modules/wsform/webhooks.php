@@ -142,6 +142,11 @@ function frl_wsf_set_language( $form, $preview )
         /** @disregard P1010 Undefined type */
         $field = wsf_field_get_object( $form, $object->id );
 
+        // Skip if field not found
+        if( $field === null ) {
+            continue;
+        }
+
         if( isset( $field->meta->default_value ) && 'Language' == $field->label ) {
             $field->meta->default_value = strtoupper(frl_get_language());
         }
@@ -281,9 +286,6 @@ function frl_wsf_execute_webhook_submission($args)
             ['status' => $http_code, 'response' => $response, 'payload' => $json_payload]
         );
     }
-
-    // Close the cURL session
-    curl_close($ch);
 }
 
 /**
@@ -428,8 +430,8 @@ function frl_wsf_button_webhook_handler()
         'data' => $post_data,
     ];
 
-    if ($use_cron) { // @phpstan-ignore-line If condition is always false
-        wp_schedule_single_event(time(), 'frl_wsf_send_form_submission_webhook', [$args]); // @phpstan-ignore-line
+    if ($use_cron) {
+        wp_schedule_single_event(time(), 'frl_wsf_send_form_submission_webhook', [$args]);
     } else {
         frl_wsf_execute_webhook_submission($args);
     }

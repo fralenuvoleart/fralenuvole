@@ -400,6 +400,7 @@ function frl_remove_admin_menus()
 function frl_remove_admin_menus_item($handle)
 {
     $style = '';
+    $menu = '';
 
     if (is_array($handle)) {
         $menu = $handle[0] ?? '';

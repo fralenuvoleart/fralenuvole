@@ -45,6 +45,7 @@ class Frl_Rewriter_CLI {
             if ( ! method_exists( $feature, 'generate_rules' ) ) {
                 continue;
             }
+            /** @var object $feature Ensure PHPStan knows this is an object, not class-string */
             $patterns = array_keys( $feature->generate_rules() );
             $count    = count( $patterns );
             WP_CLI::log( sprintf( '%-40s %4d rules', $feature->get_name(), $count ) );

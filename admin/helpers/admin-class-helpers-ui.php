@@ -12,16 +12,16 @@ if (!defined('ABSPATH')) {
 /**
  * Get registered tabs
  *
- * @param array $tabs Array of tabs to get
+ * @param string|null $type Optional type filter
  * @return array Registered tabs
  */
-function frl_tab_get_registered_tabs($tabs): array
+function frl_tab_get_registered_tabs($type = null): array
 {
     if (!frl_class_exists('Frl_Tab_Manager', __FUNCTION__)) {
         return [];
     }
     /** @var array */
-    return Frl_Tab_Manager::get_registered_tabs($tabs);
+    return Frl_Tab_Manager::get_registered_tabs($type);
 }
 
 /**
@@ -100,14 +100,14 @@ function frl_tab_get_validation_rules($tab_id)
  * Hide tabs by capability
  *
  * @param array $tabs Array of tabs to hide
- * @param string $capability Capability to check
+ * @param bool|null $has_access Whether user has access
  */
-function frl_tab_hide_tabs_by_capability($tabs, $capability)
+function frl_tab_hide_tabs_by_capability($tabs, $has_access)
 {
     if (!frl_class_exists('Frl_Tab_Manager', __FUNCTION__)) {
         return;
     }
-    Frl_Tab_Manager::hide_tabs_by_capability($tabs, $capability);
+    Frl_Tab_Manager::hide_tabs_by_capability($tabs, $has_access);
 }
 
 /**
@@ -577,8 +577,8 @@ function frl_ui_render_metadata_row(
  * Render a status row
  *
  * @param string $label Label
- * @param string $status Status
- * @param string $text Text
+ * @param bool|string $status Status
+ * @param string|null $text Text
  */
 function frl_ui_render_status_row(
     $label,
@@ -667,8 +667,8 @@ function frl_ui_render_status_dot(
 /**
  * Render a status dot boolean
  *
- * @param string $value Value
- * @param string $custom_text Custom text
+ * @param bool|string $value Value
+ * @param string|null $custom_text Custom text
  * @param bool $text_inside Text inside
  */
 function frl_ui_render_status_dot_boolean(
@@ -691,7 +691,7 @@ function frl_ui_render_status_dot_boolean(
  *
  * @param string $code Code
  * @param string $language Language
- * @param string $id ID
+ * @param string|null $id ID
  * @param bool $initially_hidden Initially hidden
  * @param bool $in_table_row In table row
  */
@@ -739,7 +739,7 @@ function frl_ui_render_toggle_button(
 /**
  * Render a formatting field
  *
- * @param string $field Field
+ * @param array $field Field
  * @param string $type Type
  */
 function frl_ui_render_formatting_field(

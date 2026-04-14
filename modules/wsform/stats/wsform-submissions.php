@@ -59,7 +59,7 @@ function frl_wsf_get_submission_data($days = 30) {
 
             $query_params = [$start_date . ' 00:00:00', $end_date . ' 23:59:59'];
 
-            if (is_array($stats_form_ids) && !empty($stats_form_ids)) {
+            if ($stats_form_ids !== null && $stats_form_ids !== []) {
                 $placeholders = implode(', ', array_fill(0, count($stats_form_ids), '%d'));
                 $query_sql .= " AND s.form_id IN ($placeholders)";
                 $query_params = array_merge($query_params, array_map('intval', $stats_form_ids));

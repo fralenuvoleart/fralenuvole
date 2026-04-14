@@ -95,7 +95,7 @@ function frl_render_schema($schema_type)
             $author_name = $author_role = $author_sameas = '';
 
             if (empty($author)) {
-                $author_id = $post->post_author;
+                $author_id = (int) $post->post_author;
                 $author_name = get_the_author_meta('author_role', $author_id) ?: '';
                 $author_role = get_the_author_meta('display_name', $author_id) ?: '';
                 $author_sameas = get_author_posts_url($author_id) ?: '';

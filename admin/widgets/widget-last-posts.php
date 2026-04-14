@@ -44,7 +44,7 @@ function frl_render_last_posts_widget()
             $edit_link = get_edit_post_link($post_id);
             $modified_time = get_the_modified_time('U');
             $time_ago = human_time_diff($modified_time, current_time('timestamp')) . ' ' . __('ago', FRL_PREFIX);
-            $author_id = get_the_author_meta('ID');
+            $author_id = (int) get_the_author_meta('ID');
             $author_name = get_the_author_meta('display_name', $author_id);
             $author_link = '/wp-admin/user-edit.php?user_id=' . $author_id;
 

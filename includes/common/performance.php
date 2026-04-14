@@ -47,13 +47,13 @@ function frl_get_critical_css_data()
     // Get version with $absolute_path = true
     $css_version = frl_get_assets_versions($css_file, 'critical_css', 'versions', false);
     if (empty($css_version)) {
-        return '';
+        return [];
     }
 
     $mtime = $css_version['critical-css'];
 
     if (!$mtime) {
-        return '';
+        return [];
     }
 
     $critical_css = frl_cache_remember('html', "critical_css_{$mtime}",

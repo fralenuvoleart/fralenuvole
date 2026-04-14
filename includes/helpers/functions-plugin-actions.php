@@ -68,7 +68,8 @@ function frl_process_plugin_actions()
     // Check if the action is in the registry
     if (isset($action_registry[$action])) {
         $handler_function = $action_registry[$action];
-        if (function_exists($handler_function)) {
+        // @phpstan-ignore function.alreadyNarrowedType
+        if (function_exists($handler_function)) { 
             $result = $handler_function();
         } else {
             // Log error if handler function doesn't exist

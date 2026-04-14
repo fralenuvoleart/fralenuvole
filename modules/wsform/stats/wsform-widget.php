@@ -75,7 +75,7 @@ function frl_wsf_render_dashboard_widget($form_id = null, $grouped_counts = null
             echo '<tr class="wsf-total-row">';
             echo '<td><strong>TOTAL</strong></td>';
             if ($show_cta) { echo '<td></td>'; }
-            echo '<td><strong>' . esc_html($grand_total) . '</strong></td>';
+            echo '<td><strong>' . esc_html((string) $grand_total) . '</strong></td>';
             echo '</tr>';
         }
 
@@ -138,7 +138,7 @@ function frl_wsf_render_dashboard_widget($form_id = null, $grouped_counts = null
             echo '<tr class="' . $row_class . ' wsf-lang-header">';
             echo '<td><strong>' . esc_html($language) . '</strong></td>';
             if ($show_cta) { echo '<td></td>'; }
-            echo '<td><strong>' . esc_html($lang_total) . '</strong></td>';
+            echo '<td><strong>' . esc_html((string) $lang_total) . '</strong></td>';
             echo '</tr>';
 
             // Sort services by count in descending order

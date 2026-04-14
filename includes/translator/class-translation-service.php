@@ -108,15 +108,16 @@ final class Frl_Translation_Service
                 if (is_string($lang) && strlen($lang) === 2) $language = $lang;
             } else {
                 $lang = substr(get_locale(), 0, 2);
-                if (is_string($lang) && strlen($lang) === 2) $language = $lang;
+                if (strlen($lang) === 2) $language = $lang;
             }
-
+            $language = 'en';
             global $wp_query;
+
             if (isset($wp_query->query['lang']) && is_string($wp_query->query['lang']) && strlen($wp_query->query['lang']) === 2) {
                 $language = $wp_query->query['lang'];
             }
 
-            $this->language_cache = (is_string($language) && strlen($language) === 2) ? $language : 'en';
+            $this->language_cache = $language;
         }
         return $this->language_cache;
     }

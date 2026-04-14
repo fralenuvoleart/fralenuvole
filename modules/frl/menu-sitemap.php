@@ -126,7 +126,7 @@ function frl_render_menu_sitemap($menu_location, $parent_title, $title = '', $he
     if ($title !== '') {
         // Shortcode attribute overrides everything
         $display_title = $title;
-    } elseif (!empty(FRL_MENU_SITEMAP_TITLE)) {
+    } elseif (defined('FRL_MENU_SITEMAP_TITLE') && FRL_MENU_SITEMAP_TITLE !== '') {
         // Fall back to constant
         $display_title = FRL_MENU_SITEMAP_TITLE;
     }
@@ -328,7 +328,7 @@ function frl_render_block_navigation_sitemap($navigation_post, $parent_title, $t
     if ($title !== '') {
         // Shortcode attribute overrides everything
         $display_title = $title;
-    } elseif (!empty(FRL_MENU_SITEMAP_TITLE)) {
+    } elseif (defined('FRL_MENU_SITEMAP_TITLE') && FRL_MENU_SITEMAP_TITLE !== '') {
         // Fall back to constant
         $display_title = FRL_MENU_SITEMAP_TITLE;
     }

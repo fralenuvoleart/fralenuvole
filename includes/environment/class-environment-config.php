@@ -59,7 +59,7 @@ class Frl_Environment_Config
             }
         }
 
-        if ($instance_partial_name === null || !is_string($instance_partial_name)) { // Check if name is valid string
+        if ($instance_partial_name === null) {
             frl_log("No valid constant name mapping found for domain: '{domain}'.", ['domain' => $raw_request_domain]);
             return null;
         }
@@ -71,8 +71,8 @@ class Frl_Environment_Config
         $base_config = FRL_ENV_DEFAULT;
         $instance_partial_config_raw = constant($instance_partial_name);
         // Ensure fetched constants are arrays
-        if (!is_array($base_config)) {
-            frl_log("FRL_ENV_DEFAULT is not an array.");
+        if (!FRL_ENV_DEFAULT) {
+            frl_log("FRL_ENV_DEFAULT is not defined.");
             return null;
         }
         if (!is_array($instance_partial_config_raw)) {
@@ -101,7 +101,7 @@ class Frl_Environment_Config
         }
 
         // Ensure the fetched type partial config is an array
-        if (!is_array($type_partial_config_raw)) {
+        if (!FRL_ENV_DEFAULT_PRODUCTION) {
             frl_log("Constant {constant} is not an array.", ['constant' => $type_const_name]);
             $type_partial_config = [];
         } else {
@@ -209,8 +209,8 @@ class Frl_Environment_Config
 
         // Ensure consistency and final types
         // First get unique elements in each potentially modified list
-        $final_active_temp = array_values(array_unique(is_array($final_active) ? $final_active : []));
-        $final_inactive_temp = array_values(array_unique(is_array($final_inactive) ? $final_inactive : []));
+        $final_active_temp = array_values(array_unique($final_active));
+        $final_inactive_temp = array_values(array_unique($final_inactive));
 
         // Remove active plugins from the inactive list
         $final_inactive = array_diff($final_inactive_temp, $final_active_temp);

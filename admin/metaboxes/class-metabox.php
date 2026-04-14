@@ -44,7 +44,7 @@ class Frl_Metabox
 		}
 
 		$file_path = FRL_DIR_PATH . 'admin/metaboxes/metabox-editor.php';
-		if ($file_path && file_exists($file_path)) {
+		if (file_exists($file_path)) {
 			include $file_path;
 		} else {
 			echo '<p>' . esc_html__('Guidelines not available', FRL_PREFIX) . '</p>';

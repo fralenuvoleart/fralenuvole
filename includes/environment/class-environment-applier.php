@@ -18,7 +18,7 @@ class Frl_Environment_Applier
         $transients_deleted = 0;
 
         if (
-            defined('FRL_ENV_CLEAR_WEBSITE_TRANSIENTS') && FRL_ENV_CLEAR_WEBSITE_TRANSIENTS
+            defined('FRL_ENV_CLEAR_WEBSITE_TRANSIENTS') && FRL_ENV_CLEAR_WEBSITE_TRANSIENTS // @phpstan-ignore-line alwaysTrue
             && frl_has_access()
             && !empty($dest_host)
         ) {

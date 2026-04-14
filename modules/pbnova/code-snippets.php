@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
 }
 
 
-add_action('my_full_conditional_registration', 'my_custom_registration_and_enrollment', 10, 2);
+add_action('my_full_conditional_registration', 'frl_pbnova_registration_and_enrollment', 10, 2);
 
 function frl_pbnova_registration_and_enrollment($form, $submit) {
     // 1. Extract the data you need (Email, Username, Password, Choice)

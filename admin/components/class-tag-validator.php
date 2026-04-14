@@ -97,7 +97,7 @@ class Frl_Tag_Validator
             // Bypass potential firewall rules
             CURLOPT_FRESH_CONNECT => true,
             // Force IPv4 to avoid IPv6 issues
-            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4
+            CURLOPT_IPRESOLVE => (int) CURL_IPRESOLVE_V4
         ]);
 
         // Execute the cURL request
@@ -105,7 +105,6 @@ class Frl_Tag_Validator
         $error = curl_error($ch);
         $status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $info = curl_getinfo($ch);
-        curl_close($ch);
 
         // Check for errors
         if ($error) {

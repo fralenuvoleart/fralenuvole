@@ -1004,7 +1004,7 @@ function frl_get_page_title_from_url($url)
 /**
  * Format a plugin path to display in a user-friendly way
  * @param string $plugin_path Full plugin path (e.g. 'better-search-replace/better-search-replace.php')
- * @return array Array of formatted names (folder, spaced, capitalized)
+ * @return string Formatted plugin name
  */
 function frl_get_plugin_name_from_path($plugin_path)
 {

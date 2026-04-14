@@ -233,13 +233,13 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
         // Only apply to URLs that could potentially be posts from our configured CPTs
         $parts = explode('/', trim($uri, '/'));
-        if (empty($parts)) {
+        if (count($parts) === 0) {
             return false;
         }
 
         // Skip language prefixes to get to the actual content
         $available_langs = Frl_Rewriter_Path_Utils::get_active_languages_safe();
-        if (!empty($parts) && in_array($parts[0], $available_langs, true)) {
+        if (count($parts) > 0 && in_array($parts[0], $available_langs, true)) {
             array_shift($parts); // Remove language prefix
         }
 

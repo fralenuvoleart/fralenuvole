@@ -24,7 +24,7 @@ function frl_errors_init()
     frl_errors_set_level();
 
     // 2. Set custom error handler if debug logging is enabled
-    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) { // @phpstan-ignore-line alwaysFalse
         // Install userland handler for runtime PHP notices/warnings
         set_error_handler('frl_errors_handle_error');
     }
@@ -32,7 +32,7 @@ function frl_errors_init()
     // Re-bind the handler at key load phases to survive overrides by other plugins
     // Only if debug logging is truly enabled to minimize bootstrap overhead.
     $rebind = function () {
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) { // @phpstan-ignore-line alwaysFalse
             set_error_handler('frl_errors_handle_error');
         }
     };
@@ -128,88 +128,88 @@ function frl_errors_handle_error($errlevel, $errstring, $errfile, $errline)
     }
     $is_handling_error = true;
 
-    try {
-        if (! defined('WP_DEBUG_LOG') || ! WP_DEBUG_LOG) {
-            return false;
-        }
-
-        // Best-effort backtrace when file/line are missing
-        if (($errfile === '' || !$errline)) {
-            $msg_signature = md5($errstring);
-            if (isset($backtrace_cache[$msg_signature])) {
-                $errfile = $backtrace_cache[$msg_signature]['file'];
-                $errline = $backtrace_cache[$msg_signature]['line'];
-            } else {
-                $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 6);
-                foreach ($bt as $frame) {
-                    if (!empty($frame['file']) && !empty($frame['line'])) {
-                        $errfile = (string) $frame['file'];
-                        $errline = (int) $frame['line'];
-                        $backtrace_cache[$msg_signature] = ['file' => $errfile, 'line' => $errline];
-                        break;
-                    }
+    if (! defined('WP_DEBUG_LOG') || ! WP_DEBUG_LOG) { // @phpstan-ignore-line alwaysTrue
+        $is_handling_error = false;
+        return false;
+    }
+    // Best-effort backtrace when file/line are missing
+    if (($errfile === '' || !$errline)) { // @phpstan-ignore-line unreachableCode
+        $msg_signature = md5($errstring);
+        if (isset($backtrace_cache[$msg_signature])) {
+            $errfile = $backtrace_cache[$msg_signature]['file'];
+            $errline = $backtrace_cache[$msg_signature]['line'];
+        } else {
+            $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 6);
+            foreach ($bt as $frame) {
+                if (!empty($frame['file']) && !empty($frame['line'])) {
+                    $errfile = (string) $frame['file'];
+                    $errline = (int) $frame['line'];
+                    $backtrace_cache[$msg_signature] = ['file' => $errfile, 'line' => $errline];
+                    break;
                 }
             }
         }
-
-        // Check if error was suppressed with @ operator
-        // In PHP 8.0+, error_reporting() returns 4437 when @ is used
-        if (error_reporting() === 4437) {
-            return true; // Silently suppress the @ error
-        }
-
-        // --- Plugin-only filter ---
-        // If enabled, we suppress any error that does NOT originate from this plugin's directory.
-        if (frl_get_option('error_reporting_plugin', false)) {
-             // If the error file path does NOT contain our plugin path, return true to suppress/hide it.
-             if (!empty($errfile) && !str_contains($errfile, FRL_DIR_PATH)) {
-                  return true; 
-             }
-        }
-        // --------------------------
-
-        $suppress = frl_errors_is_suppression_match($errstring);
-        if ($suppress) {
-            return true; // Suppress per rules
-        }
-
-        // Emit a single enriched line with level label and suppress native handler
-        $label = '';
-        switch ($errlevel) {
-            case E_WARNING:
-            case E_USER_WARNING:
-                $label = 'PHP Warning: ';
-                break;
-            case E_NOTICE:
-            case E_USER_NOTICE:
-                $label = 'PHP Notice: ';
-                break;
-            case E_DEPRECATED:
-            case E_USER_DEPRECATED:
-                $label = 'PHP Deprecated: ';
-                break;
-            case E_USER_ERROR:
-            case E_ERROR:
-                $label = 'PHP Fatal error: ';
-                break;
-        }
-
-        $line = $label . (string) $errstring;
-        if ($errfile !== '' && $errline) {
-            $line .= ' in ' . $errfile . ' on line ' . (int) $errline;
-        }
-        if (function_exists('frl_log_add_details')) {
-            $line = frl_log_add_details($line);
-        }
-
-        // Cache the fully-formed message before logging
-        $detailed_log_cache[$error_signature] = $line;
-
-        error_log($line);
-        return true;
-    } finally {
-        $is_handling_error = false;
     }
+
+    // Check if error was suppressed with @ operator
+    // In PHP 8.0+, error_reporting() returns 4437 when @ is used
+    if (error_reporting() === 4437) {
+        $is_handling_error = false;
+        return true; // Silently suppress the @ error
+    }
+
+    // --- Plugin-only filter ---
+    // If enabled, we suppress any error that does NOT originate from this plugin's directory.
+    if (frl_get_option('error_reporting_plugin', false)) {
+         // If the error file path does NOT contain our plugin path, return true to suppress/hide it.
+         if (!empty($errfile) && !str_contains($errfile, FRL_DIR_PATH)) {
+              $is_handling_error = false;
+              return true;
+         }
+    }
+    // --------------------------
+
+    $suppress = frl_errors_is_suppression_match($errstring);
+    if ($suppress) {
+        $is_handling_error = false;
+        return true; // Suppress per rules
+    }
+
+    // Emit a single enriched line with level label and suppress native handler
+    $label = '';
+    switch ($errlevel) {
+        case E_WARNING:
+        case E_USER_WARNING:
+            $label = 'PHP Warning: ';
+            break;
+        case E_NOTICE:
+        case E_USER_NOTICE:
+            $label = 'PHP Notice: ';
+            break;
+        case E_DEPRECATED:
+        case E_USER_DEPRECATED:
+            $label = 'PHP Deprecated: ';
+            break;
+        case E_USER_ERROR:
+        case E_ERROR:
+            $label = 'PHP Fatal error: ';
+            break;
+    }
+
+    $line = $label . (string) $errstring;
+    if ($errfile !== '' && $errline) {
+        $line .= ' in ' . $errfile . ' on line ' . (int) $errline;
+    }
+    if (function_exists('frl_log_add_details')) {
+        $line = frl_log_add_details($line);
+    }
+
+    // Cache the fully-formed message before logging
+    $detailed_log_cache[$error_signature] = $line;
+
+    error_log($line);
+    $is_handling_error = false;
+    return true;
 }
 
 /**
@@ -243,14 +243,13 @@ function frl_errors_handle_doing_it_wrong($function_name, $message, $version)
             $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 6);
             $file = '';
             $line = 0;
-            if (is_array($bt)) {
-                foreach ($bt as $frame) {
-                    if (!empty($frame['file']) && !empty($frame['line'])) {
-                        $file = (string) $frame['file'];
-                        $line = (int) $frame['line'];
-                        $bt_cache[$msg_hash] = ['file' => $file, 'line' => $line];
-                        break;
-                    }
+
+            foreach ($bt as $frame) {
+                if (!empty($frame['file']) && !empty($frame['line'])) {
+                    $file = (string) $frame['file'];
+                    $line = (int) $frame['line'];
+                    $bt_cache[$msg_hash] = ['file' => $file, 'line' => $line];
+                    break;
                 }
             }
         }

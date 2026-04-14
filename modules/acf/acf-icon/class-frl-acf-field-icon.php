@@ -184,6 +184,7 @@ if (!class_exists('frl_acf_field_icon')) :
                     'restRoot' => esc_url_raw(rest_url('frl/v1/')),
                     'restIcons' => esc_url_raw(rest_url('frl/v1/icons')),
                     'nonce' => wp_create_nonce('wp_rest'),
+                    /** @var list<string> $roots */
                     'roots' => (defined('FRL_ICONS_FLAGS_ROOT') && is_array(FRL_ICONS_FLAGS_ROOT)) ? array_values(array_filter(FRL_ICONS_FLAGS_ROOT, 'strlen')) : [],
                     'counter' => (defined('FRL_ICONS_COUNTER_TOKEN') ? FRL_ICONS_COUNTER_TOKEN : '')
                 ]

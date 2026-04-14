@@ -293,7 +293,7 @@ class Frl_Cache_Display
                 $formatted_value = $value ? frl_ui_render_status_dot_boolean(true, 'Yes') : 'Not Configured';
             } elseif ($label === 'Persistent Cache' || $label === 'Is Functional') {
                 $text = $value ? 'Yes' : 'No';
-                $formatted_value = frl_ui_render_status_dot_boolean((bool)$value, $text);
+                $formatted_value = frl_ui_render_status_dot_boolean((bool) $value, $text);
             } elseif (is_null($value)) {
                 $formatted_value = '<em>N/A</em>';
             } elseif ($label === 'Cache Slug' || $label === 'Backend Class') {
@@ -580,7 +580,7 @@ class Frl_Cache_Display
      * @param string $group The cache group
      * @param array  $config The cache configuration
      * @param bool   $cache_functional Whether the object cache is functional
-     * @return array|null Group info array or null if info cannot be retrieved
+     * @return array Group info array
      */
     private static function get_group_info(string $group, array $config, bool $cache_functional)
     {
@@ -794,13 +794,13 @@ class Frl_Cache_Display
                 // Format boolean values
                 if ($is_different && $this->is_boolean_value($db_value) && $this->is_boolean_value($cached_value)) {
                     $warning_text = ($db_value ? 'enabled' : 'disabled') . ' ⚠️';
-                    $db_formatted = frl_ui_render_status_dot_boolean($db_value, $warning_text);
+                    $db_formatted = frl_ui_render_status_dot_boolean((bool) $db_value, $warning_text);
                 } else {
-                    $db_formatted = frl_ui_render_status_dot_boolean($db_value);
+                    $db_formatted = frl_ui_render_status_dot_boolean((bool) $db_value);
                 }
 
                 $cached_formatted = $is_cached
-                    ? frl_ui_render_status_dot_boolean($cached_value)
+                    ? frl_ui_render_status_dot_boolean((bool) $cached_value)
                     : '<span class="not-cached">not cached</span>';
 
                 $option_data = [
@@ -852,6 +852,9 @@ class Frl_Cache_Display
         }
 
         // Sort each category by key
+        /** @var array<int, array{key: string, db_value: string, cached_value: string, is_different: bool, is_cached: bool, autoload: string}> $bool_options */
+        /** @var array<int, array{key: string, db_value: string, cached_value: string, is_different: bool, is_cached: bool, autoload: string}> $array_options */
+        /** @var array<int, array{key: string, db_value: string, cached_value: string, is_different: bool, is_cached: bool, autoload: string}> $other_options */
         $sort_by_key = function ($a, $b) {
             return strcmp($a['key'], $b['key']);
         };

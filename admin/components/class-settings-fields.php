@@ -363,7 +363,7 @@ class Frl_Settings_Fields
 		}
 
 		// Common attributes for non-formatting fields
-		$is_restricted = !empty($field['restricted']) && $field['restricted'];
+		$is_restricted = !empty($field['restricted']);
 		$is_admin = frl_has_access();
 		$disabled_attr = ($is_restricted && !$is_admin) ? 'disabled="disabled"' : '';
 		$restricted_class = $field['type'];

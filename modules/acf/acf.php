@@ -251,7 +251,7 @@ function frl_acf_flush_shortcodes_cache_on_acf_save($post_id)
 {
     // Clear only keys with our prefix
     $keys = frl_cache_get_multi('shortcodes');
-    if (!is_array($keys)) {
+    if ( empty($keys) ) {
         return;
     }
     foreach (array_keys($keys) as $key) {

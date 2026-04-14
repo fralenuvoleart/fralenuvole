@@ -581,11 +581,11 @@ class Frl_Cache_Manager
      *
      * @param string $group Cache group
      * @param string|array $key Cache key
-     * @param callable $callback Callback to generate value if not found
+     * @param callable|null $callback Callback to generate value if not found
      * @param int|null $ttl Time to live in seconds
      * @return mixed|null Cached value or null
      */
-    public static function get($group, $key, $callback, $ttl = null)
+    public static function get($group, $key, $callback = null, $ttl = null)
     {
         $cache_key = self::generate_key($group, $key);
 
@@ -720,7 +720,7 @@ class Frl_Cache_Manager
      * Delete cached item
      * @param string $group Cache group
      * @param string|array $key Cache key
-     * @return bool True if deletion was successful
+     * @return array Result of deletion
      */
     public static function delete($group, $key)
     {
@@ -1699,13 +1699,8 @@ class Frl_Cache_Manager
             return 'opcache_not_enabled';
         }
 
-        try {
-            $opcache_result = opcache_reset();
-            return $opcache_result ? 'success' : 'failed';
-        } catch (Exception $e) {
-            frl_log('OPcache reset failed: {error}', ['error' => $e->getMessage()]);
-            return 'failed_with_exception';
-        }
+        $opcache_result = opcache_reset();
+        return $opcache_result ? 'success' : 'failed';
     }
 
     /**

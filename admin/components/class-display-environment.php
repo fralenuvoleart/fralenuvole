@@ -208,6 +208,7 @@ class Frl_Environment_Display
 
         $config_for_json_display = $env_config;
 
+        $current_env_source_name = '';
         if (isset($env_config['current_environment'])) {
             $current_env_source_name = esc_html($env_config['current_environment']);
             unset($config_for_json_display['current_environment']);

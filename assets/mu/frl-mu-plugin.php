@@ -16,5 +16,6 @@ $plugin_dir = WP_PLUGIN_DIR . '/' . FRL_MU_NAME . '/';
 $bootstrap_file = $plugin_dir . 'includes/bootstrap.php';
 
 if (file_exists($bootstrap_file)) {
+    // @phpstan-ignore requireOnce.fileNotFound
     require_once $bootstrap_file;
 }

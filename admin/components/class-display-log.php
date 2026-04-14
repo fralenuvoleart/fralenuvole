@@ -337,7 +337,6 @@ class Frl_Log_Manager
 
 			// Process lines in reverse order
 			$lines = array_reverse($lines);
-			$current_entry = null;
 
 			foreach ($lines as $line) {
 				if (empty(trim($line))) {

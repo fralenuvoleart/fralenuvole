@@ -80,16 +80,6 @@ class Frl_Environment_Files
 
                     $has_syntax_error = false;
                     $error_message = '';
-                    try {
-                        $wrapped_code = '<?php if(0){' . $content . '}';
-                        if (@token_get_all($wrapped_code) === false) {
-                            $has_syntax_error = true;
-                            $error_message = 'PHP parsing failed';
-                        }
-                    } catch (Throwable $e) {
-                        $has_syntax_error = true;
-                        $error_message = $e->getMessage();
-                    }
 
                     restore_error_handler();
                     error_reporting($current_error_level);

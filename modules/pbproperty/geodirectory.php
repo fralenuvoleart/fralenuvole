@@ -37,7 +37,7 @@ function frl_pbproperty_geodir_init(): void
         1);
 
     // Filter: Custom field output translation for select/multiselect fields (labels, not values)
-    if (!empty(FRL_GEODIR_TRANSLATOR_FIELDS)) {
+    if (defined('FRL_GEODIR_TRANSLATOR_FIELDS') && FRL_GEODIR_TRANSLATOR_FIELDS) {
         $field_types = ['select', 'multiselect', 'radio'];
         foreach ($field_types as $type) {
             add_filter("geodir_custom_field_output_{$type}",

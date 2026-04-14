@@ -194,7 +194,7 @@ class Frl_Tab_Manager
                 add_action($action_hook, function () use ($callback, $tab_id) {
                     if (is_callable($callback)) {
                         call_user_func($callback);
-                    } elseif (defined('WP_DEBUG') && WP_DEBUG) {
+                    } elseif (defined('WP_DEBUG') && WP_DEBUG) { // @phpstan-ignore-line alwaysFalse
                         echo '<p class="error">Error: Callback "' . esc_html(is_string($callback) ? $callback : 'Object') . '" for tab "' . esc_html($tab_id) . '" is not callable.</p>';
                     }
                 }, $args['priority'], 2);
@@ -413,7 +413,7 @@ class Frl_Tab_Manager
     /**
      * Static facade for get_tabs method
      *
-     * @param string $type Optional. Type of tabs to retrieve ('form', 'custom', or null for all)
+     * @param string|null $type Optional. Type of tabs to retrieve ('form', 'custom', or null for all)
      * @return array The registered tabs
      */
     public static function get_registered_tabs($type = null)
@@ -974,7 +974,7 @@ class Frl_Tab_Manager
         }
 
         // Begin the tab container
-        echo '<div id="tabs" class="wrap frl-wrap ' . esc_attr($tab_class) . '" data-active-tab="' . esc_attr($active_tab) . '">';
+        echo '<div id="tabs" class="wrap frl-wrap ' . esc_attr($tab_class) . '" data-active-tab="' . esc_attr((string) $active_tab) . '">';
     }
 
     /**
@@ -1070,7 +1070,7 @@ class Frl_Tab_Manager
      * Tabs will be hidden from both the navigation and their content won't be rendered.
      *
      * @param array $hidden_tabs Array of tab IDs to potentially hide
-     * @param bool $has_access Whether the user has access (if null, uses frl_has_access())
+     * @param bool|null $has_access Whether the user has access (if null, uses frl_has_access())
      * @return void
      */
     public static function hide_tabs_by_capability($hidden_tabs, $has_access = null)

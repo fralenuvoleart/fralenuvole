@@ -496,7 +496,7 @@ function frl_set_force_reload_flag(): void
 {
     $name = frl_prefix('force_reload');
     // Set a cookie that expires in 1 minute
-    setcookie($name, '1', time() + 60, COOKIEPATH ?? '/', COOKIE_DOMAIN, is_ssl(), true);
+    setcookie($name, '1', time() + 60, COOKIEPATH ?: '/', COOKIE_DOMAIN, is_ssl(), true);
 }
 
 /**
@@ -512,7 +512,7 @@ function frl_check_and_clear_force_reload_flag(): bool
     }
 
     // Clear the cookie immediately
-    setcookie($name, '', time() - 3600, COOKIEPATH ?? '/', COOKIE_DOMAIN, is_ssl(), true);
+    setcookie($name, '', time() - 3600, COOKIEPATH ?: '/', COOKIE_DOMAIN, is_ssl(), true);
     return true;
 }
 
@@ -615,14 +615,14 @@ function frl_process_php_string($string, $context = null): string
 }
 
 /**
- * Normalize an autoload setting value to 'yes' or 'no'.
+ * Normalize an autoload setting value to boolean.
  *
  * @param mixed $value The input value ('yes', 'no', null, etc.)
- * @return string 'yes' or 'no'. Defaults to 'yes' unless input is strictly 'no'.
+ * @return bool True for autoload enabled, false otherwise.
  */
 function frl_normalize_autoload($value)
 {
-    return ($value === 'no') ? 'no' : 'yes';
+    return $value !== 'no';
 }
 
 /**
@@ -1036,15 +1036,11 @@ function frl_format_log_message($message, $context = [])
         }
     } elseif (is_array($processed_message)) {
         // Handle arrays with better formatting and error handling
-        try {
-            $json = json_encode($processed_message, JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_PRETTY_PRINT);
-            if ($json === false) {
-                $log_message .= "Array (failed to encode: " . json_last_error_msg() . ")";
-            } else {
-                $log_message .= "Array:\n" . $json;
-            }
-        } catch (Throwable $e) {
-            $log_message .= "Array (exception while encoding: " . $e->getMessage() . ")";
+        $json = json_encode($processed_message, JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_PRETTY_PRINT);
+        if ($json === false) {
+            $log_message .= "Array (failed to encode: " . json_last_error_msg() . ")";
+        } else {
+            $log_message .= "Array:\n" . $json;
         }
     } else {
         // Simple types

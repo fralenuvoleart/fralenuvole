@@ -72,7 +72,7 @@ function frl_admin_bar_custom_menu()
     // Add "New Content" > "All CPT" menu items
     $cpt_list = FRL_AB_CPT_LIST;
 
-    if (!empty($cpt_list)) {
+    foreach ($cpt_list as $key => $value) {
         // add cpt_group node
         $cpt_group_id = 'cpt-menu-group';
         $wp_admin_bar->add_group([
@@ -93,7 +93,8 @@ function frl_admin_bar_custom_menu()
     }
 
     // Apply custom menu items directly
-    if ((frl_has_access('manage_options')) && frl_get_option('custom_ab_menu')) {
+    $custom_menu = frl_get_option('custom_ab_menu');
+    if ($custom_menu !== '' && $custom_menu !== false && $custom_menu !== null) {
         if (!empty($menu_data['menu_secondary'])) {
             foreach ($menu_data['menu_secondary'] as $item) {
                 $wp_admin_bar->add_menu($item);
@@ -440,7 +441,7 @@ function frl_trace_logged_user_visits()
     }
 
     // Skip if URL couldn't be determined (should rarely happen)
-    if (empty($current_url)) {
+    if (empty($current_url)) { // @phpstan-ignore-line emptyFunctionResult
         return;
     }
 

@@ -54,7 +54,7 @@ require_once FRL_DIR_PATH . 'includes/environment/class-environment-manager.php'
 
 // Load and initialize the cache manager immediately.
 // Skip WordPress-dependent code when running under PHPStan
-if (!defined('PHPSTAN_RUNNING') || !PHPSTAN_RUNNING) {
+if (!defined('PHPSTAN_RUNNING') || !PHPSTAN_RUNNING) { // @phpstan-ignore-line duplicateIfStatments
     require_once FRL_DIR_PATH . 'includes/cache/class-cache-manager.php';
     Frl_Cache_Manager::init();
 
@@ -68,6 +68,6 @@ if (!defined('PHPSTAN_RUNNING') || !PHPSTAN_RUNNING) {
 require_once FRL_DIR_PATH . 'includes/lifecycle.php';
 
 // Register rewriter CLI commands (only under WP-CLI)
-if (defined('WP_CLI') && WP_CLI) {
+if (defined('WP_CLI') && WP_CLI) { // @phpstan-ignore-line alwaysFalse
     require_once FRL_DIR_PATH . 'includes/rewriter/cli/class-rewriter-cli.php';
 }

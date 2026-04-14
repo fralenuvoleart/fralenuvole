@@ -447,6 +447,7 @@ function frl_themekit_fonts_get_system_stack(string $type = 'frl-sans-serif'): s
         $stacks = FRL_THEMEKIT_DEFAULT_SYSTEM_FONTS;
         $stack_array = $stacks[$type] ?? [];
 
+        // @phpstan-ignore function.alreadyNarrowedType
         if (empty($stack_array) || !is_array($stack_array)) {
             // Return an empty string if the stack is not a valid, non-empty array.
             return '';

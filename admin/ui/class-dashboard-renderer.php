@@ -112,8 +112,9 @@ class Frl_Dashboard_Renderer
             }
         } else {
             $num_columns = !empty($headers) ? count($headers) : 1;
-            $output .= '<tr><td colspan="' . esc_attr($num_columns) . '">' . __('No data found.', FRL_PREFIX) . '</td></tr>';
+            $output .= '<tr><td colspan="' . esc_attr((string) $num_columns) . '">' . __('No data found.', FRL_PREFIX) . '</td></tr>';
         }
+        
         $output .= '</tbody>';
 
         // Table Footer (Optional) - Generally mirrors header if used

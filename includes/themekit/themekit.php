@@ -306,10 +306,9 @@ function frl_themekit_apply_theme_json($theme_json_data)
 /**
  * This function registers custom block styles.
  *
- * @param object $theme_json The original theme JSON data.
- * @return object The modified theme JSON data.
+ * @return void
  */
-function frl_themekit_register_block_styles()
+function frl_themekit_register_block_styles(): void
 {
     if (frl_is_already_running(__FUNCTION__)) {
         return;
@@ -589,7 +588,7 @@ function frl_themekit_frontend_body_classes($classes)
         $cache_key .= '_themekit_body_classes_' . $query_signature;
     }
 
-    return frl_cache_remember('postdata', $cache_key, function () use ($classes, $query_signature) {
+    return frl_cache_remember('postdata', $cache_key, function () use ($classes) {
         $queried_object = get_queried_object();
         $custom_classes = [];
 

@@ -290,6 +290,7 @@ function frl_register_icon_block()
 
     // Localize minimal config used by the editor script
     $icons_relative = defined('FRL_ICONS_RELATIVE_PATH') ? FRL_ICONS_RELATIVE_PATH : 'assets/icons/';
+    /** @var list<string> $roots */
     $roots = (defined('FRL_ICONS_FLAGS_ROOT') && is_array(FRL_ICONS_FLAGS_ROOT)) ? array_values(array_filter(FRL_ICONS_FLAGS_ROOT, 'strlen')) : [];
     $counter = defined('FRL_ICONS_COUNTER_TOKEN') ? FRL_ICONS_COUNTER_TOKEN : '';
     wp_localize_script($handle, 'FRL_ICONS_CFG', [
@@ -336,7 +337,7 @@ function frl_render_icon_block($attributes, $content, $block = null)
 
     // Default: follow global shortcode default (span unless overridden in config)
     $default = defined('FRL_ICONS_RENDER_SHORTCODE') ? FRL_ICONS_RENDER_SHORTCODE : 'span';
-    if ($default === 'inline' || $default === 'svg') {
+    if ($default === 'inline' || $default === 'svg') { // @phpstan-ignore-line alwaysTrue
         return FRL_Icon_Renderer::render('svg', $rel, $class, $title);
     }
     return FRL_Icon_Renderer::render('span', $rel, $class, $title);

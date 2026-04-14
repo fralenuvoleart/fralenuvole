@@ -329,7 +329,7 @@ final class Frl_Rewriter_Path_Utils
         return frl_cache_remember('rewriter', 'active_languages', function () {
             $languages = frl_get_active_languages();
             // Validate that we have a non-empty array
-            return is_array($languages) && !empty($languages) ? $languages : ['en'];
+            return !empty($languages) ? $languages : ['en'];
         });
     }
 

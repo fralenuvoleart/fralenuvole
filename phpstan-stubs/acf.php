@@ -245,12 +245,24 @@ if (!function_exists('acf_render_field_setting')) {
 if (!function_exists('get_field')) {
     /**
      * @param string $selector
-     * @param int|false $post_id
+     * @param int|string|false $post_id
      * @param bool $format_value
      * @return mixed
      */
     function get_field($selector, $post_id = false, $format_value = true) {
         return null;
+    }
+}
+
+if (!function_exists('get_field_object')) {
+    /**
+     * @param string $selector
+     * @param int|string|false $post_id
+     * @param bool $format_value
+     * @return array<string, mixed>|false
+     */
+    function get_field_object($selector, $post_id = false, $format_value = true) {
+        return false;
     }
 }
 
@@ -268,7 +280,7 @@ if (!function_exists('update_field')) {
     /**
      * @param string $selector
      * @param mixed $value
-     * @param int|false $post_id
+     * @param int|string|false $post_id
      * @return bool
      */
     function update_field($selector, $value, $post_id = false) {

@@ -141,6 +141,11 @@ function frl_wsf_translate_fields($form, $preview)
         /** @disregard P1010 Undefined type */
         $field = wsf_field_get_object($form, $object->id);
 
+        // Skip if field not found
+        if ($field === null) {
+            continue;
+        }
+
         // Translate Labels
         if (empty($field->meta->hidden)) {
             $label = $field->label;
@@ -209,6 +214,7 @@ function frl_wsf_translate_form_success($message)
 function frl_wsf_add_dashboard_widget($widgets)
 {
     $entries = defined('WS_STATS_FORM_IDS') ? WS_STATS_FORM_IDS : [];
+    // @phpstan-ignore function.alreadyNarrowedType
     if (!is_array($entries)) {
         $entries = [$entries];
     }

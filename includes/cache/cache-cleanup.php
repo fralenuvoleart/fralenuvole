@@ -42,8 +42,8 @@ function frl_register_hooks_rewrite_flush(): void
  */
 function frl_clear_post_cache($post_id)
 {
-    // Validate post ID
-    if (empty($post_id) || !is_numeric($post_id)) {
+    // Validate post ID - empty() catches both falsy values and 0, absint() ensures positive int
+    if (empty($post_id)) {
         return;
     }
     $post_id = absint($post_id);
@@ -60,7 +60,7 @@ function frl_clear_post_cache($post_id)
     // Clear only post-scoped icon repeater caches within the 'icons' group
     // Renderer caches include file mtimes and do not need clearing on post save
     $icon_keys = frl_cache_get_multi('icons');
-    if (is_array($icon_keys)) {
+    if (!empty($icon_keys)) {
         $prefix = 'repeater_' . $post_id . '_';
         foreach (array_keys($icon_keys) as $key) {
             if (is_string($key) && str_starts_with($key, $prefix)) {
@@ -236,8 +236,8 @@ function frl_clear_term_permalink_cache($term_id)
  */
 function frl_clear_tracked_meta_cache(string $type, int $id)
 {
-    // Validate ID
-    if (empty($id) || !is_numeric($id)) {
+    // Validate ID - empty() catches both falsy values and 0, absint() ensures positive int
+    if (empty($id)) {
         return;
     }
     $id = absint($id);

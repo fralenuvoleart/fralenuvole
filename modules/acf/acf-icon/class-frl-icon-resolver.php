@@ -396,7 +396,7 @@ class FRL_Icon_Resolver {
 	 */
 	public static function label_from_rel(string $value): string
 	{
-		if ($value === '' || !is_string($value)) {
+		if (empty($value)) {
 			return '';
 		}
 		$parts = explode('/', $value);

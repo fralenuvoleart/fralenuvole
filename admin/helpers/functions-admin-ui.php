@@ -840,8 +840,7 @@ function frl_update_wp_config_file($options = [])
     }
 
     // Check if we have write permissions
-    // @phpstan-ignore-line booleanAnd.leftAlwaysTrue
-    if (!is_writable(ABSPATH) || (file_exists($config_path) && !is_writable($config_path))) {
+    if (!is_writable(ABSPATH) || !is_writable($config_path)) {
         return frl_error('write_permission', 'Insufficient permissions to modify wp-config.php');
     }
 

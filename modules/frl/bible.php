@@ -50,7 +50,7 @@ function frl_bible_handle_proxy()
     }
 
     $api_key = FRL_BIBLE_API_KEY;
-    if (empty($api_key)) {
+    if (!$api_key) {
         wp_die('ESV API key not configured. Define FRL_BIBLE_API_KEY in wp-config.php');
     }
 
@@ -153,7 +153,7 @@ function frl_shortcode_bible_audio($atts)
     }
 
     // If still no passage, use default constant
-    if (empty($passage) && !empty(FRL_BIBLE_DEFAULT_PASSAGE)) {
+    if (defined('FRL_BIBLE_DEFAULT_PASSAGE') && FRL_BIBLE_DEFAULT_PASSAGE) {
         $passage = FRL_BIBLE_DEFAULT_PASSAGE;
     }
 
