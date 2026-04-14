@@ -71,8 +71,8 @@ class Frl_Environment_Config
         $base_config = FRL_ENV_DEFAULT;
         $instance_partial_config_raw = constant($instance_partial_name);
         // Ensure fetched constants are arrays
-        if (!FRL_ENV_DEFAULT) {
-            frl_log("FRL_ENV_DEFAULT is not defined.");
+        if (!is_array($base_config)) {
+            frl_log("FRL_ENV_DEFAULT is not an array.");
             return null;
         }
         if (!is_array($instance_partial_config_raw)) {
@@ -101,7 +101,7 @@ class Frl_Environment_Config
         }
 
         // Ensure the fetched type partial config is an array
-        if (!FRL_ENV_DEFAULT_PRODUCTION) {
+        if (!is_array($type_partial_config_raw)) {
             frl_log("Constant {constant} is not an array.", ['constant' => $type_const_name]);
             $type_partial_config = [];
         } else {
