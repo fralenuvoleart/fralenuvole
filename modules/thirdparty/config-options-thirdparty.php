@@ -19,7 +19,7 @@ $frl_thirdparty_default_fields = array(
         'label'             => 'Enable Cache Bridge',
         'description'       => 'Two-way cache sync: clears fralenuvole caches when LiteSpeed, Breeze, or WP Rocket purge, and notifies them when fralenuvole flushes.',
         'type'              => 'checkbox',
-        'default'           => 1,
+        'default'           => 0,
         'sanitize_callback' => 'absint',
         'restricted'        => true,
     ),
