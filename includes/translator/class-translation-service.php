@@ -110,7 +110,6 @@ final class Frl_Translation_Service
                 $lang = substr(get_locale(), 0, 2);
                 if (strlen($lang) === 2) $language = $lang;
             }
-            $language = 'en';
             global $wp_query;
 
             if (isset($wp_query->query['lang']) && is_string($wp_query->query['lang']) && strlen($wp_query->query['lang']) === 2) {

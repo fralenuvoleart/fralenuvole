@@ -411,11 +411,18 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
             }
 
             // Repair absent rewrite_rules (normal WP state during any flush cycle).
-            // Cooldown prevents repeated repairs across concurrent requests.
-            // No third-party notification: this is a WP-native event; each cache
-            // plugin handles its own purge via its own hooks.
+            // Exponential backoff prevents log flooding on persistent failure.
+            // Retry count expires after 1 hour to allow recovery after temporary issues.
+            $retry_count = (int) frl_get_transient('rewrite_flush_retry_count') ?: 0;
+            if ($retry_count > 5) {
+                frl_log('Rewrite flush failed after 5 attempts - stopping automatic repair', [
+                    'retry_count' => $retry_count
+                ]);
+                return; // Stop retrying until retry count expires
+            }
             if (get_option('rewrite_rules') === false && !frl_get_transient('rewrite_flush_cooldown')) {
                 frl_set_transient('rewrite_flush_cooldown', true, 60);
+                frl_set_transient('rewrite_flush_retry_count', $retry_count + 1, HOUR_IN_SECONDS);
                 self::flush_rules(is_admin());
             }
         }, 10, 0);

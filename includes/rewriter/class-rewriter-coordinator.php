@@ -152,7 +152,7 @@ class Frl_Rewriter_Coordinator
     public function validate_all_features(): bool
     {
         // Cache validation results based on configuration hash
-        return frl_cache_remember('rewriter', "features_validation_{$this->get_config_hash()}", function () {
+        return frl_cache_remember('rewriter', 'features_validation_' . $this->get_config_hash(), function () {
             $all_patterns = [];
 
             foreach ($this->features as $feature) {
@@ -163,9 +163,28 @@ class Frl_Rewriter_Coordinator
                 try {
                     $feature->validate_patterns(array_keys($all_patterns));
                     $feature_patterns = $feature->generate_rules();
+
+                    // Validate routing: each pattern should produce valid query vars
+                    foreach (array_keys($feature_patterns) as $pattern) {
+                        $test_uri = $this->generate_test_uri_from_pattern($pattern);
+                        if ($test_uri !== null) {
+                            $vars = $feature->resolve_request($test_uri);
+                            if (empty($vars)) {
+                                frl_log(
+                                    'Routing validation failed for feature {feature}: pattern `{pattern}` produces empty query vars for test URI `{uri}`',
+                                    ['feature' => $feature->get_name(), 'pattern' => $pattern, 'uri' => $test_uri]
+                                );
+                                throw new Exception(
+                                    'Routing validation failed: pattern `' . $pattern . '` produces empty query vars'
+                                );
+                            }
+                        }
+                    }
+
                     $all_patterns = array_merge($all_patterns, $feature_patterns);
                 } catch (Throwable $e) {
                     // Catches both Exception and PHP Error (TypeError, ArgumentCountError, etc.)
+                    frl_log('Feature validation error: {error}', ['error' => $e->getMessage()]);
                     return false;
                 }
             }
@@ -251,10 +270,55 @@ class Frl_Rewriter_Coordinator
 
         if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
             foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
-                $config_data['options']["translate_cpt_slugs_{$cpt_slug}"] = frl_get_option("translate_cpt_slugs_{$cpt_slug}");
+                $config_data['options']['translate_cpt_slugs_' . $cpt_slug] = frl_get_option('translate_cpt_slugs_' . $cpt_slug);
             }
         }
 
         return md5(json_encode($config_data, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Generate a test URI from a rewrite pattern for routing validation.
+     *
+     * Converts regex patterns like `^(?:en|it)/news/(.+?)/?$` to test URIs like `en/news/test-slug`.
+     * Returns null if the pattern cannot be converted to a valid test URI.
+     *
+     * @param string $pattern The rewrite pattern (regex)
+     * @return string|null Test URI or null if conversion fails
+     */
+    private function generate_test_uri_from_pattern(string $pattern): ?string
+    {
+        $test_uri = $pattern;
+
+        // Remove regex anchors
+        $test_uri = preg_replace('#^\\(\\?:#', '', $test_uri);
+        $test_uri = preg_replace('#\\)\\?\\$#', '', $test_uri);
+        $test_uri = preg_replace('#\\^#', '', $test_uri);
+        $test_uri = preg_replace('#\\?\\$#', '', $test_uri);
+
+        // Replace language alternation patterns like (?:en|it) with first option
+        $test_uri = preg_replace('#\\(\\?:([^|]+)\\|[^)]+\\)#', '$1', $test_uri);
+
+        // Replace non-capturing groups with sample values
+        $test_uri = preg_replace('#\\(\\?:[^)]+\\)#', 'test', $test_uri);
+
+        // Replace captured groups with sample slug values
+        $test_uri = preg_replace('#\\(\\.[^)]+\\)\\)#', 'test)', $test_uri);
+        $test_uri = preg_replace('#\\.\\+#', 'test-slug', $test_uri);
+        $test_uri = preg_replace('#\\(\\.[^)]+\\)#', 'test', $test_uri);
+
+        // Handle numeric quantifiers like (?:([^/]+)/?)
+        $test_uri = preg_replace('#\\d\\+#', '1', $test_uri);
+
+        // Clean up remaining regex escaping
+        $test_uri = str_replace(['/', '\/'], '/', $test_uri);
+        $test_uri = trim($test_uri, '/');
+
+        // If we have something reasonable, return it
+        if (!empty($test_uri) && strlen($test_uri) > 2 && strpos($test_uri, '(') === false) {
+            return $test_uri;
+        }
+
+        return null;
     }
 }

@@ -14,3 +14,15 @@ A high-performance, "Swiss-army knife" WordPress administrator plugin designed f
 - **Environment Enforcement:** Must happen at `init/10`.
 - **Cache Clearing:** Uses a cascade system via the `FRL_CACHE_DEPENDENCIES` constant.
 - **Navigation:** Translates `wp_navigation` posts specifically between languages.
+
+## 🏗️ Architecture
+- **main.php:** 129 lines, modular structure loading common/ modules
+- **pre_option_frl_* filters:** Plugin-specific, no other plugin uses them
+- **Re-entrancy Pattern:** Static `$initialized[]` array keyed by function/method/class name
+- **Language Detection Priority:** Query var → Polylang → WordPress locale → 'en' fallback
+
+## 📋 Backlog
+- P3.1: WPML Support for Navigation Translation
+
+---
+*Last Updated: 2026-04-14*

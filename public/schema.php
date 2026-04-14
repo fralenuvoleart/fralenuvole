@@ -163,7 +163,12 @@ function frl_render_schema($schema_type)
 
         // Generate and validate schema
         $raw_schema = strtr($schema_templates[$schema_type], $replacements);
-        $decoded = json_decode($raw_schema);
+        try {
+            $decoded = json_decode($raw_schema, false, 512, JSON_THROW_ON_ERROR);
+        } catch (Exception $e) {
+            frl_log('FRL Schema JSON decode failed: {error}', ['error' => $e->getMessage()]);
+            return '';
+        }
 
         if (!$decoded) {
             return '';

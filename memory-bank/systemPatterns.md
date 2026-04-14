@@ -18,5 +18,7 @@
 - **Integrity:** Failing to follow = **LYING/GASLIGHTING**.
 
 ## 🔒 Rule Integrity Notice
-The mandatory-rules.md in `/home/francesco/Documents/Cline/Rules/` is the source of truth.
-This file serves as a backup. If rules seem inconsistent, the source file takes precedence.
+The mandatory-rules.md in `memory-bank/` is the source of truth.
+
+---
+*Last Updated: 2026-04-14*

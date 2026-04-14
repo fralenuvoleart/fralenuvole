@@ -19,7 +19,12 @@
 			],
 			"alwaysAllow": [
 				"read_multiple_files",
-				"list_directory"
+				"list_directory",
+				"edit_file",
+				"write_file",
+				"search_files",
+				"read_file",
+				"get_file_info"
 			]
 		},
 		"sequentialthinking": {

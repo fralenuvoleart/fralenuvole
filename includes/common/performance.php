@@ -12,9 +12,15 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Add critical CSS functionality
+ * Add critical CSS functionality.
+ *
+ * INJECTION PRIORITY: -999 (runs BEFORE theme CSS)
+ *
+ * The `data-no-defer="1"` attribute signals the defer parser to not defer this
+ * inline style, preserving render-blocking behavior for the critical path.
  *
  * @hook wp_head
+ * @priority -999
  */
 function frl_add_critical_css()
 {

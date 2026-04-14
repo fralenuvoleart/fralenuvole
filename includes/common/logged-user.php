@@ -358,7 +358,7 @@ function frl_get_debug_log_count()
 
         if (file_exists($log_file)) {
             // Faster than loading entire file into memory
-            $handle = fopen($log_file, 'r');
+            $handle = @fopen($log_file, 'r');
             if ($handle) {
                 $ignore_list = defined('FRL_LOG_COUNT_IGNORE') && is_array(FRL_LOG_COUNT_IGNORE) ? FRL_LOG_COUNT_IGNORE : [];
 
@@ -383,10 +383,16 @@ function frl_get_debug_log_count()
                     }
                 }
                 fclose($handle);
+            } else {
+                // File exists but can't be opened - cache 0 to avoid repeated failed attempts
+                $count = 0;
             }
+        } else {
+            // File doesn't exist - cache 0
+            $count = 0;
         }
 
-        // Cache for 5 minutes
+        // Cache for 5 minutes (including 0 counts)
         frl_set_transient('debug_log_count', $count, 5 * MINUTE_IN_SECONDS);
     }
 
