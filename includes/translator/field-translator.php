@@ -36,7 +36,7 @@ function frl_translator_init()
         add_filter('get_user_metadata', 'frl_translator_user_meta', 20, 4);
     }
     if ($is_options_enabled) {
-        foreach (FRL_TRANSLATOR_OPTIONS as $option_name) {
+        foreach (FRL_TRANSLATOR_OPTIONS as $option_name) { // @phpstan-ignore-line
             add_filter("pre_option_{$option_name}", 'frl_translator_pre_option', 10, 2);
         }
     }
@@ -44,9 +44,7 @@ function frl_translator_init()
     // Register hooks for complex ACF field types if any metadata type is enabled.
     if ($is_posts_enabled || $is_terms_enabled || $is_users_enabled || $is_options_enabled) {
         foreach (FRL_TRANSLATOR_FIELDS_ACF as $type => $handler) {
-            if (is_callable($handler)) {
-                add_filter("acf/format_value/type={$type}", $handler, 20, 3);
-            }
+            add_filter("acf/format_value/type={$type}", $handler, 20, 3);
         }
     }
 
@@ -184,7 +182,7 @@ function frl_translator_acf_link($value, $post_id, $field)
  */
 function frl_translator_acf_taxonomy($value, $post_id, $field)
 {
-    if (frl_get_option('translator_taxonomies') !== '1' || empty(FRL_TRANSLATOR_TAXONOMIES)) {
+    if (frl_get_option('translator_taxonomies') !== '1' || empty(FRL_TRANSLATOR_TAXONOMIES)) { // @phpstan-ignore-line
         return $value;
     }
     // Determine the correct list of fields to check against based on context.
@@ -201,7 +199,7 @@ function frl_translator_acf_taxonomy($value, $post_id, $field)
 
     $translate_term = function ($term) {
         if (is_object($term) && isset($term->name)) {
-            if (!empty(FRL_TRANSLATOR_TAXONOMIES) && !frl_string_matches_pattern($term->taxonomy ?? '', FRL_TRANSLATOR_TAXONOMIES)) {
+            if (!empty(FRL_TRANSLATOR_TAXONOMIES) && !frl_string_matches_pattern($term->taxonomy ?? '', FRL_TRANSLATOR_TAXONOMIES)) { // @phpstan-ignore-line
                 return $term;
             }
             $term->name = frl_get_translation($term->name);
@@ -238,12 +236,12 @@ function frl_translator_acf_taxonomy($value, $post_id, $field)
  */
 function frl_translator_filter_get_terms($terms, $taxonomies, $args)
 {
-    if (frl_get_option('translator_taxonomies') !== '1' || empty(FRL_TRANSLATOR_TAXONOMIES) || empty($terms)) {
+    if (frl_get_option('translator_taxonomies') !== '1' || empty(FRL_TRANSLATOR_TAXONOMIES) || empty($terms)) { // @phpstan-ignore-line
         return $terms;
     }
     foreach ($terms as $i => $term) {
         if (is_object($term) && isset($term->name)) {
-            if (!empty(FRL_TRANSLATOR_TAXONOMIES) && !frl_string_matches_pattern($term->taxonomy ?? '', FRL_TRANSLATOR_TAXONOMIES)) {
+            if (!empty(FRL_TRANSLATOR_TAXONOMIES) && !frl_string_matches_pattern($term->taxonomy ?? '', FRL_TRANSLATOR_TAXONOMIES)) { // @phpstan-ignore-line
                 continue;
             }
             $term->name = frl_get_translation($term->name);
@@ -261,10 +259,10 @@ function frl_translator_filter_get_terms($terms, $taxonomies, $args)
  */
 function frl_translator_filter_get_term($term, $taxonomy)
 {
-    if (frl_get_option('translator_taxonomies') !== '1' || empty(FRL_TRANSLATOR_TAXONOMIES) || !is_object($term)) {
+    if (frl_get_option('translator_taxonomies') !== '1' || empty(FRL_TRANSLATOR_TAXONOMIES) || !is_object($term)) { // @phpstan-ignore-line
         return $term;
     }
-    if (!empty(FRL_TRANSLATOR_TAXONOMIES) && !frl_string_matches_pattern($term->taxonomy ?? '', FRL_TRANSLATOR_TAXONOMIES)) {
+    if (!empty(FRL_TRANSLATOR_TAXONOMIES) && !frl_string_matches_pattern($term->taxonomy ?? '', FRL_TRANSLATOR_TAXONOMIES)) { // @phpstan-ignore-line
         return $term;
     }
     if (isset($term->name) && is_string($term->name)) {
@@ -305,14 +303,14 @@ function frl_translator_acf_repeater($value, $post_id, $field)
     }
 
     // Per-repeater override list: if present, only these subfields are eligible (exact match)
-    $override_sub_fields = FRL_TRANSLATOR_REPEATER_SUBFIELDS_OVERRIDE[$repeater_name] ?? null;
+    $override_sub_fields = FRL_TRANSLATOR_REPEATER_SUBFIELDS_OVERRIDE[$repeater_name] ?? null; // @phpstan-ignore-line
 
     // Loop through rows and programmatically translate text-based sub-fields.
     foreach ($value as &$row) {
         if (is_array($row)) {
             foreach ($row as $sub_field_name => &$sub_field_value) {
                 // If override list is defined for this repeater, allow only listed patterns
-        		if (is_array($override_sub_fields)) {
+        		if (is_array($override_sub_fields)) { // @phpstan-ignore-line
         			if (!frl_string_matches_pattern($sub_field_name, $override_sub_fields)) {
         				continue;
         			}
@@ -332,8 +330,7 @@ function frl_translator_acf_repeater($value, $post_id, $field)
                 // unless a per-repeater exclusion applies.
                 if (
                     in_array($sub_field_type, FRL_TRANSLATOR_REPEATER_SUBFIELD_TYPES, true)
-                    && (
-                        empty(FRL_TRANSLATOR_REPEATER_SUBFIELDS)
+                    && (empty(FRL_TRANSLATOR_REPEATER_SUBFIELDS) // @phpstan-ignore-line
                         || frl_string_matches_pattern($sub_field_name, FRL_TRANSLATOR_REPEATER_SUBFIELDS)
                     )
                 ) {

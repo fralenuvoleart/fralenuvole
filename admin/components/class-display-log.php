@@ -164,7 +164,7 @@ class Frl_Log_Manager
 				}
 
 				// Start a new entry
-				$date = isset($matches[1]) ? $matches[1] : '';
+				$date = $matches[1];
 				$type = $this->determine_error_type($line);
 
 				$current_entry = array(
@@ -261,7 +261,7 @@ class Frl_Log_Manager
 				}
 
 				// Start new entry
-				$date = isset($matches[1]) ? $matches[1] : '';
+				$date = $matches[1];
 				$type = $this->determine_error_type($line);
 
 				$current_entry = array(
@@ -567,16 +567,15 @@ class Frl_Log_Manager
 	 * Renders table rows for log entries.
 	 *
 	 * @param array $entries Array of log entries.
-	 * @return void
+	 * @return string The rendered table rows HTML.
 	 */
-	private function render_table_rows($entries)
+	private function render_table_rows($entries): string
 	{
 		$rows = '';
 
 		if (empty($entries)) {
 			// For empty entries, create a "no entries" row
-			$rows = frl_ui_render_table_row('No log entries found.', '', false, 'no-entries');
-			return $rows;
+			return frl_ui_render_table_row('No log entries found.', '', false, 'no-entries');
 		}
 
 		foreach ($entries as $entry) {

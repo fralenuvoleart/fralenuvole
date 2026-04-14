@@ -681,16 +681,13 @@ function frl_shortcode_slug($atts)
     }
 
     $slug_to_translate = $id_attr_raw;
-    if ($slug_to_translate === '') {
-        return '';
-    }
 
     // Early return if current language is the default: input slug is already correct
     $default_lang = frl_get_default_language();
     $current_lang = frl_get_language();
 
     if ($current_lang === $default_lang) {
-        return $slug_to_translate !== '' ? esc_html($slug_to_translate) : '';
+        return esc_html($slug_to_translate);
     }
 
     // Use a hash for hierarchical paths to avoid collisions (slashes get stripped by sanitize_key)

@@ -15,11 +15,12 @@ if (!defined('ABSPATH')) {
  * @param array $tabs Array of tabs to get
  * @return array Registered tabs
  */
-function frl_tab_get_registered_tabs($tabs)
+function frl_tab_get_registered_tabs($tabs): array
 {
     if (!frl_class_exists('Frl_Tab_Manager', __FUNCTION__)) {
-        return;
+        return [];
     }
+    /** @var array */
     return Frl_Tab_Manager::get_registered_tabs($tabs);
 }
 
@@ -491,9 +492,10 @@ function frl_ui_render_multi_column_row(
  *
  * @param string $id Widget ID
  * @param string $content Widget content
- * @param string $title Widget title
  * @param string $class Widget class
  * @param int $ttl Widget TTL
+ * @param bool $bypass_cache Bypass cache flag
+ * @param string $group Cache group
  * @return string Rendered widget HTML
  */
 function frl_ui_render_table(
@@ -520,12 +522,11 @@ function frl_ui_render_table(
 /**
  * Render a UI table row
  *
- * @param string $id Widget ID
- * @param string $content Widget content
- * @param string $title Widget title
- * @param string $class Widget class
- * @param int $ttl Widget TTL
- * @return string Rendered widget HTML
+ * @param string $name Row name
+ * @param string $value Row value
+ * @param bool $is_header Is header
+ * @param string $class Row class
+ * @return string Rendered row HTML
  */
 function frl_ui_render_table_row(
     $name,
@@ -598,11 +599,11 @@ function frl_ui_render_status_row(
 
 
 /**
- * Render a status row
+ * Render a metadata field row
  *
- * @param string $label Label
- * @param string $status Status
- * @param string $text Text
+ * @param string $label Field label
+ * @param string $value Field value
+ * @param string $class CSS class
  */
 function frl_ui_render_metadata_field(
     $label,

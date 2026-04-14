@@ -78,10 +78,6 @@ function frl_cache_get(string $group, string $key, ?callable $callback = null): 
     if (!frl_cache_is_loaded()) {
         return null;
     }
-    // Silently ignore invalid callbacks
-    if ($callback !== null && !is_callable($callback)) {
-        $callback = null;
-    }
     return Frl_Cache_Manager::get($group, $key, $callback);
 }
 
@@ -124,11 +120,12 @@ function frl_cache_remember(string $group, string $key, callable $callback, ?int
  * @param array|null $keys Array of keys to retrieve, or null for all keys
  * @return array Result of the cache retrieval operation
  */
-function frl_cache_get_multi($group, $keys = null)
+function frl_cache_get_multi($group, $keys = null): array
 {
     if (!frl_cache_is_loaded()) {
-        return false;
+        return [];
     }
+    /** @var array */
     return Frl_Cache_Manager::get_multi($group, $keys);
 }
 
@@ -137,26 +134,26 @@ function frl_cache_get_multi($group, $keys = null)
  *
  * @param string $group Cache group
  * @param array|null $keys Array of keys to preload, or null to preload all keys in group
- * @return bool True if preload was successful, false otherwise
+ * @return void
  */
-function frl_cache_preload_multi($group, $keys = null)
+function frl_cache_preload_multi($group, $keys = null): void
 {
     if (!frl_cache_is_loaded()) {
-        return false;
+        return;
     }
-    return Frl_Cache_Manager::preload_multi($group, $keys);
+    Frl_Cache_Manager::preload_multi($group, $keys);
 }
 
 /**
  * Preload multiple cache groups
  *
- * @param array $groups_config Array of cache groups to preload
+ * @param array $groups Array of cache groups to preload
  * @return void
  */
-function frl_cache_preload_groups($groups = [])
+function frl_cache_preload_groups($groups = []): void
 {
     if (!frl_cache_is_loaded()) {
-        return false;
+        return;
     }
     foreach ($groups as $group) {
         frl_cache_preload_multi($group);
@@ -168,9 +165,9 @@ function frl_cache_preload_groups($groups = [])
  *
  * @param string $group Cache group, 'all' to clear everything, 'transients' for plugin transients, or 'website_transients' for all site transients
  * @param string|null $key Optional specific key to clear
- * @return array|bool|int Result of the cache clearing operation
+ * @return array|bool|int|string Result of the cache clearing operation
  */
-function frl_cache_clear(string $group, ?string $key = null, bool $include_dependencies = true): array|bool|int
+function frl_cache_clear(string $group, ?string $key = null, bool $include_dependencies = true): array|bool|int|string
 {
     if (!frl_cache_is_loaded()) {
         return false;
@@ -279,9 +276,9 @@ function frl_environment_init()
  * Bypass frl_environment_is_loaded() check to allow to retrieve
  * configuration even if environment manager is not loaded.
  *
- * @return array|null Environment configuration
+ * @return array Environment configuration
  */
-function frl_environment_get_config(): ?array
+function frl_environment_get_config(): array
 {
     // Bypass frl_environment_is_loaded() check
     $config = Frl_Environment_Manager::get_config();

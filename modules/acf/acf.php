@@ -38,35 +38,34 @@ add_action('acf/save_post',
  *
  * Config structure (defined in config-constants-acf.php):
  */
-function frl_acf_calculate_on_save($post_id)
+/**
+ * @param array<string, array{
+ *     operation?: string,
+ *     fields?: array,
+ *     template?: string,
+ *     urlencode?: bool,
+ *     decimals?: int,
+ *     separator?: string
+ * }> $calc_options
+ */
+function frl_acf_process_calc_options(array $calc_options): void
 {
-    if ($post_id !== 'options') {
-        return;
-    }
-
-    if (!defined('FRL_ACF_CALC_OPTIONS') || !is_array(FRL_ACF_CALC_OPTIONS) || empty(FRL_ACF_CALC_OPTIONS)) {
-        return;
-    }
-
-    foreach (FRL_ACF_CALC_OPTIONS as $target => $cfg) {
-        if (!is_array($cfg)) {
-            continue;
-        }
-
+    foreach ($calc_options as $target => $cfg) {
         $op = strtoupper(trim((string)($cfg['operation'] ?? '')));
-        $src_fields = isset($cfg['fields']) && is_array($cfg['fields']) ? $cfg['fields'] : [];
+        $src_fields = $cfg['fields'] ?? [];
+        $template = $cfg['template'] ?? '';
+        $has_template = is_string($template) && $template !== '';
 
         $new = '';
 
         // Default to TEMPLATE when no operation provided but fields/template info exists
-        if ($op === '' && (!empty($src_fields) || isset($cfg['template']))) {
+        if ($op === '' && (!empty($src_fields) || $has_template)) {
             $op = 'TEMPLATE';
         }
 
         // TEMPLATE support: template string with placeholders like {field}
-        if ($op === 'TEMPLATE' || isset($cfg['template'])) {
-            $template = (string)($cfg['template'] ?? '');
-            if ($template === '') {
+        if ($op === 'TEMPLATE' || $has_template) {
+            if (!$has_template) {
                 // fallback: build template dynamically from fields using separator if provided
                 $template = implode('', array_map(static function ($f) { return '{' . $f . '}'; }, $src_fields));
             }
@@ -74,10 +73,7 @@ function frl_acf_calculate_on_save($post_id)
             $new = frl_acf_render_template($template, 'option', 0, $urlencode);
         }
         // Numeric and concat operations
-        else {
-            if ($op === '' || empty($src_fields)) {
-                continue;
-            }
+        elseif ($op !== '' && !empty($src_fields)) {
             // Read raw, unformatted values from ACF Options
             $values = [];
             foreach ($src_fields as $name) {
@@ -88,6 +84,8 @@ function frl_acf_calculate_on_save($post_id)
                 'decimals'  => $cfg['decimals'] ?? null,
                 'separator' => $cfg['separator'] ?? '',
             ]);
+        } else {
+            continue;
         }
 
         $old = get_field($target, 'option', false);
@@ -104,6 +102,24 @@ function frl_acf_calculate_on_save($post_id)
             }
         }
     }
+}
+
+function frl_acf_calculate_on_save($post_id)
+{
+    if ($post_id !== 'options') {
+        return;
+    }
+
+    if (!defined('FRL_ACF_CALC_OPTIONS')) {
+        return;
+    }
+
+    $calc_options = FRL_ACF_CALC_OPTIONS;
+    if (!is_array($calc_options) || empty($calc_options)) { // @phpstan-ignore-line
+        return;
+    }
+
+    frl_acf_process_calc_options($calc_options);
 }
 
 /**

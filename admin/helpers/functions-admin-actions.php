@@ -89,7 +89,7 @@ function frl_post_action_dashboard_widgets()
 
         case 'refresh_cache': // Generic cache clear
             if (empty($widget_group) || empty($widget_key)) {
-                $message = __('Missing %s group or %s key for cache refresh.', FRL_PREFIX, $widget_group, $key_label);
+                $message = sprintf(__('Missing %s group or %s key for cache refresh.', 'fralenuvole'), $widget_group, $key_label);
                 $message_type = 'error';
                 break;
             }
@@ -251,7 +251,7 @@ function frl_handle_settings_update($updated_options = null, $show_no_changes_no
 /**
  * Handle clear dashboard action
  *
- * @return void
+ * @return array<string, mixed>
  */
 function frl_handle_action_clear_dashboard()
 {
@@ -266,7 +266,7 @@ function frl_handle_action_clear_dashboard()
  * Handle clear cache group action
  *
  * @param string $action Action name
- * @return void
+ * @return array<string, mixed>
  */
 function frl_handle_action_clear_cache_group($action)
 {
@@ -345,7 +345,7 @@ function frl_handle_action_clear_cache_group($action)
 /**
  * Handle clear opcache action
  *
- * @return void
+ * @return array<string, mixed>
  */
 function frl_handle_action_clear_cache_opcache()
 {
@@ -372,7 +372,7 @@ function frl_handle_action_clear_cache_opcache()
 /**
  * Handle reset environment action
  *
- * @return void
+ * @return array<string, mixed>
  */
 function frl_handle_action_reset_environment()
 {
@@ -457,17 +457,20 @@ function frl_handle_action_reset_environment()
         // Cache - Note: This now uses purge_light, so message might need adjustment
         $message_parts[] = __('Light Caches Cleared.', FRL_PREFIX);
     } else {
-        $message_parts[] = $results['message'] ?? __('Environment reset executed, but no detailed results were returned.', FRL_PREFIX);
+        /** @var array|null $results */
+        $message_parts[] = is_array($results) && array_key_exists('message', $results) // @phpstan-ignore-line argument.type
+            ? (string) $results['message']
+            : __('Environment reset executed, but no detailed results were returned.', FRL_PREFIX);
         $notice_type = 'warning';
     }
 
-    return ['success' => ($notice_type !== 'error'), 'message_parts' => $message_parts, 'notice_type' => $notice_type];
+    return ['success' => $notice_type === 'success', 'message_parts' => $message_parts, 'notice_type' => $notice_type];
 }
 
 /**
  * Handle reset environment ignored action
  *
- * @return void
+ * @return array<string, mixed>
  */
 function frl_handle_action_reset_environment_ignored()
 {
@@ -476,7 +479,8 @@ function frl_handle_action_reset_environment_ignored()
     $message_parts[] = '<strong>' . __('Environment Ignored List', FRL_PREFIX) . '</strong>';
     $notice_type = 'success';
 
-    if (is_array($results)) {
+    /** @var array $results */
+    if (!empty($results)) {
         $cleared_any = false;
         if (!empty($results['ignored_plugins_cleared'])) {
             $message_parts[] = __('Manually ignored Plugins cleared.', FRL_PREFIX);
@@ -495,13 +499,13 @@ function frl_handle_action_reset_environment_ignored()
         $notice_type = 'error';
     }
 
-    return ['success' => ($notice_type !== 'error'), 'message_parts' => $message_parts, 'notice_type' => $notice_type];
+    return ['success' => $notice_type === 'success', 'message_parts' => $message_parts, 'notice_type' => $notice_type];
 }
 
 /**
  * Handle reset debug config action
  *
- * @return void
+ * @return array<string, mixed>
  */
 function frl_handle_action_reset_debug_config()
 {
@@ -522,7 +526,7 @@ function frl_handle_action_reset_debug_config()
 /**
  * Handle reset plugin action
  *
- * @return void
+ * @return array<string, mixed>
  */
 function frl_handle_action_reset_plugin()
 {
@@ -607,7 +611,8 @@ function frl_handle_action_reset_plugin()
     $message_parts = [];
     $notice_type = 'success';
 
-    if (is_array($results) && isset($results['cache_cleared'])) {
+    /** @var array $results */
+    if (isset($results['cache_cleared'])) {
         $message_parts[] = sprintf(
             __('Plugin reset successfully. Deleted: %d options, restored: %d options. All Caches cleared: %d runtime, %d object cache, %d transients', FRL_PREFIX),
             $results['options_deleted'] ?? 0,
@@ -627,7 +632,7 @@ function frl_handle_action_reset_plugin()
 /**
  * Handle sync mu-plugins action
  *
- * @return void
+ * @return array<string, mixed>
  */
 function frl_handle_action_sync_mu_plugins()
 {
@@ -662,7 +667,7 @@ function frl_handle_action_sync_mu_plugins()
 /**
  * Handle delete mu-plugins action
  *
- * @return void
+ * @return array<string, mixed>
  */
 function frl_handle_action_delete_mu_plugins()
 {
@@ -697,7 +702,7 @@ function frl_handle_action_delete_mu_plugins()
 /**
  * Handle delete orphan options action
  *
- * @return void
+ * @return array<string, mixed>
  */
 function frl_handle_action_delete_orphan_options()
 {

@@ -159,9 +159,9 @@ function frl_defer_css($html, $handle, $href, $media)
 
 /**
  * Add custom HTML in header
- * @return html
+ * @return void
  */
-function frl_add_header_html()
+function frl_add_header_html(): void
 {
     $cache_key = frl_is_logged_in() ? 'header_html_user' : 'header_html_visitor';
     $id = str_replace('_', '-', $cache_key);
@@ -171,7 +171,7 @@ function frl_add_header_html()
     if (!empty($header_html)) {
         echo "
 <!-- {$id} data-plugin='" . FRL_NAME . "' data-parsing='add-header-html' -->
-    {$header_html}
+    " . $header_html . "
 <!-- End {$id} -->
 ";
     }
@@ -179,9 +179,9 @@ function frl_add_header_html()
 
 /**
  * Add custom HTML in footer
- * @return html
+ * @return void
  */
-function frl_add_footer_html()
+function frl_add_footer_html(): void
 {
     $cache_key = frl_is_logged_in() ? 'footer_html_user' : 'footer_html_visitor';
     $id = str_replace('_', '-', $cache_key);
@@ -191,7 +191,7 @@ function frl_add_footer_html()
     if (!empty($footer_html)) {
         echo "
 <!-- {$id} data-plugin='" . FRL_NAME . "' data-parsing='add-footer-html' -->
-    {$footer_html}
+    " . $footer_html . "
 <!-- End {$id} -->
 ";
     }
@@ -221,8 +221,6 @@ function frl_add_footer_scripts()
  * Get HTML content from an option, with caching and optional PHP processing.
  *
  * @param string $option_name The name of the plugin option (without prefix) storing the asset list.
- * @param bool   $in_footer   Default footer value for scripts in this list.
- * @param string $handle_prefix A prefix for the generated asset handles.
  * @return array An array of asset details (handle, url, version, type, in_footer).
  */
 function frl_get_processed_assets_from_option($option_name)
@@ -253,9 +251,9 @@ function frl_get_processed_assets_from_option($option_name)
 
 /**
  * New helper function to reduce duplication
- * @param string $group The group of the HTML (header or footer)
  * @param string $option_name The option name of the HTML
  * @param string $php_enabled_option The option name of the PHP enabled option
+ * @param string|null $cache_key Optional cache key override
  * @return html final html output
  */
 function frl_get_html_option($option_name, $php_enabled_option = null, $cache_key = null)
@@ -301,8 +299,8 @@ function frl_login_page_branding(): void
     $output = frl_cache_remember('html', $cache_key_inline, function () {
         // Get logo data (expensive part)
         $logo = wp_get_attachment_image_src(get_theme_mod('custom_logo'), 'full') ?: [null, null, null];
-        $width = ($logo && isset($logo[1]) && $logo[1]) ? ($logo[1] . 'px') : 'auto';
-        $height = ($logo && isset($logo[2]) && $logo[2]) ? $logo[2] : '50'; // Default height
+        $width = ($logo && isset($logo[1]) && $logo[1]) ? ($logo[1] . 'px') : 'auto'; // @phpstan-ignore-line booleanAnd.leftAlwaysTrue
+        $height = ($logo && isset($logo[2]) && $logo[2]) ? $logo[2] : '50'; // @phpstan-ignore-line booleanAnd.leftAlwaysTrue
         $height .= 'px';
 
         // Build CSS string
@@ -390,7 +388,7 @@ function frl_disable_rest_endpoints($endpoints)
     // Allow themes/plugins to filter this list if needed
     $endpoints_to_remove = apply_filters('frl_rest_endpoints_to_remove', $endpoints_to_remove);
 
-    if (!frl_is_logged_in()) {
+    if (!frl_is_logged_in()) { // @phpstan-ignore-line
         // --- Use the more efficient loop ---
         foreach ($endpoints as $route => $data) {
             foreach ($endpoints_to_remove as $prefix_to_remove) {

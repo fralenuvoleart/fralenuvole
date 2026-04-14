@@ -13,9 +13,8 @@ if (!defined('ABSPATH')) {
 
 /**
  * Add Schema markup
- * @return html
  */
-function frl_add_schema()
+function frl_add_schema(): void
 {
     $post_type = get_post_type();
 

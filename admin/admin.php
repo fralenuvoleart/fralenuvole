@@ -426,6 +426,7 @@ function frl_remove_admin_menus_item($handle)
     }
 }
 
+
 /**
  * Generate style to remove admin menu item based on plugin settings
  */

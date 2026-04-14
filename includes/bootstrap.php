@@ -13,17 +13,13 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Ensure WP_CLI constant exists so linting tools detect it. Value is overridden by WP-CLI loader.
-if (!defined('WP_CLI')) {
-    define('WP_CLI', false);
-}
 
 /**
  * Plugin core constants
  */
-// Define the plugin directory path
+// Define the plugin directory path (use pre-defined value from PHPStan bootstrap if available)
 if (!defined('FRL_DIR_PATH')) {
-    define('FRL_DIR_PATH', plugin_dir_path(dirname(__FILE__)));
+    define('FRL_DIR_PATH', dirname(__DIR__) . '/');
 }
 if (!defined('FRL_DIR_URL')) {
     define('FRL_DIR_URL', plugin_dir_url(dirname(__FILE__)));
@@ -57,16 +53,19 @@ require_once FRL_DIR_PATH . 'includes/translator/class-translation-service.php';
 require_once FRL_DIR_PATH . 'includes/environment/class-environment-manager.php';
 
 // Load and initialize the cache manager immediately.
-require_once FRL_DIR_PATH . 'includes/cache/class-cache-manager.php';
-Frl_Cache_Manager::init();
+// Skip WordPress-dependent code when running under PHPStan
+if (!defined('PHPSTAN_RUNNING') || !PHPSTAN_RUNNING) {
+    require_once FRL_DIR_PATH . 'includes/cache/class-cache-manager.php';
+    Frl_Cache_Manager::init();
+
+    // Load and initialize the custom error handler immediately (original behavior)
+    $frl_error_handler_file = FRL_DIR_PATH . 'includes/error-handler.php';
+    require_once $frl_error_handler_file;
+    frl_errors_init();
+}
 
 // Load lifecycle after core infrastructure is ready
 require_once FRL_DIR_PATH . 'includes/lifecycle.php';
-
-// Load and initialize the custom error handler immediately (original behavior)
-$frl_error_handler_file = FRL_DIR_PATH . 'includes/error-handler.php';
-require_once $frl_error_handler_file;
-frl_errors_init();
 
 // Register rewriter CLI commands (only under WP-CLI)
 if (defined('WP_CLI') && WP_CLI) {

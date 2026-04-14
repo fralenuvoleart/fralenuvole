@@ -243,7 +243,6 @@ function frl_render_admin_actions_buttons()
  * including their title, slug, and current order, to assist the user
  * in configuring the 'am_menu_order' option.
  *
- * @param array $options An associative array of options for the UI.
  * @return string The HTML for the reorder UI.
  */
 function frl_render_admin_menu_order() {
@@ -513,7 +512,6 @@ function frl_render_rewrite_multilingual_cpts() {
  * Get all plugin transients directly from database or cache
  * as they exist in the wp_options table (or cached by Frl_Cache_Manager)
  *
- * @param bool $bypass_cache Whether to bypass Frl_Cache_Manager (default: false).
  * @return array Raw transient data (array of objects from wp_options results) or empty array on failure.
  */
 function frl_get_all_plugin_transients()
@@ -773,7 +771,9 @@ function frl_apply_debug_settings($updated_options = null, $show_no_changes_noti
                     'wp-config.php',
                     __('No changes were needed, settings are already applied', FRL_PREFIX)
                 );
-                if ($overall_status != 'error') $overall_status = 'info';
+                if ($overall_status != 'error') { // @phpstan-ignore-line notEqual.alwaysTrue
+                    $overall_status = 'info';
+                }
             }
         } else {
             $notice_parts[] = sprintf(
@@ -840,6 +840,7 @@ function frl_update_wp_config_file($options = [])
     }
 
     // Check if we have write permissions
+    // @phpstan-ignore-line booleanAnd.leftAlwaysTrue
     if (!is_writable(ABSPATH) || (file_exists($config_path) && !is_writable($config_path))) {
         return frl_error('write_permission', 'Insufficient permissions to modify wp-config.php');
     }

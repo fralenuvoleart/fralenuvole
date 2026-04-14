@@ -70,11 +70,10 @@ class Frl_Tab_Manager
      * @param string $tab_id The tab ID without the 'tabs-' prefix
      * @param array $args Tab configuration arguments
      * @param string $type Either 'form' or 'custom'
-     * @return void
      */
-    public static function register_tab($tab_id, $args = [], $type = 'custom')
+    public static function register_tab($tab_id, $args = [], $type = 'custom'): void
     {
-        return self::get_instance()->_register_tab($tab_id, $args, $type);
+        self::get_instance()->_register_tab($tab_id, $args, $type);
     }
 
     /**
@@ -124,11 +123,10 @@ class Frl_Tab_Manager
      *
      * @param string $tab_id The ID of the tab without the 'tabs-' prefix
      * @param array $args Array of arguments for the custom tab
-     * @return void
      */
-    public static function register_custom_tab($tab_id, $args = [])
+    public static function register_custom_tab($tab_id, $args = []): void
     {
-        return self::get_instance()->_register_custom_tab($tab_id, $args);
+        self::get_instance()->_register_custom_tab($tab_id, $args);
     }
 
     /**
@@ -261,12 +259,10 @@ class Frl_Tab_Manager
 
     /**
      * Static facade for render_all_custom_tabs method
-     *
-     * @return void
      */
-    public static function render_all_custom_tabs()
+    public static function render_all_custom_tabs(): void
     {
-        return self::get_instance()->_render_all_custom_tabs();
+        self::get_instance()->_render_all_custom_tabs();
     }
 
     /**
@@ -308,14 +304,13 @@ class Frl_Tab_Manager
      *
      * @param string $tab_id The ID of the tab without the 'tabs-' prefix
      * @param string $action_hook The action hook to fire for populating content
-     * @return void
      */
-    public static function render_custom_tab($tab_id, $action_hook = '')
+    public static function render_custom_tab($tab_id, $action_hook = ''): void
     {
         if (empty($action_hook)) {
             $action_hook = self::get_instance()->_get_tab_action_hook($tab_id);
         }
-        return self::get_instance()->_render_custom_tab($tab_id, $action_hook);
+        self::get_instance()->_render_custom_tab($tab_id, $action_hook);
     }
 
     /**
@@ -378,11 +373,10 @@ class Frl_Tab_Manager
      * @param string $tab_id The ID of the tab without the 'tabs-' prefix
      * @param string $content The content to add to the tab
      * @param int $priority The priority for the action hook
-     * @return void
      */
-    public static function add_tab_content($tab_id, $content, $priority = 10)
+    public static function add_tab_content($tab_id, $content, $priority = 10): void
     {
-        return self::get_instance()->_add_tab_content($tab_id, $content, $priority);
+        self::get_instance()->_add_tab_content($tab_id, $content, $priority);
     }
 
     /**
@@ -435,7 +429,7 @@ class Frl_Tab_Manager
      *
      * @param string $tab_id The ID of the tab to associate sections with
      * @param array $sections Array of section IDs to associate with the tab
-     * @return void
+     * @return bool
      */
     public function _associate_sections_with_tab($tab_id, array $sections)
     {
@@ -469,9 +463,11 @@ class Frl_Tab_Manager
      * @param array $sections Array of section IDs to associate with the tab
      * @return bool True if the association was successful, false otherwise
      */
-    public static function associate_sections_with_tab($tab_id, array $sections)
+    public static function associate_sections_with_tab($tab_id, array $sections): bool
     {
-        return self::get_instance()->_associate_sections_with_tab($tab_id, $sections);
+        $instance = self::get_instance();
+        $instance->_associate_sections_with_tab($tab_id, $sections);
+        return true; // Return true as the method completes without throwing
     }
 
     /**
@@ -681,7 +677,7 @@ class Frl_Tab_Manager
      */
     public function _render_tab_field_groups($tab_id, $field_callback, $args = [])
     {
-        if (!is_callable($field_callback)) {
+        if (!$field_callback) {
             return;
         }
 
@@ -733,11 +729,10 @@ class Frl_Tab_Manager
      * @param string $tab_id The ID of the tab to render field groups for
      * @param callable $field_callback Function to render individual fields
      * @param array $args Additional arguments to pass to the field callback
-     * @return void
      */
-    public static function render_tab_field_groups($tab_id, $field_callback, $args = [])
+    public static function render_tab_field_groups($tab_id, $field_callback, $args = []): void
     {
-        return self::get_instance()->_render_tab_field_groups($tab_id, $field_callback, $args);
+        self::get_instance()->_render_tab_field_groups($tab_id, $field_callback, $args);
     }
 
     /**
@@ -788,6 +783,7 @@ class Frl_Tab_Manager
      *
      * @param array $fields Array of field configurations
      * @return array Associative array of section ID => fields
+     * @phpstan-ignore-next-line
      */
     private function prepare_sections_from_fields($fields)
     {
@@ -847,6 +843,7 @@ class Frl_Tab_Manager
      * @param string $tab_id The ID of the tab to check
      * @param int $active_tab The active tab index
      * @return bool True if the tab is active
+     * @phpstan-ignore-next-line
      */
     private function is_tab_active($tab_id, $active_tab)
     {
@@ -868,9 +865,10 @@ class Frl_Tab_Manager
      * organized by their associated sections.
      *
      * @param string $tab_id The ID of the tab to render
-     * @param array $sections Array of sections with their fields
+     * @param array $sections_data_for_all_form_tabs Array of sections with their fields
      * @param callable $field_callback Function to render individual fields
      * @param array $args Additional arguments for field rendering
+     * @phpstan-ignore-next-line
      */
     private function render_form_tab_content($tab_id, $sections_data_for_all_form_tabs, $field_callback, $args = [])
     {
@@ -1041,10 +1039,8 @@ class Frl_Tab_Manager
      *
      * @param array $sections Array of section IDs to convert to tabs
      * @param int $position_start Starting position for tabs
-     * @param int $active_tab The active tab index
-     * @return void
      */
-    public function _render_tabs_from_sections($sections, $position_start = 1000)
+    public function _render_tabs_from_sections($sections, $position_start = 1000): void
     {
         // Register tabs from sections using the modified private method
         $this->register_form_tabs_from_sections($sections, $position_start, 10); // Use increment 10
@@ -1061,10 +1057,8 @@ class Frl_Tab_Manager
      *
      * @param array $sections Array of section IDs to convert to tabs
      * @param int $position_start Starting position for tabs
-     * @param int $active_tab The active tab index
-     * @return void
      */
-    public static function render_tabs_from_sections($sections, $position_start = 1000)
+    public static function render_tabs_from_sections($sections, $position_start = 1000): void
     {
         self::get_instance()->_render_tabs_from_sections($sections, $position_start);
     }

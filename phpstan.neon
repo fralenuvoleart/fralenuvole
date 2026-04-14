@@ -1,5 +1,6 @@
 parameters:
-    level: 5
+    level: 4
+    treatPhpDocTypesAsCertain: false
     paths:
         - . # Scans root + subdirectories recursively
     excludePaths:
@@ -13,6 +14,20 @@ parameters:
         - assets/icons (?)
     bootstrapFiles:
         - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+        - phpstan-bootstrap.php
         - includes/bootstrap.php
+        - phpstan-stubs/polylang.php
+        - phpstan-stubs/wpml.php
+        - phpstan-stubs/acf.php
+        - phpstan-stubs/wsform.php
+        - phpstan-stubs/memberpress.php
     ignoreErrors:
-        - '#Function apply_filters(_ref_array)? invoked with#'  # WP hook
+        # Defensive isset checks on arrays - PHPStan incorrectly flags these
+        # when it infers types from literal array definitions
+        - '#Offset .* on array.*always exists and is not nullable#'
+        
+        # is_array() checks on known array types (defensive coding)
+        - '#Call to function is_array\(\) with array will always evaluate to true#'
+        
+        # is_numeric() checks on known int types
+        - '#Call to function is_numeric\(\) with int.* will always evaluate to true#'

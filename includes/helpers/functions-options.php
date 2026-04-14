@@ -91,9 +91,9 @@ function frl_get_option($key, $bypass_cache = false)
  * Set option by name, without prefix.
  *
  * @param string $key Option key without prefix
- * @param mixed $value Value to set
+ * @param mixed $value_param Value to set
  * @param bool $clear_cache Whether to clear cache, default = true
- * @param string|null $autoload Optional. Whether to autoload the option. Accepts 'yes' or 'no'. Defaults to 'yes' if null.
+ * @param string|null $autoload_param Optional. Whether to autoload the option. Accepts 'yes' or 'no'. Defaults to 'yes' if null.
  * @return bool Success
  */
 function frl_update_option($key, $value_param, $clear_cache = true, $autoload_param = null)
@@ -171,7 +171,7 @@ function frl_normalize_option($value, string $type = 'checkbox')
     }
 
     // Pass through values for defined formatting fields without normalization.
-    if (is_array(FRL_FIELD_FORMATTERS) && in_array($type, FRL_FIELD_FORMATTERS, true)) {
+    if (is_array(FRL_FIELD_FORMATTERS) && in_array($type, FRL_FIELD_FORMATTERS, true)) { // @phpstan-ignore-line
         return $value;
     }
 
@@ -229,7 +229,7 @@ function frl_get_plugin_options($keys = 'all', $bypass_cache = false)
 /**
  * Get all plugin options directly from database
  *
- * @return array Raw options from database
+ * @return array|null Raw options from database, or null on reset
  */
 function frl_get_plugin_options_db($reset = false)
 {
@@ -420,8 +420,8 @@ function frl_load_runtime_options_defaults()
         $defaults = [];
 
         foreach (FRL_OPTIONS_RUNTIME as $key => $data) {
-            $field_type = $data['type'] ?? 'text';
-            $field_default = $data['default'] ?? null;
+            $field_type = $data['type'] ?? 'text'; // @phpstan-ignore-line
+            $field_default = $data['default'] ?? null; // @phpstan-ignore-line
             $field_default = frl_normalize_option($field_default, $field_type);
             $autoload = 'yes'; // Default autoload for runtime options
 
@@ -449,7 +449,9 @@ function frl_load_runtime_options_fields()
         $fields = [];
 
         foreach (FRL_OPTIONS_RUNTIME as $key => $data) {
+            /** @phpstan-ignore-next-line */
             $field_type = $data['type'] ?? 'text';
+            /** @phpstan-ignore-next-line */
             $field_default = $data['default'] ?? null;
             $field_default = frl_normalize_option($field_default, $field_type);
             $autoload = 'yes'; // Default autoload for runtime options

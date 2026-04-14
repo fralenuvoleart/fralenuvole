@@ -36,6 +36,15 @@ if (!defined('ABSPATH')) {
  * Notes:
  * - Executed on acf/save_post for post_id = 'options' only.
  * - If the target ACF option field does not exist, the update is skipped (failure is logged).
+ *
+ * @var array<string, array{
+ *     operation?: string,
+ *     fields?: array,
+ *     template?: string,
+ *     urlencode?: bool,
+ *     decimals?: int,
+ *     separator?: string
+ * }>
  */
 const FRL_ACF_CALC_OPTIONS = [
 	// TEMPLATE placeholders map to option field names: {query}, {filter}, {taxonomy}, {sort}

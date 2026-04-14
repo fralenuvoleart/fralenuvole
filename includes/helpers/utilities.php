@@ -131,7 +131,7 @@ function frl_textlist_to_array($input)
 /**
  * Group array by key
  * @param string $key Property to sort by.
- * @param {Array} $data Array that stores multiple associative arrays.
+ * @param array $data Array that stores multiple associative arrays.
  */
 function frl_group_array_by_key($key, $data)
 {
@@ -329,11 +329,19 @@ function frl_coerce_to_string($value, array $preferredSelectors = []): string
     $extractSelector = function ($container, string $key) {
         if (is_array($container) && array_key_exists($key, $container)) {
             $v = $container[$key];
-            return is_scalar($v) ? (string)$v : (is_string($v) ? $v : null);
+            // After is_scalar check, $v can only be object/array/resource/null - not string
+            if (is_scalar($v)) {
+                return (string)$v;
+            }
+            return null;
         }
         if (is_object($container) && isset($container->{$key})) {
             $v = $container->{$key};
-            return is_scalar($v) ? (string)$v : (is_string($v) ? $v : null);
+            // After is_scalar check, $v can only be object/array/resource/null - not string
+            if (is_scalar($v)) {
+                return (string)$v;
+            }
+            return null;
         }
         return null;
     };
@@ -366,6 +374,7 @@ function frl_coerce_to_string($value, array $preferredSelectors = []): string
                 if ($res !== null && $res !== '') return $res;
             }
         }
+        
         if (in_array(':first', $preferredSelectors, true)) {
             foreach ($value as $v) {
                 if (is_string($v)) return $v;
@@ -381,9 +390,10 @@ function frl_coerce_to_string($value, array $preferredSelectors = []): string
 }
 
 /**
- * Trim textarea lines for textlist type options.
- * @param string $input Textarea content, typically a list of items.
- * @return string Sanitized string, for representing a textlist.
+ * Normalize a textlist string by trimming lines and removing empty lines.
+ *
+ * @param mixed $input The input to normalize (converted to string, or empty string if not)
+ * @return string Normalized text with Unix line endings
  */
 function frl_normalize_textlist($input)
 {
@@ -446,7 +456,7 @@ function _frl_sanitize_recursive(&$v, int $depth = 0): void
         }
         return;
     }
-
+    
     // Handle generic objects by converting to class name to ensure serializability
     if (is_object($v)) {
         $v = 'Object(' . get_class($v) . ')';
@@ -486,7 +496,7 @@ function frl_set_force_reload_flag(): void
 {
     $name = frl_prefix('force_reload');
     // Set a cookie that expires in 1 minute
-    setcookie($name, '1', time() + 60, COOKIEPATH ?: '/', COOKIE_DOMAIN, is_ssl(), true);
+    setcookie($name, '1', time() + 60, COOKIEPATH ?? '/', COOKIE_DOMAIN, is_ssl(), true);
 }
 
 /**
@@ -502,7 +512,7 @@ function frl_check_and_clear_force_reload_flag(): bool
     }
 
     // Clear the cookie immediately
-    setcookie($name, '', time() - 3600, COOKIEPATH ?: '/', COOKIE_DOMAIN, is_ssl(), true);
+    setcookie($name, '', time() - 3600, COOKIEPATH ?? '/', COOKIE_DOMAIN, is_ssl(), true);
     return true;
 }
 
@@ -588,7 +598,8 @@ function frl_process_php_string($string, $context = null): string
     ob_start();
     try {
         $tmp = ' ?>' . $string . '<?php ';
-        token_get_all($tmp, TOKEN_PARSE); // Syntax check
+        $tokens = @token_get_all($tmp, TOKEN_PARSE); // Syntax check - triggers parsing errors
+        (void) $tokens; // Acknowledge intentionally unused result
         eval($tmp);
     } catch (ParseError $e) {
         frl_log("{context} HTML PHP syntax error: {error}", ['context' => $context, 'error' => $e->getMessage()]);
@@ -800,7 +811,7 @@ function frl_flush_db()
  *
  * @param string|array $message Message string or variable to dump
  * @param array $context Additional context data (supports placeholder interpolation or full dump)
- * @param bool $email_admin Whether to email admin (requires plugin option enabled, default true)
+ * @param bool $force_email Whether to email admin (requires plugin option enabled, default true)
  */
 function frl_log($message, $context = [], $force_email = true)
 {
@@ -939,14 +950,17 @@ function frl_format_log_message($message, $context = [])
 
     // Find the first call in the stack that is NOT one of our internal helpers.
     foreach ($trace as $trace_item) {
-        $function_name = $trace_item['function'] ?? '';
-        $class_name    = $trace_item['class'] ?? '';
+        if (!isset($trace_item['function'])) {
+            continue;
+        }
+        $function_name = $trace_item['function'];
+        $class_name    = $trace_item['class'] ?? null;
 
         // Skip internal helpers and cache wrappers
         $skip = in_array($function_name, $internal_helpers, true);
 
         // Also skip cache manager remember layer to surface the real caller
-        if (!$skip && $function_name === 'remember' && $class_name !== '') {
+        if (!$skip && $function_name === 'remember' && $class_name !== null) {
             if (str_contains($class_name, 'Cache_Manager')) {
                 $skip = true;
             }
@@ -1029,7 +1043,7 @@ function frl_format_log_message($message, $context = [])
             } else {
                 $log_message .= "Array:\n" . $json;
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $log_message .= "Array (exception while encoding: " . $e->getMessage() . ")";
         }
     } else {

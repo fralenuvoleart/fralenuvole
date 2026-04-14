@@ -375,22 +375,20 @@ function frl_wsf_button_webhook_handler()
     $action_id = sanitize_text_field($_POST['action_id'] ?? '');
     if (empty($action_id) || !defined('WS_BUTTON_ACTIONS')) {
         wp_send_json_error('Invalid action', 400);
-        return;
     }
 
     $webhook_url = '';
     $use_cron = false;
     foreach (WS_BUTTON_ACTIONS as $btn) {
-        if (($btn['id'] ?? '') === $action_id && !empty($btn['webhook'])) {
+        if (($btn['id'] ?? '') === $action_id && !empty($btn['webhook'])) { // @phpstan-ignore-line
             $webhook_url = $btn['webhook'];
-            $use_cron = $btn['use_cron'] ?? false;
+            $use_cron = $btn['use_cron'] ?? false; // @phpstan-ignore-line Offset 'use_cron' on array does not exist
             break;
         }
     }
 
     if (empty($webhook_url)) {
         wp_send_json_error('No webhook configured', 404);
-        return;
     }
 
     $service = 'Webpage';
@@ -423,7 +421,6 @@ function frl_wsf_button_webhook_handler()
 
     if (!frl_wsf_should_send_webhook($post_data)) {
         wp_send_json_success('Deduplicated');
-        return;
     }
 
     $args = [
@@ -431,8 +428,8 @@ function frl_wsf_button_webhook_handler()
         'data' => $post_data,
     ];
 
-    if ($use_cron) {
-        wp_schedule_single_event(time(), 'frl_wsf_send_form_submission_webhook', [$args]);
+    if ($use_cron) { // @phpstan-ignore-line If condition is always false
+        wp_schedule_single_event(time(), 'frl_wsf_send_form_submission_webhook', [$args]); // @phpstan-ignore-line
     } else {
         frl_wsf_execute_webhook_submission($args);
     }

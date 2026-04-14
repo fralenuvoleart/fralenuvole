@@ -18,13 +18,11 @@ function frl_post_ajax_import_translations()
     // Verify nonce
     if (!isset($_POST['security']) || !frl_verify_nonce($_POST['security'], 'ajax_translation_nonce')) {
         wp_send_json_error(['message' => __('Security check failed.', FRL_PREFIX)]);
-        return;
     }
 
     // Check for upload errors
     if (!isset($_FILES['translation_file'])) {
         wp_send_json_error(['message' => __('No file data received.', FRL_PREFIX)]);
-        return;
     }
 
     if ($_FILES['translation_file']['error'] !== UPLOAD_ERR_OK) {
@@ -44,12 +42,10 @@ function frl_post_ajax_import_translations()
             : 'Unknown upload error: ' . $error_code;
 
         wp_send_json_error(['message' => $error_message]);
-        return;
     }
 
     if (!isset($_FILES['translation_file']['tmp_name']) || empty($_FILES['translation_file']['tmp_name'])) {
         wp_send_json_error(['message' => __('No file uploaded.', FRL_PREFIX)]);
-        return;
     }
 
     $file = $_FILES['translation_file']['tmp_name'];
@@ -58,20 +54,17 @@ function frl_post_ajax_import_translations()
         $json = file_get_contents($file);
         if (empty($json)) {
             wp_send_json_error(['message' => __('File is empty.', FRL_PREFIX)]);
-            return;
         }
 
         // Verify it's valid JSON
         $test_decode = json_decode($json, true);
         if ($test_decode === null) {
             wp_send_json_error(['message' => __('Invalid JSON file. JSON parsing error: ', FRL_PREFIX) . json_last_error_msg()]);
-            return;
         }
 
         // Additional validation of JSON structure
         if (!is_array($test_decode)) {
             wp_send_json_error(['message' => __('Invalid file format: JSON content is not an object.', FRL_PREFIX)]);
-            return;
         }
 
         // Check for required keys in the translation file
@@ -79,13 +72,11 @@ function frl_post_ajax_import_translations()
             wp_send_json_error([
                 'message' => __('Invalid translation file structure. Missing required data.', FRL_PREFIX)
             ]);
-            return;
         }
 
         $results = frl_import_translation_strings($json);
         if (!$results) {
             wp_send_json_error(['message' => __('Error processing translations.', FRL_PREFIX)]);
-            return;
         }
 
         // Check for critical errors
@@ -94,7 +85,6 @@ function frl_post_ajax_import_translations()
             // If we have errors but no successful imports, treat as error
             $error_msg = frl_build_import_message($results);
             wp_send_json_error(['message' => $error_msg, 'results' => $results]);
-            return;
         }
 
         $message = frl_build_import_message($results);
@@ -108,7 +98,6 @@ function frl_post_ajax_import_translations()
         wp_send_json_success(['message' => $message, 'results' => $results]);
     } catch (Exception $e) {
         wp_send_json_error(['message' => __('Error during import: ', FRL_PREFIX) . $e->getMessage()]);
-        return;
     }
 }
 
@@ -195,13 +184,11 @@ function frl_post_ajax_import_settings()
     // Verify nonce
     if (!isset($_POST['security']) || !frl_verify_nonce($_POST['security'], 'ajax_import_nonce')) {
         wp_send_json_error(['message' => __('Security check failed.', FRL_PREFIX)]);
-        return;
     }
 
     // Check for upload errors
     if (!isset($_FILES['import_file'])) {
         wp_send_json_error(['message' => __('No file data received.', FRL_PREFIX)]);
-        return;
     }
 
     if ($_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
@@ -221,12 +208,10 @@ function frl_post_ajax_import_settings()
             : 'Unknown upload error: ' . $error_code;
 
         wp_send_json_error(['message' => $error_message]);
-        return;
     }
 
     if (!isset($_FILES['import_file']['tmp_name']) || empty($_FILES['import_file']['tmp_name'])) {
         wp_send_json_error(['message' => __('No file uploaded.', FRL_PREFIX)]);
-        return;
     }
 
     $file = $_FILES['import_file']['tmp_name'];
@@ -235,25 +220,21 @@ function frl_post_ajax_import_settings()
         $file_content = file_get_contents($file);
         if (empty($file_content)) {
             wp_send_json_error(['message' => __('File is empty.', FRL_PREFIX)]);
-            return;
         }
 
         // Verify it's valid JSON
         $settings = json_decode($file_content, true);
         if ($settings === null) {
             wp_send_json_error(['message' => __('Invalid JSON file. JSON parsing error: ', FRL_PREFIX) . json_last_error_msg()]);
-            return;
         }
 
         // Additional validation of JSON structure
         if (!is_array($settings)) {
             wp_send_json_error(['message' => __('Invalid file format: JSON content is not an object.', FRL_PREFIX)]);
-            return;
         }
 
         if (empty($settings)) {
             wp_send_json_error(['message' => __('Invalid settings file format: No settings found.', FRL_PREFIX)]);
-            return;
         }
 
         $updates = [];
@@ -277,7 +258,6 @@ function frl_post_ajax_import_settings()
 
         if (empty($updates)) {
             wp_send_json_error(['message' => __('No valid settings found in import file.', FRL_PREFIX)]);
-            return;
         }
 
         // Use batch update function with force_update=true for imports
@@ -285,7 +265,6 @@ function frl_post_ajax_import_settings()
 
         if ($imported === 0) {
             wp_send_json_error(['message' => __('No settings were imported.', FRL_PREFIX)]);
-            return;
         }
 
         $message = sprintf(__('%d plugin options were successfully imported.', FRL_PREFIX), $imported);
@@ -296,7 +275,6 @@ function frl_post_ajax_import_settings()
         wp_send_json_success(['message' => $message, 'count' => $imported]);
     } catch (Exception $e) {
         wp_send_json_error(['message' => __('Error reading import file: ', FRL_PREFIX) . $e->getMessage()]);
-        return;
     }
 }
 
