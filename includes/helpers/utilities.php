@@ -598,8 +598,7 @@ function frl_process_php_string($string, $context = null): string
     ob_start();
     try {
         $tmp = ' ?>' . $string . '<?php ';
-        $tokens = @token_get_all($tmp, TOKEN_PARSE); // Syntax check - triggers parsing errors
-        (void) $tokens; // Acknowledge intentionally unused result
+        @token_get_all($tmp, TOKEN_PARSE); // Syntax check - triggers parsing errors
         eval($tmp);
     } catch (ParseError $e) {
         frl_log("{context} HTML PHP syntax error: {error}", ['context' => $context, 'error' => $e->getMessage()]);

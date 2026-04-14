@@ -275,7 +275,7 @@ function frl_themekit_fonts_get_plugin_markup(): string
 
                 // Assemble the final @font-face rule.
                 $fallback_css_rules[] = sprintf(
-                    "@font-face {\n\tfont-family: \"%s\";\n\tsrc: %s;\n\t%s\n}",
+                    "@font-face {\n\tfont-family: \"%s\";\n\tsrc: %s;\n\tfont-display: swap;\n\t%s\n}",
                     $fallback_name,
                     $system_stack,
                     implode("\n\t", $metrics)
@@ -321,7 +321,7 @@ function frl_themekit_fonts_get_system_markup(): string
 
         if (is_numeric($font_options['primary_size'])) {
             $system_css_rules[] = sprintf(
-                "@font-face {\n\tfont-family: \"System Sans Adjusted\";\n\tsrc: %s;\n\tsize-adjust: %s;\n}",
+                "@font-face {\n\tfont-family: \"System Sans Adjusted\";\n\tsrc: %s;\n\tfont-display: swap;\n\tsize-adjust: %s;\n}",
                 $system_sans_serif_stack,
                 $font_options['primary_size'] . '%'
             );
@@ -329,7 +329,7 @@ function frl_themekit_fonts_get_system_markup(): string
 
         if (is_numeric($font_options['secondary_size'])) {
             $system_css_rules[] = sprintf(
-                "@font-face {\n\tfont-family: \"System Serif Adjusted\";\n\tsrc: %s;\n\tsize-adjust: %s;\n}",
+                "@font-face {\n\tfont-family: \"System Serif Adjusted\";\n\tsrc: %s;\n\tfont-display: swap;\n\tsize-adjust: %s;\n}",
                 $system_serif_stack,
                 $font_options['secondary_size'] . '%'
             );
