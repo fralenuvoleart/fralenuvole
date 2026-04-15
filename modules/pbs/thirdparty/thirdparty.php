@@ -99,13 +99,17 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 // Cache Bridge (Two-Way Sync)
 // =============================================================================
 
-// --- Inbound: third-party purge → clear fralenuvole caches ---
-foreach (array_keys(frl_thirdparty_get_inbound_hooks()) as $hook) {
-    add_action($hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
-}
+// Guard all cache bridge functionality with the thirdparty_cache_bridge option.
+if (frl_get_option('thirdparty_cache_bridge')) {
+    // --- Inbound: third-party purge → clear fralenuvole caches ---
+    foreach (array_keys(frl_thirdparty_get_inbound_hooks()) as $hook) {
+        add_action($hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
+    }
 
-// --- Query-param based purge detection (for plugins that don't fire actions) ---
-add_action('admin_init', 'frl_thirdparty_check_query_triggers', 5, 0);
+    // --- Query-param based purge detection (for plugins that don't fire actions) ---
+    add_action('admin_init', 'frl_thirdparty_check_query_triggers', 5, 0);
+    add_action('admin_init', 'frl_thirdparty_display_notification_notice', 20, 0);
+}
 
 /**
  * Check for query-param based cache purges that don't fire action hooks.

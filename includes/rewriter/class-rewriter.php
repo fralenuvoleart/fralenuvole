@@ -351,6 +351,12 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         frl_cache_clear('rewriter');
         frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
         flush_rewrite_rules($hard);
+
+        // Force WordPress to refetch rewrite_rules from DB on next request.
+        // flush_rewrite_rules() calls update_option() which writes to DB but does NOT
+        // clear the object cache for 'rewrite_rules', causing stale rules to be served
+        // until the object cache expires or is explicitly cleared.
+        wp_cache_delete('rewrite_rules', 'options');
     }
 
     /**

@@ -214,17 +214,36 @@ function frl_schedule_rewrite_flush(): void
  * Routing-only flush: clears 'permalinks' and 'rewriter' caches without touching
  * 'options', avoiding the alloptions race condition under concurrent requests.
  * Passes is_admin() as $hard so admin flushes rewrite .htaccess; cron does not.
+ *
+ * IMPORTANT: Notify third-party cache plugins (e.g., LiteSpeed) BEFORE rebuilding
+ * rules. This matches the successful flow when LiteSpeed "Purge All" is clicked first,
+ * which triggers Fralenuvole's inbound handler that clears caches before rules rebuild.
+ * Reversing the order ensures rewrite_rules are fresh and not overwritten by the
+ * third-party purge that would otherwise corrupt the newly-written rules.
  */
 function frl_execute_rewrite_flush(): void
 {
+    // Step 1: Notify third-party cache plugins to purge their caches FIRST.
+    // This ensures their purge happens before we rebuild rules, preventing
+    // the race condition where LiteSpeed overwrites fresh rewrite_rules in DB.
+    if (function_exists('frl_thirdparty_maybe_notify')) {
+        $notified = frl_thirdparty_maybe_notify('rewrite_flush');
+        // Safety: if notification failed or no plugins were configured, log for debugging.
+        if (empty($notified)) {
+            frl_log('frl_execute_rewrite_flush: no third-party plugins notified (may be expected if none configured)');
+        }
+    }
+
+    // Step 2: Clear Fralenuvole internal caches to ensure fresh data on rebuild.
+    // This mirrors the inbound handler flow: clear caches BEFORE rebuild.
+    frl_cache_clear('permalinks');
+    frl_cache_clear('rewriter');
+
+    // Step 3: Rebuild WordPress rewrite rules with fresh exclusion patterns.
     if (class_exists('Frl_Rewriter')) {
         Frl_Rewriter::flush_rules(is_admin());
     } else {
         flush_rewrite_rules(is_admin());
-    }
-
-    if (function_exists('frl_thirdparty_maybe_notify')) {
-        frl_thirdparty_maybe_notify('rewrite_flush');
     }
 }
 
