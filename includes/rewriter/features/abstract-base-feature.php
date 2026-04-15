@@ -42,6 +42,15 @@ require_once __DIR__ . '/../interface-feature.php';
  */
 abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interface
 {
+    /**
+     * Class-level static storage for add_rules() re-entrancy guard.
+     * Using class-level static ensures the flag persists across all instances
+     * and protects against double-registration if an exception is thrown before
+     * the method-scoped flag would be set.
+     *
+     * @var array<string, bool>
+     */
+    private static array $rules_added = [];
 
     /**
      * Feature priority (lower number = higher priority)
@@ -192,14 +201,16 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
      */
     final public function add_rules(): void
     {
-        // Re-entrancy guard
-        static $rules_added = [];
+        // Re-entrancy guard - use class-level static to persist across all instances
+        // and protect against double-call if exception is thrown before flag is set
         $feature_key = $this->get_name();
-        if (isset($rules_added[$feature_key])) {
-
+        if (isset(self::$rules_added[$feature_key])) {
             return;
         }
-        $rules_added[$feature_key] = true;
+
+        // Mark as registered BEFORE attempting to add rules, so any exception
+        // path still prevents a second attempt on retry.
+        self::$rules_added[$feature_key] = true;
 
         if (!$this->is_enabled()) {
             return;
@@ -312,12 +323,10 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
         unset($processing_requests[$feature_key]);
         // Trim to max entries instead of hard-reset to preserve re-entrancy protection
+        // Use array_slice for O(1) operation instead of O(n) array_shift loop
         if (count($processing_requests) > 256) {
-            // Remove oldest 50% entries (batch trim instead of full reset)
-            $to_remove = (int) ceil(count($processing_requests) / 2);
-            for ($i = 0; $i < $to_remove; $i++) {
-                array_shift($processing_requests);
-            }
+            // Keep newest 50% entries
+            $processing_requests = array_slice($processing_requests, -128, null, true);
         }
 
         return $query_vars;

@@ -106,6 +106,10 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     public function is_enabled(): bool
     {
+        // Defensive: ensure config is loaded even if called before init/20
+        if (empty($this->taxonomy_slugs)) {
+            $this->load_configuration();
+        }
         return !empty($this->taxonomy_slugs);
     }
 

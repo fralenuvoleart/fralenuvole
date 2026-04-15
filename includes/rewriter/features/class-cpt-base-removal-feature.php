@@ -143,7 +143,10 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     public function is_enabled(): bool
     {
-        // This check runs after ensure_config_loaded() is fired on the 'init' hook.
+        // Defensive: ensure config is loaded even if called before init/20
+        if (!$this->config_loaded) {
+            $this->ensure_config_loaded();
+        }
         return !empty($this->cpt_slugs);
     }
 

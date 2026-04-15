@@ -105,20 +105,25 @@ class Frl_Rewriter_Coordinator
             }
         }
 
-        // Special handling for CPT features that require constructor arguments
-        if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
-            foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
-                try {
-                    // Create features; each will verify post_type_exists() during init.
-                    (new Frl_CPT_Archive_Base_Translation_Feature($cpt_slug))->self_register();
-                    (new Frl_CPT_Single_Base_Translation_Feature($cpt_slug))->self_register();
-                } catch (Throwable $e) {
-                    // Safety net: Continue if CPT feature registration fails (catches Exception and Error)
-                    frl_log('Rewriter CPT feature registration failed: {cpt_slug} - {error}', [
-                        'cpt_slug' => $cpt_slug,
-                        'error' => $e->getMessage()
-                    ]);
-                    continue;
+        // Factory-based features: instantiate features that require constructor arguments.
+        // Each factory entry maps a context (e.g., CPT slug) to an array of feature classes.
+        if (defined('FRL_REWRITER_FEATURE_FACTORIES') && is_array(FRL_REWRITER_FEATURE_FACTORIES)) {
+            foreach (FRL_REWRITER_FEATURE_FACTORIES as $context => $feature_classes) {
+                foreach ($feature_classes as $feature_class) {
+                    try {
+                        if (!class_exists($feature_class)) {
+                            continue;
+                        }
+                        // Instantiate with the context (e.g., CPT slug) as constructor argument
+                        (new $feature_class($context))->self_register();
+                    } catch (Throwable $e) {
+                        frl_log('Rewriter factory feature registration failed: {class}({context}) - {error}', [
+                            'class' => $feature_class,
+                            'context' => $context,
+                            'error' => $e->getMessage(),
+                        ]);
+                        continue;
+                    }
                 }
             }
         }

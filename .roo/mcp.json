@@ -25,7 +25,8 @@
 				"search_files",
 				"read_file",
 				"get_file_info",
-				"read_text_file"
+				"read_text_file",
+				"directory_tree"
 			]
 		}
 	}

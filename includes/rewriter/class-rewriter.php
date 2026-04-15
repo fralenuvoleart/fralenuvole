@@ -138,6 +138,12 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
             return $url;
         }
 
+        // Preview guard: skip URL transformation for preview requests to prevent
+        // preview URLs from being transformed and cached incorrectly.
+        if (is_preview()) {
+            return $url;
+        }
+
         // Fast-path cache check: generate the key and return immediately on hit.
         // This eliminates the get_enabled_features() array_filter call on every
         // post_type_link / term_link filter invocation when the result is already cached.
