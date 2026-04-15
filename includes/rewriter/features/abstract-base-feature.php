@@ -311,8 +311,13 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
         }
 
         unset($processing_requests[$feature_key]);
+        // Trim to max entries instead of hard-reset to preserve re-entrancy protection
         if (count($processing_requests) > 256) {
-            $processing_requests = [];
+            // Remove oldest 50% entries (batch trim instead of full reset)
+            $to_remove = (int) ceil(count($processing_requests) / 2);
+            for ($i = 0; $i < $to_remove; $i++) {
+                array_shift($processing_requests);
+            }
         }
 
         return $query_vars;

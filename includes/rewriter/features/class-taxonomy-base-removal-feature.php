@@ -432,9 +432,9 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         if (!empty($parts) && end($parts) === '') {
             array_pop($parts);
         }
-        if (!empty($parts)) {
+        if (count($parts) > 1) {
             $last = end($parts);
-            $prev = count($parts) > 1 ? $parts[count($parts)-2] : '';
+            $prev = $parts[count($parts) - 2];
             if ($prev === 'page' && ctype_digit($last)) {
                 $paged = (int) $last;
                 array_pop($parts); // remove page number

@@ -370,9 +370,13 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
 
         // Clearing 'options' cascades into 'rewriter' via FRL_CACHE_DEPENDENCIES,
         // so an explicit frl_cache_clear('rewriter') call is not needed here.
+        // Note: frl_cache_clear('options') internally calls reset_options_caches()
+        // which handles wp_cache_delete('alloptions', 'options') and frl_get_option('__reset__'),
+        // so alloptions clearing is already covered by the cache manager.
         frl_cache_clear('options');
         frl_cache_clear('permalinks');
         frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
+
         flush_rewrite_rules(true);
 
         // Notify configured third-party cache plugins to purge stale pages.
