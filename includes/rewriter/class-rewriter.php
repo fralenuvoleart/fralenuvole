@@ -172,8 +172,9 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         $result = frl_cache_remember('permalinks', $cache_key, function () use ($url, $object, $features) {
             $transformed_url = $url;
 
-            // Dispatcher cache: map object signature -> applicable features
+            // Dispatcher cache: map object signature -> applicable features (LRU pattern)
             static $feature_match_cache = [];
+            static $cache_order = [];
             // Build a signature that distinguishes post types and taxonomies but remains stable.
             $signature = get_class($object);
             if (isset($object->post_type)) {
@@ -182,8 +183,21 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
                 $signature .= '_' . $object->taxonomy;
             }
 
+            // LRU memory guard: evict oldest entries when cache exceeds 1024
+            if (count($feature_match_cache) >= 1024 && !isset($feature_match_cache[$signature])) {
+                // Remove oldest 10% of entries
+                $evict_count = (int) ceil(count($cache_order) * 0.1);
+                for ($i = 0; $i < $evict_count && !empty($cache_order); $i++) {
+                    $oldest = array_shift($cache_order);
+                    unset($feature_match_cache[$oldest]);
+                }
+            }
+
             if (isset($feature_match_cache[$signature])) {
                 $applicable = $feature_match_cache[$signature];
+                // Move to end of LRU order
+                $cache_order = array_diff($cache_order, [$signature]);
+                $cache_order[] = $signature;
             } else {
                 $applicable = [];
                 foreach ($features as $feature) {
@@ -192,10 +206,7 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
                     }
                 }
                 $feature_match_cache[$signature] = $applicable;
-                // Memory guard – reset after large number of distinct signatures to avoid memory leaks
-                if (count($feature_match_cache) > 1024) {
-                    $feature_match_cache = [];
-                }
+                $cache_order[] = $signature;
             }
 
             // Early return if no features apply to this specific object

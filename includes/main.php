@@ -109,14 +109,30 @@ function frl_process_deferred_writes()
     }
 
     // Process merged writes with error handling
+    // Track items that fail so they can be re-queued
+    $failed_items = [];
     foreach ($merged as $group => $items) {
-        try {
-            // Process each group in a separate try-catch
-            foreach ($items as $key => $value) {
+        foreach ($items as $key => $value) {
+            try {
                 frl_cache_set($group, $key, $value);
+            } catch (Exception $e) {
+                frl_log("Error processing deferred write for group {group}, key {key}: {error}", [
+                    'group' => $group,
+                    'key' => $key,
+                    'error' => $e->getMessage()
+                ]);
+                // Track failed item for re-queue
+                $failed_items[$group][$key] = $value;
             }
-        } catch (Exception $e) {
-            frl_log("Error processing deferred writes for group {group}: {error}", ['group' => $group, 'error' => $e->getMessage()]);
+        }
+    }
+
+    // Re-queue failed items for next cycle before clearing
+    if (!empty($failed_items)) {
+        foreach ($failed_items as $group => $items) {
+            foreach ($items as $key => $value) {
+                frl_cache_add_deferred_write($group, $key, $value);
+            }
         }
     }
 

@@ -173,3 +173,7 @@ parameters:
         - '#curl_setopt_array.*CURLOPT_IPRESOLVE#'
         # array_filter with 'strlen' callback - legitimate WordPress/PHP pattern
         - '#array_filter.*strlen#'
+        
+        # Pre-existing: type narrowing makes is_array() always true after isset checks
+        - '#Call to function is_array\(\) with array\{prefix:.*always evaluate to true#'
+        - '#Call to function is_array\(\) with array\{\}.*type.*staging.*always evaluate to true#'

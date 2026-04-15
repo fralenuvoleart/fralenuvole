@@ -24,25 +24,9 @@
 				"write_file",
 				"search_files",
 				"read_file",
-				"get_file_info"
+				"get_file_info",
+				"read_text_file"
 			]
-		},
-		"sequentialthinking": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"@modelcontextprotocol/server-sequential-thinking"
-			]
-		},
-		"tavily": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"tavily-mcp@0.2.3"
-			],
-			"env": {
-				"TAVILY_API_KEY": "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"
-			}
 		}
 	}
 }

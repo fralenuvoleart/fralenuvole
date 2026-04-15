@@ -223,6 +223,21 @@ function frl_cache_clear_deferred_writes(): void
 }
 
 /**
+ * Add a deferred cache write (for re-queuing failed writes)
+ * @param string $group Cache group
+ * @param string $key Cache key
+ * @param mixed $value Value to cache
+ * @return void
+ */
+function frl_cache_add_deferred_write(string $group, string $key, mixed $value): void
+{
+    if (!frl_cache_is_loaded()) {
+        return;
+    }
+    Frl_Cache_Manager::$deferred_writes[$group][$key] = $value;
+}
+
+/**
  * Check if the Environment Manager subsystem should load/run for the current request.
  * This is the central gatekeeper for EM activation.
  *

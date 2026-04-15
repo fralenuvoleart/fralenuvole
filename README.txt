@@ -19,10 +19,6 @@ Collection of performance optimizations, default tweaks and useful admin tools.
 
 == Changelog ==
 
-= 2.0 =
-* Cut the code in half.
-* Bug fixes.
-
 = 1.0 =
 * Initial release.
 

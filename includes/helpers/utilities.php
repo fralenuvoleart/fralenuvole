@@ -160,6 +160,29 @@ function frl_filter_array_by_substring($array, $needle)
 }
 
 /**
+ * Filter array to remove domains that have staging/env prefixes.
+ * Uses FRL_ENV_STAGING_PREFIXES for consistent prefix detection.
+ *
+ * @param array $domains Array of domain strings
+ * @return array Filtered domains with staging prefixes removed
+ */
+function frl_filter_staging_domains(array $domains): array
+{
+    return array_filter(
+        $domains,
+        function ($domain) {
+            // If domain starts with any staging prefix, filter it out (return false)
+            foreach (FRL_ENV_STAGING_PREFIXES as $prefix) {
+                if (stripos($domain, $prefix) === 0) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    );
+}
+
+/**
  * Returns the base domain by stripping known prefixes, for staging/production sibling comparison.
  *
  * Strips in order:

@@ -428,7 +428,7 @@ class Frl_Environment_Manager
 
             // Exclude staging domains for non-admins.
             if (!frl_has_access()) {
-                $links = frl_filter_array_by_substring($links, 'staging');
+                $links = frl_filter_staging_domains($links);
                 $links = frl_filter_array_by_substring($links, FRL_NAME);
             }
 

@@ -44,6 +44,13 @@ add_action('init',
     10,
     0);
 
+// Security headers for all requests
+add_action('send_headers', function () {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('X-XSS-Protection: 1; mode=block');
+});
+
 /**
  * Initialize plugin and register hooks
  * @return void
