@@ -72,23 +72,22 @@ function frl_admin_bar_custom_menu()
     // Add "New Content" > "All CPT" menu items
     $cpt_list = FRL_AB_CPT_LIST;
 
-    foreach ($cpt_list as $key => $value) {
-        // add cpt_group node
-        $cpt_group_id = 'cpt-menu-group';
-        $wp_admin_bar->add_group([
-            'id' => $cpt_group_id,
-            'parent' => 'new-content',
-        ]);
+    // Add CPT group node once
+    $cpt_group_id = 'cpt-menu-group';
+    $wp_admin_bar->add_group([
+        'id' => $cpt_group_id,
+        'parent' => 'new-content',
+    ]);
 
-        foreach ($cpt_list as $key => $value) {
-            if (frl_has_access($value['access'])) {
-                $wp_admin_bar->add_node([
-                    'id' => 'cpt-menu-' . $key,
-                    'title' => $value['title'],
-                    'parent' => $cpt_group_id,
-                    'href' => $value['href'],
-                ]);
-            }
+    // Add all CPT items in a single pass
+    foreach ($cpt_list as $key => $value) {
+        if (frl_has_access($value['access'])) {
+            $wp_admin_bar->add_node([
+                'id' => 'cpt-menu-' . $key,
+                'title' => $value['title'],
+                'parent' => $cpt_group_id,
+                'href' => $value['href'],
+            ]);
         }
     }
 
