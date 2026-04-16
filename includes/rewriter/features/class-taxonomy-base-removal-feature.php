@@ -453,13 +453,19 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         $slug = implode('/', $parts);
 
         // If a post truly exists with this name (when provided), keep as-is.
-        // Cached via frl_cache_remember to match frl_get_cpt_id_by_slug() / frl_get_term_id_by_slug()
-        // which also use persistent caching; get_page_by_path() alone is only per-request.
+        // Only checks 'post' type since this disambiguation handles static base paths
+        // under the post base (e.g., /blog/slug). CPTs have their own base and are not relevant.
         if (!empty($query_vars['name'])) {
             $name        = $query_vars['name'];
             $post_exists = frl_cache_remember('rewriter', 'disambig_page_' . md5($name), function () use ($name) {
-                $post = get_page_by_path($name, OBJECT, get_post_types(['public' => true]));
-                return ($post && isset($post->ID));
+                $posts = get_posts([
+                    'name'           => $name,
+                    'post_type'      => 'post',
+                    'post_status'    => 'publish',
+                    'posts_per_page' => 1,
+                    'fields'         => 'ids',
+                ]);
+                return !empty($posts);
             });
             if ($post_exists) {
                 return $query_vars;

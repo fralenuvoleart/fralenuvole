@@ -267,16 +267,28 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         static $slug_hit_map = [];
         static $multi_index = [];
 
-        // Fast path: single multi-CPT resolution via get_page_by_path
+        // Fast path: single multi-CPT resolution via direct query.
+        // Replaces get_page_by_path() which internally runs 2-3 queries (path lookup + post_name fallback).
         if (!array_key_exists($slug, $multi_index)) {
             $multi_index[$slug] = frl_cache_remember(
                 'permalinks',
                 'rewriter_cpt_multislug_' . md5($slug),
                 function () use ($slug) {
-                    $found = get_page_by_path($slug, OBJECT, $this->cpt_slugs);
-                    return ($found && isset($found->ID, $found->post_type))
-                        ? ['cpt' => $found->post_type, 'id' => (int) $found->ID, 'name' => basename($slug)]
-                        : false;
+                    // Single direct query instead of get_page_by_path() multi-query approach
+                    $posts = get_posts([
+                        'name'           => $slug,
+                        'post_type'      => $this->cpt_slugs,
+                        'post_status'    => 'publish',
+                        'posts_per_page' => 1,
+                        'fields'         => 'ids',
+                    ]);
+                    if (!empty($posts)) {
+                        $post = get_post($posts[0]);
+                        return ($post && isset($post->ID, $post->post_type))
+                            ? ['cpt' => $post->post_type, 'id' => (int) $post->ID, 'name' => basename($slug)]
+                            : false;
+                    }
+                    return false;
                 }
             );
 
@@ -345,20 +357,32 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         static $slug_hit_map = [];
         static $multi_index = [];
 
-        // Fast path: single multi-CPT resolution via get_page_by_path
+        // Fast path: single multi-CPT resolution via direct query.
+        // Replaces get_page_by_path() which internally runs 2-3 queries (path lookup + post_name fallback).
         if (!array_key_exists($slug, $multi_index)) {
             $multi_index[$slug] = frl_cache_remember(
                 'permalinks',
                 'rewriter_cpt_multislug_' . md5($slug),
                 function () use ($slug) {
-                    $found = get_page_by_path($slug, OBJECT, $this->cpt_slugs);
-                    return ($found && isset($found->ID, $found->post_type))
-                        ? [
-                            'cpt'  => $found->post_type,
-                            'id'   => (int) $found->ID,
-                            'name' => basename($slug),
-                        ]
-                        : false;
+                    // Single direct query instead of get_page_by_path() multi-query approach
+                    $posts = get_posts([
+                        'name'           => $slug,
+                        'post_type'      => $this->cpt_slugs,
+                        'post_status'    => 'publish',
+                        'posts_per_page' => 1,
+                        'fields'         => 'ids',
+                    ]);
+                    if (!empty($posts)) {
+                        $post = get_post($posts[0]);
+                        return ($post && isset($post->ID, $post->post_type))
+                            ? [
+                                'cpt'  => $post->post_type,
+                                'id'   => (int) $post->ID,
+                                'name' => basename($slug),
+                            ]
+                            : false;
+                    }
+                    return false;
                 }
             );
 
