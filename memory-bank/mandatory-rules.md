@@ -21,6 +21,7 @@
 - **Gaslighting:** Deflecting errors with apologies instead of fixes is **GASLIGHTING**. 
 - **The "I Don't Know" Rule:** If context is missing or you are unsure, you must say "I don't know" rather than hallucinating a solution.
 - **No Placeholders:** Never use `// ... rest of code here`. Provide complete, functional snippets or targeted diffs.
+- **Security Files:** NEVER delete, modify, or expose files containing API keys, tokens, passwords, or credentials. If flagged as security issues, RESTORE them immediately and do not proceed without explicit user approval.
 
 ## ⚖️ SELF-AUDIT PROTOCOL
 - **Task Completion Check:** Before declaring a task finished, you must perform a self-audit.

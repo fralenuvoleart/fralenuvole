@@ -52,14 +52,7 @@ init (20+)            → Feature-specific rules
 
 ---
 
-## 6. Backlog
-
-| Issue | Severity | Status |
-|-------|----------|--------|
-| WPML navigation | P3 | ⏳ Backlog |
-
 ---
 
-*Document Version: 1.1 (CURRENT)*  
-*Analysis Version: Fralenuvole 5.3.0*  
-*Last Updated: 2026-04-14*
+*Document Version: 1.1*  
+*Version: Fralenuvole 5.3.0*

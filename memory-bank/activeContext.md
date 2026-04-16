@@ -17,5 +17,10 @@ Fralenuvole v5.3.0 - WordPress multilingual administrator plugin with URL rewrit
 - Ensure `init/15` rewriter registration stays strictly after `init/10` environment enforcement.
 - Monitor `write_attempted` flag in Options System to ensure zero duplicate DB writes.
 
+## 📁 Documentation
+- `docs/ARCHITECTURAL-REVIEW.md` - Plugin overview
+- `docs/HOOKS.md` - Critical hook priorities
+- `docs/REWRITER-FEATURES.md` - Rewriter subsystem architecture
+
 ---
-*Last Updated: 2026-04-14*
+*Last Updated: 2026-04-16*

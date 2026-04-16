@@ -284,7 +284,7 @@ Frl_Rewriter::init()->warm_cache_for_posts($posts);
 | 404 on translated/rewritten URLs | WP rewrite rules stale | Settings → Permalinks (save), or `force_rules_refresh()` |
 | Wrong language in URL | Option not saved, or cache stale | Save option; cache clears automatically via `update_option_*` hook |
 | Catch-all hijacking a CPT archive | New CPT added without flushing | Save Permalinks; `clear_rewriter_caches()` regenerates exclusions |
-| REST API returns transformed URLs | REST guard not first in pipeline | Already fixed: REST guard runs before cache check in `transform_url()` |
+| REST API returns transformed URLs | REST guard not first in pipeline | REST guard runs before cache check in `transform_url()` |
 
 ---
 
