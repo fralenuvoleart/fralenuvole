@@ -27,7 +27,7 @@ if (!defined('FRL_REWRITER_PRIORITIES')) {
  * in this array does not matter, as features are sorted by their internal priority.
  *
  * NOTE: Features that require constructor arguments (like CPT translation features
- * that need a CPT slug) are defined in FRL_REWRITER_FEATURE_FACTORIES instead.
+ * that need a CPT slug) are derived at runtime from FRL_REWRITER_MULTILINGUAL_CPT.
  */
 if (!defined('FRL_REWRITER_FEATURES')) {
     define('FRL_REWRITER_FEATURES', [
@@ -37,22 +37,15 @@ if (!defined('FRL_REWRITER_FEATURES')) {
 }
 
 /**
- * Defines factory-based rewriter features that require constructor arguments.
+ * Defines the custom post types that support multilingual slugs.
  *
- * Each entry maps a CPT slug to an array of feature classes that need that slug
- * as a constructor argument. The coordinator will instantiate each feature class
- * with the corresponding CPT slug. This replaces the previous implicit loop
- * over FRL_REWRITER_MULTILINGUAL_CPT.
- *
- * Format: [cpt_slug => [feature_class_1, feature_class_2, ...]]
+ * Each CPT will have translation features instantiated with its slug:
+ * - Frl_CPT_Archive_Base_Translation_Feature (priority 15)
+ * - Frl_CPT_Single_Base_Translation_Feature (priority 25)
  */
-if (!defined('FRL_REWRITER_FEATURE_FACTORIES')) {
-    define('FRL_REWRITER_FEATURE_FACTORIES', [
-        // CPT translation features are instantiated per-CPT with the CPT slug argument
-        'service' => [
-            Frl_CPT_Archive_Base_Translation_Feature::class,
-            Frl_CPT_Single_Base_Translation_Feature::class,
-        ],
+if (!defined('FRL_REWRITER_MULTILINGUAL_CPT')) {
+    define('FRL_REWRITER_MULTILINGUAL_CPT', [
+        'service',
     ]);
 }
 

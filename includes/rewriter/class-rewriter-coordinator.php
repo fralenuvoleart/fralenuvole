@@ -105,21 +105,24 @@ class Frl_Rewriter_Coordinator
             }
         }
 
-        // Factory-based features: instantiate features that require constructor arguments.
-        // Each factory entry maps a context (e.g., CPT slug) to an array of feature classes.
-        if (defined('FRL_REWRITER_FEATURE_FACTORIES') && is_array(FRL_REWRITER_FEATURE_FACTORIES)) {
-            foreach (FRL_REWRITER_FEATURE_FACTORIES as $context => $feature_classes) {
+        // CPT translation features: instantiate Archive + Single features per CPT slug.
+        if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
+            $feature_classes = [
+                Frl_CPT_Archive_Base_Translation_Feature::class,
+                Frl_CPT_Single_Base_Translation_Feature::class,
+            ];
+            foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
                 foreach ($feature_classes as $feature_class) {
                     try {
                         if (!class_exists($feature_class)) {
                             continue;
                         }
-                        // Instantiate with the context (e.g., CPT slug) as constructor argument
-                        (new $feature_class($context))->self_register();
+                        // Instantiate with the CPT slug as constructor argument
+                        (new $feature_class($cpt_slug))->self_register();
                     } catch (Throwable $e) {
-                        frl_log('Rewriter factory feature registration failed: {class}({context}) - {error}', [
+                        frl_log('Rewriter factory feature registration failed: {class}({cpt}) - {error}', [
                             'class' => $feature_class,
-                            'context' => $context,
+                            'cpt' => $cpt_slug,
                             'error' => $e->getMessage(),
                         ]);
                         continue;
