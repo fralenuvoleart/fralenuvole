@@ -588,10 +588,10 @@ const FRL_DEFAULT_FIELDS = array(
 			'dash_widget_custom_html_content_1' => array(
 				'label' => 'Widget 1 Content',
 				'description' => 'HTML content for widget 1 (shortcodes are processed)',
-				'type' => 'textarea',
+				'type' => 'html',
 				'rows' => 4,
 				'default' => '',
-				'sanitize_callback' => 'wp_kses_post',
+				'restricted' => true,
 				'autoload' => 'no',
 			),
 			// Widget 2
@@ -612,10 +612,10 @@ const FRL_DEFAULT_FIELDS = array(
 			'dash_widget_custom_html_content_2' => array(
 				'label' => 'Widget 2 Content',
 				'description' => 'HTML content for widget (shortcodes are processed)',
-				'type' => 'textarea',
+				'type' => 'html',
 				'rows' => 4,
 				'default' => '',
-				'sanitize_callback' => 'wp_kses_post',
+				'restricted' => true,
 				'autoload' => 'no',
 			),
 			// Widget 3
@@ -636,10 +636,10 @@ const FRL_DEFAULT_FIELDS = array(
 			'dash_widget_custom_html_content_3' => array(
 				'label' => 'Widget 3 Content',
 				'description' => 'HTML content for widget (shortcodes are processed)',
-				'type' => 'textarea',
+				'type' => 'html',
 				'rows' => 4,
 				'default' => '',
-				'sanitize_callback' => 'wp_kses_post',
+				'restricted' => true,
 				'autoload' => 'no',
 			),
 		),
