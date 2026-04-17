@@ -182,3 +182,24 @@ h1:has(.fd-title-info) {
 div.postbox[id^=fd_] .hndle.ui-sortable-handle {
     color: inherit;
 }
+
+/** 
+ * Meow Styles 
+ */
+.neko-header-logo-container,
+.neko-header-subtitle,
+div:has(>a[href*="meowapps"]),
+button[data-key="license"],
+.neko-pro-only {
+    display: none !important;
+}
+
+:root {
+    --neko-blue: var(--admin-menu-color, #00293d) !important;
+    ----neko-tab-bg: hsl(200, 100%, 25%) !important;
+}
+
+.neko-tab-title.active,  
+.gIkkAW.ai {
+    background: var(--admin-accent-color, e6571a) !important;
+}

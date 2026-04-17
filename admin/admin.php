@@ -655,6 +655,27 @@ function frl_custom_dashboard_widgets()
             'render_callback' => 'frl_render_user_visits_widget',
             'refresh_button' => true,
         ],
+        'custom_html_1' => [
+            'title' => frl_get_option('dash_widget_custom_html_1_label') ?: __('Custom Widget 1', FRL_PREFIX),
+            'cap' => frl_get_option('dash_widget_custom_html_1_cap') ?: 'delete_plugins',
+            'render_file' => FRL_DIR_PATH . 'admin/widgets/widget-custom-html.php',
+            'render_callback' => 'frl_render_custom_html_widget_1',
+            'enabled_option_key' => 'dash_widget_custom_html_enabled',
+        ],
+        'custom_html_2' => [
+            'title' => frl_get_option('dash_widget_custom_html_2_label') ?: __('Custom Widget 2', FRL_PREFIX),
+            'cap' => frl_get_option('dash_widget_custom_html_2_cap') ?: 'delete_plugins',
+            'render_file' => FRL_DIR_PATH . 'admin/widgets/widget-custom-html.php',
+            'render_callback' => 'frl_render_custom_html_widget_2',
+            'enabled_option_key' => 'dash_widget_custom_html_enabled',
+        ],
+        'custom_html_3' => [
+            'title' => frl_get_option('dash_widget_custom_html_3_label') ?: __('Custom Widget 3', FRL_PREFIX),
+            'cap' => frl_get_option('dash_widget_custom_html_3_cap') ?: 'delete_plugins',
+            'render_file' => FRL_DIR_PATH . 'admin/widgets/widget-custom-html.php',
+            'render_callback' => 'frl_render_custom_html_widget_3',
+            'enabled_option_key' => 'dash_widget_custom_html_enabled',
+        ],
     ];
 
     // Allow other modules to add their widgets configuration to the array
@@ -675,6 +696,15 @@ function frl_custom_dashboard_widgets()
 
         // Check options (using determined key) and capability before registering
         if (frl_get_option($enable_option) && frl_has_access($widget_config['cap'])) {
+
+            // For custom HTML widgets, skip if content is empty
+            if (str_starts_with($id, 'custom_html_')) {
+                $widget_num = (int) substr($id, -1);
+                $content_key = "dash_widget_custom_html_{$widget_num}_content";
+                if (empty(trim(frl_get_option($content_key) ?: ''))) {
+                    continue;
+                }
+            }
 
             // Ensure the Renderer class is loaded before trying to use its static method
             // We can do this once before the loop, or check within
