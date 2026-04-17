@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
  */
 function frl_render_custom_html_widget($widget_number)
 {
-    $content_key = "dash_widget_custom_html_{$widget_number}_content";
+    $content_key = "dash_widget_custom_html_content_{$widget_number}";
     $content = frl_get_option($content_key);
 
     if (empty(trim($content))) {
