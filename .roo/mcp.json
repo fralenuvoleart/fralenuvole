@@ -1,5 +1,32 @@
 {
 	"mcpServers": {
+		"cloudways": {
+			"command": "npx",
+			"args": [
+				"--yes",
+				"mcp-remote@latest",
+				"https://mcp.cloudways.com/mcp/",
+				"--header",
+				"X-CW-Email: francesco.csto@gmail.com",
+				"--header",
+				"X-CW-Api-Key: mblIZAjXSZdjk3EVawajQ2MBZV2FZM",
+				"--header",
+				"X-Mcp-Host: vs-code"
+			],
+			"alwaysAllow": [
+				"server_list",
+				"server_get",
+				"app_list",
+				"app_get",
+				"service_status",
+				"addon_list",
+				"server_settings_get",
+				"server_disk_cleanup_settings_get",
+				"monitoring_server_summary",
+				"analytics_app_php",
+				"analytics_app_cron"
+			]
+		},
 		"context7": {
 			"command": "npx",
 			"args": [
