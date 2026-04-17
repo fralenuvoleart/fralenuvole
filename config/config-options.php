@@ -571,7 +571,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'autoload' => 'no',
 			),
 			// Widget 1
-			'dash_widget_custom_html_1_label' => array(
+			'dash_widget_custom_html_label_1' => array(
 				'label' => 'Widget 1 Title',
 				'type' => 'text',
 				'size' => 40,
@@ -579,20 +579,15 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'autoload' => 'no',
 			),
-			'dash_widget_custom_html_1_cap' => array(
+			'dash_widget_custom_html_cap_1' => array(
 				'label' => 'Widget 1: Minimum Capability',
 				'description' => 'Required capability to view widget 1',
-				'type' => 'select',
-				'options' => array(
-					'read' => 'Subscriber',
-					'edit_posts' => 'Contributor',
-					'upload_files' => 'Author',
-					'edit_published_posts' => 'Editor',
-					'manage_options' => 'Administrator',
-				),
+				'type' => 'text',
+				'size' => 40,
 				'default' => 'delete_plugins',
+				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'dash_widget_custom_html_1_content' => array(
+			'dash_widget_custom_html_content_1' => array(
 				'label' => 'Widget 1 Content',
 				'description' => 'HTML content for widget 1 (shortcodes are processed)',
 				'type' => 'textarea',
@@ -602,7 +597,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'autoload' => 'no',
 			),
 			// Widget 2
-			'dash_widget_custom_html_2_label' => array(
+			'dash_widget_custom_html_label_2' => array(
 				'label' => 'Widget 2 Title',
 				'type' => 'text',
 				'size' => 40,
@@ -610,20 +605,15 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'autoload' => 'no',
 			),
-			'dash_widget_custom_html_2_cap' => array(
+			'dash_widget_custom_html_cap_2' => array(
 				'label' => 'Widget 2: Minimum Capability',
 				'description' => 'Required capability to view widget 2',
-				'type' => 'select',
-				'options' => array(
-					'read' => 'Subscriber',
-					'edit_posts' => 'Contributor',
-					'upload_files' => 'Author',
-					'edit_published_posts' => 'Editor',
-					'manage_options' => 'Administrator',
-				),
+				'type' => 'text',
+				'size' => 40,
 				'default' => 'delete_plugins',
+				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'dash_widget_custom_html_2_content' => array(
+			'dash_widget_custom_html_content_2' => array(
 				'label' => 'Widget 2 Content',
 				'description' => 'HTML content for widget 2 (shortcodes are processed)',
 				'type' => 'textarea',
@@ -633,7 +623,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'autoload' => 'no',
 			),
 			// Widget 3
-			'dash_widget_custom_html_3_label' => array(
+			'dash_widget_custom_html_label_3' => array(
 				'label' => 'Widget 3 Title',
 				'type' => 'text',
 				'size' => 40,
@@ -641,20 +631,15 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_text_field',
 				'autoload' => 'no',
 			),
-			'dash_widget_custom_html_3_cap' => array(
+			'dash_widget_custom_html_cap_3' => array(
 				'label' => 'Widget 3: Minimum Capability',
 				'description' => 'Required capability to view widget 3',
-				'type' => 'select',
-				'options' => array(
-					'read' => 'Subscriber',
-					'edit_posts' => 'Contributor',
-					'upload_files' => 'Author',
-					'edit_published_posts' => 'Editor',
-					'manage_options' => 'Administrator',
-				),
+				'type' => 'text',
+				'size' => 40,
 				'default' => 'delete_plugins',
+				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'dash_widget_custom_html_3_content' => array(
+			'dash_widget_custom_html_content_3' => array(
 				'label' => 'Widget 3 Content',
 				'description' => 'HTML content for widget 3 (shortcodes are processed)',
 				'type' => 'textarea',

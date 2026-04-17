@@ -656,22 +656,22 @@ function frl_custom_dashboard_widgets()
             'refresh_button' => true,
         ],
         'custom_html_1' => [
-            'title' => frl_get_option('dash_widget_custom_html_1_label') ?: __('Custom Widget 1', FRL_PREFIX),
-            'cap' => frl_get_option('dash_widget_custom_html_1_cap') ?: 'delete_plugins',
+            'title' => frl_get_option('dash_widget_custom_html_label_1') ?: __('Custom Widget 1', FRL_PREFIX),
+            'cap' => frl_get_option('dash_widget_custom_html_cap_1') ?: 'delete_plugins',
             'render_file' => FRL_DIR_PATH . 'admin/widgets/widget-custom-html.php',
             'render_callback' => 'frl_render_custom_html_widget_1',
             'enabled_option_key' => 'dash_widget_custom_html_enabled',
         ],
         'custom_html_2' => [
-            'title' => frl_get_option('dash_widget_custom_html_2_label') ?: __('Custom Widget 2', FRL_PREFIX),
-            'cap' => frl_get_option('dash_widget_custom_html_2_cap') ?: 'delete_plugins',
+            'title' => frl_get_option('dash_widget_custom_html_label_2') ?: __('Custom Widget 2', FRL_PREFIX),
+            'cap' => frl_get_option('dash_widget_custom_html_cap_2') ?: 'delete_plugins',
             'render_file' => FRL_DIR_PATH . 'admin/widgets/widget-custom-html.php',
             'render_callback' => 'frl_render_custom_html_widget_2',
             'enabled_option_key' => 'dash_widget_custom_html_enabled',
         ],
         'custom_html_3' => [
-            'title' => frl_get_option('dash_widget_custom_html_3_label') ?: __('Custom Widget 3', FRL_PREFIX),
-            'cap' => frl_get_option('dash_widget_custom_html_3_cap') ?: 'delete_plugins',
+            'title' => frl_get_option('dash_widget_custom_html_label_3') ?: __('Custom Widget 3', FRL_PREFIX),
+            'cap' => frl_get_option('dash_widget_custom_html_cap_3') ?: 'delete_plugins',
             'render_file' => FRL_DIR_PATH . 'admin/widgets/widget-custom-html.php',
             'render_callback' => 'frl_render_custom_html_widget_3',
             'enabled_option_key' => 'dash_widget_custom_html_enabled',
@@ -700,7 +700,7 @@ function frl_custom_dashboard_widgets()
             // For custom HTML widgets, skip if content is empty
             if (str_starts_with($id, 'custom_html_')) {
                 $widget_num = (int) substr($id, -1);
-                $content_key = "dash_widget_custom_html_{$widget_num}_content";
+                $content_key = "dash_widget_custom_html_content_{$widget_num}";
                 if (empty(trim(frl_get_option($content_key) ?: ''))) {
                     continue;
                 }
