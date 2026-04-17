@@ -442,7 +442,7 @@
 .form-table tr:has(#frl_themekit_fonts_plugin_fonts:not(:checked)) ~ tr:has( [id*="themekit_fonts_"]:not([id*="_size_adjust"])),
 .form-table:has(tr #frl_themekit_fonts_system_fonts:not(:checked)):has(tr #frl_themekit_fonts_plugin_fonts:not(:checked)) tr:has( [id*="_size_adjust"]),
 .form-table:has(#frl_themekit_fonts_plugin_fonts:checked) tr:has(#frl_themekit_fonts_system_fonts),
-.form-table:has(#frl_dash_widget_custom_html_enabled:not(:checked)) tr:has( [id*="dash_widget_custom_html_content"] )
+.form-table:has(#frl_dash_widget_custom_html_enabled:not(:checked)) tr:has( [id*="dash_widget_custom_html_content"]:not(id="frl_dash_widget_custom_html_enabled") )
  {
     display: none;
 }
