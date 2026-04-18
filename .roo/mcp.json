@@ -25,7 +25,8 @@
 				"monitoring_server_summary",
 				"analytics_app_php",
 				"analytics_app_cron"
-			]
+			],
+			"disabled": true
 		},
 		"context7": {
 			"command": "npx",

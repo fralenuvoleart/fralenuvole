@@ -25,6 +25,8 @@ add_action('upgrader_process_complete', 'frl_themekit_invalidate_theme_json_cach
  */
 function frl_themekit_init()
 {
+    // NOTE: frl_is_already_running() has a side effect - it sets the flag on first call
+    // So we only call it once and store the result
     if (frl_is_already_running(__FUNCTION__)) {
         return;
     }
@@ -59,8 +61,13 @@ function frl_themekit_init()
     }
 
     // HOOK 1: Merges the plugin's static theme.json file into the theme's.
+    // Use 'wp_theme_json_data_theme' when theme has theme.json, or 'wp_theme_json_data_default' as fallback.
     if (frl_get_option('themekit_settings') || frl_get_option('themekit_styles') || frl_get_option('themekit_colors') || frl_get_option('themekit_fonts')) {
         add_filter('wp_theme_json_data_theme',
+            'frl_themekit_apply_theme_json',
+            100,
+            1);
+        add_filter('wp_theme_json_data_default',
             'frl_themekit_apply_theme_json',
             100,
             1);
@@ -661,52 +668,78 @@ function frl_themekit_get_query_signature()
 
 /**
  * Converts a block style JSON file to a register_block_style-compatible array.
- * Uses the 'style_data' property for theme.json-like style definitions as per WordPress documentation.
  *
- * @param string $path Path to the JSON file.
- * @return array|null
+ * Uses the 'style_data' property for theme.json-like style definitions as per
+ * WordPress documentation. The returned array always contains 'block_types' and
+ * 'styles' keys, suitable for WordPress block style registration.
+ *
+ * @since 1.0.0
+ * @see https://developer.wordpress.org/reference/functions/register_block_style/
+ *
+ * @param string $block_name The block name (e.g., 'core/paragraph'). Sanitized automatically.
+ * @return array{block_types: array, styles: array{name?: string, label?: string, style_data?: array}} Transformed block style data.
+ *                             Returns array with empty sub-arrays on failure (never null).
  */
-function frl_themekit_convert_block_style_json($block_name)
+function frl_themekit_convert_block_style_json(string $block_name): array
 {
-    $path = FRL_THEMEKIT_DIR_PATH . 'styles/blocks/' . $block_name . '.json';
-    $block_key = 'block_' . $block_name;
+    // Validate and sanitize input early to fail fast
+    if (empty($block_name)) {
+        frl_log('Block style conversion failed: empty block_name', [
+            'function' => __FUNCTION__,
+        ]);
+        return ['block_types' => [], 'styles' => []];
+    }
+
+    // Prevent path traversal - only allow valid block name characters
+    $sanitized_block_name = sanitize_key($block_name);
+    if ($sanitized_block_name !== $block_name) {
+        frl_log('Block style conversion: block_name was sanitized', [
+            'original' => $block_name,
+            'sanitized' => $sanitized_block_name,
+        ]);
+    }
+
+    $path = FRL_THEMEKIT_DIR_PATH . 'styles/blocks/' . $sanitized_block_name . '.json';
+    $block_key = 'block_' . $sanitized_block_name;
     $assets = [$block_key => $path];
 
     $version = frl_get_assets_versions($assets, $block_key, 'versions', true)[$path] ?? '';
 
-    $cache_key = $block_key . '_style_' . $version;
-    return frl_cache_remember('theme', $cache_key, function () use ($path) {
+    // Ensure cache key is unique even with empty version
+    $cache_key = $block_key . '_style_' . ($version ?: uniqid('noversion_', true));
+
+    return frl_cache_remember('theme', $cache_key, function () use ($path, $sanitized_block_name): array {
         $json_data = frl_json_decode_file($path);
+
+        // Return empty structure (not null) for consistent caller handling
         if (empty($json_data)) {
-            return null;
+            frl_log('Block style JSON empty or invalid', [
+                'path' => $path,
+                'block' => $sanitized_block_name,
+            ]);
+            return ['block_types' => [], 'styles' => []];
         }
 
+        // Extract block types - use consistent isset pattern
         $block_types = [];
-        $block_style = []; // This will be the array for register_block_style's 2nd argument
-
-        // --- Configuration for special keys from JSON ---
-        $block_types_key = 'blockTypes';
-        // 'slug', 'title', and 'styles' (the object containing style rules)
-        // will be accessed directly by their string names.
-        // --- End Configuration ---
-
-        if (isset($json_data[$block_types_key])) {
-            $block_types = $json_data[$block_types_key];
-        }
-        if (isset($json_data['slug'])) {
-            $block_style['name'] = $json_data['slug'];
-        }
-        if (isset($json_data['title'])) {
-            $block_style['label'] = $json_data['title'];
+        if (isset($json_data['blockTypes']) && is_array($json_data['blockTypes'])) {
+            $block_types = $json_data['blockTypes'];
         }
 
-        // Assign the JSON 'styles' object directly to 'style_data'
-        // This is the theme.json-like array of rules WordPress expects.
-        if (frl_is_array_not_empty($json_data, 'styles')) {
+        // Build styles array with explicit structure
+        $block_style = [
+            'name' => $json_data['slug'] ?? '',
+            'label' => $json_data['title'] ?? '',
+        ];
+
+        // Only include style_data if styles array is non-empty
+        if (isset($json_data['styles']) && is_array($json_data['styles']) && !empty($json_data['styles'])) {
             $block_style['style_data'] = $json_data['styles'];
         }
 
-        // The calling function frl_themekit_register_block_styles expects 'block_types' and 'styles' keys in the returned array.
+        // Filter out empty name/label to maintain clean return structure
+        $block_style = array_filter($block_style, fn($value) => !empty($value));
+
         return [
             'block_types' => $block_types,
             'styles'      => $block_style,
