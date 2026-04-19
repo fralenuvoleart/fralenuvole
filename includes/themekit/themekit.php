@@ -73,15 +73,6 @@ function frl_themekit_init()
         frl_themekit_remove_core_block_patterns();
     }
 
-	// Dequeue global styles added by theme.json file
-	if (frl_get_option('themekit_remove_wp_default_colors')) {
-        add_filter('wp_theme_json_data_default',
-            'frl_themekit_remove_wp_colors',
-            10,
-            1
-        );
-    }
-
 	// Remove provider-specific block patterns (themes/plugins) if configured
 	$provider_patterns_raw = frl_get_option('themekit_remove_provider_patterns') ?: '';
 	if (!empty($provider_patterns_raw)) {
@@ -257,21 +248,6 @@ function frl_themekit_remove_core_block_patterns()
     // See https://github.com/Automattic/jetpack/blob/d032fbb807e9cd69891e4fcbc0904a05508a1c67/projects/packages/jetpack-mu-wpcom/src/features/block-patterns/block-patterns.php#L107
 
     add_filter('should_load_remote_block_patterns', '__return_false', 10, 0);
-}
-
-/**
- * Remove WP Global Styles
- */
-function frl_themekit_remove_wp_colors($theme_json)
-{
-    $data = $theme_json->get_data();
-
-    $data['settings']['color']['palette']['default'] = [];
-    $data['settings']['color']['duotone']['default'] = [];
-    $data['settings']['color']['gradients']['default'] = [];
-
-    $theme_json->update_with($data);
-    return $theme_json;
 }
 
 /**
