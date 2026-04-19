@@ -99,7 +99,7 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 // Cache Bridge (Two-Way Sync)
 // =============================================================================
 
-if (frl_get_option('thirdparty_cache_bridge')) {
+if (frl_get_option('thirdparty_cache_inbound')) {
     // --- Inbound: third-party purge → clear fralenuvole caches ---
     foreach (array_keys(frl_thirdparty_get_inbound_hooks()) as $hook) {
         add_action($hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
@@ -229,7 +229,7 @@ function frl_thirdparty_inbound_cache_clear(): void
  */
 function frl_thirdparty_maybe_notify(string $trigger): array
 {
-    if (!frl_get_option('thirdparty_cache_bridge')) {
+    if (!frl_get_option('thirdparty_cache_outbound')) {
         return [];
     }
 
@@ -355,6 +355,6 @@ function frl_thirdparty_display_notification_notice(): void
     frl_add_admin_notice($message, 'success', 30);
 }
 
-if (frl_get_option('thirdparty_cache_bridge')) {
+if (frl_get_option('thirdparty_cache_outbound')) {
     add_action('admin_init', 'frl_thirdparty_display_notification_notice', 20, 0);
 }
