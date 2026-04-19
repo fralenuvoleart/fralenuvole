@@ -227,11 +227,8 @@ function frl_execute_rewrite_flush(): void
     // This ensures their purge happens before we rebuild rules, preventing
     // the race condition where LiteSpeed overwrites fresh rewrite_rules in DB.
     if (function_exists('frl_thirdparty_maybe_notify')) {
-        $notified = frl_thirdparty_maybe_notify('rewrite_flush');
-        // Safety: if notification failed or no plugins were configured, log for debugging.
-        if (empty($notified)) {
-            frl_log('frl_execute_rewrite_flush: no third-party plugins notified (may be expected if none configured)');
-        }
+        frl_thirdparty_maybe_notify('rewrite_flush');
+
     }
 
     // Step 2: Clear Fralenuvole internal caches to ensure fresh data on rebuild.
