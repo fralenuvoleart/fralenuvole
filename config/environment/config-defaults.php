@@ -50,7 +50,6 @@ const FRL_ENV_DEFAULT = [
     ],
     'plugin_options' => [
         'wsform_webhook' => false,
-        'disable_themekit' => true,
         'schema_organization' => true,
         'schema_service' => true,
         'schema_person' => false,
@@ -89,7 +88,6 @@ const FRL_ENV_DEFAULT_STAGING = [
         'blog_public' => 0,
     ],
     'plugin_options' => [
-        'disable_themekit' => false,
         'footer_html' => 'file',
         'debug' => true,
         'error_reporting_email' => false,
@@ -106,7 +104,6 @@ const FRL_ENV_MASTER_TEMPLATE = [
         ],
     ],
     'plugin_options' => [
-        'disable_themekit' => false,
         'debug' => true
     ]
 ];

@@ -32,7 +32,6 @@ wp_options
 
 plugin_options
   wsform_webhook        off
-  disable_themekit      on
   schema_organization   on
   schema_service        on
   schema_person         off
@@ -54,7 +53,6 @@ plugins active          query-monitor, better-search-replace
 plugins inactive        litespeed-cache, docket-cache
 
   blog_public           0  (hidden)
-  disable_themekit      off
   debug                 on
   error_reporting_email off
 
@@ -65,7 +63,6 @@ For new sites with no dedicated brand template.
 
 plugins active          query-monitor
 
-  disable_themekit      off
   debug                 on
 
 

@@ -79,7 +79,6 @@ const FRL_ENV_PBNOVA_TEMPLATE = [
         'blog_public' => 0,
     ],
     'plugin_options' => [
-        'disable_themekit' => false,
     ]
 ];
 

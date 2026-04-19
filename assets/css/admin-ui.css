@@ -436,12 +436,6 @@
 .form-table:has(#frl_disable_environment:not(:checked)) tr:has( :where([name*="env_subdomain"], [name*="env_noindex"], [name*="env_plugins_production_only"])),
 .form-table:has(#frl_schema_person:not(:checked)) tr:has( :where([name*="schema_owner_"], [class*="schema_owner_"])),
 .form-table:has(#frl_debug:not(:checked)) tr:has( :where([name*="debug_"], [class*="debug_"])),
-.form-table:has(#frl_themekit_theme_json:not(:checked)) tr:has( :where([name*="themekit_theme_json_overwrite"])),
-.form-table tr:has(#frl_themekit_fonts:not(:checked)) ~ tr:has( [id*="themekit_fonts"]),
-.form-table tr:has(#frl_themekit_fonts_system_fonts:checked) ~ tr:has( [id*="themekit_fonts_"]:not([id*="_size_adjust"])),
-.form-table tr:has(#frl_themekit_fonts_plugin_fonts:not(:checked)) ~ tr:has( [id*="themekit_fonts_"]:not([id*="_size_adjust"])),
-.form-table:has(tr #frl_themekit_fonts_system_fonts:not(:checked)):has(tr #frl_themekit_fonts_plugin_fonts:not(:checked)) tr:has( [id*="_size_adjust"]),
-.form-table:has(#frl_themekit_fonts_plugin_fonts:checked) tr:has(#frl_themekit_fonts_system_fonts),
 .form-table:has(#frl_dash_widget_custom_html_enabled:not(:checked)) tr:has( [id*="dash_widget_custom_html"]:not([id*="dash_widget_custom_html_enabled"]) )
  {
     display: none;
