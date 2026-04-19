@@ -666,6 +666,13 @@ const FRL_DEFAULT_FIELDS = array(
 				'default' => 1,
 				'sanitize_callback' => 'absint',
 			),
+			'themekit_font_display_swap' => array(
+				'label' => 'Font Display Swap',
+				'description' => 'Replace <code>font-display: fallback</code> with <code>font-display: swap</code> for WordPress Font Library fonts to improve Core Web Vitals',
+				'type' => 'checkbox',
+				'default' => 0,
+				'sanitize_callback' => 'absint',
+			),
 			'themekit_remove_wp_patterns' => array(
 				'label' => 'Remove WP Block Patterns',
 				'description' => 'Remove WP Core Block Patterns and remote patterns from the official Pattern Directory on WordPress.org',

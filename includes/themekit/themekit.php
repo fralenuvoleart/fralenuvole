@@ -67,6 +67,11 @@ function frl_themekit_init()
             0
         );
     }
+    
+	// Replace font-display: fallback with font-display: swap for WP Font Library
+	if (frl_get_option('themekit_font_display_swap')) {
+		add_filter('wp_theme_json_data_user', 'frl_themekit_font_display_swap_filter');
+	}
 
     // Remove WP Block Patterns conditionally (Frontend/Backend)
     if (frl_get_option('themekit_remove_wp_patterns')) {
@@ -90,8 +95,36 @@ function frl_themekit_init()
 			'frl_themekit_remove_provider_styles',
 			99999,
 			0
-        );
+	       );
 	}
+}
+
+/**
+	* Changes font-display from 'fallback' to 'swap' for all fonts
+	* uploaded via the WordPress Font Library.
+	*
+	* @param WP_Theme_JSON_Data $theme_json_data The theme json data object.
+	* @return WP_Theme_JSON_Data Modified theme json data object.
+	*/
+function frl_themekit_font_display_swap_filter($theme_json_data)
+{
+	$data = $theme_json_data->get_data();
+
+	// Check if custom font families exist in the user data
+	if (!empty($data['settings']['typography']['fontFamilies']['custom'])) {
+
+		foreach ($data['settings']['typography']['fontFamilies']['custom'] as &$font_family) {
+			if (isset($font_family['fontFace']) && is_array($font_family['fontFace'])) {
+				foreach ($font_family['fontFace'] as &$font_face) {
+					$font_face['fontDisplay'] = 'swap';
+				}
+			}
+		}
+
+		$theme_json_data->update_with($data);
+	}
+
+	return $theme_json_data;
 }
 
 /**
