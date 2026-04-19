@@ -17,7 +17,6 @@ if (!defined('ABSPATH')) {
 require_once FRL_DIR_PATH . 'includes/helpers/utilities.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-options.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-class-helpers.php';
-require_once FRL_DIR_PATH . 'includes/helpers/functions-themekit.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-modules.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-plugin-actions.php';
 

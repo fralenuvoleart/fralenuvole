@@ -13,7 +13,7 @@
 			"customDuotone": false
 		},
 		"typography": {
-			"customFontSize": false,
+			"customFontSize": true,
 			"defaultFontSizes": false,
 			"fluid": true,
 			"lineHeight": true,

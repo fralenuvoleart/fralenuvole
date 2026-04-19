@@ -56,6 +56,19 @@
 				"read_text_file",
 				"directory_tree"
 			]
+		},
+		"tavily": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"tavily-mcp@0.2.3"
+			],
+			"env": {
+				"TAVILY_API_KEY": "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"
+			},
+			"alwaysAllow": [
+				"tavily-extract"
+			]
 		}
 	}
 }
