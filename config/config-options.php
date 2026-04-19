@@ -766,13 +766,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'placeholder' => 'ollie',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'themekit_remove_wp_default_colors' => array(
-				'label' => 'Remove WP Default Colors',
-				'description' => 'Disable WordPress default colors in Global WP Styles',
-				'type' => 'checkbox',
-				'default' => 1,
-				'sanitize_callback' => 'absint',
-			),
 			'themekit_remove_provider_styles' => array(
 				'label' => 'Remove Provider Styles',
 				'description' => 'Disable styles by exact handle or provider slug. Enter provider slug or exact style handle ("ollie" or "global-styles"). One provider per line. <b>WARNING</b>: Removing WP Global Style ("global-styles") can break current theme.',
