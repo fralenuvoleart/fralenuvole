@@ -786,6 +786,36 @@ const FRL_DEFAULT_FIELDS = array(
 	'settings' => array(
 		'title' => 'Plugin Settings',
 		'fields' => array(
+			'excluded_plugins_frontend_enabled' => array(
+				'label' => 'Enable Frontend Plugin Exclusion',
+				'description' => 'Exclude plugins from loading on frontend pages and AJAX requests.',
+				'type' => 'checkbox',
+				'default' => 0,
+			),
+			'excluded_plugins_frontend' => array(
+				'label' => 'Frontend Excluded Plugins',
+				'description' => 'One plugin path per line (e.g., hello Dolly/hello.php).',
+				'type' => 'textlist',
+				'default' => '',
+			),
+			'excluded_plugins_bycap_enabled' => array(
+				'label' => 'Enable Capability-Based Plugin Exclusion',
+				'description' => 'Exclude plugins from loading for users without the required capability.',
+				'type' => 'checkbox',
+				'default' => 0,
+			),
+			'excluded_plugins_bycap_cap' => array(
+				'label' => 'Required Capability',
+				'description' => 'Capability users need to load excluded plugins.',
+				'type' => 'text',
+				'default' => 'delete_plugins',
+			),
+			'excluded_plugins_bycap' => array(
+				'label' => 'Capability-Excluded Plugins',
+				'description' => 'One plugin path per line (e.g., hello Dolly/hello.php).',
+				'type' => 'textlist',
+				'default' => '',
+			),
 			'section_title_components' => array(
 				'label' => 'Disable Core Features',
 				'description' => 'Disable core plugin features',

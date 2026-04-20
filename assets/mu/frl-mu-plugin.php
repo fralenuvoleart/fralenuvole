@@ -1,17 +1,103 @@
 <?php
 
 /**
- * Fralenuvole - Early Error Handler Loader
+ * Fralenuvole - Early Loader
  *
  * This file should be placed in the /wp-content/mu-plugins/ directory.
- * It ensures the custom error handler is loaded before all other plugins,
- * allowing it to intercept errors that occur very early in the WordPress lifecycle.
+ * It loads before regular plugins and can set up early filters.
  *
  * @package Fralenuvole
  */
 
 const FRL_MU_NAME = 'fralenuvole';
 
+/**
+ * Setup plugin exclusion filter before other plugins load.
+ * This runs at muplugins_loaded, before the regular plugins_loaded hook.
+ */
+add_action('muplugins_loaded', function () {
+    // Get exclusion settings
+    $frontend_enabled = frl_get_option('excluded_plugins_frontend_enabled');
+    $cap_enabled = frl_get_option('excluded_plugins_bycap_enabled');
+    
+    // Nothing enabled - skip
+    if (!$frontend_enabled && !$cap_enabled) {
+        return;
+    }
+    
+    // Determine if we're in a frontend context (HTML page or AJAX from frontend)
+    // This is true for: frontend HTML pages + frontend AJAX requests
+    // This is false for: admin pages, REST API, MCP, cron
+    $is_frontend_context = !frl_is_admin() 
+        && !frl_is_rest_api_request() 
+        && !frl_is_cron_job_request();
+    
+    // If not frontend context, skip frontend exclusion
+    // (capability exclusion still applies if enabled)
+    $excluded = [];
+    
+    // Frontend exclusion: apply to frontend HTML pages AND frontend AJAX
+    if ($frontend_enabled && $is_frontend_context) {
+        $frontend_list = frl_textlist_to_array(frl_get_option('excluded_plugins_frontend'));
+        if (!empty($frontend_list)) {
+            $excluded = array_merge($excluded, $frontend_list);
+        }
+    }
+    
+    // Capability exclusion: applies regardless of context
+    if ($cap_enabled) {
+        $required_cap = frl_get_option('excluded_plugins_bycap_cap') ?: 'delete_plugins';
+        if (!frl_has_access($required_cap)) {
+            $cap_list = frl_textlist_to_array(frl_get_option('excluded_plugins_bycap'));
+            if (!empty($cap_list)) {
+                $excluded = array_merge($excluded, $cap_list);
+            }
+        }
+    }
+    
+    // Remove duplicates and check if we have anything to exclude
+    $excluded = array_unique(array_filter($excluded));
+    
+    if (empty($excluded)) {
+        return;
+    }
+    
+    // Add filter to remove excluded plugins before they load
+    add_filter('pre_option_active_plugins', function ($pre, $option) use ($excluded) {
+        static $cache = null;
+        
+        if ($cache !== null) {
+            return $cache;
+        }
+        
+        $plugins = get_option('active_plugins', []);
+        $filtered = array_filter($plugins, function ($plugin) use ($excluded) {
+            return !in_array($plugin, $excluded);
+        });
+        
+        $cache = array_values($filtered);
+        return $cache;
+    }, 10, 2);
+    
+    // Also handle network active plugins for multisite
+    add_filter('pre_site_option_active_plugins', function ($pre, $option) use ($excluded) {
+        static $cache = null;
+        
+        if ($cache !== null) {
+            return $cache;
+        }
+        
+        $plugins = get_site_option('active_plugins', []);
+        $filtered = array_filter($plugins, function ($plugin) use ($excluded) {
+            return !in_array($plugin, $excluded);
+        });
+        
+        $cache = array_values($filtered);
+        return $cache;
+    }, 10, 2);
+}, 5);
+
+// Load plugin bootstrap AFTER setting up the exclusion filter
 $plugin_dir = WP_PLUGIN_DIR . '/' . FRL_MU_NAME . '/';
 $bootstrap_file = $plugin_dir . 'includes/bootstrap.php';
 
