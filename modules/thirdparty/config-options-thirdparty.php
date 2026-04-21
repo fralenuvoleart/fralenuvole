@@ -11,9 +11,9 @@ if (!defined('ABSPATH')) {
 
 $frl_thirdparty_default_fields = array(
     'section_title_thirdparty' => array(
-        'label'       => 'Third-Party Integrations',
+        'label'       => 'Third-Party Module',
         'type'        => 'section_title',
-        'description' => 'Settings for third-party plugin integrations',
+        'description' => 'Settings for third-party module integrations',
     ),
     'thirdparty_cache_inbound' => array(
         'label'             => 'Enable Inbound Cache Bridge',
