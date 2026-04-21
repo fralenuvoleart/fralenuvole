@@ -63,6 +63,11 @@ add_action('muplugins_loaded', function () {
     
     // Add filter to remove excluded plugins before they load
     add_filter('pre_option_active_plugins', function ($pre, $option) use ($excluded) {
+        // Only handle 'active_plugins' option, pass through for all others
+        if ($option !== 'active_plugins') {
+            return $pre;
+        }
+        
         static $cache = null;
         
         if ($cache !== null) {
