@@ -96,11 +96,11 @@
     font-size: 1.1em;
 }
 
-.nav.wp-block-navigation ul {
+nav.wp-block-navigation ul {
     min-width: 240px !important;
 }
 
-li.wp-block-navigation-submenu ul.wp-block-navigation-submenu {
+nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-submenu {
     font-size: 0.9em;
 }
 
