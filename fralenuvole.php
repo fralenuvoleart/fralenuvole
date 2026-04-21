@@ -89,13 +89,13 @@ function frl_plugins_loaded()
 function frl_load_core_components()
 {
     // Load required unconditional files first
-    require_once FRL_DIR_PATH . 'includes/cache/cache-cleanup.php';
+    require_once FRL_DIR_PATH . 'core/cache/cache-cleanup.php';
     require_once FRL_DIR_PATH . 'includes/main.php';
     require_once FRL_DIR_PATH . 'public/shortcodes.php';
 
-    require_once FRL_DIR_PATH . 'includes/rewriter/class-rewriter.php';
-    require_once FRL_DIR_PATH . 'includes/translator/field-translator.php';
-    require_once FRL_DIR_PATH . 'includes/themekit/themekit.php';
+    require_once FRL_DIR_PATH . 'core/rewriter/class-rewriter.php';
+    require_once FRL_DIR_PATH . 'core/translator/field-translator.php';
+    require_once FRL_DIR_PATH . 'core/themekit/themekit.php';
 
     // Explicitly initialize components
     frl_translator_init();

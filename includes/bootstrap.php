@@ -49,13 +49,13 @@ if (defined('FRL_MODE') && FRL_MODE === 'disable') {
 }
 
 // Load core features: translation, environment and cache manager
-require_once FRL_DIR_PATH . 'includes/translator/class-translation-service.php';
-require_once FRL_DIR_PATH . 'includes/environment/class-environment-manager.php';
+require_once FRL_DIR_PATH . 'core/translator/class-translation-service.php';
+require_once FRL_DIR_PATH . 'core/environment/class-environment-manager.php';
 
 // Load and initialize the cache manager immediately.
 // Skip WordPress-dependent code when running under PHPStan
 if (!defined('PHPSTAN_RUNNING') || !PHPSTAN_RUNNING) { // @phpstan-ignore-line duplicateIfStatments
-    require_once FRL_DIR_PATH . 'includes/cache/class-cache-manager.php';
+    require_once FRL_DIR_PATH . 'core/cache/class-cache-manager.php';
     Frl_Cache_Manager::init();
 
     // Load and initialize the custom error handler immediately (original behavior)
@@ -69,5 +69,5 @@ require_once FRL_DIR_PATH . 'includes/lifecycle.php';
 
 // Register rewriter CLI commands (only under WP-CLI)
 if (defined('WP_CLI') && WP_CLI) { // @phpstan-ignore-line alwaysFalse
-    require_once FRL_DIR_PATH . 'includes/rewriter/cli/class-rewriter-cli.php';
+    require_once FRL_DIR_PATH . 'core/rewriter/cli/class-rewriter-cli.php';
 }
