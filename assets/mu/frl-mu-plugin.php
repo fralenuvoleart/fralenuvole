@@ -38,7 +38,16 @@ add_action('muplugins_loaded', function () {
     if ($frontend_enabled && $is_frontend_context) {
         $frontend_list = frl_textlist_to_array(frl_get_option('excluded_plugins_frontend'));
         if (!empty($frontend_list)) {
-            $excluded = array_merge($excluded, $frontend_list);
+            // Flatten nested array (frl_textlist_to_array returns nested arrays)
+            $flat_list = [];
+            foreach ($frontend_list as $items) {
+                if (is_array($items)) {
+                    $flat_list = array_merge($flat_list, $items);
+                } else {
+                    $flat_list[] = $items;
+                }
+            }
+            $excluded = array_merge($excluded, $flat_list);
         }
     }
     
@@ -49,13 +58,22 @@ add_action('muplugins_loaded', function () {
         if (!frl_has_access($required_cap)) {
             $cap_list = frl_textlist_to_array(frl_get_option('excluded_plugins_bycap'));
             if (!empty($cap_list)) {
-                $excluded = array_merge($excluded, $cap_list);
+                // Flatten nested array (frl_textlist_to_array returns nested arrays)
+                $flat_list = [];
+                foreach ($cap_list as $items) {
+                    if (is_array($items)) {
+                        $flat_list = array_merge($flat_list, $items);
+                    } else {
+                        $flat_list[] = $items;
+                    }
+                }
+                $excluded = array_merge($excluded, $flat_list);
             }
         }
     }
     
     // Remove duplicates and check if we have anything to exclude
-    $excluded = array_unique(array_filter($excluded));
+    $excluded = array_unique(array_filter($excluded, 'is_string'));
     
     if (empty($excluded)) {
         return;
