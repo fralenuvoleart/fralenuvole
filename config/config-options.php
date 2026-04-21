@@ -787,8 +787,8 @@ const FRL_DEFAULT_FIELDS = array(
 		'title' => 'Plugin Settings',
 		'fields' => array(
 			'excluded_plugins_frontend_enabled' => array(
-				'label' => 'Enable Frontend Plugin Exclusion',
-				'description' => 'Exclude plugins from loading on frontend pages and AJAX requests.',
+				'label' => 'Enable Frontend Exclusion',
+				'description' => 'Block plugins on frontend (applies to all users).',
 				'type' => 'checkbox',
 				'default' => 0,
 			),
@@ -799,19 +799,19 @@ const FRL_DEFAULT_FIELDS = array(
 				'default' => '',
 			),
 			'excluded_plugins_bycap_enabled' => array(
-				'label' => 'Enable Capability-Based Plugin Exclusion',
-				'description' => 'Exclude plugins from loading for users without the required capability.',
+				'label' => 'Enable Admin Capability Exclusion',
+				'description' => 'Block plugins in admin for users without capability.',
 				'type' => 'checkbox',
 				'default' => 0,
 			),
 			'excluded_plugins_bycap_cap' => array(
 				'label' => 'Required Capability',
-				'description' => 'Capability users need to load excluded plugins.',
+				'description' => 'Capability needed to load excluded plugins in admin.',
 				'type' => 'text',
 				'default' => 'delete_plugins',
 			),
 			'excluded_plugins_bycap' => array(
-				'label' => 'Capability-Excluded Plugins',
+				'label' => 'Admin Excluded Plugins',
 				'description' => 'One plugin path per line (e.g., hello Dolly/hello.php).',
 				'type' => 'textlist',
 				'default' => '',

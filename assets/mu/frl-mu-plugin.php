@@ -32,11 +32,9 @@ add_action('muplugins_loaded', function () {
         && !frl_is_rest_api_request() 
         && !frl_is_cron_job_request();
     
-    // If not frontend context, skip frontend exclusion
-    // (capability exclusion still applies if enabled)
     $excluded = [];
     
-    // Frontend exclusion: apply to frontend HTML pages AND frontend AJAX
+    // FRONTEND EXCLUSION: applies to ALL users in frontend context (supersedes cap check)
     if ($frontend_enabled && $is_frontend_context) {
         $frontend_list = frl_textlist_to_array(frl_get_option('excluded_plugins_frontend'));
         if (!empty($frontend_list)) {
@@ -44,8 +42,9 @@ add_action('muplugins_loaded', function () {
         }
     }
     
-    // Capability exclusion: applies regardless of context
-    if ($cap_enabled) {
+    // CAPABILITY EXCLUSION: applies ONLY in non-frontend contexts (admin) when user lacks cap
+    // In frontend context, cap check is skipped (frontend exclusion takes precedence)
+    if ($cap_enabled && !$is_frontend_context) {
         $required_cap = frl_get_option('excluded_plugins_bycap_cap') ?: 'delete_plugins';
         if (!frl_has_access($required_cap)) {
             $cap_list = frl_textlist_to_array(frl_get_option('excluded_plugins_bycap'));
