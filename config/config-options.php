@@ -783,8 +783,8 @@ const FRL_DEFAULT_FIELDS = array(
 			),
 		),
 	),
-	'plugins' => array(
-		'title' => 'Plugin Management',
+	'integrations' => array(
+		'title' => 'Integrations',
 		'fields' => array(
 			'section_title_plugin_exclusion' => array(
 				'label' => 'Plugin Exclusion',
