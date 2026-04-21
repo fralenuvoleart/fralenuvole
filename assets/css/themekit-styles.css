@@ -126,6 +126,9 @@ nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-su
     display: none;
 }
 
+.frl-higlight-left:before {
+    left: 0;
+}
 .frl-link-underline,
 .wp-block-navigation__container>.wp-block-navigation-item>a {
     position: relative;
