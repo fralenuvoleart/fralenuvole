@@ -104,11 +104,17 @@ nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-su
     font-size: 0.875em;
 }
 
+.wp-block-post-featured-image a {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
 .wp-block-post-featured-image a img {
     transition: 0.3s;
 }
 
-.wp-block-post-featured-image a:hover img {
+.wp-block-post-featured-image a:hover img,
+.wp-block-column:has(+.wp-block-column .wp-block-post-title a:hover) .wp-block-post-featured-image a img {
     transform: scale(1.1);
 }
 
