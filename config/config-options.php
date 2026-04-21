@@ -786,6 +786,11 @@ const FRL_DEFAULT_FIELDS = array(
 	'settings' => array(
 		'title' => 'Plugin Settings',
 		'fields' => array(
+			'section_title_plugin_exclusion' => array(
+				'label' => 'Plugin Exclusion',
+				'description' => 'Prevent specified plugins from loading without deactivating them based on 1) Frontend and 2) User capability.',
+				'type' => 'section_title',
+			),
 			'excluded_plugins_frontend_enabled' => array(
 				'label' => 'Enable Frontend Exclusion',
 				'description' => 'Block plugins on frontend (applies to all users).',
