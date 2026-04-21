@@ -26,7 +26,9 @@ define('FRL_MODULES_DIR_PATH', FRL_DIR_PATH . 'modules/');
 define('FRL_MODULES_SECTION','modules');
 
 // Define the plugin access level
+const FRL_PLUGIN_SUPERADMIN_ID = 1;
 const FRL_PLUGIN_ACCESS = 'delete_plugins';
+
 
 // Strings to ignore for debug log count bubble
 const FRL_LOG_COUNT_IGNORE = [

@@ -68,8 +68,29 @@ function frl_name($name_prefix = '')
  *
  * @return WP_User|false User object on success, false on failure
  */
-function frl_get_auth_cookie_user()
+/**
+ * Get user information from auth cookie during early WordPress loading (before plugins_loaded).
+ * Used when $current_user is not yet available.
+ *
+ * This optimized version:
+ * 1. Uses direct database queries instead of WordPress user functions
+ * 2. Implements static caching for performance
+ * 3. Returns either user ID or capabilities based on $field parameter
+ * 4. Handles cookie parsing without WordPress functions
+ *
+ * @param string $field Field to return: 'ID' for user ID, 'caps' for capabilities
+ * @return mixed|false User ID (int), capabilities (array), or false on failure
+ */
+function frl_get_auth_cookie_user( $field = 'ID' )
 {
+    // Static cache for performance
+    static $cache = [];
+    
+    // Return from cache if available
+    if (isset($cache[$field])) {
+        return $cache[$field];
+    }
+    
     // During muplugins_loaded, LOGGED_IN_COOKIE and COOKIEHASH may not be defined
     // Try to find the logged-in cookie by checking common patterns
     $cookie_name = null;
@@ -92,18 +113,54 @@ function frl_get_auth_cookie_user()
     }
     
     if (!$cookie_name || !isset($_COOKIE[$cookie_name])) {
-        return false;
+        return $cache[$field] = false;
     }
     
-    $cookie = wp_parse_auth_cookie($_COOKIE[$cookie_name], 'logged_in');
-    
-    if (empty($cookie['username'])) {
-        return false;
+    // Parse auth cookie manually instead of using wp_parse_auth_cookie()
+    $cookie_elements = explode('|', $_COOKIE[$cookie_name]);
+    if (count($cookie_elements) !== 4) {
+        return $cache[$field] = false;
     }
     
-    $user = get_user_by('login', $cookie['username']);
+    list($username, $expiration, $token, $hmac) = $cookie_elements;
     
-    return ($user && !is_wp_error($user)) ? $user : false;
+    // Validate username
+    if (empty($username)) {
+        return $cache[$field] = false;
+    }
+    
+    // Get user data directly from database
+    global $wpdb;
+    
+    // Handle capabilities as a special case with JOIN
+    if ($field === 'caps') {
+        $meta_key = $wpdb->prefix . 'capabilities';
+        $caps = $wpdb->get_var($wpdb->prepare(
+            "SELECT um.meta_value
+            FROM {$wpdb->users} u
+            JOIN {$wpdb->usermeta} um ON u.ID = um.user_id
+            WHERE u.user_login = %s AND um.meta_key = %s
+            LIMIT 1",
+            $username,
+            $meta_key
+        ));
+        
+        $user_caps = $caps ? maybe_unserialize($caps) : [];
+        return $cache[$field] = is_array($user_caps) ? $user_caps : [];
+    }
+    
+    // For ID or any other field, use a single query pattern
+    // Cast ID to integer if that's what was requested
+    $field_value = $wpdb->get_var($wpdb->prepare(
+        "SELECT {$field} FROM {$wpdb->users} WHERE user_login = %s LIMIT 1",
+        $username
+    ));
+    
+    if ($field === 'ID' && $field_value !== null) {
+        return $cache[$field] = (int) $field_value;
+    }
+    
+    return $cache[$field] = $field_value !== null ? $field_value : false;
 }
 
 /**
@@ -116,11 +173,26 @@ function frl_has_access($capability = FRL_PLUGIN_ACCESS)
     // During muplugins_loaded (before plugins_loaded):
     // Parse auth cookie directly since $current_user not set up yet
     if (!did_action('plugins_loaded')) {
-        $user = frl_get_auth_cookie_user();
-       frl_log($user);
+        // Get user capabilities directly
+        $user_caps = frl_get_auth_cookie_user('caps');
         
-        if ($user) {
-            return user_can($user, $capability);
+        if ($user_caps) {
+            // Direct capability check without using user_can()
+            if ($capability === 'superadmin') {
+                // Only user ID 1 can be superadmin, check ID separately
+                $user_id = frl_get_auth_cookie_user('ID');
+                return $user_id === FRL_PLUGIN_SUPERADMIN_ID;
+            }
+            
+            // Check if user has the capability directly in their caps array
+            if (isset($user_caps[$capability]) && $user_caps[$capability]) {
+                return true;
+            }
+            
+            // Check for administrator role which implies most capabilities
+            if (isset($user_caps['administrator']) && $user_caps['administrator']) {
+                return true;
+            }
         }
         
         // No valid cookie or not logged in during early loading
