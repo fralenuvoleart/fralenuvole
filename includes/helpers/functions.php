@@ -70,13 +70,32 @@ function frl_name($name_prefix = '')
  */
 function frl_get_auth_cookie_user()
 {
-    $auth_cookie_name = defined('LOGGED_IN_COOKIE') ? LOGGED_IN_COOKIE : 'wordpress_logged_in_' . COOKIEHASH;
+    // During muplugins_loaded, LOGGED_IN_COOKIE and COOKIEHASH may not be defined
+    // Try to find the logged-in cookie by checking common patterns
+    $cookie_name = null;
     
-    if (!isset($_COOKIE[$auth_cookie_name])) {
+    if (defined('LOGGED_IN_COOKIE') && isset($_COOKIE[LOGGED_IN_COOKIE])) {
+        $cookie_name = LOGGED_IN_COOKIE;
+    } elseif (defined('COOKIEHASH')) {
+        $fallback = 'wordpress_logged_in_' . COOKIEHASH;
+        if (isset($_COOKIE[$fallback])) {
+            $cookie_name = $fallback;
+        }
+    } else {
+        // Scan cookies for WordPress auth cookie pattern
+        foreach ($_COOKIE as $key => $value) {
+            if (strpos($key, 'wordpress_logged_in_') === 0) {
+                $cookie_name = $key;
+                break;
+            }
+        }
+    }
+    
+    if (!$cookie_name || !isset($_COOKIE[$cookie_name])) {
         return false;
     }
     
-    $cookie = wp_parse_auth_cookie($_COOKIE[$auth_cookie_name], 'logged_in');
+    $cookie = wp_parse_auth_cookie($_COOKIE[$cookie_name], 'logged_in');
     
     if (empty($cookie['username'])) {
         return false;
