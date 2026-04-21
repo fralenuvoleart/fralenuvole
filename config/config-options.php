@@ -783,8 +783,8 @@ const FRL_DEFAULT_FIELDS = array(
 			),
 		),
 	),
-	'settings' => array(
-		'title' => 'Plugin Settings',
+	'plugins' => array(
+		'title' => 'Plugin Management',
 		'fields' => array(
 			'section_title_plugin_exclusion' => array(
 				'label' => 'Plugin Exclusion',
@@ -821,6 +821,11 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'textlist',
 				'default' => '',
 			),
+		),
+	),
+	'settings' => array(
+		'title' => 'Plugin Settings',
+		'fields' => array(
 			'section_title_components' => array(
 				'label' => 'Disable Core Features',
 				'description' => 'Disable core plugin features',
