@@ -203,9 +203,14 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
+		),
+	),
+	'html' => array(
+		'title' => 'HTML and Schema',
+		'fields' => array(
 			'section_title_header' => array(
-				'label' => 'Header Scripts & HTML',
-				'description' => 'Add custom HTML and scriptsto the header',
+				'label' => 'Header',
+				'description' => 'Add custom HTML and scripts to the header',
 				'type' => 'section_title',
 			),
 			'header_scripts' => array(
@@ -231,7 +236,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'restricted' => true,
 			),
 			'section_title_footer' => array(
-				'label' => 'Footer HTML & Scripts',
+				'label' => 'Footer',
 				'description' => 'Add custom HTML and scripts to the footer',
 				'type' => 'section_title',
 			),
