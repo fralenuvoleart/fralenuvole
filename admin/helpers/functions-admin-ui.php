@@ -139,14 +139,14 @@ function frl_render_clear_cache_buttons()
         'clear_cache_light',
         'clear_cache_light button-secondary',
         'Clear Caches (Light)',
-        'Clear all plugin caches except: ' . implode(', ', array_map('ucfirst', FRL_CACHE_HEAVY_GROUPS))
+        'Clear all plugin caches except Heavy Groups'
     );
 
     $output .= frl_render_action_button(
         'clear_cache_all',
         'clear_cache_all button-secondary secondary-important',
         'Clear Caches (All)',
-        'Including Heavy Groups',
+        'Including Heavy Groups: ' . implode(', ', array_map('ucfirst', FRL_CACHE_HEAVY_GROUPS)),
         '',
         ''
     );
