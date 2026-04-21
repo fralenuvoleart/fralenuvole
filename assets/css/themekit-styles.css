@@ -97,7 +97,7 @@
 }
 
 .nav.wp-block-navigation ul {
-    min-width: 240px;
+    min-width: 240px !important;
 }
 
 li.wp-block-navigation-submenu ul.wp-block-navigation-submenu {
