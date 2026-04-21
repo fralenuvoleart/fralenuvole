@@ -74,6 +74,10 @@ add_action('muplugins_loaded', function () {
     
     // Remove duplicates and check if we have anything to exclude
     $excluded = array_unique(array_filter($excluded, 'is_string'));
+
+    // Safeguard: Ensure the plugin itself is never excluded to avoid inconsistent state
+    // (MU loader handles the actual loading, but it should remain 'active' in WP)
+    $excluded = array_diff($excluded, [FRL_MU_NAME . '/' . FRL_MU_NAME . '.php']);
     
     if (empty($excluded)) {
         return;
