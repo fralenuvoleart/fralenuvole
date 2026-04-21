@@ -104,11 +104,6 @@ nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-su
     font-size: 0.875em;
 }
 
-nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-submenu a {
-    padding-top: 0.3em;
-    padding-bottom: 0.3em;
-}
-
 .clearfix {
     margin-block: 0;
 }
