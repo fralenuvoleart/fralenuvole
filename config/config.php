@@ -23,7 +23,7 @@ define('FRL_PLUGIN_URL', get_admin_url() . 'admin.php?page=' . FRL_NAME);
 // Define the plugin modules directory path
 define('FRL_MODULES_DIR_PATH', FRL_DIR_PATH . 'modules/');
 // Define the plugin modules section to add their options
-define('FRL_MODULES_SECTION','integrations');
+define('FRL_MODULES_SECTION','modules');
 
 // Define the plugin access level
 const FRL_PLUGIN_ACCESS = 'delete_plugins';
