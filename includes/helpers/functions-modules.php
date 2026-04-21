@@ -142,8 +142,8 @@ function frl_modules_load_options_fields()
             // Add section title first
             $final_module_fields[] = [
                 'id'          => 'section_title_modules',
-                'label'       => 'Additional Modules',
-                'description' => 'Enable and configure plugin modules',
+                'label'       => 'Custom Modules',
+                'description' => 'Enable and configure additional plugin modules.',
                 'type'        => 'section_title',
                 'default'     => '',
                 'section'     => FRL_MODULES_SECTION, // Ensure it has a section
