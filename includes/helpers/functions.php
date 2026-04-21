@@ -62,11 +62,54 @@ function frl_name($name_prefix = '')
  * @param string $capability Capability to check for
  * @return bool True if user has access, false otherwise
  */
+/**
+ * Get user object from auth cookie during early WordPress loading (before plugins_loaded).
+ * Used when $current_user is not yet available.
+ *
+ * @return WP_User|false User object on success, false on failure
+ */
+function frl_get_auth_cookie_user()
+{
+    $auth_cookie_name = defined('LOGGED_IN_COOKIE') ? LOGGED_IN_COOKIE : 'wordpress_logged_in_' . COOKIEHASH;
+    
+    if (!isset($_COOKIE[$auth_cookie_name])) {
+        return false;
+    }
+    
+    $cookie = wp_parse_auth_cookie($_COOKIE[$auth_cookie_name], 'logged_in');
+    
+    if (empty($cookie['username'])) {
+        return false;
+    }
+    
+    $user = get_user_by('login', $cookie['username']);
+    
+    return ($user && !is_wp_error($user)) ? $user : false;
+}
+
+/**
+ * Check if user has access
+ * @param string $capability Capability to check for
+ * @return bool True if user has access, false otherwise
+ */
 function frl_has_access($capability = FRL_PLUGIN_ACCESS)
 {
-    // Skip execution if WordPress is in an early loading stage
-    // Allow during plugins_loaded action (doing_action) or after it completed (did_action)
-    if (!function_exists('current_user_can') || (!doing_action('plugins_loaded') && !did_action('plugins_loaded'))) {
+    // During muplugins_loaded (before plugins_loaded):
+    // Parse auth cookie directly since $current_user not set up yet
+    if (!did_action('plugins_loaded')) {
+        $user = frl_get_auth_cookie_user();
+       frl_log($user);
+        
+        if ($user) {
+            return user_can($user, $capability);
+        }
+        
+        // No valid cookie or not logged in during early loading
+        return false;
+    }
+    
+    // After plugins_loaded: current_user_can is available
+    if (!function_exists('current_user_can')) {
         return false;
     }
 
