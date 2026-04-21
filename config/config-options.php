@@ -787,7 +787,7 @@ const FRL_DEFAULT_FIELDS = array(
 		'title' => 'Integrations',
 		'fields' => array(
 			'section_title_plugin_exclusion' => array(
-				'label' => 'Plugin Exclusion',
+				'label' => 'Thirdparty Plugin Exclusions',
 				'description' => 'Prevent specified plugins from loading without deactivating them.',
 				'type' => 'section_title',
 			),
