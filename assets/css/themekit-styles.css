@@ -127,8 +127,13 @@ nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-su
 }
 
 .frl-higlight-left:before {
-    left: 0;
+    left: 0 !important;
 }
+
+.frl-higlight-left:after {
+    left: 0 2em !important;
+}
+
 .frl-link-underline,
 .wp-block-navigation__container>.wp-block-navigation-item>a {
     position: relative;
