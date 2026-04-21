@@ -146,7 +146,7 @@ function frl_modules_load_options_fields()
                 'description' => 'Enable and configure plugin modules',
                 'type'        => 'section_title',
                 'default'     => '',
-                'section'     => 'settings', // Ensure it has a section
+                'section'     => FRL_MODULES_SECTION, // Ensure it has a section
                 'restricted'  => false,
                 'autoload'    => 'no'
             ];
@@ -170,7 +170,7 @@ function frl_modules_load_options_fields()
                 // Collect specific settings fields for the current module
                 foreach ($module_specific_config as $field_id => $field_config) {
                     $field_config['id']      = $field_id; // Add the field_id from the array key
-                    $field_config['section'] = $field_config['section'] ?? 'settings'; // Ensure 'section' is set
+                    $field_config['section'] = $field_config['section'] ?? FRL_MODULES_SECTION; // Ensure 'section' is set
                     $module_specific_settings_fields[] = $field_config;
                 }
             }
