@@ -162,7 +162,7 @@ function frl_modules_load_options_fields()
                     'description' => $module_info['description'],
                     'type'        => 'checkbox',
                     'default'     => 0,
-                    'section'     => 'settings', // Group under settings section
+                    'section'     => FRL_MODULES_SECTION, // Group under section
                     'restricted'  => true,
                     'autoload'    => 'yes'
                 ];
