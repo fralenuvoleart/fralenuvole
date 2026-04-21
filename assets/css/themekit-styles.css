@@ -96,7 +96,7 @@
     font-size: 1.1em;
 }
 
-nav.wp-block-navigation ul {
+nav.wp-block-navigation ul.wp-block-navigation-submenu {
     min-width: 240px !important;
 }
 
