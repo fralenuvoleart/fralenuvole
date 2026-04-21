@@ -76,19 +76,15 @@ add_action('muplugins_loaded', function () {
         
         // Bypass the pre_option filter by accessing cache/db directly to prevent infinite recursion
         global $wpdb;
-        $plugins = $wpdb->get_col(
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedQuery
+        $plugins = $wpdb->get_var(
             $wpdb->prepare(
-                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
-                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedQuery
-                // @phpstan-ignore-next-line
-                'SELECT option_value FROM %s WHERE option_name = %s LIMIT 1',
-                $wpdb->options,
+                'SELECT option_value FROM ' . $wpdb->options . ' WHERE option_name = %s LIMIT 1',
                 'active_plugins'
             )
         );
-        $plugins = $plugins ? maybe_unserialize($plugins[0]) : [];
+        $plugins = $plugins ? maybe_unserialize($plugins) : [];
         
         $filtered = array_filter((array) $plugins, function ($plugin) use ($excluded) {
             return !in_array($plugin, $excluded);
@@ -106,21 +102,17 @@ add_action('muplugins_loaded', function () {
             return $cache;
         }
         
-        // Bypass the pre_option filter by accessing cache/db directly to prevent infinite recursion
+        // Bypass the pre_site_option filter by accessing cache/db directly to prevent infinite recursion
         global $wpdb;
-        $plugins = $wpdb->get_col(
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedQuery
+        $plugins = $wpdb->get_var(
             $wpdb->prepare(
-                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching
-                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedQuery
-                // @phpstan-ignore-next-line
-                'SELECT option_value FROM %s WHERE option_name = %s LIMIT 1',
-                $wpdb->sitemeta,
+                'SELECT meta_value FROM ' . $wpdb->sitemeta . ' WHERE meta_key = %s LIMIT 1',
                 'active_plugins'
             )
         );
-        $plugins = $plugins ? maybe_unserialize($plugins[0]) : [];
+        $plugins = $plugins ? maybe_unserialize($plugins) : [];
         
         $filtered = array_filter((array) $plugins, function ($plugin) use ($excluded) {
             return !in_array($plugin, $excluded);
