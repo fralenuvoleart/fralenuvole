@@ -91,7 +91,7 @@
 .single-post .entry-content p {
     font-size: var(--wp--preset--font-size--frl-readable, revert);
 }
-
+ 
 .single-post .entry-content blockquote p {
     font-size: 1.1em;
 }
