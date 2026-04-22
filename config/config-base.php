@@ -26,7 +26,7 @@ if (!defined('FRL_DIR_PATH')) {
 }
 
 if (!defined('FRL_DIR_URL')) {
-	define('FRL_DIR_URL', plugin_dir_url(dirname(dirname(__FILE__))));
+	define('FRL_DIR_URL', plugin_dir_url(dirname(__FILE__)));
 }
 
 if (!defined('FRL_PLUGIN_ADMIN_URL')) {
