@@ -2,7 +2,7 @@
 
 /**
  * Plugin UI helper functions
- * @package FRL
+ * @package Fralenuvole
  */
 
 if (!defined('ABSPATH')) {

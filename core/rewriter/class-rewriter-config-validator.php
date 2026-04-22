@@ -5,7 +5,7 @@
  * Provides admin-only validation warnings for potential configuration conflicts.
  * DOES NOT affect URL generation or resolution - purely diagnostic.
  *
- * @package FRL
+ * @package Fralenuvole
  * @since 3.0.0
  */
 

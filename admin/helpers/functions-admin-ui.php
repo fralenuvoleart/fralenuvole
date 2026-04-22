@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
  *
  * Shared helper functions for admin UI components.
  *
- * @package FRL
+ * @package Fralenuvole
  * @since 1.0.0
  */
 

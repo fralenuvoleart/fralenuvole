@@ -6,7 +6,7 @@
  * Handles all caching operations including runtime caching, persistent storage,
  * and cache invalidation. Supports multiple storage backends and cache groups.
  *
- * @package FRL
+ * @package Fralenuvole
  * @since 1.0.0
  */
 

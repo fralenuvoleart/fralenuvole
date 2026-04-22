@@ -7,7 +7,7 @@ if (!defined('ABSPATH')) {
 
 /**
  * Fralenuvole
- * public.php - Code executed only on frontend pages
+ * public.php - Frontend execution logic and hooks.
  */
 add_action('wp_head',               'frl_wp_head',                   0,  0);
 add_action('wp_footer',             'frl_wp_footer',                 10, 0);
@@ -20,7 +20,7 @@ add_action('login_enqueue_scripts', 'frl_login_page_branding',       10, 0);
 add_action('wp_footer',             'frl_add_schema',                10, 0);
 
 /**
- * Add critical CSS, fonts, and preload featured image to header
+ * Inject critical assets and custom HTML into the document head.
  */
 function frl_wp_head()
 {
@@ -30,7 +30,7 @@ function frl_wp_head()
 }
 
 /**
- * Add schema, footer HTML, and footer scripts to footer
+ * Inject custom HTML and scripts into the document footer.
  */
 function frl_wp_footer()
 {
@@ -39,7 +39,7 @@ function frl_wp_footer()
 }
 
 /**
- * Enqueue public JS assets for frontend
+ * Enqueue public JavaScript assets for the frontend.
  */
 function frl_public_scripts()
 {
@@ -51,7 +51,7 @@ function frl_public_scripts()
 }
 
 /**
- * Preload featured image with webp existence check
+ * Preload the featured image of a singular post, prioritizing WebP if available.
  */
 function frl_preload_featured_image()
 {
@@ -120,12 +120,13 @@ function frl_preload_featured_image()
 }
 
 /**
- * Defer CSS to footer
- * @param string $html The link tag for the enqueued style
- * @param string $handle The style's registered handle
- * @param string $href The stylesheet's source URL
- * @param string $media The stylesheet's media attribute
- * @return string Modified HTML
+ * Defer specified CSS files to improve page load performance.
+ *
+ * @param string $html   The link tag for the enqueued style.
+ * @param string $handle The style's registered handle.
+ * @param string $href   The stylesheet's source URL.
+ * @param string $media  The stylesheet's media attribute.
+ * @return string Modified HTML.
  */
 function frl_defer_css($html, $handle, $href, $media)
 {
@@ -158,8 +159,7 @@ function frl_defer_css($html, $handle, $href, $media)
 }
 
 /**
- * Add custom HTML in header
- * @return void
+ * Inject custom HTML into the header, cached by user login status.
  */
 function frl_add_header_html(): void
 {
@@ -178,8 +178,7 @@ function frl_add_header_html(): void
 }
 
 /**
- * Add custom HTML in footer
- * @return void
+ * Inject custom HTML into the footer, cached by user login status.
  */
 function frl_add_footer_html(): void
 {
@@ -198,8 +197,7 @@ function frl_add_footer_html(): void
 }
 
 /**
- * Add header scripts
- * @return void
+ * Enqueue custom scripts defined in the header_scripts option.
  */
 function frl_add_header_scripts()
 {
@@ -208,8 +206,7 @@ function frl_add_header_scripts()
 }
 
 /**
- * Add footer scripts
- * @return void
+ * Enqueue custom scripts defined in the footer_scripts option.
  */
 function frl_add_footer_scripts()
 {
@@ -218,10 +215,10 @@ function frl_add_footer_scripts()
 }
 
 /**
- * Get HTML content from an option, with caching and optional PHP processing.
+ * Convert a text list of assets from a plugin option into a handle-mapped array.
  *
- * @param string $option_name The name of the plugin option (without prefix) storing the asset list.
- * @return array An array of asset details (handle, url, version, type, in_footer).
+ * @param string $option_name The name of the plugin option storing the asset list.
+ * @return array Associative array of [handle => url].
  */
 function frl_get_processed_assets_from_option($option_name)
 {
@@ -250,11 +247,12 @@ function frl_get_processed_assets_from_option($option_name)
 }
 
 /**
- * New helper function to reduce duplication
- * @param string $option_name The option name of the HTML
- * @param string $php_enabled_option The option name of the PHP enabled option
- * @param string|null $cache_key Optional cache key override
- * @return html final html output
+ * Retrieve and optionally process HTML from a plugin option with caching.
+ *
+ * @param string       $option_name       The name of the option storing the HTML.
+ * @param string|null  $php_enabled_option The name of the option that enables PHP processing.
+ * @param string|null  $cache_key         Optional cache key override.
+ * @return string The processed HTML content.
  */
 function frl_get_html_option($option_name, $php_enabled_option = null, $cache_key = null)
 {
@@ -277,7 +275,7 @@ function frl_get_html_option($option_name, $php_enabled_option = null, $cache_ke
 }
 
 /**
- * Add custom CSS to the login page with caching
+ * Apply custom branding and styles to the WordPress login page.
  */
 function frl_login_page_branding(): void
 {
@@ -320,7 +318,7 @@ function frl_login_page_branding(): void
 }
 
 /**
- * Custom login URL
+ * Redirect the login page header logo link to the home URL.
  */
 function frl_login_headerurl($url)
 {
@@ -328,7 +326,7 @@ function frl_login_headerurl($url)
 }
 
 /**
- * Remove jQuery.migrate.js
+ * Remove jquery-migrate.js from the enqueued scripts if enabled.
  */
 function frl_remove_jquery_migrate($scripts)
 {
@@ -344,7 +342,7 @@ function frl_remove_jquery_migrate($scripts)
 
 
 /**
- * Disable some REST endpoints for unauthenticated users
+ * Disable sensitive or non-essential REST API endpoints for unauthenticated users.
  */
 function frl_disable_rest_endpoints($endpoints)
 {
@@ -406,8 +404,7 @@ function frl_disable_rest_endpoints($endpoints)
 }
 
 /**
- * Optimize secondary queries and order service type posts by menu_order
- * @return void
+ * Optimize non-main queries and enforce menu_order for specific custom post types.
  */
 function frl_alter_query($query)
 {

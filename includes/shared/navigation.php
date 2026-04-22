@@ -4,7 +4,7 @@
  * - Makes WordPress navigation menus translatable (Polylang)
  * - Translates wp_navigation posts between languages
  *
- * @package FRL
+ * @package Fralenuvole
  */
 
 // Exit if accessed directly
@@ -13,10 +13,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Make navigation menus translatable
- * @param array $post_types Post types
- * @param bool $is_settings Whether this is settings context
- * @return array Modified post types
+ * Registers the 'wp_navigation' post type as translatable.
+ *
+ * @param array $post_types List of translatable post types.
+ * @param bool  $is_settings Whether the current context is the settings page.
+ * @return array Modified list of post types.
  */
 function frl_making_wp_navigation_translatable($post_types, $is_settings)
 {
@@ -27,25 +28,26 @@ function frl_making_wp_navigation_translatable($post_types, $is_settings)
 }
 
 /**
- * Render block core navigation with translation
- * @param array $settings Block settings
- * @param array $metadata Block metadata
- * @return array Modified settings
+ * Injects a custom render callback into the core navigation block to handle language-specific menus.
+ *
+ * @param array $settings  Block settings.
+ * @param array $metadata  Block metadata.
+ * @return array Modified settings with the render callback.
  */
 function frl_render_block_core_navigation_translation($settings, $metadata)
 {
-    // Only proceed for navigation blocks
+    // Only target core navigation blocks in multilingual environments
     if ('core/navigation' !== $metadata['name'] || !frl_is_multilingual('pll_get_post')) {
         return $settings;
     }
 
-    // Get languages
+    // Retrieve current and default language codes
     $current_lang = frl_get_language();
     $default_lang = frl_get_default_language();
 
-    // --- Install custom render callback for ALL languages ---
+    // Define a custom render callback to resolve translated navigation IDs
     $settings['render_callback'] = function ($attributes, $content, $block) use ($current_lang, $default_lang) {
-        // If no ref attribute, render normally
+        // Render normally if no reference ID is provided
         if (!isset($attributes['ref'])) {
             return render_block_core_navigation($attributes, $content, $block);
         }
@@ -53,25 +55,25 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
         $nav_id = absint($attributes['ref']);
         $final_nav_id = $nav_id; // Default to original ID
 
-        // Only attempt translation for non-default languages
+        // Resolve translated navigation ID for non-default languages
         if (!empty($current_lang) && $current_lang !== $default_lang) {
             $cache_key = "wp_navigation_{$nav_id}";
 
             $translated_id = frl_cache_remember('permalinks', $cache_key, function () use ($nav_id, $current_lang) {
-                // pll_get_post returns 0 for non-existing translations
+                // Fetch translated post ID using Polylang
                 return pll_get_post($nav_id, $current_lang);
             });
 
-            // Only use translated ID if it's positive (not 0) and differs from original
+            // Use translated ID if valid and different from original
             if ($translated_id > 0 && $translated_id !== $nav_id) {
                 $final_nav_id = absint($translated_id);
             }
         }
 
-        // Update the ref attribute with the appropriate ID
+        // Update reference ID for the original renderer
         $attributes['ref'] = $final_nav_id;
 
-        // Always call the original renderer to ensure assets are loaded
+        // Delegate to the original renderer to maintain core functionality and assets
         return render_block_core_navigation($attributes, $content, $block);
     };
 

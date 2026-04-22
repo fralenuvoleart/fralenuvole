@@ -628,13 +628,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'autoload' => 'no',
 			),
-			'am_menu_limit' => array(
-				'label' => 'Max number of admin menu items',
-				'description' => 'Counts also separators. Leave 0 to show all items.',
-				'type' => 'number',
-				'default' => 0,
-				'autoload' => 'no',
-			),
 			'am_menu_order' => array(
 				'label' => 'Reorder Admin menu items',
 				'description' => 'One menu / order number pair per line. Format: "menu_handle|number".',

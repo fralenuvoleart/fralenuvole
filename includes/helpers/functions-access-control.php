@@ -1,0 +1,540 @@
+<?php
+
+/**
+ * Fralenuvole User Authentication & Access Control
+ *
+ * This file contains the core helper functions for user access controls.
+ *
+ * @package Fralenuvole
+ */
+
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Retrieves user data from the authentication cookie during early WordPress loading.
+ *
+ * This function is used when the global $current_user is not yet available (e.g., before plugins_loaded).
+ * It performs direct database queries and implements static caching for performance.
+ *
+ * @return array|false Associative array with 'id' (int) and 'caps' (array) on success, false on failure.
+ */
+function frl_get_auth_cookie_user_data()
+{
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    $cookie_name = null;
+    if (defined('LOGGED_IN_COOKIE') && isset($_COOKIE[LOGGED_IN_COOKIE])) {
+        $cookie_name = LOGGED_IN_COOKIE;
+    } elseif (defined('COOKIEHASH')) {
+        $fallback = 'wordpress_logged_in_' . COOKIEHASH;
+        if (isset($_COOKIE[$fallback])) {
+            $cookie_name = $fallback;
+        }
+    } else {
+        foreach ($_COOKIE as $key => $value) {
+            if (strpos($key, 'wordpress_logged_in_') === 0) {
+                $cookie_name = $key;
+                break;
+            }
+        }
+    }
+
+    if (!$cookie_name || !isset($_COOKIE[$cookie_name])) {
+        return $cache = false;
+    }
+
+    $cookie_elements = explode('|', $_COOKIE[$cookie_name]);
+    if (count($cookie_elements) !== 4) {
+        return $cache = false;
+    }
+
+    list($username, $expiration, $token, $hmac) = $cookie_elements;
+    if (empty($username)) {
+        return $cache = false;
+    }
+
+    global $wpdb;
+    $meta_key = $wpdb->prefix . 'capabilities';
+    $row = $wpdb->get_row($wpdb->prepare(
+        "SELECT u.ID, um.meta_value
+         FROM {$wpdb->users} u
+         JOIN {$wpdb->usermeta} um ON u.ID = um.user_id
+         WHERE u.user_login = %s AND um.meta_key = %s
+         LIMIT 1",
+        $username,
+        $meta_key
+    ));
+
+    if (!$row) {
+        return $cache = false;
+    }
+
+    return $cache = [
+        'id'   => (int) $row->ID,
+        'caps' => maybe_unserialize($row->meta_value) ?: [],
+    ];
+}
+
+/**
+ * Checks if the current user has the required access capability.
+ *
+ * Handles access checks both during early loading (using auth cookies) and after
+ * WordPress is fully loaded (using standard capability checks).
+ *
+ * @param string $capability The capability to check for. Defaults to FRL_PLUGIN_ACCESS.
+ * @return bool True if the user has access, false otherwise.
+ */
+function frl_has_access($capability = FRL_PLUGIN_ACCESS)
+{
+    // Bypass access check in migrate mode (break-glass)
+    if (defined('FRL_MODE') && FRL_MODE === 'migrate') {
+        return true;
+    }
+
+    // Early loading (before plugins_loaded)
+    if (!did_action('plugins_loaded')) {
+        $user_data = frl_get_auth_cookie_user_data();
+        if (!$user_data) {
+            return false;
+        }
+
+        if ($capability === 'superadmin') {
+            return $user_data['id'] === FRL_PLUGIN_SUPERADMIN_ID;
+        }
+
+        if ($user_data['id'] === FRL_PLUGIN_SUPERADMIN_ID) {
+            return true;
+        }
+
+        if (isset($user_data['caps'][$capability]) && $user_data['caps'][$capability]) {
+            return true;
+        }
+
+        if (isset($user_data['caps']['administrator']) && $user_data['caps']['administrator']) {
+            return true;
+        }
+
+        return false;
+    }
+
+    // Standard loading: current_user_can is available
+    if (!function_exists('current_user_can')) {
+        return false;
+    }
+
+    $capability = $capability ?: FRL_PLUGIN_ACCESS;
+    $user = frl_get_current_user();
+
+    if ($capability === 'superadmin') {
+        return $user->ID === FRL_PLUGIN_SUPERADMIN_ID;
+    }
+
+    if ($user->ID === FRL_PLUGIN_SUPERADMIN_ID) {
+        return true;
+    }
+
+    $cache_key = "user_uid{$user->ID}_can_{$capability}";
+    return frl_cache_remember('admin', $cache_key, function () use ($user, $capability) {
+        return $user->has_cap($capability);
+    }, 300);
+}
+
+/**
+ * ===================================================================
+ * CORE FUNCTIONS: Context Detection (frl_is_* functions
+ * ===================================================================
+*/
+
+/**
+ * Enhanced version of is_admin() that handles common edge cases.
+ *
+ * Detects admin contexts including admin-post.php, admin-originated AJAX,
+ * and login/registration pages.
+ *
+ * @return bool True if the current request is considered an admin request.
+ */
+function frl_is_admin()
+{
+    static $is_admin = null;
+    if ($is_admin !== null) {
+        return $is_admin;
+    }
+
+    $include_login = true;
+    $include_post = true;
+
+    $is_standard_admin_constant = defined('WP_ADMIN') && WP_ADMIN;
+
+    $current_url = $_SERVER['REQUEST_URI'] ?? '';
+    // Support subdirectory installations
+    $is_request_targeting_admin_area = str_contains($current_url, '/wp-admin/');
+
+    $is_true_admin_page_load = $is_standard_admin_constant && $is_request_targeting_admin_area;
+
+    if ($is_true_admin_page_load) {
+        return $is_admin = true;
+    }
+
+    $is_admin_post = $include_post && str_contains($current_url, 'admin-post.php');
+    if ($is_admin_post) {
+        return $is_admin = true;
+    }
+
+    $is_ajax = frl_is_doing_ajax();
+    if ($is_ajax) {
+        $referer = wp_get_referer();
+        // Avoid admin_url() filters for performance
+        if (!empty($referer) && str_contains($referer, '/wp-admin/')) {
+            return $is_admin = true;
+        }
+        $action = $_REQUEST['action'] ?? '';
+        if (str_starts_with($action, 'admin_') || str_starts_with($action, 'settings_')) {
+            return $is_admin = true;
+        }
+        return $is_admin = false;
+    }
+
+    if ($include_login) {
+        global $pagenow;
+        $login_pages = ['wp-login.php', 'wp-register.php'];
+        $is_login_page = isset($pagenow) && in_array($pagenow, $login_pages);
+        if ($is_login_page) {
+            return $is_admin = true;
+        }
+    }
+
+    return $is_admin = false;
+}
+
+/**
+ * Checks if the current request is for a specific admin page.
+ *
+ * @param string $page The page slug or filename to check for.
+ * @param string $param The URL parameter to check against. Defaults to 'page'.
+ * @return bool True if the current page matches the specified page.
+ */
+function frl_is_admin_page($page, $param = 'page')
+{
+    // Ensure we are in admin area
+    if (!frl_is_admin()) {
+        return false;
+    }
+
+    global $pagenow;
+    // Handle filename-based pages
+    if (is_string($page) && str_contains($page, '.php')) {
+        return $pagenow === $page;
+    }
+
+    return isset($_GET[$param]) && $_GET[$param] === $page;
+}
+
+/**
+ * Checks if the current user is logged in.
+ *
+ * @return bool True if the user is logged in.
+ */
+function frl_is_logged_in()
+{
+    // Use cached current user
+    return frl_get_current_user()->ID > 0;
+}
+
+/**
+ * Checks if a specific function or process has already run during the current request.
+ *
+ * Useful for preventing duplicate execution of initialization logic.
+ *
+ * @param string $function_key Unique identifier for the function (e.g., __FUNCTION__).
+ * @param bool $reset Whether to reset the initialization state. Defaults to false.
+ * @return bool True if already initialized, false otherwise.
+ */
+function frl_is_already_running($function_key, $reset = false)
+{
+    static $initialized = array();
+
+    if ($reset) {
+        $initialized[$function_key] = false;
+        return false;
+    }
+
+    if (isset($initialized[$function_key]) && $initialized[$function_key]) {
+        return true; // Already initialized
+    }
+
+    $initialized[$function_key] = true;
+    return false; // First initialization
+}
+
+/**
+ * Checks if the current request is within the plugin's context.
+ *
+ * Detects if the user is on the plugin settings page or if the request is
+ * an admin action prefixed with the plugin's prefix.
+ *
+ * @return bool True if in plugin context, false otherwise.
+ */
+function frl_is_plugin_context()
+{
+    static $is_plugin_context = null;
+    if ($is_plugin_context !== null) {
+        return $is_plugin_context;
+    }
+
+    if (isset($_GET['page']) && $_GET['page'] === FRL_NAME) {
+        return $is_plugin_context = true;
+    }
+
+    if (!frl_is_admin()) {
+        return $is_plugin_context = false;
+    }
+
+    $action = isset($_REQUEST['action']) ? $_REQUEST['action'] : '';
+    return $is_plugin_context = str_starts_with($action, frl_prefix());
+}
+
+/**
+ * Checks if a given URL corresponds to a homepage.
+ *
+ * A URL is considered a homepage if its path is the root ('/') or a two-letter
+ * language code (e.g., '/en/').
+ *
+ * @param string $url The URL to check.
+ * @return bool True if the URL is a homepage, false otherwise.
+ */
+function frl_is_homepage_url($url)
+{
+    if (empty($url) || !is_string($url)) {
+        return false;
+    }
+
+    $path = wp_parse_url($url, PHP_URL_PATH);
+
+    // Root URL
+    if (empty($path) || $path === '/') {
+        return true;
+    }
+
+    // Handle both '/en' and '/en/'
+    $trimmed_path = trim($path, '/');
+
+    // Language-specific homepage (e.g., /en)
+    if (strlen($trimmed_path) === 2 && strpos($trimmed_path, '/') === false) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Checks if the current request is valid for standard page processing and tracking.
+ *
+ * Returns false for CLI, REST API, CRON, invalid environment hosts, heartbeat AJAX,
+ * log manager requests, or non-HTML document requests.
+ *
+ * @return bool True if the request is valid for processing, false otherwise.
+ */
+function frl_is_valid_page_request(): bool
+{
+    static $is_valid = null;
+    if ($is_valid !== null) return $is_valid;
+
+    if (frl_is_cli_request()) return $is_valid = false;
+    if (frl_is_rest_api_request()) return $is_valid = false;
+    if (frl_is_cron_job_request()) return $is_valid = false;
+    if (!frl_is_valid_environment_host()) return $is_valid = false;
+    if (frl_is_heartbeat_ajax_request()) return $is_valid = false;
+    if (frl_is_log_manager_request()) return $is_valid = false;
+    if (!frl_is_html_document_request()) return $is_valid = false;
+
+    if (frl_is_administrator_action()) return $is_valid = true;
+    if (frl_is_doing_ajax()) return $is_valid = false;
+
+    return $is_valid = true;
+}
+
+/**
+ * Checks if the current request is a valid frontend page request.
+ *
+ * Ensures frontend-specific logic only runs during standard page views,
+ * skipping admin, REST, CLI, AJAX, or cron requests.
+ *
+ * @return bool True if it's a valid frontend page request, false otherwise.
+ */
+function frl_is_valid_frontend_page_request(): bool
+{
+    // A request is a valid frontend request if it is not in the admin backend
+    // AND it passes all the general validation checks.
+    return !frl_is_admin() && frl_is_valid_page_request();
+}
+
+/**
+ * Checks if the current request is an administrator action.
+ *
+ * Covers admin-post.php, admin pages with an 'action' parameter, and
+ * AJAX requests with an 'action' parameter, provided the user has 'manage_options'.
+ *
+ * @return bool True if the request is an administrator action, false otherwise.
+ */
+function frl_is_administrator_action()
+{
+    static $is_action = null;
+    if ($is_action !== null) {
+        return $is_action;
+    }
+
+    // Check admin-post.php
+    $current_url = $_SERVER['REQUEST_URI'] ?? '';
+    if (str_contains($current_url, 'admin-post.php')) {
+        return $is_action = true;
+    }
+
+    // Check for 'action' parameter (AJAX or admin pages)
+    $action_param = frl_prefix('action');
+    if (isset($_REQUEST['action']) || isset($_REQUEST[$action_param])) {
+
+        // Check for administrator access
+        if (frl_has_access('manage_options')) {
+            return $is_action = true;
+        }
+    }
+
+    return $is_action = false;
+}
+
+/**
+ * Checks if the current request is an AJAX request.
+ *
+ * @return bool True if the current request is an AJAX request.
+ */
+function frl_is_doing_ajax()
+{
+    // Cache result
+    static $is_ajax = null;
+    if ($is_ajax !== null) {
+        return $is_ajax;
+    }
+
+    // Use wp_doing_ajax() or fallback to constant
+    if (function_exists('wp_doing_ajax')) {
+        $is_ajax = wp_doing_ajax();
+    } else {
+        $is_ajax = defined('DOING_AJAX') && DOING_AJAX;
+    }
+
+    return $is_ajax;
+}
+
+/**
+ * Checks if the current request is a CLI request.
+ *
+ * @internal
+ * @return bool True if CLI, false otherwise.
+ */
+function frl_is_cli_request(): bool
+{
+    return PHP_SAPI === 'cli';
+}
+
+/**
+ * Checks if the current request is a REST API request.
+ *
+ * @internal
+ * @return bool True if REST API, false otherwise.
+ */
+function frl_is_rest_api_request(): bool
+{
+    $current_url_for_rest_check = $_SERVER['REQUEST_URI'] ?? '';
+    if (str_starts_with($current_url_for_rest_check, '/wp-json/')) {
+        return true; // Detected by URI
+    }
+    return defined('REST_REQUEST') && REST_REQUEST;
+}
+
+/**
+ * Checks if the current request is a CRON job.
+ *
+ * @internal
+ * @return bool True if CRON job, false otherwise.
+ */
+function frl_is_cron_job_request(): bool
+{
+    if (defined('DOING_CRON') && DOING_CRON) {
+        return true; // Cron request
+    }
+    return function_exists('wp_doing_cron') && wp_doing_cron();
+}
+
+/**
+ * Checks if the current request is a WordPress Heartbeat AJAX request.
+ *
+ * @internal
+ * @return bool True if Heartbeat AJAX, false otherwise.
+ */
+function frl_is_heartbeat_ajax_request(): bool
+{
+    $is_wp_doing_ajax = function_exists('wp_doing_ajax') && wp_doing_ajax();
+    $request_action = $_REQUEST['action'] ?? 'NOT_SET';
+
+    if ($is_wp_doing_ajax && $request_action === 'heartbeat') {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Checks if the current request's hostname is valid and mapped in the environment configuration.
+ *
+ * Verifies that HTTP_HOST is set and exists as a key in the FRL_ENV_MAP array.
+ *
+ * @internal
+ * @return bool True if the host is valid and mapped, false otherwise.
+ */
+function frl_is_valid_environment_host(): bool
+{
+    $current_host = $_SERVER['HTTP_HOST'] ?? null;
+    return !empty($current_host) && defined('FRL_ENV_MAP') && is_array(FRL_ENV_MAP) && array_key_exists($current_host, FRL_ENV_MAP);
+}
+
+/**
+ * Checks if the current request is an HTML document request.
+ *
+ * @internal
+ * @return bool True if document, false otherwise.
+ */
+function frl_is_html_document_request(): bool
+{
+    global $wp_query;
+    if (isset($wp_query)) {
+        if (is_404()) return false;
+        if (is_attachment()) return false;
+    }
+    return true;
+}
+
+/**
+ * Checks if the current request is a log manager AJAX request.
+ *
+ * @internal
+ * @return bool True if log manager AJAX, false otherwise.
+ */
+function frl_is_log_manager_request(): bool
+{
+    if (isset($_REQUEST['action'])) {
+        $action = $_REQUEST['action'];
+        if (
+            $action === 'frl_post_ajax_debug_log_refresh' ||
+            $action === 'frl_post_ajax_debug_log_clear' ||
+            $action === 'frl_post_ajax_debug_log_download'
+        ) {
+            return true;
+        }
+    }
+    return false;
+}

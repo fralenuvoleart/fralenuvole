@@ -13,14 +13,18 @@ if (!defined('ABSPATH')) {
 /**
  * Retrieves a plugin option, using caches and default instantiation if needed.
  *
- * Flow:
- * 1. Static cache.
- * 2. All-options load (persistent cache or DB); values normalized on load.
- * 3. If key still missing (stale all_options cache): frl_handle_missing_option_key() checks DB.
- *    - Returns value if found (clears all_options cache).
- *    - Returns '__missing_option__' if truly not in DB.
- * 4. If '__missing_option__' signal: frl_set_missing_option_default() saves/returns default.
- *    (Ensures default set only once per request via 'write_attempted' flag).
+ * The retrieval flow is as follows:
+ * 1. Check request-local static cache.
+ * 2. Load all options (from persistent cache or DB); values are normalized on load.
+ * 3. If the key is still missing (handling stale 'all_options' cache), frl_handle_missing_option_key() checks the DB.
+ *    - Returns the value if found (and clears the 'all_options' cache).
+ *    - Returns '__missing_option__' if the option is truly not in the DB.
+ * 4. If '__missing_option__' is received, frl_set_missing_option_default() saves and returns the default value.
+ *    (Ensures the default is set only once per request via a 'write_attempted' flag).
+ *
+ * @param string $key The option key without prefix.
+ * @param bool $bypass_cache Whether to bypass the static cache and fetch fresh from DB.
+ * @return mixed The normalized option value, or null if not found and no default is defined.
  */
 function frl_get_option($key, $bypass_cache = false)
 {
@@ -88,13 +92,15 @@ function frl_get_option($key, $bypass_cache = false)
 }
 
 /**
- * Set option by name, without prefix.
+ * Set a plugin option by name, without prefix.
  *
- * @param string $key Option key without prefix
- * @param mixed $value_param Value to set
- * @param bool $clear_cache Whether to clear cache, default = true
+ * The value is normalized based on the option's defined type before being saved.
+ *
+ * @param string $key Option key without prefix.
+ * @param mixed $value_param Value to set.
+ * @param bool $clear_cache Whether to clear the options cache, default = true.
  * @param string|null $autoload_param Optional. Whether to autoload the option. Accepts 'yes' or 'no'. Defaults to 'yes' if null.
- * @return bool Success
+ * @return bool True on success, false on failure.
  */
 function frl_update_option($key, $value_param, $clear_cache = true, $autoload_param = null)
 {
@@ -129,9 +135,11 @@ function frl_update_option($key, $value_param, $clear_cache = true, $autoload_pa
 }
 
 /**
- * Delete option by name, without prefix.
- * @param string $cache_group default = ''
- * @return bool
+ * Delete a plugin option by name, without prefix.
+ *
+ * @param string $key Option key without prefix.
+ * @param string $cache_group Optional cache group to clear after deletion.
+ * @return bool True on success, false on failure.
  */
 function frl_delete_option($key, $cache_group = '')
 {
@@ -227,9 +235,10 @@ function frl_get_plugin_options($keys = 'all', $bypass_cache = false)
 }
 
 /**
- * Get all plugin options directly from database
+ * Get all plugin options directly from the database..
  *
- * @return array|null Raw options from database, or null on reset
+ * @param bool $reset Whether to reset the request-local cache and return null.
+ * @return array|null Associative array of normalized options, or null if $reset is true.
  */
 function frl_get_plugin_options_db($reset = false)
 {
@@ -678,8 +687,12 @@ function frl_delete_transient($key)
 }
 
 /**
- * Shared transient cache storage
- * Using a global variable approach with a function wrapper
+ * Shared transient cache storage.
+ *
+ * Provides a static cache for transients to avoid repeated calls to the
+ * WordPress transient API within a single request.
+ *
+ * @return array Reference to the static transient cache array.
  */
 function &frl_transients_static_cache()
 {

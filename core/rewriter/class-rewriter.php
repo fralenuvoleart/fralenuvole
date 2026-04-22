@@ -3,7 +3,7 @@
 /**
  * Rewrites slugs for custom post types and taxonomies using independent feature architecture
  *
- * @package FRL
+ * @package Fralenuvole
  * @since 3.0.0
  */
 

@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
  *
  * Handles core admin-specific hooks and functionality.
  *
- * @package FRL
+ * @package Fralenuvole
  * @since 1.0.0
  */
 
@@ -289,49 +289,16 @@ function frl_render_admin_ui()
 function frl_admin_scripts()
 {
     $assets = ['admin-css' => 'assets/css/admin.css'];
-
-    $limit = (int) frl_get_option('am_menu_limit');
-     if ($limit > 0) {
-        $assets['admin-menu-js'] = 'assets/js/admin-menu.js';
-    }
-
     frl_enqueue_scripts($assets, 'admin');
-
-    if ($limit > 0) {
-        // By default, hide menu items beyond the limit and separator before "Show More" button.
-        $css = "
-        #adminmenu > li.menu-top:not(.frl-show-more, #collapse-menu):nth-child(n+" . ($limit + 1) . "),
-        #adminmenu > li.frl-show-more-separator {
-            display: none;
-        }
-
-        /* When the .frl-menu-expanded class is added to the wrapper, show the hidden items. */
-        #adminmenuwrap.frl-menu-expanded #adminmenu > li.menu-top,
-        #adminmenuwrap.frl-menu-expanded #adminmenu > li.frl-show-more-separator {
-            display: block;
-        }";
-
-        wp_add_inline_style(FRL_PREFIX . '-admin-css', $css);
-
-        // Localize the script that now contains the menu logic
-        wp_localize_script(
-            FRL_PREFIX . '-admin-menu-js',
-            'frlAdminTheme', // Keep the object name the same for the JS
-            ['itemsToShow' => $limit]
-        );
-    }
 }
 
 /**
  * Load theme stylesheets in the Gutenberg editor
  *
- * This function is hooked to enqueue_block_editor_assets (see line 18) and
+ * This function is hooked to enqueue_block_editor_assets and
  * loads the theme's main stylesheet in the block editor to ensure styles are
  * consistent between the editor and the frontend.
  *
- * PERFORMANCE OPTIMIZATION:
- * - Checks if theme style exists before attempting to load it
- * - Uses filesystem mtime for proper cache busting instead of a generic timestamp
  */
 function frl_gutenberg_editor_css()
 {

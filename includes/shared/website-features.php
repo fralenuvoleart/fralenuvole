@@ -1,11 +1,11 @@
 <?php
 /**
- * Website features
- * - Disable WordPress comments
- * - Disable oEmbed functionality
- * - Disable emoji support
+ * Website feature management.
  *
- * @package FRL
+ * Provides functionality to disable unnecessary WordPress core features
+ * such as comments, oEmbed, and emojis to improve performance and security.
+ *
+ * @package Fralenuvole
  */
 
 // Exit if accessed directly
@@ -14,8 +14,86 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Disable selected WordPress core features
- * Called from frl_main_init()
+ * Injects critical CSS into the document head.
+ *
+ * If enabled, retrieves minified critical CSS and outputs it in a style tag.
+ * The `data-no-defer="1"` attribute prevents the defer parser from delaying
+ * this style, ensuring it remains render-blocking for the critical path.
+ *
+ * @hook wp_head
+ * @priority -999
+ */
+function frl_add_critical_css()
+{
+    if (!frl_get_option('critical_css')) {
+        return;
+    }
+
+    $css = frl_get_critical_css_data();
+
+    if (frl_is_array_not_empty($css)) {
+        printf(
+            '<style id="%s-critical-css" data-lastmod="%s" data-no-defer="1" data-plugin="%s" data-parsing="critical-css">%s</style>',
+            FRL_PREFIX,
+            date('Y-m-d-H:i', $css['mtime']),
+            FRL_NAME,
+            $css['css']
+        );
+    }
+}
+
+/**
+ * Retrieves and caches minified critical CSS data.
+ *
+ * Reads 'critical.css' from the stylesheet directory, minifies the content,
+ * and caches the result using the file's modification time.
+ *
+ * @return array{css: string, mtime: int}|array{} Array with 'css' and 'mtime', or empty array if unavailable.
+ */
+function frl_get_critical_css_data()
+{
+    $css_path = get_stylesheet_directory() . '/critical.css';
+    $css_file = ['critical-css' => $css_path];
+    // Retrieve asset versions for the critical CSS file
+    $css_version = frl_get_assets_versions($css_file, 'critical_css', 'versions', false);
+    if (empty($css_version)) {
+        return [];
+    }
+
+    $mtime = $css_version['critical-css'];
+
+    if (!$mtime) {
+        return [];
+    }
+
+    $critical_css = frl_cache_remember('html', "critical_css_{$mtime}",
+        function () use ($css_path, $mtime) {
+            // Single file read operation - more efficient than checking existence first
+            $css_content = file_get_contents($css_path);
+            if ($css_content === false || empty($css_content)) {
+                return '';
+            }
+
+            $minified = frl_minify_css($css_content);
+
+            // Prepare the data to be cached
+            $data = [
+                'css' => $minified,
+                'mtime' => $mtime
+            ];
+
+            return $data;
+        }
+    );
+
+    return $critical_css;
+}
+
+/**
+ * Disables selected WordPress core features based on plugin options.
+ *
+ * This is the main entry point for feature disabling, typically called during initialization.
+ * Also handles the removal of Dashicons for non-logged-in users on the frontend.
  */
 function frl_disable_wp_core_features()
 {
@@ -38,7 +116,7 @@ function frl_disable_wp_core_features()
 }
 
 /**
- * Disable oEmbed functionality
+ * Disables oEmbed discovery and parsing functionality.
  */
 function frl_disable_oembed()
 {
@@ -52,9 +130,10 @@ function frl_disable_oembed()
 }
 
 /**
- * Filter function used to remove the tinymce emoji plugin.
- * @param array $plugins
- * @return array
+ * Removes the wpemoji plugin from TinyMCE.
+ *
+ * @param string[] $plugins List of TinyMCE plugins.
+ * @return string[] Filtered list of plugins.
  */
 function frl_disable_emojis_tinymce($plugins)
 {
@@ -66,10 +145,11 @@ function frl_disable_emojis_tinymce($plugins)
 }
 
 /**
- * Remove emoji CDN hostname from DNS prefetching hints.
- * @param array $urls URLs to print for resource hints.
+ * Removes the emoji CDN hostname from DNS prefetching hints.
+ *
+ * @param string[] $urls URLs to print for resource hints.
  * @param string $relation_type The relation type the URLs are printed for.
- * @return array
+ * @return string[] Filtered list of URLs.
  */
 function frl_disable_emojis_remove_dns_prefetch($urls, $relation_type)
 {
@@ -83,7 +163,7 @@ function frl_disable_emojis_remove_dns_prefetch($urls, $relation_type)
 }
 
 /**
- * Disable emojis functionality
+ * Disables WordPress emoji support across the site and admin area.
  */
 function frl_remove_emojis()
 {
@@ -107,7 +187,15 @@ function frl_remove_emojis()
 }
 
 /**
- * Completely disable WordPress comments
+ * Completely disables WordPress comments and pings.
+ *
+ * This function performs several actions:
+ * - Removes comment support from all post types.
+ * - Closes comments/pings for all published posts in the database (one-time operation).
+ * - Removes comment-related UI elements from the admin menu and admin bar.
+ * - Disables comment REST API endpoints and feeds.
+ * - Unregisters comment widgets and filters comment status.
+ * - Removes the recent comments dashboard widget.
  */
 function frl_disable_comments()
 {
@@ -119,7 +207,7 @@ function frl_disable_comments()
         }
     }
 
-    // Perform the one-time DB update using frl_cache_remember with the 'options' group
+    // Perform a one-time DB update to close comments on all published posts
     frl_cache_remember(
         'options',
         'disable_comments',
@@ -130,7 +218,7 @@ function frl_disable_comments()
                 ['comment_status' => 'closed', 'ping_status' => 'closed'],
                 ['post_status' => 'publish'] // WHERE condition - original was ['post_type' => 'post']
             );
-            // Always return '1' to set the flag, preventing retries.
+            // Return '1' to mark the operation as completed in cache
             return '1';
         },
         YEAR_IN_SECONDS,

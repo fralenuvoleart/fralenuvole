@@ -3,7 +3,7 @@
 /**
  * Abstract base class for all rewriter features
  *
- * @package FRL
+ * @package Fralenuvole
  * @since 3.0.0
  */
 

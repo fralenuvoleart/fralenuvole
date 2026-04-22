@@ -2,7 +2,7 @@
 
 /**
  * Cache settings and constants
- * @package FRL
+ * @package Fralenuvole
  */
 
 if (!defined('ABSPATH')) {

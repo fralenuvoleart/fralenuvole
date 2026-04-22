@@ -18,7 +18,7 @@ A high-performance, "Swiss-army knife" WordPress administrator plugin designed f
 - **Plugin Exclusion:** Runs at `muplugins_loaded`, filters `active_plugins` via `pre_option_active_plugins`.
 
 ## 🏗️ Architecture
-- **main.php:** 129 lines, modular structure loading common/ modules
+- **main.php:** 129 lines, modular structure loading shared/ modules
 - **pre_option_frl_* filters:** Plugin-specific, no other plugin uses them
 - **Re-entrancy Pattern:** Static `$initialized[]` array keyed by function/method/class name
 - **Language Detection Priority:** Query var → Polylang → WordPress locale → 'en' fallback

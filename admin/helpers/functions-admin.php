@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 require_once FRL_DIR_PATH . 'admin/helpers/admin-class-helpers-core.php';
 
 // Load action handlers
-require_once FRL_DIR_PATH . 'admin/helpers/functions-admin-actions.php';
+require_once FRL_DIR_PATH . 'admin/helpers/functions-admin-action-handlers.php';
 
 /**
  * Display admin notices

@@ -6,17 +6,11 @@ if (!defined('ABSPATH')) {
 
 // Load post handlers for admin actions (only needed for logged users)
 if (frl_is_administrator_action()) {
-    require_once FRL_DIR_PATH . 'includes/helpers/functions-plugin-actions.php';
+    require_once FRL_DIR_PATH . 'includes/helpers/functions-action-handlers.php';
 
     // Register the hook only when the function is available
     add_action('init', 'frl_process_plugin_actions', 10, 0);
 }
-
-/**
- * Add environment switcher to admin bar
- * Shows staging/production status and allows switching environments
- * Priority 100 ensures it's added after other admin bar items
- */
 
 add_action('wp_loaded',     'frl_load_logged_user_scripts',    10,   0);
 add_action('admin_bar_menu', 'frl_admin_bar_custom_menu',      9999, 0);
@@ -25,7 +19,9 @@ add_action('wp_footer',     'frl_trace_logged_user_visits',    99,   0);
 add_action('admin_footer',  'frl_trace_logged_user_visits',    99,   0);
 
 /**
- * Add common scripts
+ * Enqueue scripts and styles for logged-in users.
+ *
+ * @return void
  */
 function frl_load_logged_user_scripts()
 {
@@ -42,7 +38,9 @@ function frl_load_logged_user_scripts()
 
 
 /**
- * Add custom menu to admin bar
+ * Add custom menus and handle node removals in the WordPress admin bar.
+ *
+ * @return void
  */
 function frl_admin_bar_custom_menu()
 {
@@ -55,7 +53,7 @@ function frl_admin_bar_custom_menu()
 
     $cache_key = "{$lang}_adminbar_uid{$user_id}";
 
-    // Cache data preparation
+    // Cache menu configuration to avoid repeated processing
     $menu_data = frl_cache_remember('admin', $cache_key, function () {
         $data = [];
 
@@ -69,17 +67,14 @@ function frl_admin_bar_custom_menu()
 
     global $wp_admin_bar;
 
-    // Add "New Content" > "All CPT" menu items
+    // Add Custom Post Type (CPT) links under "New Content"
     $cpt_list = FRL_AB_CPT_LIST;
-
-    // Add CPT group node once
     $cpt_group_id = 'cpt-menu-group';
     $wp_admin_bar->add_group([
         'id' => $cpt_group_id,
         'parent' => 'new-content',
     ]);
 
-    // Add all CPT items in a single pass
     foreach ($cpt_list as $key => $value) {
         if (frl_has_access($value['access'])) {
             $wp_admin_bar->add_node([
@@ -91,7 +86,7 @@ function frl_admin_bar_custom_menu()
         }
     }
 
-    // Apply custom menu items directly
+    // Apply custom menu items from options
     $custom_menu = frl_get_option('custom_ab_menu');
     if ($custom_menu !== '' && $custom_menu !== false && $custom_menu !== null) {
         if (!empty($menu_data['menu_secondary'])) {
@@ -107,7 +102,7 @@ function frl_admin_bar_custom_menu()
         }
     }
 
-    // Apply menu removals
+    // Remove specified admin bar nodes
     if (frl_get_option('ab_remove_links')) {
 
         if (!empty($menu_data['my_account_title'])) {
@@ -140,10 +135,10 @@ function frl_admin_bar_custom_menu()
 }
 
 /**
- * Helper function for all custom menu logic - preparation only
+ * Prepare primary admin bar menu items.
  *
- * @param array $data The data array to add menu items to
- * @return array Updated data array
+ * @param array $data Data array to populate with menu items.
+ * @return array Updated data array containing primary menu configuration.
  */
 function frl_admin_bar_add_menu_primary($data)
 {
@@ -263,10 +258,10 @@ function frl_admin_bar_add_menu_primary($data)
 }
 
 /**
- * Helper function for all custom menu logic - preparation only
+ * Prepare secondary admin bar menu items.
  *
- * @param array $data The data array to add menu items to
- * @return array Updated data array
+ * @param array $data Data array to populate with menu items.
+ * @return array Updated data array containing secondary menu configuration.
  */
 function frl_admin_bar_add_menu_secondary($data)
 {
@@ -306,10 +301,10 @@ function frl_admin_bar_add_menu_secondary($data)
 }
 
 /**
- * Helper function for menu removal logic - preparation only
+ * Prepare data for admin bar node removals.
  *
- * @param array $data The data array to add removal data to
- * @return array Updated data array
+ * @param array $data Data array to populate with removal handles.
+ * @return array Updated data array.
  */
 function frl_admin_bar_remove_menu($data)
 {
@@ -341,9 +336,11 @@ function frl_admin_bar_remove_menu($data)
 }
 
 /**
- * Gets the count of entries in the debug log
+ * Get the number of entries in the debug log.
  *
- * @return int Number of log entries
+ * Uses transients for performance and supports an ignore list for specific log patterns.
+ *
+ * @return int Total count of non-ignored log entries.
  */
 function frl_get_debug_log_count()
 {
@@ -399,7 +396,11 @@ function frl_get_debug_log_count()
 }
 
 /**
- * Track user visits and store them in user meta
+ * Track and store the last 10 unique page visits for logged-in users.
+ *
+ * Visits are tracked in user meta and deduplicated if the same URL is visited within 5 minutes.
+ *
+ * @return void
  */
 function frl_trace_logged_user_visits()
 {

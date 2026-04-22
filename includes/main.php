@@ -1,11 +1,10 @@
 <?php
 /**
- * Main plugin functionality
+ * Main plugin functionality.
  *
- * Contains core initialization and feature setup functions.
- * Feature implementations moved to includes/common/
+ * Handles core initialization, hook registrations, and shared feature loading.
  *
- * @package FRL
+ * @package Fralenuvole
  * @since 1.0.0
  */
 
@@ -15,24 +14,18 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Fralenuvole
- * main.php - Code executed in both frontend and backend pages
+ * Core execution logic for both frontend and backend.
  */
 
 // Load feature modules
-require_once __DIR__ . '/common/website-features.php';
-require_once __DIR__ . '/common/performance.php';
-require_once __DIR__ . '/common/media.php';
-require_once __DIR__ . '/common/navigation.php';
+require_once __DIR__ . '/shared/website-features.php';
+require_once __DIR__ . '/shared/media.php';
+require_once __DIR__ . '/shared/navigation.php';
 
 // Load logged-user features (only for logged-in users)
 if (frl_is_logged_in()) {
-    require_once __DIR__ . '/common/logged-user.php';
+    require_once __DIR__ . '/shared/logged-user.php';
 }
-
-// ============================================================================
-// HOOK REGISTRATIONS
-// ============================================================================
 
 add_action('init', 'frl_main_init', 10, 0);
 add_action('init', 'frl_register_icon_block', 10, 0);
@@ -49,21 +42,22 @@ add_filter('block_type_metadata_settings', 'frl_render_block_core_navigation_tra
 add_filter('auth_cookie_expiration', 'frl_extend_admin_cookie', 10, 1);
 add_action('shutdown', 'frl_process_deferred_writes', 10, 0);
 
-// ============================================================================
-// CORE FUNCTIONS
-// ============================================================================
-
+/**
+ * Disables oEmbed discovery to reduce external requests.
+ *
+ * @return void
+ */
 function frl_disable_oembed_discovery(): void
 {
     add_filter('embed_oembed_discover', '__return_false', 10, 0);
 }
 
 /**
- * Initialize main plugin functionality
+ * Initializes core plugin features on the 'init' hook.
  *
- * @hook init
+ * @return void
  */
-function frl_main_init()
+function frl_main_init(): void
 {
     add_post_type_support('page', 'excerpt');
 
@@ -73,9 +67,10 @@ function frl_main_init()
 }
 
 /**
- * Set Admin Cookie Expiration to 1 Year
- * @param int $expirein Expiration time in seconds
- * @return int One year expiration time in seconds
+ * Extends the WordPress admin authentication cookie expiration.
+ *
+ * @param int $expirein Original expiration time in seconds.
+ * @return int New expiration time (1 year if enabled, otherwise original).
  */
 function frl_extend_admin_cookie(int $expirein): int
 {
@@ -87,12 +82,14 @@ function frl_extend_admin_cookie(int $expirein): int
 }
 
 /**
- * Process deferred cache writes on shutdown
- * Handles batching and error management for cache operations
+ * Processes and flushes deferred cache writes during the shutdown sequence.
+ *
+ * Merges duplicate writes and handles errors by re-queuing failed items.
+ *
+ * @return void
  */
-function frl_process_deferred_writes()
+function frl_process_deferred_writes(): void
 {
-    // Ensure no pending results are lingering
     frl_flush_db();
 
     $writes = frl_cache_get_deferred_writes();
@@ -100,7 +97,7 @@ function frl_process_deferred_writes()
         return;
     }
 
-    // Merge duplicate writes (last write wins)
+    // Merge duplicate writes: last write wins
     $merged = [];
     foreach ($writes as $group => $items) {
         foreach ($items as $key => $value) {
@@ -108,8 +105,7 @@ function frl_process_deferred_writes()
         }
     }
 
-    // Process merged writes with error handling
-    // Track items that fail so they can be re-queued
+    // Process merged writes and track failures for re-queuing
     $failed_items = [];
     foreach ($merged as $group => $items) {
         foreach ($items as $key => $value) {
@@ -121,13 +117,12 @@ function frl_process_deferred_writes()
                     'key' => $key,
                     'error' => $e->getMessage()
                 ]);
-                // Track failed item for re-queue
                 $failed_items[$group][$key] = $value;
             }
         }
     }
 
-    // Re-queue failed items for next cycle before clearing
+    // Re-queue failed items for the next cycle
     if (!empty($failed_items)) {
         foreach ($failed_items as $group => $items) {
             foreach ($items as $key => $value) {
@@ -136,9 +131,6 @@ function frl_process_deferred_writes()
         }
     }
 
-    // Clear deferred writes using helper
     frl_cache_clear_deferred_writes();
-
-    // Final flush to ensure no lingering results
     frl_flush_db();
 }

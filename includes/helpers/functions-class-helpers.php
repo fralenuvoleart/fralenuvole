@@ -2,7 +2,7 @@
 
 /**
  * Cache helper functions
- * @package FRL
+ * @package Fralenuvole
  */
 
 if (!defined('ABSPATH')) {
@@ -10,10 +10,10 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Check if the Environment Manager subsystem should load/run for the current request,
+ * Check if the Cache Manager subsystem should load/run for the current request,
  * attempts to load it if necessary, and caches the result per request.
  *
- * @return bool True if the environment manager is loaded and should proceed, false otherwise.
+ * @return bool True if the cache manager is loaded and should proceed, false otherwise.
  */
 function frl_cache_is_loaded()
 {
@@ -161,11 +161,12 @@ function frl_cache_preload_groups($groups = []): void
 }
 
 /**
- * Clear cache for a group or key
+ * Clear cache for a group or key.
  *
- * @param string $group Cache group, 'all' to clear everything, 'transients' for plugin transients, or 'website_transients' for all site transients
- * @param string|null $key Optional specific key to clear
- * @return array|bool|int|string Result of the cache clearing operation
+ * @param string $group Cache group to clear.
+ * @param string|null $key Optional specific key to clear within the group.
+ * @param bool $include_dependencies Whether to include dependencies in the clear operation.
+ * @return array|bool|int|string Result of the cache clearing operation.
  */
 function frl_cache_clear(string $group, ?string $key = null, bool $include_dependencies = true): array|bool|int|string
 {
@@ -301,8 +302,11 @@ function frl_environment_get_config(): array
 }
 
 /**
- * Enforce the Environment Manager
- * @param bool $force to force applying settings regardless of state change */
+ * Enforce the Environment Manager settings.
+ *
+ * @param bool $force Whether to force applying settings regardless of state change.
+ * @return array|null Result of the enforcement operation or null if EM is not loaded.
+ */
 function frl_environment_enforce_settings($force = false): ?array
 {
     if (!frl_environment_is_loaded()) {
@@ -330,7 +334,7 @@ function frl_environment_reset_ignored(): array
  *
  * Mirrors frl_environment_is_loaded() / frl_cache_is_loaded(): centralises the
  * class-existence check and the disable_rewriter option so every call site
- * (fralenuvole.php, frl_optimize_acf_urls(), etc.) shares one canonical guard.
+  shares one canonical guard.
  * Result is static-cached for the lifetime of the request.
  *
  * @return bool True if Frl_Rewriter is loaded and the rewriter is not disabled.

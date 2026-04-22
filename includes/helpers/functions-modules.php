@@ -11,11 +11,12 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Get available module keys from environment configuration
- * This is a lightweight helper that only returns module keys without file operations
- * Used to avoid circular dependencies in configuration building
+ * Get available module keys from environment configuration.
  *
- * @return array|false Array of module keys or false if no modules available
+ * This is a lightweight helper that only returns module keys without file operations,
+ * used to avoid circular dependencies in configuration building.
+ *
+ * @return string[]|false Array of module keys or false if no modules are available.
  */
 function frl_modules_get_keys()
 {
@@ -36,13 +37,11 @@ function frl_modules_get_keys()
 /**
  * Retrieves key metadata for all available modules.
  *
- * For each module, this includes its name, description (extracted from file headers),
- * and the path to its main PHP file. This information is typically used to list
- * modules in the UI or to understand the basic properties of each module.
+ * For each module, it includes its name, description (extracted from file headers) and the path to its main PHP file.
  *
- * @return array An associative array where keys are module keys, and values are
- *         arrays containing 'name', 'description', and 'file'.
- *         Returns false if no valid modules are found.
+ * @return array<string, array{name: string, description: string, file: string}>|false
+ *         An associative array where keys are module keys, and values are arrays
+ *         containing 'name', 'description', and 'file'. Returns false if no valid modules are found.
  * @see frl_modules_module_get_header_data()
  */
 function frl_modules_get_all_metadata()
@@ -78,8 +77,14 @@ function frl_modules_get_all_metadata()
 }
 
 /**
- * Load option metadata from modules (returns processed option defaults with value, autoload, type)
- * @return array Option metadata keyed by option ID
+ * Load option metadata from modules.
+ *
+ * Returns processed option defaults including the value, autoload status, and type.
+ * 
+ * Includes both the module's own configuration options and the standard module enable/disable toggle.
+ *
+ * @return array<string, array{value: mixed, autoload: string, type: string}>
+ *         Option metadata keyed by option ID.
  */
 function frl_modules_load_options_defaults()
 {
@@ -126,8 +131,12 @@ function frl_modules_load_options_defaults()
 
 
 /**
- * Load field definitions from modules (returns field configurations for admin UI)
- * @return array Field definition arrays with id, type, default, label, description, etc.
+ * Load field definitions from modules.
+ *
+ * Returns modules field configurations used for the admin UI, including module-specific settings.
+ *
+ * @return array<int, array> List of field definition arrays containing 'id', 'type',
+ *         'default', 'label', 'description', 'section', etc.
  */
 function frl_modules_load_options_fields()
 {
@@ -186,13 +195,14 @@ function frl_modules_load_options_fields()
 /**
  * Iterates through modules, yielding combined metadata and default fields for each.
  *
- * Relies on `frl_modules_get_all_metadata()` and `frl_modules_module_get_default_config()`which are expected to be cached
+ * Relies on `frl_modules_get_all_metadata()` and `frl_modules_module_get_default_config()`
  *
- * @return Generator Yields [module_key => ['key' => string, 'info' => array, 'fields' => array]]
- *    'key'   : The module's unique key.
- *    'info'  : General module metadata (name, description, file).
- *    'fields': Module's default field configurations.
- *    Yields nothing if no modules are found.
+ * @return Generator<string, array{key: string, info: array, fields: array}>
+ *         Yields [module_key => ['key' => string, 'info' => array, 'fields' => array]]
+ *         - 'key': The module's unique key.
+ *         - 'info': General module metadata (name, description, file).
+ *         - 'fields': Module's default field configurations.
+ *         Yields nothing if no modules are found.
  */
 function frl_modules_get_combined_data_iterator()
 {
@@ -221,10 +231,10 @@ function frl_modules_get_combined_data_iterator()
 }
 
 /**
- * INTERNAL HELPER: Load raw config variables from a specific module's config file.
+ * oad raw config variables from a specific module's config file.
  *
  * @param string $module_key The key of the module.
- * @return array The raw options/fields array from the module's config, or empty array.
+ * @return array The raw options/fields array from the module's config, or an empty array.
  */
 function frl_modules_module_get_default_config($module_key)
 {
@@ -264,8 +274,8 @@ function frl_modules_module_get_default_config($module_key)
  * Retrieves specific header data from a module file.
  *
  * @param string $module_file_path Absolute path to the module PHP file. The file is expected to exist.
- * @return array An array containing 'name' and 'description' from the module header,
- *               or default/fallback values if not found.
+ * @return array{name: string, description: string} An array containing 'name' and 'description'
+ *         from the module header, or default/fallback values if not found.
  */
 function frl_modules_module_get_header_data($module_file_path)
 {
@@ -305,8 +315,8 @@ function frl_modules_module_get_header_data($module_file_path)
 /**
  * Gets the full path to a module's main PHP file if it exists.
  *
- * The main file is assumed to be named after the module key and located
- * in a directory also named after the module key (e.g., modules/my-module/my-module.php).
+ * The main file is named after the module key and located
+ * in the directory modules/my-module/my-module.php).
  *
  * @param string $module_key The key of the module (e.g., 'my-module').
  * @return string|false The full, validated file path, or false if the module key is invalid
@@ -340,10 +350,10 @@ function frl_modules_module_get_file_path($module_key)
 }
 
 /**
- * Gets the full path to a module's specific configuration file (config-KEY.php) if it exists.
+ * Gets the full path to a module's specific configuration file (config-options-KEY.php) if it exists.
  *
- * The config file is assumed to be named 'config-fields-MODULE_KEY.php' and located
- * in the module's directory (e.g. modules/mymodule/config-fields-mymodule.php).
+ * The config file is assumed to be named 'config-options-MODULE_KEY.php' and located
+ * in the module's directory (e.g. modules/mymodule/config-options-mymodule.php).
  *
  * @param string $module_key The key of the module (e.g., 'mymodule').
  * @return string|false The full, validated file path to the config file, or false if the module key

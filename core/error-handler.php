@@ -1,6 +1,8 @@
 <?php
 /**
- * Custom error handling to filter specific notices.
+ * Custom error handling and notice filtering.
+ *
+ * @package Fralenuvole
  */
 
 if (! defined('ABSPATH')) {
@@ -8,29 +10,24 @@ if (! defined('ABSPATH')) {
 }
 
 /**
- * Initialize the error handler.
+ * Initializes the custom error handling system.
  *
  * @return void
  */
-function frl_errors_init()
+function frl_errors_init(): void
 {
-    // Hook into `doing_it_wrong` with the highest possible priority to intercept notices.
+    // Intercept WordPress 'doing_it_wrong' notices
     add_action('doing_it_wrong_run', 'frl_errors_handle_doing_it_wrong', -999, 3);
 
-    // Temporary diagnostics: confirm init and WP_DEBUG_LOG state (writes to current error channel)
-    // (debug lines removed)
-
-    // 1. Set dynamic error reporting level based on plugin options
+    // Apply error reporting level from plugin options
     frl_errors_set_level();
 
-    // 2. Set custom error handler if debug logging is enabled
+    // Install custom error handler if WP_DEBUG_LOG is enabled
     if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) { // @phpstan-ignore-line alwaysFalse
-        // Install userland handler for runtime PHP notices/warnings
         set_error_handler('frl_errors_handle_error');
     }
 
-    // Re-bind the handler at key load phases to survive overrides by other plugins
-    // Only if debug logging is truly enabled to minimize bootstrap overhead.
+    // Re-bind handler at key phases to prevent overrides by other plugins
     $rebind = function () {
         if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) { // @phpstan-ignore-line alwaysFalse
             set_error_handler('frl_errors_handle_error');
@@ -42,13 +39,12 @@ function frl_errors_init()
 }
 
 /**
- * Build and apply error reporting level based on plugin options
+ * Configures the PHP error reporting level based on plugin settings.
  *
  * @return void
  */
-function frl_errors_set_level()
+function frl_errors_set_level(): void
 {
-    // Start with all error types enabled
     $error_level = E_ALL;
 
     try {
@@ -56,9 +52,7 @@ function frl_errors_set_level()
         $warning_enabled = frl_get_option('error_reporting_warning');
         $deprecated_enabled = frl_get_option('error_reporting_deprecated');
     } catch (Exception $e) {
-        $notice_enabled = true;
-        $warning_enabled = true;
-        $deprecated_enabled = true;
+        $notice_enabled = $warning_enabled = $deprecated_enabled = true;
     }
 
     if (!$notice_enabled) {
@@ -75,23 +69,18 @@ function frl_errors_set_level()
 }
 
 /**
- * Get and cache the parsed suppression rules.
+ * Retrieves and caches parsed error suppression rules.
  *
- * This internal function centralizes fetching and parsing the suppression rules
- * from the database to avoid redundant processing.
- *
- * @return array The array of parsed suppression rules.
+ * @return array List of parsed suppression rules.
  */
-function _frl_errors_get_rules()
+function _frl_errors_get_rules(): array
 {
-    // Static caching for suppression rules to avoid repeated parsing
     static $cached_rules = null;
     static $last_option_value = null;
 
-    // Get current option value
     $current_option = frl_get_option('error_reporting_suppressed');
 
-    // Parse rules only if cache is empty or option changed
+    // Parse rules only if cache is empty or option has changed
     if ($cached_rules === null || $last_option_value !== $current_option) {
         $cached_rules = frl_textlist_to_array($current_option);
         $last_option_value = $current_option;
@@ -101,30 +90,30 @@ function _frl_errors_get_rules()
 }
 
 /**
- * Custom error handler to selectively suppress specific notices.
+ * Custom error handler to selectively suppress and log notices.
  *
  * @param int    $errlevel   The error level.
  * @param string $errstring  The error message.
- * @param string $errfile The filename that the error was raised in.
- * @param int    $errline The line number the error was raised at.
- * @return bool True to prevent the PHP internal error handler from being called, false otherwise.
+ * @param string $errfile    The filename where the error occurred.
+ * @param int    $errline    The line number where the error occurred.
+ * @return bool True to suppress the default PHP error handler.
  */
-function frl_errors_handle_error($errlevel, $errstring, $errfile, $errline)
+function frl_errors_handle_error($errlevel, $errstring, $errfile, $errline): bool
 {
-    // In-request cache to avoid re-calculating detailed log messages for repeated errors
+    // Cache detailed log messages to avoid repeated processing
     static $detailed_log_cache = [];
     static $backtrace_cache = [];
 
     $error_signature = md5($errlevel . $errstring . $errfile . $errline);
     if (isset($detailed_log_cache[$error_signature])) {
-        error_log($detailed_log_cache[$error_signature]); // Log the cached message
-        return true; // Suppress default handler
+        error_log($detailed_log_cache[$error_signature]);
+        return true;
     }
 
-    // Avoid recursion if an error is triggered inside this handler
+    // Prevent recursion if an error occurs within the handler
     static $is_handling_error = false;
     if ($is_handling_error) {
-        return false; // Let the standard handler run, do not suppress
+        return false;
     }
     $is_handling_error = true;
 
@@ -132,7 +121,8 @@ function frl_errors_handle_error($errlevel, $errstring, $errfile, $errline)
         $is_handling_error = false;
         return false;
     }
-    // Best-effort backtrace when file/line are missing
+
+    // Attempt to resolve file/line if missing via backtrace
     if (($errfile === '' || !$errline)) { // @phpstan-ignore-line unreachableCode
         $msg_signature = md5($errstring);
         if (isset($backtrace_cache[$msg_signature])) {
@@ -151,31 +141,27 @@ function frl_errors_handle_error($errlevel, $errstring, $errfile, $errline)
         }
     }
 
-    // Check if error was suppressed with @ operator
-    // In PHP 8.0+, error_reporting() returns 4437 when @ is used
+    // Suppress errors silenced by the @ operator (PHP 8.0+)
     if (error_reporting() === 4437) {
         $is_handling_error = false;
-        return true; // Silently suppress the @ error
+        return true;
     }
 
-    // --- Plugin-only filter ---
-    // If enabled, we suppress any error that does NOT originate from this plugin's directory.
+    // Suppress errors originating outside the plugin directory if enabled
     if (frl_get_option('error_reporting_plugin', false)) {
-         // If the error file path does NOT contain our plugin path, return true to suppress/hide it.
          if (!empty($errfile) && !str_contains($errfile, FRL_DIR_PATH)) {
               $is_handling_error = false;
               return true;
          }
     }
-    // --------------------------
 
-    $suppress = frl_errors_is_suppression_match($errstring);
-    if ($suppress) {
+    // Suppress based on custom rules
+    if (frl_errors_is_suppression_match($errstring)) {
         $is_handling_error = false;
-        return true; // Suppress per rules
+        return true;
     }
 
-    // Emit a single enriched line with level label and suppress native handler
+    // Determine error label
     $label = '';
     switch ($errlevel) {
         case E_WARNING:
@@ -204,24 +190,22 @@ function frl_errors_handle_error($errlevel, $errstring, $errfile, $errline)
         $line = frl_log_add_details($line);
     }
 
-    // Cache the fully-formed message before logging
     $detailed_log_cache[$error_signature] = $line;
-
     error_log($line);
     $is_handling_error = false;
     return true;
 }
 
 /**
- * Handle WordPress _doing_it_wrong() calls using the same error handler logic
+ * Handles WordPress _doing_it_wrong() calls using the custom error handler.
  *
- * @param string $function_name The function that was called incorrectly
- * @param string $message The error message
- * @param string $version WordPress version when this was added
+ * @param string $function_name The function called incorrectly.
+ * @param string $message       The error message.
+ * @param string $version       WordPress version.
+ * @return void
  */
-function frl_errors_handle_doing_it_wrong($function_name, $message, $version)
+function frl_errors_handle_doing_it_wrong($function_name, $message, $version): void
 {
-    // Avoid recursion if an error is triggered inside this handler
     static $is_handling = false;
     static $bt_cache = [];
 
@@ -231,10 +215,9 @@ function frl_errors_handle_doing_it_wrong($function_name, $message, $version)
     $is_handling = true;
 
     try {
-        // Recreate the full error message so suppression rules can match on function name
         $error = "WordPress doing it wrong: Function {$function_name} was called incorrectly. {$message}";
 
-        // Derive a best-effort file/line from a short backtrace for tooling compatibility
+        // Resolve file/line via backtrace for consistency
         $msg_hash = md5($error);
         if (isset($bt_cache[$msg_hash])) {
             $file = $bt_cache[$msg_hash]['file'];
@@ -254,11 +237,8 @@ function frl_errors_handle_doing_it_wrong($function_name, $message, $version)
             }
         }
 
-        // Check if this should be suppressed by calling the main error handler
         if (frl_errors_handle_error(E_USER_NOTICE, $error, $file, $line)) {
-            // If suppressed, prevent WordPress from triggering the actual error
-            add_filter('doing_it_wrong_trigger_error',
-                '__return_false');
+            add_filter('doing_it_wrong_trigger_error', '__return_false');
         }
     } finally {
         $is_handling = false;
@@ -266,14 +246,12 @@ function frl_errors_handle_doing_it_wrong($function_name, $message, $version)
 }
 
 /**
- * Check if a given error message should be suppressed based on plugin settings.
- *
- * This is the core suppression logic, designed to be called by multiple handlers.
+ * Checks if an error message matches any defined suppression rules.
  *
  * @param string $errstring The error message to check.
- * @return bool True if the error should be suppressed, false otherwise.
+ * @return bool True if the error should be suppressed.
  */
-function frl_errors_is_suppression_match($errstring)
+function frl_errors_is_suppression_match($errstring): bool
 {
     $suppress_rules_config = _frl_errors_get_rules();
 
@@ -292,18 +270,16 @@ function frl_errors_is_suppression_match($errstring)
         foreach ($rule as $message_part) {
             $message_part_to_find = trim($message_part);
 
-            if (!empty($message_part_to_find)) {
-                if (!str_contains($clean_errstr, $message_part_to_find)) {
-                    $all_message_parts_match = false;
-                    break;
-                }
+            if (!empty($message_part_to_find) && !str_contains($clean_errstr, $message_part_to_find)) {
+                $all_message_parts_match = false;
+                break;
             }
         }
 
         if ($all_message_parts_match) {
-            return true; // Suppress this error.
+            return true;
         }
     }
 
-    return false; // Do not suppress.
+    return false;
 }

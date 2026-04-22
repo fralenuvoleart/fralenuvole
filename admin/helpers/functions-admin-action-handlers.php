@@ -2,7 +2,7 @@
 
 /**
  * Fralenuvole
- * functions-admin-actions.php - Post action handler functions
+ * functions-admin-action-handlers.php - Post action handler functions
  *
  * This file contains all the admin action handlers that process GET/POST requests
  * for cache clearing, environment resets, and other administrative actions.
@@ -123,116 +123,6 @@ function frl_post_action_dashboard_widgets()
     // 4. Redirect back to the referring page (dashboard)
     frl_safe_redirect();
     exit;
-}
-
-/**
- * Verify admin action nonce
- *
- * @param string $nonce_field Nonce field name
- * @param string $nonce_action Nonce action name
- * @param string $redirect_url_base Base URL for redirect
- * @param array $redirect_args Additional redirect arguments
- * @return bool True if nonce is valid
- */
-function frl_verify_admin_action_nonce($nonce_field = '_wpnonce', $nonce_action = FRL_PREFIX . '_save_options', $redirect_url_base = '', $redirect_args = [])
-{
-    // Use simple nonce for basic verification (no capability check, return false on failure)
-    $verified = frl_verify_simple_nonce(
-        $nonce_action,    // Use the full action as-is
-        $nonce_field,
-        'POST',
-        null,             // No capability check
-        false,            // Don't die, let us handle errors
-        true              // raw_action = true (don't prefix)
-    );
-
-    if (!$verified) {
-        // Custom error handling with admin notices and redirects
-        frl_add_admin_notice(
-            __('Security check failed. The form may have expired. Please try again.', FRL_PREFIX),
-            'error',
-            30
-        );
-
-        // Redirect if URL provided
-        if (!empty($redirect_url_base)) {
-            $redirect_url = add_query_arg(
-                array_merge(['error' => 'nonce'], $redirect_args),
-                $redirect_url_base
-            );
-
-            frl_safe_redirect($redirect_url);
-            exit;
-        }
-
-        // Otherwise, just die
-        wp_die(__('Security check failed. Please go back and try again.', FRL_PREFIX));
-    }
-
-    return true;
-}
-
-/**
- * Verify dynamic nonce
- *
- * @param string $pattern Nonce pattern
- * @param array $replacements Replacements for pattern
- * @param string $nonce_field Nonce field name
- * @param string $source Source of nonce (REQUEST, GET, POST)
- * @param string|null $cap Required capability
- * @param bool $die Whether to die on failure
- * @return bool True if nonce is valid
- */
-function frl_verify_dynamic_nonce($pattern, $replacements = [], $nonce_field = '_wpnonce', $source = 'REQUEST', $cap = null, $die = true)
-{
-    // Build the nonce action by replacing placeholders
-    $nonce_action = $pattern;
-    foreach ($replacements as $key => $value) {
-        $nonce_action = str_replace('{' . $key . '}', $value, $nonce_action);
-    }
-
-    // Get the appropriate superglobal
-    $data = [];
-    switch (strtoupper($source)) {
-        case 'GET':
-            $data = $_GET;
-            break;
-        case 'POST':
-            $data = $_POST;
-            break;
-        case 'REQUEST':
-        default:
-            $data = $_REQUEST;
-            break;
-    }
-
-    // Check if nonce field exists
-    if (!isset($data[$nonce_field])) {
-        if ($die) {
-            wp_die(__('Security check failed: Nonce not found.', FRL_PREFIX));
-        }
-        return false;
-    }
-
-    // Verify the nonce
-    $nonce_verified = wp_verify_nonce(sanitize_text_field($data[$nonce_field]), $nonce_action);
-
-    if (!$nonce_verified) {
-        if ($die) {
-            wp_die(__('Security check failed.', FRL_PREFIX));
-        }
-        return false;
-    }
-
-    // Check capability if required
-    if ($cap !== null && !frl_has_access($cap)) {
-        if ($die) {
-            wp_die(__('You do not have permission to perform this action.', FRL_PREFIX));
-        }
-        return false;
-    }
-
-    return true;
 }
 
 /**
@@ -844,4 +734,214 @@ function frl_handle_action_delete_orphan_options()
     );
 
     return ['success' => true, 'message_parts' => $message_parts, 'notice_type' => $notice_type];
+}
+
+/**
+ * Verify the nonce for a specific plugin action.
+ *
+ * This function checks if the action is a public action (requiring only 'read' capability)
+ * or a restricted admin action (requiring 'manage_options').
+ *
+ * @param string $action_name The action name to verify the nonce for.
+ * @return bool True if the nonce is valid or verification is skipped for public actions, false otherwise.
+ */
+function frl_verify_plugin_action_nonce($action_name)
+{
+    // Check if this action is registered as a low-security/public action
+    // Ideally this registry would be shared, but for now we define the logic here:
+    // If the action is known to be allowed for 'read' users in the dispatcher, we can skip strict nonce checks.
+    // However, frl_verify_simple_nonce defaults to 'manage_options'.
+    
+    $capability = 'manage_options';
+    $skip_nonce_verification = false;
+
+    // Modular check: If action is meant for logged-in users (emergency access), adjust cap and skip nonce
+    if (in_array($action_name, FRL_PUBLIC_ACTIONS) && is_user_logged_in()) {
+        $capability = 'read';
+        $skip_nonce_verification = true;
+    }
+
+    if ($skip_nonce_verification) {
+        return true;
+    }
+
+    return frl_verify_simple_nonce(
+        $action_name,                               // Will be converted to (frl_prefix($action_name) = frl_action_name)
+        frl_prefix($action_name) . '_nonce',       // Field name matches frl_render_action_button format
+        'GET',                                      // Data source
+        $capability,                                // Capability check
+        false                                       // Return bool, don't die
+    );
+}
+
+/**
+ * Verify admin action nonce
+ *
+ * @param string $nonce_field Nonce field name
+ * @param string $nonce_action Nonce action name
+ * @param string $redirect_url_base Base URL for redirect
+ * @param array $redirect_args Additional redirect arguments
+ * @return bool True if nonce is valid
+ */
+function frl_verify_admin_action_nonce($nonce_field = '_wpnonce', $nonce_action = FRL_PREFIX . '_save_options', $redirect_url_base = '', $redirect_args = [])
+{
+    // Use simple nonce for basic verification (no capability check, return false on failure)
+    $verified = frl_verify_simple_nonce(
+        $nonce_action,    // Use the full action as-is
+        $nonce_field,
+        'POST',
+        null,             // No capability check
+        false,            // Don't die, let us handle errors
+        true              // raw_action = true (don't prefix)
+    );
+
+    if (!$verified) {
+        // Custom error handling with admin notices and redirects
+        frl_add_admin_notice(
+            __('Security check failed. The form may have expired. Please try again.', FRL_PREFIX),
+            'error',
+            30
+        );
+
+        // Redirect if URL provided
+        if (!empty($redirect_url_base)) {
+            $redirect_url = add_query_arg(
+                array_merge(['error' => 'nonce'], $redirect_args),
+                $redirect_url_base
+            );
+
+            frl_safe_redirect($redirect_url);
+            exit;
+        }
+
+        // Otherwise, just die
+        wp_die(__('Security check failed. Please go back and try again.', FRL_PREFIX));
+    }
+
+    return true;
+}
+
+/**
+ * Verify a simple static nonce with an optional capability check.
+ *
+ * Helper for standard nonce verification patterns with static action names and managing error handling (either returning false or calling wp_die()).
+ *
+ * @param string $action Action name (will be prefixed with the plugin prefix unless $raw_action is true).
+ * @param string $nonce_field Field name containing the nonce (default: 'nonce').
+ * @param string $source Data source: 'GET', 'POST', or 'REQUEST' (default: 'GET').
+ * @param string|null $cap Required capability for access (default: 'manage_options').
+ * @param bool $die Whether to call wp_die() on failure (default: true).
+ * @param bool $raw_action Whether to use $action as-is without prefixing (default: false).
+ * @return bool True if verified, false if $die is false and verification failed.
+ */
+function frl_verify_simple_nonce($action, $nonce_field = 'nonce', $source = 'GET', $cap = 'manage_options', $die = true, $raw_action = false)
+{
+    // Build the nonce action
+    $nonce_action = $raw_action ? $action : frl_prefix($action);
+
+    // Get the appropriate superglobal
+    $data = [];
+    switch (strtoupper($source)) {
+        case 'GET':
+            $data = $_GET;
+            break;
+        case 'POST':
+            $data = $_POST;
+            break;
+        case 'REQUEST':
+        default:
+            $data = $_REQUEST;
+            break;
+    }
+
+    // Check if nonce field exists
+    if (!isset($data[$nonce_field])) {
+        if ($die) {
+            wp_die(__('Security check failed: Nonce not found.', FRL_PREFIX));
+        }
+        return false;
+    }
+
+    // Verify the nonce
+    $nonce_verified = wp_verify_nonce(sanitize_text_field($data[$nonce_field]), $nonce_action);
+
+    if (!$nonce_verified) {
+        if ($die) {
+            wp_die(__('Security check failed.', FRL_PREFIX));
+        }
+        return false;
+    }
+
+    // Check capability if required
+    if ($cap !== null && !frl_has_access($cap)) {
+        if ($die) {
+            wp_die(__('You do not have sufficient permissions to access this page.', FRL_PREFIX));
+        }
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Verify dynamic nonce
+ *
+ * @param string $pattern Nonce pattern
+ * @param array $replacements Replacements for pattern
+ * @param string $nonce_field Nonce field name
+ * @param string $source Source of nonce (REQUEST, GET, POST)
+ * @param string|null $cap Required capability
+ * @param bool $die Whether to die on failure
+ * @return bool True if nonce is valid
+ */
+function frl_verify_dynamic_nonce($pattern, $replacements = [], $nonce_field = '_wpnonce', $source = 'REQUEST', $cap = null, $die = true)
+{
+    // Build the nonce action by replacing placeholders
+    $nonce_action = $pattern;
+    foreach ($replacements as $key => $value) {
+        $nonce_action = str_replace('{' . $key . '}', $value, $nonce_action);
+    }
+
+    // Get the appropriate superglobal
+    $data = [];
+    switch (strtoupper($source)) {
+        case 'GET':
+            $data = $_GET;
+            break;
+        case 'POST':
+            $data = $_POST;
+            break;
+        case 'REQUEST':
+        default:
+            $data = $_REQUEST;
+            break;
+    }
+
+    // Check if nonce field exists
+    if (!isset($data[$nonce_field])) {
+        if ($die) {
+            wp_die(__('Security check failed: Nonce not found.', FRL_PREFIX));
+        }
+        return false;
+    }
+
+    // Verify the nonce
+    $nonce_verified = wp_verify_nonce(sanitize_text_field($data[$nonce_field]), $nonce_action);
+
+    if (!$nonce_verified) {
+        if ($die) {
+            wp_die(__('Security check failed.', FRL_PREFIX));
+        }
+        return false;
+    }
+
+    // Check capability if required
+    if ($cap !== null && !frl_has_access($cap)) {
+        if ($die) {
+            wp_die(__('You do not have permission to perform this action.', FRL_PREFIX));
+        }
+        return false;
+    }
+
+    return true;
 }

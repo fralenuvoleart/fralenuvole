@@ -27,7 +27,7 @@ require_once(__DIR__ . '/components/class-display-log.php');
 require_once(__DIR__ . '/components/class-display-debug.php');
 
 // Functions with frl_post_ prefix are auto-registered in frl_autodiscover_admin_actions() in admin.php
-require_once(__DIR__ . '/helpers/functions-import-export.php');
+require_once(__DIR__ . '/helpers/functions-admin-import-export.php');
 require_once(__DIR__ . '/components/class-import-export.php');
 
 // Preload admin caches immediately

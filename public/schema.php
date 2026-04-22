@@ -6,13 +6,13 @@ if (!defined('ABSPATH')) {
 
 /**
  * Fralenuvole
- * schema.php - Code executed only on frontend pages
+ * schema.php - JSON-LD Schema markup generation for the frontend.
  */
 
 // wp_footer hook registered in public/public.php
 
 /**
- * Add Schema markup
+ * Determine and trigger the rendering of the appropriate Schema markup based on post type.
  */
 function frl_add_schema(): void
 {
@@ -35,6 +35,12 @@ function frl_add_schema(): void
     }
 }
 
+/**
+ * Generate and output the JSON-LD schema for a specific type.
+ *
+ * @param string $schema_type The type of schema to render (e.g., 'article', 'service').
+ * @return void
+ */
 function frl_render_schema($schema_type)
 {
     // Template loading with proper cache_remember
@@ -204,8 +210,9 @@ function frl_render_schema($schema_type)
 }
 
 /**
- * Get website data
- * @return array
+ * Retrieve and cache global website options used across various schema types.
+ *
+ * @return array Associative array of website business data.
  */
 function frl_get_website_options()
 {
@@ -250,8 +257,9 @@ function frl_get_website_options()
 }
 
 /**
- * Get schema templates with proper caching and error handling
- * @return array Schema templates
+ * Load and cache JSON schema templates from the plugin's schema directory.
+ *
+ * @return array Associative array of [type => template_content].
  */
 function frl_get_schema_templates()
 {

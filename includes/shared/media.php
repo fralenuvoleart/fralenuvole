@@ -4,7 +4,7 @@
  * - Custom image sizes
  * - Custom avatars
  *
- * @package FRL
+ * @package Fralenuvole
  */
 
 // Exit if accessed directly
@@ -13,7 +13,8 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Add custom image sizes
+ * Register custom image sizes based on plugin options.
+ *
  * @return void
  */
 function frl_add_image_sizes()
@@ -25,7 +26,7 @@ function frl_add_image_sizes()
     static $added = false;
     if ($added) return;
 
-    // Using remember for atomic operation
+    // Cache parsed image sizes to avoid repeated processing
     $image_sizes = frl_cache_remember('options', 'image_sizes', function () {
         $raw = frl_get_option('image_sizes_list');
         $parsed_sizes = frl_textlist_to_array($raw);
@@ -46,9 +47,10 @@ function frl_add_image_sizes()
 }
 
 /**
- * Add custom image size names to media picker
- * @param array $sizes Size names
- * @return array Modified size names
+ * Append custom image size names to the media picker selection.
+ *
+ * @param array $sizes Existing image size names.
+ * @return array Updated list of image size names.
  */
 function frl_add_image_size_names_choice($sizes)
 {
@@ -56,7 +58,7 @@ function frl_add_image_size_names_choice($sizes)
         return $sizes;
     }
 
-    // Use remember for atomic operation and prevent race conditions
+    // Cache custom size names for the media picker
     $custom_sizes = frl_cache_remember('options', 'image_size_names', function () {
         $image_sizes_list = frl_get_option('image_sizes_list');
         $image_sizes = frl_textlist_to_array($image_sizes_list);
@@ -83,7 +85,9 @@ function frl_add_image_size_names_choice($sizes)
 }
 
 /**
- * Initialize custom avatar functionality
+ * Initialize custom avatar functionality by registering profile fields and filters.
+ *
+ * @return void
  */
 function frl_enable_custom_avatar()
 {
@@ -107,10 +111,11 @@ function frl_enable_custom_avatar()
 }
 
 /**
- * Get avatar data
- * @param array $args Arguments
- * @param mixed $id_or_email User ID or email
- * @return array Modified arguments
+ * Filter avatar data to use a custom uploaded image if available.
+ *
+ * @param array $args Original avatar arguments.
+ * @param mixed $id_or_email User ID or email address.
+ * @return array Modified avatar arguments.
  */
 function frl_get_avatar_data($args, $id_or_email)
 {
@@ -122,7 +127,7 @@ function frl_get_avatar_data($args, $id_or_email)
     $user_id = (int)$id_or_email;
     $cache_key =  'avatar_uid' . $user_id;
 
-    // Cache avatar data
+    // Cache avatar URL to reduce meta and attachment lookups
     $sizes = frl_cache_remember('options', $cache_key, function () use ($user_id) {
         $attachment_id = frl_get_user_meta($user_id, 'avatar');
         if (!$attachment_id) {
@@ -147,7 +152,10 @@ function frl_get_avatar_data($args, $id_or_email)
 }
 
 /**
- * Add custom avatar upload field to user profiles
+ * Render the custom avatar upload field in the user profile page.
+ *
+ * @param WP_User $user The user object.
+ * @return void
  */
 function frl_add_avatar_upload_field($user)
 {
@@ -233,9 +241,9 @@ function frl_add_avatar_upload_field($user)
 }
 
 /**
- * Save custom avatar when user profile is updated
+ * Save the custom avatar attachment ID to user meta.
  *
- * @param int $user_id User ID
+ * @param int $user_id The ID of the user being updated.
  * @return void
  */
 function frl_save_custom_avatar($user_id)
@@ -244,14 +252,17 @@ function frl_save_custom_avatar($user_id)
         $avatar_id = absint($_POST[FRL_PREFIX . '_avatar_id']);
         frl_update_user_meta($user_id, 'avatar', $avatar_id);
 
-        // Clear the avatar cache for this user
+        // Invalidate avatar cache after update
         $cache_key =  'avatar_uid' . $user_id;
         frl_cache_clear('options', $cache_key);
     }
 }
 
 /**
- * Enqueue media scripts for avatar uploader
+ * Enqueue WordPress media scripts for the avatar uploader on profile pages.
+ *
+ * @param string $hook The current admin page hook.
+ * @return void
  */
 function frl_enqueue_avatar_scripts($hook)
 {
@@ -265,8 +276,11 @@ function frl_enqueue_avatar_scripts($hook)
 // ============================================================================
 
 /**
- * Register native Gutenberg block for FRL Icon
- * Block: frl/icon — server-rendered; editor script queries frl/v1/icons
+ * Register the FRL Icon Gutenberg block.
+ *
+ * The block is server-rendered and uses a custom editor script to fetch icons via REST API.
+ *
+ * @return void
  */
 function frl_register_icon_block()
 {
@@ -314,7 +328,12 @@ function frl_register_icon_block()
 }
 
 /**
- * Server render for FRL Icon block
+ * Render callback for the FRL Icon block.
+ *
+ * @param array $attributes Block attributes (icon, mode, title).
+ * @param string $content Block content.
+ * @param array|null $block The block instance.
+ * @return string Rendered HTML or empty string if invalid.
  */
 function frl_render_icon_block($attributes, $content, $block = null)
 {

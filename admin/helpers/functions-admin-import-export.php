@@ -1,7 +1,7 @@
 <?php
 /**
  * Fralenuvole
- * functions-import-export.php - Import/export handlers
+ * functions-admin-import-export.php - Import/export handlers
  */
 
 // Exit if accessed directly
@@ -514,4 +514,41 @@ function frl_import_translation_strings($json)
     }
 
     return $results;
+}
+
+/**
+ * Prepare plugin settings for export.
+ *
+ * Prefixes keys and cleans up whitespace in string values to ensure
+ * compatibility with the import process.
+ *
+ * @param array $settings Raw settings array.
+ * @return array Formatted settings ready for JSON export.
+ */
+function frl_prepare_settings_for_export(array $settings): array
+{
+    $export = [];
+    foreach ($settings as $key => $value) {
+        if (is_string($value)) {
+            // Convert newlines to \n and remove extra whitespace
+            $value = str_replace(["\r\n", "\r"], "\n", $value);
+            $lines = explode("\n", $value);
+            $lines = array_map('trim', $lines);
+            $value = implode("\n", array_filter($lines));
+        }
+        $export[frl_prefix($key)] = $value;
+    }
+    return $export;
+}
+
+/**
+ * Verifies a nonce with the plugin's prefix.
+ *
+ * @param string $nonce  The nonce value to verify.
+ * @param string $action The action name.
+ * @return bool|int False on failure, 1 if generated 0-12 hours ago, 2 if 12-24 hours ago.
+ */
+function frl_verify_nonce($nonce, $action)
+{
+    return wp_verify_nonce($nonce, frl_prefix($action));
 }

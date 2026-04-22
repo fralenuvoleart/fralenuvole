@@ -1,10 +1,11 @@
 <?php
 /**
- * Lifecycle callbacks and utilities for the Fralenuvole plugin.
+ * Plugin lifecycle callbacks and utilities.
  *
- * This file is loaded by the main plugin file immediately after the bootstrap so its
- * functions are available when WordPress registers the activation,
- * deactivation and uninstall hooks.
+ * Handles activation, deactivation, uninstallation, and automatic backups
+ * during version upgrades.
+ *
+ * @package Fralenuvole
  */
 
 // Exit if accessed directly.
@@ -12,110 +13,89 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Register the deferred flush hook for rewrite rules.
-add_action('frl_execute_rewrite_flush',
-    'frl_execute_rewrite_flush',
-    10,
-    0);
-
-// Register the checker for the safe admin flush.
-add_action('admin_init',
-    'frl_execute_scheduled_admin_flush',
-    99,
-    0);
-
-// Register automatic backup on version change.
-add_action('admin_init',
-    'frl_auto_backup_on_upgrade',
-    5,
-    0);
+// Register rewrite flush and admin maintenance hooks
+add_action('frl_execute_rewrite_flush', 'frl_execute_rewrite_flush', 10, 0);
+add_action('admin_init', 'frl_execute_scheduled_admin_flush', 99, 0);
+add_action('admin_init', 'frl_auto_backup_on_upgrade', 5, 0);
 
 /**
- * Plugin activation callback.
+ * Handles plugin activation.
+ *
+ * Syncs MU-plugins, initializes translation version, flushes rewrite rules,
+ * and stores the current plugin version.
+ *
+ * @return void
  */
 function frl_activate_plugin(): void
 {
-    // Ensure MU-plugins are in sync.
     if (function_exists('frl_mu_plugins_sync')) {
         frl_mu_plugins_sync();
     }
 
-    // Guarantee the translation version option exists.
     if (function_exists('frl_update_option')) {
         frl_update_option('translation_version', 1);
     }
 
-    // Force a rewrite-rule refresh and drop light cache.
     frl_flush_force_rewrite_rules();
     if (function_exists('frl_cache_clear')) {
         frl_cache_clear('light');
     }
 
-    // Store current version for upgrade detection.
     if (function_exists('frl_update_option')) {
         frl_update_option('plugin_version', FRL_VERSION);
     }
 }
 
 /**
- * Automatic backup of plugin settings on version change.
- * Keeps only the last 5 backups.
+ * Automatically backs up plugin settings when a version upgrade is detected.
+ *
+ * Maintains a rolling history of the last 5 backups in the plugin's backup directory.
+ *
+ * @return void
  */
 function frl_auto_backup_on_upgrade(): void
 {
-    // Only run for logged-in users with plugin admin access.
     if (!function_exists('frl_has_access') || !frl_has_access()) {
         return;
     }
 
     $stored_version = frl_get_option('plugin_version') ?: '0.0.0';
 
-    // If version hasn't changed, nothing to do.
     if (version_compare($stored_version, FRL_VERSION, '>=')) {
         return;
     }
 
-    // Define backups directory inside plugin folder.
     $backups_dir = FRL_DIR_PATH . 'backups';
 
-    // Create backups directory if it doesn't exist.
     if (!is_dir($backups_dir)) {
         wp_mkdir_p($backups_dir);
-        // Protect from direct HTTP access.
         file_put_contents($backups_dir . '/.htaccess', "Order deny,allow\nDeny from all\n");
         file_put_contents($backups_dir . '/index.php', '<?php // Silence is golden.');
     }
 
-    // Only proceed if directory is writable.
     if (!is_writable($backups_dir)) {
         return;
     }
 
-    // Get all plugin options and prepare for export (adds prefixes, cleans whitespace).
-    // Requires helper function - do not backup if unavailable (backup would be incompatible with import).
     if (!function_exists('frl_get_plugin_options_db') || !function_exists('frl_prepare_settings_for_export')) {
         return;
     }
 
     $settings = frl_prepare_settings_for_export(frl_get_plugin_options_db());
 
-    // Generate backup filename: domain-frl-settings-YYYYMMDD-His.json
     $domain = sanitize_file_name(parse_url(get_site_url(), PHP_URL_HOST));
     $filename = $domain . '-frl-settings-' . date('Ymd-His') . '.json';
     $filepath = $backups_dir . '/' . $filename;
 
-    // Write backup file.
     $json = json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     file_put_contents($filepath, $json);
 
-    // Clean up old backups - keep only last 5.
+    // Maintain only the 5 most recent backups
     $backups = glob($backups_dir . '/*-frl-settings-*.json');
     if (is_array($backups) && count($backups) > 5) {
-        // Sort by modification time, oldest first.
         usort($backups, function ($a, $b) {
             return filemtime($a) - filemtime($b);
         });
-        // Delete oldest files, keeping 5 most recent.
         $to_delete = array_slice($backups, 0, count($backups) - 5);
         foreach ($to_delete as $old_file) {
             if (is_file($old_file)) {
@@ -124,16 +104,16 @@ function frl_auto_backup_on_upgrade(): void
         }
     }
 
-    // Update stored version to prevent repeated backups.
     frl_update_option('plugin_version', FRL_VERSION);
-
-    // Schedule a rules flush so routing is correct after the upgrade without
-    // requiring the user to manually press "Save Permalinks".
     frl_schedule_admin_rewrite_flush();
 }
 
 /**
- * Plugin deactivation callback.
+ * Handles plugin deactivation.
+ *
+ * Clears light cache, flushes rewrite rules, and removes scheduled cleanup hooks.
+ *
+ * @return void
  */
 function frl_deactivate_plugin(): void
 {
@@ -146,7 +126,11 @@ function frl_deactivate_plugin(): void
 }
 
 /**
- * Plugin uninstall callback.
+ * Handles plugin uninstallation.
+ *
+ * Deletes plugin data, removes MU-plugins, flushes rewrite rules, and clears scheduled hooks.
+ *
+ * @return void
  */
 function frl_uninstall_plugin(): void
 {
@@ -163,24 +147,22 @@ function frl_uninstall_plugin(): void
 }
 
 /**
- * Flush rewrite rules reliably.
+ * Ensures rewrite rules are flushed reliably.
  *
- * – If called before `init`, schedule a single cron event so the flush happens
- *   after all CPTs and custom rules are registered (mirrors WP Permalinks UI).
- * – Otherwise perform an immediate hard flush.
+ * Schedules a cron event if called before 'init', defers to priority 200 if called
+ * during 'init', or executes immediately otherwise.
+ *
+ * @return void
  */
 function frl_flush_force_rewrite_rules(): void
 {
-    // 1. Called before init: schedule a single cron event (unchanged behaviour)
+    // Schedule cron event if called before init
     if (!did_action('init')) {
         frl_schedule_rewrite_flush();
         return;
     }
 
-    /* 2. Called during the init hook before custom rewrite rules are registered.
-       Features register their add_rewrite_rule() calls at init priority 115–190+,
-       so we defer the flush to priority 200 to guarantee every rule is present
-       in $wp_rewrite before flush_rewrite_rules() reads it. */
+    // Defer flush to priority 200 if called during init to ensure all rules are registered
     if (doing_action('init') && current_filter() === 'init') {
         static $deferred_once = false;
         if (!$deferred_once) {
@@ -190,16 +172,13 @@ function frl_flush_force_rewrite_rules(): void
         return;
     }
 
-    // 3. Safe to flush immediately (already after init or in cron context)
     frl_execute_rewrite_flush();
 }
 
 /**
- * Schedule a single cron event to flush rewrite rules after 15 seconds.
+ * Schedules a single cron event to flush rewrite rules after 15 seconds.
  *
- * Deduplication via wp_next_scheduled; this call is a no-op if already pending.
- * Cascade prevention is the responsibility of the thirdparty inbound handler,
- * which applies its own cooldown. Other callers are never rate-limited.
+ * @return void
  */
 function frl_schedule_rewrite_flush(): void
 {
@@ -209,34 +188,25 @@ function frl_schedule_rewrite_flush(): void
 }
 
 /**
- * Execute a rewrite rules flush.
+ * Executes the rewrite rules flush sequence.
  *
- * Routing-only flush: clears 'permalinks' and 'rewriter' caches without touching
- * 'options', avoiding the alloptions race condition under concurrent requests.
- * Passes is_admin() as $hard so admin flushes rewrite .htaccess; cron does not.
+ * Purges third-party caches, clears internal permalink/rewriter caches,
+ * and rebuilds WordPress rewrite rules.
  *
- * IMPORTANT: Notify third-party cache plugins (e.g., LiteSpeed) BEFORE rebuilding
- * rules. This matches the successful flow when LiteSpeed "Purge All" is clicked first,
- * which triggers Fralenuvole's inbound handler that clears caches before rules rebuild.
- * Reversing the order ensures rewrite_rules are fresh and not overwritten by the
- * third-party purge that would otherwise corrupt the newly-written rules.
+ * @return void
  */
 function frl_execute_rewrite_flush(): void
 {
-    // Step 1: Notify third-party cache plugins to purge their caches FIRST.
-    // This ensures their purge happens before we rebuild rules, preventing
-    // the race condition where LiteSpeed overwrites fresh rewrite_rules in DB.
+    // Purge third-party caches first to prevent race conditions during rebuild
     if (function_exists('frl_thirdparty_maybe_notify')) {
         frl_thirdparty_maybe_notify('rewrite_flush');
-
     }
 
-    // Step 2: Clear Fralenuvole internal caches to ensure fresh data on rebuild.
-    // This mirrors the inbound handler flow: clear caches BEFORE rebuild.
+    // Clear internal caches
     frl_cache_clear('permalinks');
     frl_cache_clear('rewriter');
 
-    // Step 3: Rebuild WordPress rewrite rules with fresh exclusion patterns.
+    // Rebuild rewrite rules
     if (class_exists('Frl_Rewriter')) {
         Frl_Rewriter::flush_rules(is_admin());
     } else {
@@ -245,18 +215,19 @@ function frl_execute_rewrite_flush(): void
 }
 
 /**
- * Sets a transient to safely trigger a rewrite flush on the next admin page load.
- * This is the recommended function to call from admin UI buttons.
+ * Schedules a rewrite flush for the next admin page load using a transient.
+ *
+ * @return void
  */
 function frl_schedule_admin_rewrite_flush(): void
 {
-    // Use a transient (plugin helper) to decouple the flush from any redirects.
-    // TTL gives a safety window; it does NOT delay execution (runs on next admin_init).
     frl_set_transient('rewrite_flush_scheduled', true, 60);
 }
 
 /**
- * Checks for the flush transient on admin_init and executes the flush if needed.
+ * Checks for and executes a scheduled admin rewrite flush.
+ *
+ * @return void
  */
 function frl_execute_scheduled_admin_flush(): void
 {

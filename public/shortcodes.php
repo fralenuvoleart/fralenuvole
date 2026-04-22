@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 
 /**
  * Fralenuvole
- * shortcodes.php - Plugin translation shortcodes and more
+ * shortcodes.php - Frontend shortcodes for translation, metadata, and utility.
  */
 
 /**
@@ -38,7 +38,7 @@ if (!defined('ABSPATH')) {
  */
 
 /**
- * Initialize all public shortcodes and related filters for frontend rendering.
+ * Register all public shortcodes and attach filters for content rendering.
  */
 function frl_shortcodes_init()
 {
@@ -95,8 +95,11 @@ function frl_shortcodes_init()
 }
 
 /**
- * [frl] - Translates enclosed content.
- * Usage: [frl]Some text to translate[/frl]
+ * [frl] - Translates the enclosed content using the translation service.
+ *
+ * @param array $atts    Shortcode attributes.
+ * @param string|null $content Content to be translated.
+ * @return string Translated content or empty string.
  */
 function frl_shortcode_translation($atts, $content = null)
 {
@@ -108,7 +111,9 @@ function frl_shortcode_translation($atts, $content = null)
 }
 
 /**
- * [frl_year] - Returns current year.
+ * [frl_year] - Returns the current four-digit year.
+ *
+ * @return string Current year.
  */
 function frl_shortcode_current_year()
 {
@@ -116,8 +121,10 @@ function frl_shortcode_current_year()
 }
 
 /**
- * [frl_readtime] - Renders the post reading time.
- * Attributes: words_per_min, prefix, postfix.
+ * [frl_readtime] - Calculates and renders the estimated reading time of the post.
+ *
+ * @param array $atts Attributes: words_per_min (int), prefix (string), postfix (string).
+ * @return string Formatted reading time HTML.
  */
 function frl_shortcode_readtime($atts)
 {
@@ -159,8 +166,11 @@ function frl_shortcode_readtime($atts)
 }
 
 /**
- * [frl_lang] - Displays content only for a specific language.
- * Usage: [frl_lang lang="en"]Hello[/frl_lang]
+ * [frl_lang] - Displays the enclosed content only if the current language matches the specified one.
+ *
+ * @param array $atts    Attributes: lang (string).
+ * @param string|null $content Content to display.
+ * @return string Rendered content or empty string.
  */
 function frl_shortcode_language($atts, $content = null)
 {
@@ -172,10 +182,10 @@ function frl_shortcode_language($atts, $content = null)
 }
 
 /**
- * [frl_langswitcher] - Renders the Polylang language switcher.
- * Honors plugin option 'langswitcher_dropdown'.
- * Attributes:
- *  - exclude: comma-separated language slugs to hide (e.g., "ru,ka")
+ * [frl_langswitcher] - Renders the Polylang language switcher as flags or a dropdown.
+ *
+ * @param array $atts Attributes: exclude (comma-separated slugs).
+ * @return string HTML for the language switcher.
  */
 function frl_shortcode_langswitcher($atts = [])
 {
@@ -317,8 +327,10 @@ function frl_shortcode_langswitcher($atts = [])
 }
 
 /**
- * [frl_featured] - Returns the featured image URL.
- * Attribute: size (default 'full').
+ * [frl_featured] - Returns the URL of the post's featured image.
+ *
+ * @param array $atts Attributes: size (string, default 'full').
+ * @return string Image URL or empty string.
  */
 function frl_shortcode_featured_image($atts)
 {
@@ -337,11 +349,10 @@ function frl_shortcode_featured_image($atts)
 }
 
 /**
- * [frl_meta] - Displays a post's custom field value.
- * Attributes:
- *  - field: meta key (required)
- *  - select: selector(s) for complex values (ACF arrays/objects); keys separated by '|'. Supports ':first'.
- *  - default: fallback string when no value is found
+ * [frl_meta] - Displays a custom field value for the current post.
+ *
+ * @param array $atts Attributes: field (required), select (selector for complex values), default (fallback).
+ * @return string Meta value or default.
  */
 function frl_shortcode_meta($atts)
 {
@@ -372,16 +383,10 @@ function frl_shortcode_meta($atts)
 }
 
 /**
- * [frl_meta_rel] - Displays relational meta values (array of post IDs).
- * Usage examples:
- *  [frl_meta_rel field="jurisdiction"]                → first title
- *  [frl_meta_rel field="jurisdiction" output="id"]   → first ID
- *  [frl_meta_rel field="jurisdiction" output="permalink"] → first permalink URL
- *  [frl_meta_rel field="jurisdiction" output="permalink" anchor="cpt"] → permalink with #current-service-slug
- *  [frl_meta_rel field="jurisdiction" output="slug"] → first related post slug
- *  [frl_meta_rel field="jurisdiction" index="all" sep=" | "] → all titles joined
- *  [frl_meta_rel field="jurisdiction" id="123"] → read meta from specific post ID
- *  [frl_meta_rel field="jurisdiction" index="all" sep="span"] → wrap each value in <span>
+ * [frl_meta_rel] - Displays values from a relational meta field (array of post IDs).
+ *
+ * @param array $atts Attributes: field (required), index (0 or 'all'), output ('title'|'id'|'permalink'|'slug'), sep (separator), anchor (fragment), id (source post ID).
+ * @return string Rendered relational data.
  */
 function frl_shortcode_meta_rel($atts)
 {
@@ -502,11 +507,11 @@ function frl_shortcode_meta_rel($atts)
 }
 
 /**
- * [frl_user_meta] - Displays a user's metadata.
- * Attributes:
- *  - field: meta key (default 'display_name')
- *  - select: selector(s) for complex values (arrays/objects), keys separated by '|'. Supports ':first'.
- *  - default: fallback string when no value is found
+ * [frl_user_meta] - Displays metadata for the post author.
+ *
+ * @param array $atts    Attributes: field (meta key), select (selector), default (fallback).
+ * @param string|null $content Optional field name provided as content.
+ * @return string User meta value.
  */
 function frl_shortcode_user_meta($atts, $content = null)
 {
@@ -530,8 +535,10 @@ function frl_shortcode_user_meta($atts, $content = null)
 }
 
 /**
- * [frl_excerpt] – Displays the excerpt of a post.
- * Attributes: id (optional; falls back to current post).
+ * [frl_excerpt] - Displays the excerpt of a specified or current post.
+ *
+ * @param array $atts Attributes: id (post ID).
+ * @return string Post excerpt.
  */
 function frl_shortcode_excerpt($atts)
 {
@@ -558,17 +565,11 @@ function frl_shortcode_excerpt($atts)
 }
 
 /**
- * [frl_permalink] - Displays the permalink for a slug, translated for the current language.
- * Usage:
- *   [frl_permalink]about-us[/frl_permalink]
- *   [frl_permalink]contact#form[/frl_permalink]
- *   [frl_permalink id="about-us"]
- *   [frl_permalink id="contact" anchor="form"]
- *   [frl_permalink] / [frl_permalink anchor="form"] → current post (optional anchor)
+ * [frl_permalink] - Returns a translated permalink for a given slug or post ID.
  *
- * Attributes:
- *   - id: slug or numeric post ID
- *   - anchor: optional anchor fragment (if not already present)
+ * @param array $atts    Attributes: id (slug or ID), anchor (fragment).
+ * @param string|null $content Optional slug provided as content.
+ * @return string Translated URL.
  */
 function frl_shortcode_permalink($atts, $content = null)
 {
@@ -633,13 +634,10 @@ function frl_shortcode_permalink($atts, $content = null)
 }
 
 /**
- * [frl_slug] - Returns a translated slug.
- * Usage:
- *   [frl_slug id="slug|123"] → by slug or post ID
- *   [frl_slug]                → current post slug
- * Notes:
- *   - In default language, the provided slug is returned as-is (escaped).
- *   - In other languages, resolution uses the translated permalink path.
+ * [frl_slug] - Returns the translated slug of a post.
+ *
+ * @param array $atts Attributes: id (slug or post ID).
+ * @return string Translated slug.
  */
 function frl_shortcode_slug($atts)
 {
@@ -737,7 +735,11 @@ function frl_shortcode_slug($atts)
 }
 
 /**
- * [frl_category_link] - Displays the permalink for a category by slug or ID.
+ * [frl_category_link] - Returns the translated permalink for a category.
+ *
+ * @param array $atts    Shortcode attributes.
+ * @param string|null $content Category slug or ID.
+ * @return string Category URL.
  */
 function frl_shortcode_category_link($atts, $content = null)
 {
@@ -774,9 +776,10 @@ function frl_shortcode_category_link($atts, $content = null)
 }
 
 /**
- * [frl_breadcrumbs] – Renders a breadcrumb trail.
- * Works with hierarchical CPTs, posts and taxonomy terms.
- * Attributes: separator (default ' / '), class, home (1/0), current (1/0).
+ * [frl_breadcrumbs] - Renders a breadcrumb trail for the current page.
+ *
+ * @param array $atts Attributes: separator, class, home (bool), current (bool).
+ * @return string Breadcrumbs HTML.
  */
 function frl_shortcode_breadcrumbs($atts)
 {
@@ -878,7 +881,10 @@ function frl_shortcode_breadcrumbs($atts)
 }
 
 /**
- * Renders shortcodes in SEO excerpt (filter helper).
+ * Helper to process shortcodes within an SEO excerpt.
+ *
+ * @param string $description The excerpt text.
+ * @return string Processed text.
  */
 function frl_shortcode_apply_excerpt($description)
 {
@@ -886,7 +892,11 @@ function frl_shortcode_apply_excerpt($description)
 }
 
 /**
- * Handles rendering blocks: applies translation and then shortcodes.
+ * Processes block content by applying translation and then evaluating shortcodes.
+ *
+ * @param string $block_content The raw block content.
+ * @param mixed  $block         The block object.
+ * @return string Processed content.
  */
 function frl_shortcode_render_block_translation($block_content, $block)
 {
@@ -895,7 +905,11 @@ function frl_shortcode_render_block_translation($block_content, $block)
 }
 
 /**
- * Appends an anchor to a URL.
+ * Appends a sanitized anchor fragment to a URL if not already present.
+ *
+ * @param string $url    The base URL.
+ * @param string $anchor The anchor text.
+ * @return string URL with anchor.
  */
 function frl_sc_append_anchor(string $url, string $anchor): string
 {
@@ -903,4 +917,19 @@ function frl_sc_append_anchor(string $url, string $anchor): string
         return $url;
     }
     return $url . '#' . sanitize_title($anchor);
+}
+
+/**
+ * Generates a standardized cache key for shortcode results.
+ *
+ * @param string $key  The base identifier.
+ * @param string $type The key type (e.g., 'slug').
+ * @return string Formatted cache key.
+ */
+function frl_build_cache_key(string $key, string $type = 'slug'): string
+{
+    if ($type === 'slug') {
+        return 'slug_' . md5($key);
+    }
+    return $type . '_' . sanitize_key($key);
 }

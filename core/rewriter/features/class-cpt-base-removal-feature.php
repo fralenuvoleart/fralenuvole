@@ -3,7 +3,7 @@
 /**
  * CPT Base Removal Feature
  *
- * @package FRL
+ * @package Fralenuvole
  * @since 3.0.0
  */
 

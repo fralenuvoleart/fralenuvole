@@ -2,7 +2,7 @@
 
 /**
  * Environment Manager Class
- * @package FRL
+ * @package Fralenuvole
  */
 
 if (!defined('ABSPATH')) {

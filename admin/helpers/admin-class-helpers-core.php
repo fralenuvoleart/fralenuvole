@@ -2,7 +2,7 @@
 
 /**
  * Core Admin Class helper functions
- * @package FRL
+ * @package Fralenuvole
  */
 
 if (!defined('ABSPATH')) {

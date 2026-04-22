@@ -3,7 +3,7 @@
 /**
  * Rewriter Coordinator - Manages all independent rewriter features
  *
- * @package FRL
+ * @package Fralenuvole
  * @since 3.0.0
  */
 
