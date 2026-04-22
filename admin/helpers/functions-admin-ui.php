@@ -79,7 +79,7 @@ function frl_render_action_button(
     $button_class .=  $class ?? 'button-small';
 
     $label = empty($label) ? ucwords(str_replace('_', ' ', $action)) : $label;
-    $url = empty($url) ? FRL_PLUGIN_URL : $url;
+    $url = empty($url) ? FRL_PLUGIN_ADMIN_URL : $url;
 
     // Build query args
     $query_args = [

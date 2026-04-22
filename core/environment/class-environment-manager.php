@@ -9,14 +9,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Host normalization utilities for environment comparisons
-require_once __DIR__ . '/class-environment-utils.php';
-require_once __DIR__ . '/class-environment-config.php';
-require_once __DIR__ . '/class-environment-state.php';
-require_once __DIR__ . '/class-environment-monitor.php';
-require_once __DIR__ . '/class-environment-applier.php';
-require_once __DIR__ . '/class-environment-plugin-manager.php';
-
 class Frl_Environment_Manager
 {
     use Frl_Environment_Host_Normalizer;
@@ -266,7 +258,7 @@ class Frl_Environment_Manager
                 // This helps confirm the migration visually.
                 if (frl_has_access()) {
                      nocache_headers();
-                     frl_safe_redirect(FRL_PLUGIN_URL);
+                     frl_safe_redirect(FRL_PLUGIN_ADMIN_URL);
                 }
             }
         } else {

@@ -154,7 +154,7 @@ function frl_admin_bar_add_menu_primary($data)
     $data['menu_primary']['parent'] = [
         'id'     => $parent_id,
         'title'  => '<span class="' . FRL_PREFIX . '-plugin-logo">' . frl_name('Plugin') . '</span>',
-        'href'   => FRL_PLUGIN_URL,
+        'href'   => FRL_PLUGIN_ADMIN_URL,
         'meta'   => [
             'class' => $parent_class,
             'title' => $alt_title
@@ -193,7 +193,7 @@ function frl_admin_bar_add_menu_primary($data)
         // Debug log entry count
         $data['menu_primary']['debug_log'] = [
             'id' => FRL_PREFIX . '-menu-child-debug-log',
-            'href' => FRL_PLUGIN_URL . '#tabs-developer',
+            'href' => FRL_PLUGIN_ADMIN_URL . '#tabs-developer',
             'parent' => $parent_id,
             'meta' => ['class' => FRL_PREFIX . '-ab-debug-log']
         ];

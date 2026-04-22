@@ -2,7 +2,7 @@
 
 /**
  * Plugin Name: Fralenuvole
- * Description:Performance-centric framework for WP admins and devs. Features speed and website optimizations, multi-layer caching, advanced URL rewriting (CPT/Category), automatic multi-environment config and a comprehensive backend admin suite.
+ * Description: Performance-centric framework for WP admins and devs. Features speed and website optimizations, multi-layer caching, advanced URL rewriting (CPT/Category), automatic multi-environment config and a comprehensive backend admin suite.
  * Author: Francesco Castronovo
  * Author URI: https://fralenuvole.art
  * Plugin URI: https://fralenuvole.art
@@ -19,11 +19,13 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Define plugin version before loading bootstrap
-const FRL_VERSION = '5.5.0';
-
 // Load required core files and constants
 require_once __DIR__ . '/includes/bootstrap.php';
+
+// Load core infrastructure
+
+// Load lifecycle hooks after bootstrap
+require_once FRL_DIR_PATH . 'includes/lifecycle.php';
 
 // FRL_MODE=disable: Stop loading the plugin entirely
 if (defined('FRL_MODE') && FRL_MODE === 'disable') {
@@ -39,10 +41,7 @@ add_action('plugins_loaded',
     'frl_plugins_loaded',
     5,
     0);
-add_action('init',
-    'frl_environment_enforce_settings',
-    10,
-    0);
+
 
 // Security headers for all requests
 add_action('send_headers', function () {
@@ -70,9 +69,6 @@ function frl_plugins_loaded()
         return;
     }
 
-    // Initialize the Environment Manager
-    frl_environment_init();
-
     // Load public components strictly for frontend requests
     if (frl_is_valid_frontend_page_request()) {
         frl_load_public_components();
@@ -80,7 +76,6 @@ function frl_plugins_loaded()
 
     // Load modules file and apply filters to FRL_DEFAULT_FIELDS
     frl_modules_init();
-
 }
 
 /**
@@ -88,19 +83,26 @@ function frl_plugins_loaded()
  */
 function frl_load_core_components()
 {
-    // Load required unconditional files first
-    require_once FRL_DIR_PATH . 'core/cache/cache-cleanup.php';
+    // Load core files first (cache-manager already loadd in bootstrap)
+    require_once FRL_DIR_PATH . 'core/cache/cache-cleanup.php';   
+    require_once FRL_DIR_PATH . 'core/environment/environment-manager.php';
+    require_once FRL_DIR_PATH . 'core/translator/translator.php';
+    require_once FRL_DIR_PATH . 'core/rewriter/class-rewriter.php';
+    require_once FRL_DIR_PATH . 'core/themekit/themekit.php';
+
+    // Load always-active features
     require_once FRL_DIR_PATH . 'includes/main.php';
     require_once FRL_DIR_PATH . 'public/shortcodes.php';
 
-    require_once FRL_DIR_PATH . 'core/rewriter/class-rewriter.php';
-    require_once FRL_DIR_PATH . 'core/translator/field-translator.php';
-    require_once FRL_DIR_PATH . 'core/themekit/themekit.php';
-
     // Explicitly initialize components
+    frl_environment_init();
     frl_translator_init();
-
     frl_rewriter_init();
+
+    add_action('init',
+        'frl_environment_enforce_settings',
+        10,
+        0);
 
     add_action('init',
         'frl_shortcodes_init',
@@ -118,11 +120,7 @@ function frl_load_core_components()
  */
 function frl_load_admin_components()
 {
-    /**
-     * Critical hooks for immediate registration:
-     * - admin_menu: for frl_custom_admin_menu() in admin.php
-     * - admin_post_frl_save_options: for frl_save_options() in admin.php
-     */
+    // Critical hooks for immediate registration: admin_menu and admin_post_frl_save_options
     require_once FRL_DIR_PATH . 'admin/admin.php';
 }
 

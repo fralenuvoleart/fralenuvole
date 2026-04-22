@@ -789,6 +789,7 @@ final class Frl_Translation_Service
         return null;
     }
 }
+
 // =================================================================
 // BCompatibility Helper Functions
 // =================================================================

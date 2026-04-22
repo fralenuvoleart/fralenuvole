@@ -100,7 +100,7 @@ function frl_display_persistent_warning($message, $settings_link_text = '')
         '<div class="notice notice-warning frl-notice"><p><strong>%s</strong><br>%s<br><a href="%s">%s</a></p></div>',
         __('Warning:'),
         wp_kses_post($message), // Ensure message is escaped HTML
-        FRL_PLUGIN_URL,
+        FRL_PLUGIN_ADMIN_URL,
         esc_html($settings_link_text)
     );
 }

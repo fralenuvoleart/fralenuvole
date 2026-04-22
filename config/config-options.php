@@ -5,6 +5,34 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+// Runtime plugin options not defined elsewhere, to remove missing options flag 
+const FRL_OPTIONS_RUNTIME = [
+	'environment_state' => [
+		'type' => 'text',
+		'default' => ''
+	],
+	'environment_ignore_plugins' => [
+		'type' => 'text',
+		'default' => ''
+	],
+	'environment_ignore_options' => [
+		'type' => 'text',
+		'default' => ''
+	],
+	'translation_version' => [
+		'type' => 'text',
+		'default' => 1
+	],
+	'translate_cpt_slugs_service' => [
+		'type' => 'textlist',
+		'default' => ''
+	],
+	'plugin_version' => [
+		'type' => 'text',
+		'default' => '0.0.0'
+	],
+];
+
 /**
  * Plugin default settings array - organized by section
  */

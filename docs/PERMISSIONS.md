@@ -39,10 +39,12 @@ if (frl_has_access('manage_options')) {
 
 SPECIAL CASES
 -------------
-FRL_MODE = migrate
-  URL: ?frlmode=migrate (temporary for this request)
-  wp-config.php: define('FRL_MODE', 'migrate') (persistent)
-Domain not in config: No automatic environment features
+FRL_MODE = disable: Disables the plugin entirely.
+FRL_MODE =  core:    Mimics 'disable_plugin' option behavior.
+FRL_MODE = nocache: Bypasses the plugin's cache system.
+FRL_MODE = migrate: Applies Environment Manager Config to current environment.
+URL: ?frlmode=migrate (temporary for this request)
+wp-config.php: define('FRL_MODE', 'migrate') (persistent)
 
 NOTE ON PLUGIN ADMIN ACCESS
 -------------

@@ -7,9 +7,6 @@
 
 if (!defined('ABSPATH')) exit;
 
-// Global queue for tracking meta keys to avoid re-entrant cache calls.
-$frl_translator_tracking_queue = [];
-
 /**
  * Registers hooks for automatic field translation.
  */

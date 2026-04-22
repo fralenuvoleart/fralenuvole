@@ -702,7 +702,7 @@ function frl_safe_redirect($redirect_url = '')
     // Determine default redirect URL
     if (empty($redirect_url)) {
         // Redirect to plugin admin for resets, otherwise referer
-        $redirect_url = ($is_plugin_action && str_contains($action, 'reset_')) ? FRL_PLUGIN_URL : $referer;
+        $redirect_url = ($is_plugin_action && str_contains($action, 'reset_')) ? FRL_PLUGIN_ADMIN_URL : $referer;
     }
 
     // Parameters to remove

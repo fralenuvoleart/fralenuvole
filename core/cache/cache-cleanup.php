@@ -22,6 +22,7 @@ add_action('wp_update_nav_menu',          'frl_clear_navigation_cache',        1
 add_action('profile_update',              'frl_clear_user_cache',              10, 1);
 add_action('updated_option',              'frl_clear_option_cache',            10, 1);
 add_action('updated_option',              'frl_clear_acf_option_icon_cache',   10, 1);
+
 function frl_register_hooks_rewrite_flush(): void
 {
     foreach (['category', 'post_tag'] as $taxonomy) {

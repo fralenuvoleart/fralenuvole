@@ -742,7 +742,7 @@ function frl_plugin_settings_link(array $links)
     static $settings_link = null;
 
     if ($settings_link === null) {
-        $settings_link = '<a href="' . esc_url(FRL_PLUGIN_URL) . '">'
+        $settings_link = '<a href="' . esc_url(FRL_PLUGIN_ADMIN_URL) . '">'
             . esc_html__('Settings', FRL_PREFIX)
             . '</a>';
     }
