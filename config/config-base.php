@@ -19,18 +19,29 @@ if (!defined('ABSPATH')) {
 const FRL_VERSION = '5.5.0';
 const FRL_PREFIX = 'frl';
 const FRL_NAME = 'fralenuvole';
-
-const FRL_DIR_PATH = dirname(__DIR__) . '/';
-const FRL_DIR_URL = plugin_dir_url(dirname(dirname(__FILE__)));
-
 const FRL_PLUGIN_FILE = FRL_NAME . '.php';
-const FRL_PLUGIN_ADMIN_URL = get_admin_url() . 'admin.php?page=' . FRL_NAME;
+
+if (!defined('FRL_DIR_PATH')) {
+	define('FRL_DIR_PATH', dirname(__DIR__) . '/');
+}
+
+if (!defined('FRL_DIR_URL')) {
+	define('FRL_DIR_URL', plugin_dir_url(dirname(dirname(__FILE__))));
+}
+
+if (!defined('FRL_PLUGIN_ADMIN_URL')) {
+	define('FRL_PLUGIN_ADMIN_URL', get_admin_url() . 'admin.php?page=' . FRL_NAME);
+}
+
+const FRL_MODULES_SECTION = 'modules';
+if (!defined('FRL_MODULES_DIR_PATH')) {
+	define('FRL_MODULES_DIR_PATH', FRL_DIR_PATH . FRL_MODULES_SECTION . '/');
+}
 
 const FRL_PLUGIN_SUPERADMIN_ID = 1;
 const FRL_PLUGIN_ACCESS = 'delete_plugins';
 
-const FRL_MODULES_SECTION = 'modules';
-const FRL_MODULES_DIR_PATH = FRL_DIR_PATH . FRL_MODULES_SECTION . '/';
+
 
 // Schema types
 const FRL_SCHEMA_TYPES = [
