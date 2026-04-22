@@ -2,7 +2,7 @@
 
 /**
  * Plugin Name: Fralenuvole
- * Description:A performance-centric framework for WP admins and devs. Features speed and website optimizations, multi-layer caching, advanced URL rewriting (CPT/Category), and automatic multi-environment config. Includes a comprehensive backend suite (log manager, permission-based menus, dashboard widgets) and context-aware plugin unloading and third-party caching integration.
+ * Description:Performance-centric framework for WP admins and devs. Features speed and website optimizations, multi-layer caching, advanced URL rewriting (CPT/Category), and automatic multi-environment config. Includes a comprehensive backend suite (log manager, permission-based menus, dashboard widgets) and context-aware plugin unloading and third-party caching integration.
  * Author: Francesco Castronovo
  * Author URI: https://fralenuvole.art
  * Plugin URI: https://fralenuvole.art
