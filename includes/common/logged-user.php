@@ -238,7 +238,7 @@ function frl_admin_bar_add_menu_primary($data)
         ),
         'clear_cache_all' => array(
             'title' => __('Clear Caches (All)', FRL_PREFIX),
-            'alt' => 'Clear all plugin caches including Heavy Groups: ' . implode(', ', array_map('ucfirst', FRL_CACHE_HEAVY_GROUPS)),
+            'alt' => 'Clear all plugin caches including: ' . implode(', ', array_map('ucfirst', FRL_CACHE_HEAVY_GROUPS)),
             'caps' => ''
         ),
     ];

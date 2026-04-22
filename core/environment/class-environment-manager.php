@@ -390,7 +390,7 @@ class Frl_Environment_Manager
         $is_public = get_option('blog_public');
         $indexing_class = $is_public ? 'indexing-on' : 'indexing-off';
         $type = $config['type'] ?? '';
-        $title = 'production' == $type ? 'www' : $type;
+        $title = 'production' == $type ? 'prod' : $type;
 
         $wp_admin_bar->add_menu([
             'id'    => FRL_PREFIX . '-server',

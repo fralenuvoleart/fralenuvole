@@ -2,7 +2,9 @@
 
 /**
  * Plugin Name: Fralenuvole
- * Description: Swiss-Army Knife for Administrators.
+ * A performance-centric framework for WP admins and devs. Features speed and website optimizations, multi-layer caching, advanced URL rewriting (CPT/Category), and automatic multi-environment config. Includes a comprehensive backend suite (log manager, permission-based menus, dashboard widgets) and an extensible module system capable of context-aware plugin unloading and third-party caching integration.
+ * 
+ * Description: Swiss-Army Knife for administrators and developers with focus on performance and multi-layer caching. Frontend: Speed optimizations, website tweaks with Schema, HTML and Scripts support, advanced URL rewriting for category base and custom post-types, multilingual block translations, automatic multi-environment configuration. Backend: Admin tools with log manager and custom error logging, permission-based adminbar and side-bar menus, dashboard widgets, Media Library enhancement and theme utilities. Extensible modules with integration for thirdparty caching plugins and on-demand unloading of plugins based on frontend/backend/permissions context.
  * Author: Francesco Castronovo
  * Author URI: https://fralenuvole.art
  * Plugin URI: https://fralenuvole.art
