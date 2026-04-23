@@ -42,7 +42,7 @@
     #widget-admin-actions {
         position: absolute;
         right: -395px;
-        top: -20px;
+        top: 0;
         z-index: 2;
         width: 330px;
         padding: 20px 15px 20px 15px;
@@ -138,7 +138,7 @@
     margin-top: 15px;
     margin-bottom: 0;
     margin-left: -65px; /* Adjust based on logo/text width */
-    margin-right: -191px;
+    margin-right: -160px;
 }
 
 /* --- Navigation Area (Left Tabs) --- */
