@@ -752,10 +752,10 @@ class Frl_Environment_Display
                         $plugin_name = frl_get_plugin_name_from_path($plugin_path);
                         $status_text = $is_installed ? 'Excluded' : '(Uninstalled)';
 
-                        // Render multi-column row: [Plugin Name, Status]
+                        // Render multi-column row: [Plugin Name, Capability]
                         $output_backend .= frl_ui_render_multi_column_row([
                             $plugin_name,
-                            $status_text
+                            $required_cap
                         ], false, 'frl-exclusion-row');
                     }
                 }
