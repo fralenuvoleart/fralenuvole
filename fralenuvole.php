@@ -2,7 +2,7 @@
 
 /**
  * Plugin Name: Fralenuvole
- * Description: Multi-environment framework for Admins and Devs, with comprehensive frontend optimizations and a backend admin suite.
+ * Description: Multi-environment framework for performance-centric Admins and Devs, with comprehensive frontend and backend toolkits.
  * Author: Francesco Castronovo
  * Author URI: https://fralenuvole.art
  * Plugin URI: https://fralenuvole.art
