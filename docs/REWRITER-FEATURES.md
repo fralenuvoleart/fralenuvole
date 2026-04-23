@@ -209,11 +209,10 @@ All of the above call `Frl_Rewriter::clear_rewriter_caches()`.
 
 ```php
 Frl_Rewriter::clear_rewriter_caches();
-// 1. frl_cache_clear('permalinks')
-// 2. frl_cache_clear('rewriter')
-// 3. frl_cache_clear('options')
-// 4. frl_delete_transient(EXCLUSION_PATTERNS_TRANSIENT)
-// 5. flush_rewrite_rules(false)
+// 1. frl_cache_clear('rewriter')
+// 2. frl_cache_clear('options')
+// 3. frl_delete_transient(EXCLUSION_PATTERNS_TRANSIENT)
+// 4. flush_rewrite_rules(false)
 ```
 
 `force_rules_refresh()` additionally calls `coordinator->invalidate_config_hash()` before delegating to `clear_rewriter_caches()`.

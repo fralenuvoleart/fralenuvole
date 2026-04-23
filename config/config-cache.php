@@ -91,6 +91,11 @@ const FRL_CACHE_DEPENDENCIES = [
         'adminui',
         'rewriter'
     ],
+     // Rewriter needs to refresh permalinks
+    'rewriter' => [
+        'permalinks'
+
+    ],
     // Translations affect metafields
     'translations' => [
         'metafields'

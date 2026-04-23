@@ -308,8 +308,7 @@ function frl_handle_action_clear_cache_hard()
  */
 function frl_handle_action_flush_rewrite_rules()
 {
-    // Schedule the flush to avoid redirect race conditions. The actual flush
-    // and cache clearing will happen on the next admin page load.
+    // Schedule the flush to avoid redirect race conditions. The actual flush and cache clearing will happen on the next admin page load.
     frl_schedule_admin_rewrite_flush();
 
     return [

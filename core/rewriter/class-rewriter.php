@@ -347,7 +347,6 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
      */
     public static function flush_rules(bool $hard = false): void
     {
-        frl_cache_clear('permalinks');
         frl_cache_clear('rewriter');
         frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
         flush_rewrite_rules($hard);
@@ -386,7 +385,6 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         // which handles wp_cache_delete('alloptions', 'options') and frl_get_option('__reset__'),
         // so alloptions clearing is already covered by the cache manager.
         frl_cache_clear('options');
-        frl_cache_clear('permalinks');
         frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
 
         flush_rewrite_rules(true);

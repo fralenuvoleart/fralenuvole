@@ -2,11 +2,11 @@
 
 /**
  * Plugin Name: Fralenuvole
- * Description: Multi-environment framework for performance-centric Admins and Devs, with comprehensive frontend and backend toolkits.
+ * Description: Comprehensive multi-environment and performance management framework with advanced backend admin suite for admins and devs.
  * Author: Francesco Castronovo
  * Author URI: https://fralenuvole.art
  * Plugin URI: https://fralenuvole.art
- * Version: 5.5.0
+ * Version: 5.5.1
  * Text Domain: fralenuvole
  * License: GPL2+
  * License URI: https://www.gnu.org/licenses/gpl-2.0.txt
@@ -19,13 +19,15 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+const FRL_VERSION = '5.5.1';
+
 // Load required core files and constants
 require_once __DIR__ . '/includes/bootstrap.php';
 
 // Load core infrastructure
 
 // Load lifecycle hooks after bootstrap
-require_once FRL_DIR_PATH . 'includes/lifecycle.php';
+require_once FRL_DIR_PATH . 'includes/plugin-lifecycle.php';
 
 // FRL_MODE=disable: Stop loading the plugin entirely
 if (defined('FRL_MODE') && FRL_MODE === 'disable') {

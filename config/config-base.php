@@ -16,7 +16,6 @@ if (!defined('ABSPATH')) {
 /**
  * Core Path & Identity Constants
  */
-const FRL_VERSION = '5.5.0';
 const FRL_PREFIX = 'frl';
 const FRL_NAME = 'fralenuvole';
 const FRL_PLUGIN_FILE = FRL_NAME . '.php';

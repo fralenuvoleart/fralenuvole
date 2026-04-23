@@ -203,7 +203,6 @@ function frl_execute_rewrite_flush(): void
     }
 
     // Clear internal caches
-    frl_cache_clear('permalinks');
     frl_cache_clear('rewriter');
 
     // Rebuild rewrite rules
