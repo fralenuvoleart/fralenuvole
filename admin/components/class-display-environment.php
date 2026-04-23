@@ -739,13 +739,12 @@ class Frl_Environment_Display
                 $flat_list = array_filter($flat_list, 'is_string');
 
                 if (!empty($flat_list)) {
-                    // Header row with columns: Plugin Name, Required Capability
+                    // Header row with columns: Unloaded in Backend, Required Capability
                     $header_columns = [
-                        'Plugin',
+                        'Unloaded in Backend',
                         'Required Capability'
                     ];
                     $output_backend = frl_ui_render_multi_column_header($header_columns, 'frl-exclusions-header');
-                    $output_backend .= frl_ui_render_table_row('Unloaded in Backend', '', true);
 
                     foreach ($flat_list as $plugin_path) {
                         $plugin_file = WP_PLUGIN_DIR . '/' . $plugin_path;
@@ -753,10 +752,10 @@ class Frl_Environment_Display
                         $plugin_name = frl_get_plugin_name_from_path($plugin_path);
                         $status_text = $is_installed ? 'Blocked' : 'Blocked (Uninstalled)';
 
-                        // Render multi-column row: [Plugin Name, Status + Capability]
+                        // Render multi-column row: [Plugin Name, Status]
                         $output_backend .= frl_ui_render_multi_column_row([
                             $plugin_name,
-                            $required_cap
+                            $status_text
                         ], false, 'frl-exclusion-row');
                     }
                 }
@@ -764,8 +763,12 @@ class Frl_Environment_Display
         }
 
         if (empty($output_backend)) {
-            $output_backend = frl_ui_render_table_row('Unloaded in Backend', '', true);
-            $output_backend .= frl_ui_render_table_row('(None configured)', '');
+            $header_columns = [
+                'Unloaded in Backend',
+                'Required Capability'
+            ];
+            $output_backend = frl_ui_render_multi_column_header($header_columns, 'frl-exclusions-header');
+            $output_backend .= frl_ui_render_multi_column_row(['(None configured)', ''], false, 'info-text');
         }
 
         $output_exclusions = $output_frontend . $output_backend;
