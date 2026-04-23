@@ -5,10 +5,7 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Fralenuvole
- * cache-cleanup.php - Cache cleanup functionality
- *
- * This file handles core cache cleanup hooks and functions.
+ * Cache cleanup hooks for posts, terms, users, options, and translations.
  */
 
 // Register term-change hooks that require a rewrite flush
@@ -33,11 +30,7 @@ function frl_register_hooks_rewrite_flush(): void
 }
 
 /**
- * Clear schema cache when post is saved
- *
- * This function is hooked to save_post (see line 23) and clears the schema
- * cache for a specific post. It handles multilingual sites by clearing the cache
- * for all translations of the post.
+ * Clear all post-related caches (schema, permalinks, meta, icons, language switcher, featured image).
  *
  * @param int $post_id Post ID
  */
@@ -101,9 +94,9 @@ function frl_clear_post_cache($post_id)
 }
 
 /**
- * Invalidate the translated cache for a specific option when it's updated.
+ * Clear translated option cache for all active languages.
  *
- * @param string $option_name The name of the option that was updated.
+ * @param string $option_name The updated option name.
  */
 function frl_clear_option_cache($option_name)
 {
@@ -138,10 +131,9 @@ function frl_clear_option_cache($option_name)
 }
 
 /**
- * Clear ACF option cache used by icon shortcodes
- * ACF stores options with keys like 'options_{field_name}'
+ * Clear icon cache when ACF options (keys starting with 'options_') are updated.
  *
- * @param string $option_name Name of the updated option
+ * @param string $option_name Name of the updated option.
  */
 function frl_clear_acf_option_icon_cache($option_name)
 {
@@ -156,9 +148,9 @@ function frl_clear_acf_option_icon_cache($option_name)
 }
 
 /**
- * Automatically clear transients with the same name as updated options
+ * Delete plugin transient matching an updated option name.
  *
- * @param string $option Name of the updated option
+ * @param string $option Name of the updated option.
  */
 function frl_clear_option_transient($option)
 {
@@ -173,7 +165,7 @@ function frl_clear_option_transient($option)
 }
 
 /**
- * Clear cache for a user when their profile is updated.
+ * Clear tracked meta cache for a user.
  *
  * @param int $user_id User ID.
  */
@@ -183,8 +175,7 @@ function frl_clear_user_cache($user_id)
 }
 
 /**
- * Increments the global block translation version and clear translation caches
- * Called when Polylang translations are saved.
+ * Invalidate translation caches when Polylang translations are saved.
  */
 function frl_clear_translation_cache()
 {
@@ -197,7 +188,9 @@ function frl_clear_translation_cache()
 }
 
 /**
- * Update navigation cache version when navigation is saved
+ * Clear navigation cache for a saved navigation post.
+ *
+ * @param int $nav_id Navigation post ID.
  */
 function frl_clear_navigation_cache($nav_id)
 {
@@ -208,12 +201,9 @@ function frl_clear_navigation_cache($nav_id)
 }
 
 /**
- * Clear permalink cache when term is saved
+ * Clear permalink and tracked meta caches when a term is saved.
  *
- * This function is hooked to edited_term (see line 24) and clears the permalink
- * cache for a specific term.
- *
- * @param int $term_id Term ID
+ * @param int $term_id Term ID.
  */
 function frl_clear_term_permalink_cache($term_id)
 {
@@ -230,10 +220,10 @@ function frl_clear_term_permalink_cache($term_id)
 }
 
 /**
- * Clears all tracked translated meta fields for a given object type and ID.
+ * Clear all tracked translated meta fields for an object.
  *
- * @param string $type The object type ('post', 'term', 'user').
- * @param int    $id   The object ID.
+ * @param string $type Object type ('post', 'term', 'user').
+ * @param int    $id   Object ID.
  */
 function frl_clear_tracked_meta_cache(string $type, int $id)
 {

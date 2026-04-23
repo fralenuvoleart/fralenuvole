@@ -1,13 +1,8 @@
 <?php
 
 /**
- * Cache Manager Class
- *
- * Handles all caching operations including runtime caching, persistent storage,
- * and cache invalidation. Supports multiple storage backends and cache groups.
- *
- * @package Fralenuvole
- * @since 1.0.0
+ * Core cache manager: runtime (LRU), persistent (object cache/transients),
+ * batch loading, dependency cascading, and deferred writes.
  */
 
 if (!defined('ABSPATH')) {
@@ -16,10 +11,7 @@ if (!defined('ABSPATH')) {
 
 class Frl_Cache_Manager
 {
-    /**
-     * Cache key prefix
-     * @var string
-     */
+    /** Cache key prefix. */
     const PREFIX = FRL_CACHE_PREFIX;
     private static $runtime_cache = [];
     private static $key_cache = [];
@@ -34,54 +26,34 @@ class Frl_Cache_Manager
 
     public static $deferred_writes = [];
 
-    /**
-     * Cache groups that should persist across requests
-     * @var array
-     */
+    /** Groups persisted across requests. */
     private static $persistent_groups = FRL_CACHE_PERSISTENT_GROUPS;
 
-    /**
-     * Default TTL values for different cache groups
-     * @var array
-     */
+    /** Default TTL per group (seconds). */
     private static $TTL = FRL_CACHE_TTL;
 
     const LOCK_TTL = FRL_CACHE_LOCK_TTL;
 
     private static $bypass_cache = null;
 
-    /**
-     * Groups that affect page rendering and need immediate browser refresh
-     */
+    /** Groups that trigger browser cache-clear headers. */
     private const BROWSER_CACHE_GROUPS = FRL_CACHE_BROWSER_GROUPS;
 
     private static $cache_dependencies = FRL_CACHE_DEPENDENCIES;
 
-    /**
-     * Tracks which groups have been cleared in the current request to avoid redundant clearing.
-     * @var array
-     */
+    /** Groups cleared this request (dedup). */
     private static $groups_cleared = [];
 
-    /**
-     * Runtime maps for O(1) group lookups
-     */
+    /** O(1) lookup maps. */
     private static $persistent_groups_map = [];
     private static $language_groups_map = [];
     private static $heavy_groups_map = [];
     private static $browser_groups_map = [];
 
-    /**
-     * Cached result for get_provider_details.
-     * @var array|null
-     */
+    /** Cached provider details. */
     private static $cached_provider_details = null;
 
-    /**
-     * Initialize static properties
-     *
-     * @return void
-     */
+    /** Initialize lookup maps and auto-preload. */
     public static function init()
     {
         // Initialize lookup maps for O(1) performance
@@ -94,12 +66,7 @@ class Frl_Cache_Manager
         self::auto_preload();
     }
 
-    /**
-     * Automatically preload cache groups based on current context
-     * Handles all logic internally: bypass checks, context detection, group selection
-     *
-     * @return bool True if preloading was attempted, false if skipped
-     */
+    /** Preload groups for current context (admin/frontend). Returns false if skipped. */
     public static function auto_preload()
     {
         // Skip preloading during AJAX requests to prevent potential issues.
@@ -118,11 +85,7 @@ class Frl_Cache_Manager
         return true;
     }
 
-    /**
-     * Check if cache should be bypassed
-     *
-     * @return bool True if cache should be bypassed
-     */
+    /** Check if caching is bypassed (disable_plugin, disable_cache, nocache/core mode). */
     private static function should_bypass()
     {
         static $should_bypass = null;
@@ -148,25 +111,13 @@ class Frl_Cache_Manager
         return $should_bypass;
     }
 
-    /**
-     * Determine if we should fall back to transients for a specific group.
-     * This applies when the object cache is not functional and the group is marked as persistent.
-     *
-     * @param string $group Cache group.
-     * @return bool True if transients should be used, false otherwise.
-     */
+    /** Whether to use transients for a persistent group when object cache is not functional. */
     private static function use_transient_fallback(string $group): bool
     {
         return !self::is_object_cache_truly_functional() && isset(self::$persistent_groups_map[$group]);
     }
 
-    /**
-     * Helper to check if a WordPress plugin is active globally (site or network).
-     * Caches plugin lists for performance within a single request.
-     *
-     * @param string $plugin_path Path to the plugin file (e.g., 'docket-cache/docket-cache.php').
-     * @return bool True if the plugin is active, false otherwise.
-     */
+    /** Check if a plugin is active site-wide or network-wide (cached per request). */
     private static function _is_plugin_globally_active($plugin_path)
     {
         static $active_plugins_list = null;
@@ -188,13 +139,7 @@ class Frl_Cache_Manager
         return false;
     }
 
-    /**
-     * Checks if a recognized, high-performance object cache is truly functional.
-     * Considers Litespeed, Docket Cache, Redis, or Memcached, their active status,
-     * and global bypass settings for this plugin.
-     *
-     * @return bool True if a recognized object cache is truly functional, false otherwise.
-     */
+    /** Check if a recognized object cache (Litespeed, Docket, Redis, Memcached) is functional. */
     public static function is_object_cache_truly_functional()
     {
         static $is_truly_functional = null;
@@ -218,23 +163,14 @@ class Frl_Cache_Manager
         return $is_truly_functional;
     }
 
-    /**
-     * Checks if the cache is effectively bypassed for the current request.
-     * Considers global plugin disable, cache disable setting, and nocache URL parameter.
-     * @return bool True if cache is bypassed, false otherwise.
-     */
+    /** Alias for should_bypass(). */
     public static function is_bypass_active()
     {
         // Simply return the result of the internal check
         return self::should_bypass();
     }
 
-    /**
-     * Determines the active object cache provider and its status.
-     * This is a core helper for identifying Litespeed, Docket, Redis, Memcached.
-     *
-     * @return array An array with 'slug', 'label', 'is_effectively_functional', and 'backend_class_override'.
-     */
+    /** Detect the active object-cache provider (slug, label, functional status). Cached via WP transient. */
     public static function get_provider_details()
     {
         if (self::$cached_provider_details !== null) {
@@ -396,11 +332,11 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Generate cache key from group and key
+     * Generate a cache key. Adds language prefix for language-specific groups.
      *
-     * @param string $group Cache group
-     * @param string|array $key Cache key
-     * @return string Generated cache key
+     * @param string $group Cache group.
+     * @param string|array $key Cache key.
+     * @return string Generated cache key.
      */
     private static function generate_key($group, $key)
     {
@@ -430,18 +366,11 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Set item in runtime cache with LRU tracking
+     * Store a value in runtime cache with LRU tracking and group indexing.
      *
-     * @param string $cache_key Cache key
-     * @param mixed $value Value to cache
-     * @return void
-     */
-    /**
-     * Store a value in runtime cache with LRU tracking and group indexing
-     *
-     * @param string $cache_key The generated cache key
-     * @param mixed $value The value to store
-     * @param string|null $group The cache group (optional, extracted from key if null)
+     * @param string $cache_key The generated cache key.
+     * @param mixed $value The value to store.
+     * @param string|null $group The cache group (extracted from key if null).
      * @return void
      */
     private static function set_runtime($cache_key, $value, $group = null)
@@ -473,10 +402,10 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Remove an item from runtime cache and all its indices
+     * Remove an item from runtime cache and all its indices.
      *
-     * @param string $cache_key The generated cache key
-     * @param string|null $group The cache group (optional, extracted from key if null)
+     * @param string $cache_key The generated cache key.
+     * @param string|null $group The cache group (extracted from key if null).
      * @return void
      */
     private static function remove_runtime_item($cache_key, $group = null)
@@ -501,10 +430,10 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Get item from runtime cache
+     * Get an item from runtime cache.
      *
-     * @param string $cache_key Cache key
-     * @return mixed|null Cached value or null if not found
+     * @param string $cache_key Cache key.
+     * @return mixed|null Cached value or null if not found.
      */
     private static function get_runtime($cache_key)
     {
@@ -519,13 +448,13 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Set a value in cache
+     * Set a value in cache.
      *
-     * @param string $group Cache group
-     * @param string|array $key Cache key
-     * @param mixed $value Value to cache
-     * @param int|null $ttl Time to live in seconds
-     * @return bool True on success
+     * @param string $group Cache group.
+     * @param string|array $key Cache key.
+     * @param mixed $value Value to cache.
+     * @param int|null $ttl Time to live in seconds.
+     * @return bool True on success.
      */
     public static function set($group, $key, $value, $ttl = null)
     {
@@ -577,13 +506,13 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Get a value from cache
+     * Get a value from cache.
      *
-     * @param string $group Cache group
-     * @param string|array $key Cache key
-     * @param callable|null $callback Callback to generate value if not found
-     * @param int|null $ttl Time to live in seconds
-     * @return mixed|null Cached value or null
+     * @param string $group Cache group.
+     * @param string|array $key Cache key.
+     * @param callable|null $callback Callback to generate value if not found.
+     * @param int|null $ttl Time to live in seconds.
+     * @return mixed|null Cached value or null.
      */
     public static function get($group, $key, $callback = null, $ttl = null)
     {
@@ -652,13 +581,13 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Remember a value in cache with callback generation
+     * Remember a value in cache with callback generation and locking.
      *
-     * @param string $group Cache group
-     * @param string|array $key Cache key
-     * @param callable $callback Callback to generate value if not found
-     * @param int|null $ttl Time to live in seconds
-     * @return mixed|null Cached value or generated value, or null if callback not callable
+     * @param string $group Cache group.
+     * @param string|array $key Cache key.
+     * @param callable $callback Callback to generate value if not found.
+     * @param int|null $ttl Time to live in seconds.
+     * @return mixed|null Cached value, generated value, or null if callback not callable.
      */
     public static function remember($group, $key, $callback, $ttl = null)
     {
@@ -717,10 +646,11 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Delete cached item
-     * @param string $group Cache group
-     * @param string|array $key Cache key
-     * @return array Result of deletion
+     * Delete a cached item.
+     *
+     * @param string $group Cache group.
+     * @param string|array $key Cache key.
+     * @return array Result of deletion.
      */
     public static function delete($group, $key)
     {
@@ -728,9 +658,10 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Delete transients from database
-     * @param string|null $prefix Optional prefix to target specific transients
-     * @return array Stats with number of transients deleted
+     * Delete transients from database.
+     *
+     * @param string|null $prefix Optional prefix to target specific transients.
+     * @return array Stats with number of transients deleted.
      */
     private static function delete_transients_from_db($prefix = null)
     {
@@ -801,7 +732,10 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Delete transients from database
+     * Clear transients from database.
+     *
+     * @param string|null $group The cache group, or null for all.
+     * @return array Stats with transients cleared.
      */
     public static function clear_transients($group = null)
     {
@@ -834,6 +768,11 @@ class Frl_Cache_Manager
         return $stats;
     }
 
+    /**
+     * Clear all website transients from the database.
+     *
+     * @return array Stats with transients cleared.
+     */
     public static function clear_all_website_transients()
     {
         $stats = self::delete_transients_from_db();
@@ -842,9 +781,10 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Purge entire cache group
-     * @param string $group Cache group
-     * @return array Cache clearing stats
+     * Purge an entire cache group.
+     *
+     * @param string $group Cache group.
+     * @return array Cache clearing stats.
      */
     public static function purge_group($group)
     {
@@ -852,8 +792,9 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Purge all cache
-     * @return array Cache clearing stats
+     * Purge all cache groups.
+     *
+     * @return array Cache clearing stats.
      */
     public static function purge_all()
     {
@@ -933,11 +874,12 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Get multiple values from cache
-     * @param string $group Cache group
-     * @param array|null $keys Array of keys to fetch, or null to fetch all keys in group
-     * @param bool $return_values Whether to build and return the values array (default true)
-     * @return array|null Associative array of found values, or null if $return_values is false
+     * Get multiple values from cache.
+     *
+     * @param string $group Cache group.
+     * @param array|null $keys Array of keys to fetch, or null to fetch all keys in group.
+     * @param bool $return_values Whether to build and return the values array (default true).
+     * @return array|null Associative array of found values, or null if $return_values is false.
      */
     public static function get_multi($group, $keys = null, $return_values = true)
     {
@@ -1161,12 +1103,10 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Preload multiple cache keys without returning their values
-     * This method efficiently warms the runtime cache and WordPress option cache
-     * without the overhead of building and returning the values array
+     * Preload multiple cache keys without returning their values.
      *
-     * @param string $group Cache group
-     * @param array|null $keys Array of keys to preload, or null to preload all keys in group
+     * @param string $group Cache group.
+     * @param array|null $keys Array of keys to preload, or null to preload all.
      * @return void
      */
     public static function preload_multi($group, $keys = null)
@@ -1175,7 +1115,9 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Send browser cache control headers
+     * Send browser cache control headers.
+     *
+     * @return void
      */
     public static function clear_browser_cache()
     {
@@ -1189,11 +1131,12 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Clear cache group with its dependencies
-     * @param string $group Cache group
-     * @param string|null $key Optional specific key
-     * @param bool $include_dependencies Whether to clear dependent caches too
-     * @return array Stats about what was cleared
+     * Clear cache group with its dependencies.
+     *
+     * @param string $group Cache group.
+     * @param string|null $key Optional specific key.
+     * @param bool $include_dependencies Whether to clear dependent caches too.
+     * @return array Stats about what was cleared.
      */
     public static function clear_group_with_dependencies(
         string $group,
@@ -1271,7 +1214,10 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Clear persistent storage for a group
+     * Clear persistent storage for a group.
+     *
+     * @param string $group Cache group.
+     * @return int Number of items cleared.
      */
     private static function purge_group_storage($group)
     {
@@ -1296,7 +1242,10 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Clear runtime cache for a group
+     * Clear runtime cache for a group.
+     *
+     * @param string $group Cache group.
+     * @return int Number of items cleared.
      */
     private static function purge_group_runtime($group)
     {
@@ -1321,6 +1270,12 @@ class Frl_Cache_Manager
         return $count;
     }
 
+    /**
+     * Reset WordPress and plugin option caches.
+     *
+     * @param array &$stats Stats array to update with cleared counts.
+     * @return void
+     */
     private static function reset_options_caches(&$stats)
     {
         // If already reset in this request, skip redundant operations.
@@ -1362,10 +1317,11 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Execute database operations with transaction support for atomic operations
-     * @param callable $operations Function containing database operations
-     * @param string $operation_name Name for logging purposes
-     * @return mixed Result from operations function, or false on failure
+     * Execute database operations with transaction support.
+     *
+     * @param callable $operations Function containing database operations.
+     * @param string $operation_name Name for logging purposes.
+     * @return mixed Result from operations, or false on failure.
      */
     private static function execute_with_transaction(callable $operations, $operation_name = 'cache_transaction')
     {
@@ -1401,10 +1357,11 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Safely delete multiple transients in batches with transaction support
-     * @param array $transient_keys Array of full transient option names
-     * @param int $batch_size Number of keys to process per batch
-     * @return array Stats about deletion
+     * Safely delete multiple transients in batches with transaction support.
+     *
+     * @param array $transient_keys Array of full transient option names.
+     * @param int $batch_size Number of keys to process per batch.
+     * @return array Stats about deletion.
      */
     private static function safe_batch_delete_transients(array $transient_keys, $batch_size = 100)
     {
@@ -1453,10 +1410,11 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Atomic cache group clearing with rollback support
-     * @param string $group Cache group to clear
-     * @param array $specific_keys Optional array of specific keys to clear
-     * @return array Operation statistics
+     * Atomic cache group clearing with rollback support.
+     *
+     * @param string $group Cache group to clear.
+     * @param array|null $specific_keys Optional array of specific keys to clear.
+     * @return array Operation statistics.
      */
     public static function atomic_clear_group($group, ?array $specific_keys = null)
     {
@@ -1535,12 +1493,13 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Safe database query wrapper with error handling and fallback
-     * @param string $query The SQL query to execute
-     * @param mixed $fallback Fallback value to return on error
-     * @param string $operation Description of operation for logging
-     * @param string $output Optional output type (OBJECT, ARRAY_A, ARRAY_N, OBJECT_K)
-     * @return mixed Query results or fallback on error
+     * Safe database query wrapper with error handling and fallback.
+     *
+     * @param string $query The SQL query to execute.
+     * @param mixed $fallback Fallback value to return on error.
+     * @param string $operation Description of operation for logging.
+     * @param string $output Optional output type (OBJECT, ARRAY_A, ARRAY_N, OBJECT_K).
+     * @return mixed Query results or fallback on error.
      */
     public static function safe_db_query($query, $fallback = [], $operation = 'cache_query', $output = OBJECT)
     {
@@ -1566,11 +1525,12 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Safe database variable query wrapper
-     * @param string $query The SQL query to execute
-     * @param mixed $fallback Fallback value to return on error
-     * @param string $operation Description of operation for logging
-     * @return mixed Query result or fallback on error
+     * Safe database variable query wrapper.
+     *
+     * @param string $query The SQL query to execute.
+     * @param mixed $fallback Fallback value to return on error.
+     * @param string $operation Description of operation for logging.
+     * @return mixed Query result or fallback on error.
      */
     public static function safe_db_get_var($query, $fallback = 0, $operation = 'cache_var_query')
     {
@@ -1590,8 +1550,9 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Purge cache lightly, excluding heavy groups and dependencies
-     * @return array Cache clearing stats
+     * Purge cache lightly, excluding heavy groups and dependencies.
+     *
+     * @return array Cache clearing stats.
      */
     public static function purge_light()
     {
@@ -1639,12 +1600,9 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Public accessor methods for Cache Display class
-     */
-
-    /**
-     * Get runtime cache data for display purposes
-     * @return array Runtime cache data
+     * Get runtime cache data for display purposes.
+     *
+     * @return array Runtime cache data.
      */
     public static function get_runtime_cache_data()
     {
@@ -1666,8 +1624,9 @@ class Frl_Cache_Manager
     }
 
     /**
-     * Get cache configuration for display purposes
-     * @return array Cache configuration
+     * Get cache configuration for display purposes.
+     *
+     * @return array Cache configuration.
      */
     public static function get_cache_config()
     {
@@ -1682,12 +1641,10 @@ class Frl_Cache_Manager
 
     /**
      * Reset PHP OPcache if available and enabled.
-     * Separated from hard_cache_reset for safety on shared hosting environments.
      *
      * WARNING: On shared hosting, this may affect other sites on the same server.
-     * Use with caution or disable entirely on multi-tenant environments.
      *
-     * @return string Status of the OPcache reset operation
+     * @return string Status of the OPcache reset operation.
      */
     public static function opcache_reset()
     {
@@ -1705,8 +1662,6 @@ class Frl_Cache_Manager
 
     /**
      * Perform the most comprehensive cache reset possible by this plugin.
-     * This includes internal plugin caches, global WordPress object cache,
-     * all website transients, PHP OPcache (if available), and browser cache.
      *
      * @return array Statistics about the cache clearing operations performed.
      */
