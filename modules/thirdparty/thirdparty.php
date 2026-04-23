@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 
 require_once __DIR__ . '/config-constants-thirdparty.php';
 
-add_action('wp_loaded',              'frl_thirdparty_public_scripts',    10,  1);
+add_action('wp_enqueue_scripts',     'frl_thirdparty_public_scripts',    FRL_THEMEKIT_STYLE_PRIORITY['modules'], 1);
 add_action('admin_enqueue_scripts',  'frl_thirdparty_admin_scripts',      0,   0);
 add_filter('emr/feature/background', '__return_false',                    10,  0);
 add_action('add_meta_boxes',         'frl_remove_litespeed_meta_boxes',   999, 0);

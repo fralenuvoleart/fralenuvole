@@ -11,26 +11,6 @@ if (!defined('ABSPATH')) {
  */
 
 /**
- * Themekit defined Patterns Categories
- */
-const FRL_THEMEKIT_PATTERNS_CATEGORIES = [
-    'sections',
-    'queries',
-    'ACF',
-    'editorial'
-];
-
-/**
- * Query parameters that trigger body class additions
- *
- * When these query parameters are present in the URL, a corresponding
- * body class "has-{param}" will be added (e.g. "has-frlq").
- */
-const FRL_THEMEKIT_TRACKED_QUERY_PARAMS = [
-    'frlq',   // Bible reference query param
-];
-
-/**
  * Initialize themekit
  */
 function frl_themekit_init()
@@ -63,7 +43,7 @@ function frl_themekit_init()
     if (frl_get_option('themekit_base_css')) {
         add_action('wp_enqueue_scripts',
             'frl_themekit_enqueue_base_styles',
-            9, // Right after WO global styles with priority 8
+            FRL_THEMEKIT_STYLE_PRIORITY['themekit'],
             0
         );
     }
