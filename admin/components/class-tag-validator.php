@@ -438,8 +438,14 @@ class Frl_Tag_Validator
             'count' => 0,
             'examples' => [],
             'lastmod' => '',
-            'language' => 'css'
+            'language' => 'css',
+            'file_exists' => false,
+            'file_missing_warning' => false
         ];
+
+        // Check if critical.css file exists in theme directory
+        $css_file_path = get_stylesheet_directory() . '/critical.css';
+        $result['file_exists'] = is_readable($css_file_path);
 
         // Get all style elements with the fralenuvole plugin attribute
         $elements = $this->find_plugin_elements($html, 'style');
@@ -459,6 +465,11 @@ class Frl_Tag_Validator
 
                 break; // Usually there's only one critical CSS tag
             }
+        }
+
+        // Set warning flag if file exists but tag is missing
+        if ($result['found'] === false && $result['file_exists']) {
+            $result['file_missing_warning'] = true;
         }
 
         return $result;
@@ -1189,18 +1200,37 @@ class Frl_Tag_Validator
         // Create status dot for found/not found
         $status_html = '<span class="status-dot-container">';
 
-        // Prepare the status text
+        // Prepare the status text and dot status
         $foundText = 'Found';
+        $dot_status = 'enabled';
+
         if ($data['found']) {
             // Add count for print-media-scripts
             if ($tag === 'print-media-scripts' && isset($data['count'])) {
                 $foundText .= ' (' . $data['count'] . ')';
             }
         } else {
-            $foundText = 'Not found';
+            // Handle specific tags when not found
+            if ($tag === 'print-media-scripts') {
+                // Deferred CSS: "Not configured" with warning dot
+                $foundText = 'Not configured';
+                $dot_status = 'warning';
+            } elseif ($tag === '#frl-critical-css') {
+                // Critical CSS: distinguish between file present/missing
+                if (!empty($data['file_exists']) && !empty($data['file_missing_warning'])) {
+                    // File exists but tag missing - error status
+                    $foundText = 'Tag missing';
+                    $dot_status = 'disabled';
+                } else {
+                    // File not found - warning status
+                    $foundText = 'critical.css file not present';
+                    $dot_status = 'warning';
+                }
+            } else {
+                $foundText = 'Not found';
+            }
         }
-
-        $status_html .= frl_ui_render_status_dot($data['found'] ? 'enabled' : 'disabled', $foundText, true);
+        $status_html .= frl_ui_render_status_dot($dot_status, $foundText, true);
 
         // Tag-specific status information
         if ($data['found']) {

@@ -717,7 +717,7 @@ class Frl_Environment_Display
 
         if (empty($output_frontend)) {
             $output_frontend = frl_ui_render_table_row('Unloaded in Frontend', '', true);
-            $output_frontend .= frl_ui_render_table_row('(None configured)', '');
+            $output_frontend .= frl_ui_render_table_row('(Not configured)', '');
         }
 
         // --- Process Backend (Capability-based) Exclusion List ---
@@ -768,7 +768,7 @@ class Frl_Environment_Display
                 'Required Capability'
             ];
             $output_backend = frl_ui_render_multi_column_header($header_columns, 'frl-exclusions-header');
-            $output_backend .= frl_ui_render_multi_column_row(['(None configured)', ''], false, 'info-text');
+            $output_backend .= frl_ui_render_multi_column_row(['(Not configured)', ''], false, 'info-text');
         }
 
         $output_exclusions = $output_frontend . $output_backend;
