@@ -184,7 +184,7 @@ function frl_render_admin_actions_buttons()
         '',
         ''
     );
-    
+
     $output .= frl_render_action_button(
         'flush_rewrite_rules',
         'flush_rewrite_rules button-secondary',
@@ -214,15 +214,17 @@ function frl_render_admin_actions_buttons()
     );
 
     $output .= frl_render_action_button(
-        'clear_website_transients',
-        'clear_website_transients button-secondary',
-        'Clear Website Transients'
+        'clear_plugin_transients',
+        'clear_plugin_transients button-secondary',
+        'Clear Plugin Transients',
+        'Delete all ' . frl_name() . ' plugin options from the database'
     );
 
     $output .= frl_render_action_button(
-        'clear_plugin_transients',
-        'clear_plugin_transients button-secondary',
-        'Clear Plugin Transients'
+        'clear_website_transients',
+        'clear_website_transients button-secondary',
+        'Clear Website Transients',
+        'Clear all Website Transients from the database'
     );
 
     /*
