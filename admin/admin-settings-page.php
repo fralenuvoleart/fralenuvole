@@ -15,6 +15,8 @@ require_once FRL_DIR_PATH . 'admin/helpers/admin-class-helpers-ui.php';
 
 // Load UI components
 require_once(__DIR__ . '/ui/asset-loader.php');
+require_once(__DIR__ . '/ui/class-tab-registry.php');
+require_once(__DIR__ . '/ui/class-tab-renderer.php');
 require_once(__DIR__ . '/ui/class-tab-manager.php');
 require_once(__DIR__ . '/ui/class-ui-renderer.php');
 

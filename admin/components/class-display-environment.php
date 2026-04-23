@@ -672,8 +672,8 @@ class Frl_Environment_Display
      * Get plugin exclusions status for display in dashboard.
      *
      * Displays two sections:
-     * - "Unloaded in Frontend": Plugins excluded from frontend context
-     * - "Unloaded in Backend": Plugins excluded in admin context for users without required capability
+     * - "Frontend Exclusions": Plugins excluded from frontend context
+     * - "Backend Exclusions": Plugins excluded in admin context for users without required capability
      *
      * @return string HTML table with exclusion status
      */
@@ -700,7 +700,7 @@ class Frl_Environment_Display
                 $flat_list = array_filter($flat_list, 'is_string');
 
                 if (!empty($flat_list)) {
-                    $output_frontend = frl_ui_render_table_row('Unloaded in Frontend', '', true);
+                    $output_frontend = frl_ui_render_table_row('Frontend Exclusions', '', true);
                     foreach ($flat_list as $plugin_path) {
                         $plugin_file = WP_PLUGIN_DIR . '/' . $plugin_path;
                         $is_installed = is_readable($plugin_file);
@@ -716,7 +716,7 @@ class Frl_Environment_Display
         }
 
         if (empty($output_frontend)) {
-            $output_frontend = frl_ui_render_table_row('Unloaded in Frontend', '', true);
+            $output_frontend = frl_ui_render_table_row('Frontend Exclusions', '', true);
             $output_frontend .= frl_ui_render_table_row('(Not configured)', '');
         }
 
@@ -739,9 +739,9 @@ class Frl_Environment_Display
                 $flat_list = array_filter($flat_list, 'is_string');
 
                 if (!empty($flat_list)) {
-                    // Header row with columns: Unloaded in Backend, Required Capability
+                    // Header row with columns: Backend Exclusions, Required Capability
                     $header_columns = [
-                        'Unloaded in Backend',
+                        'Backend Exclusions',
                         'Required Capability'
                     ];
                     $output_backend = frl_ui_render_multi_column_header($header_columns, 'frl-exclusions-header');
@@ -764,7 +764,7 @@ class Frl_Environment_Display
 
         if (empty($output_backend)) {
             $header_columns = [
-                'Unloaded in Backend',
+                'Backend Exclusions',
                 'Required Capability'
             ];
             $output_backend = frl_ui_render_multi_column_header($header_columns, 'frl-exclusions-header');
