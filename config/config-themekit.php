@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
  * 
  */
 const FRL_THEMEKIT_STYLE_PRIORITY = [
-    'themekit' => 11,
+    'themekit' => 10,
     'modules'  => 15,
 ];
 
