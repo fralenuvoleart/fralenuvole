@@ -41,7 +41,7 @@
 @media screen and (min-width: 1576px) {
     #widget-admin-actions {
         position: absolute;
-        right: -395px;
+        right: -390px;
         top: 0;
         z-index: 2;
         width: 330px;
