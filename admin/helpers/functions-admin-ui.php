@@ -130,12 +130,6 @@ function frl_render_clear_cache_buttons()
     }
 
     $output .= frl_render_action_button(
-        'clear_plugin_transients',
-        'clear_plugin_transients button-secondary',
-        'Clear Plugin Transients'
-    );
-
-    $output .= frl_render_action_button(
         'clear_cache_light',
         'clear_cache_light button-secondary',
         'Clear Caches (Light)',
@@ -190,13 +184,13 @@ function frl_render_admin_actions_buttons()
         '',
         ''
     );
-
+    
     $output .= frl_render_action_button(
-        'delete_orphan_options',
-        'delete_orphan_options button-secondary',
-        'Delete Orphan Options',
-        'Delete orphaned options from the database'
+        'flush_rewrite_rules',
+        'flush_rewrite_rules button-secondary',
+        'Flush Rewrite Rules'
     );
+
 
     $output .= frl_render_action_button(
         'reset_environment',
@@ -213,15 +207,22 @@ function frl_render_admin_actions_buttons()
     );
 
     $output .= frl_render_action_button(
+        'delete_orphan_options',
+        'delete_orphan_options button-secondary',
+        'Delete Orphan Options',
+        'Delete orphaned options from the database'
+    );
+
+    $output .= frl_render_action_button(
         'clear_website_transients',
         'clear_website_transients button-secondary',
         'Clear Website Transients'
     );
 
     $output .= frl_render_action_button(
-        'flush_rewrite_rules',
-        'flush_rewrite_rules button-secondary',
-        'Flush Rewrite Rules'
+        'clear_plugin_transients',
+        'clear_plugin_transients button-secondary',
+        'Clear Plugin Transients'
     );
 
     /*
