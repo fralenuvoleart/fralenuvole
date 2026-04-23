@@ -159,7 +159,7 @@ class Frl_Settings_Fields
 		Frl_Tab_Manager::render_tab_container_start($use_vertical_tabs, '', $active_tab);
 
 		// Render the header
-		echo frl_ui_render_plugin_settings_header();
+		echo Frl_UI_Renderer::render_plugin_settings_header();
 
 		$this->frl_setup_tabs($active_tab);
 
