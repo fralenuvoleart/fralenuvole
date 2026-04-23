@@ -9,7 +9,7 @@
  * Version: 5.5.1
  * Text Domain: fralenuvole
  * License: GPL2+
- * License URI: https://www.gnu.org/licenses/gpl-2.0.txt
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.txt 
  *
  * @package Fralenuvole
  */
