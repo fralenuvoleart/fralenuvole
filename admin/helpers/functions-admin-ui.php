@@ -189,7 +189,7 @@ function frl_render_admin_actions_buttons()
         'flush_rewrite_rules',
         'flush_rewrite_rules button-secondary',
         'Flush Rewrite Rules',
-        'Resets rewrite rules, plugin and thirdparty caches'
+        'Resets rewrite rules, plugin and thirdparty caches.'
     );
 
 

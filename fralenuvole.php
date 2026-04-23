@@ -86,11 +86,11 @@ function frl_plugins_loaded()
 function frl_load_core_components()
 {
     // Load core files first (cache-manager already loadd in bootstrap)
-    require_once FRL_DIR_PATH . 'core/cache/cache-cleanup.php';   
-    require_once FRL_DIR_PATH . 'core/environment/environment-manager.php';
-    require_once FRL_DIR_PATH . 'core/translator/translator.php';
-    require_once FRL_DIR_PATH . 'core/rewriter/class-rewriter.php';
-    require_once FRL_DIR_PATH . 'core/themekit/themekit.php';
+    require_once FRL_DIR_PATH . 'includes/core/cache/cache-cleanup.php';   
+    require_once FRL_DIR_PATH . 'includes/core/environment/environment-manager.php';
+    require_once FRL_DIR_PATH . 'includes/core/translator/translator.php';
+    require_once FRL_DIR_PATH . 'includes/core/rewriter/class-rewriter.php';
+    require_once FRL_DIR_PATH . 'includes/core/themekit/themekit.php';
 
     // Load always-active features
     require_once FRL_DIR_PATH . 'includes/main.php';
