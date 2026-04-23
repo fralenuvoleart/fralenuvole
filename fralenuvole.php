@@ -2,7 +2,7 @@
 
 /**
  * Plugin Name: Fralenuvole
- * Description: Performance-centric framework for WP admins and devs. Features frontend optimizations and a comprehensive backend admin suite.
+ * Description: Performance-centric framework for WP admins and devs, with comprehensive multi-environment frontend and a backend admin suite.
  * Author: Francesco Castronovo
  * Author URI: https://fralenuvole.art
  * Plugin URI: https://fralenuvole.art
