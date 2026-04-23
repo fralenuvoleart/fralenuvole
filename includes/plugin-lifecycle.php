@@ -202,13 +202,12 @@ function frl_execute_rewrite_flush(): void
         frl_thirdparty_maybe_notify('rewrite_flush');
     }
 
-    // Clear internal caches
-    frl_cache_clear('rewriter');
-
     // Rebuild rewrite rules
     if (class_exists('Frl_Rewriter')) {
         Frl_Rewriter::flush_rules(is_admin());
     } else {
+        // Compatibility, the class already does all
+        frl_cache_clear('rewriter');
         flush_rewrite_rules(is_admin());
     }
 }

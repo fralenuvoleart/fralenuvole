@@ -188,7 +188,8 @@ function frl_render_admin_actions_buttons()
     $output .= frl_render_action_button(
         'flush_rewrite_rules',
         'flush_rewrite_rules button-secondary',
-        'Flush Rewrite Rules'
+        'Flush Rewrite Rules',
+        'Resets rewrite rules and related caches'
     );
 
 
@@ -196,7 +197,7 @@ function frl_render_admin_actions_buttons()
         'reset_environment',
         'reset_environment button-secondary',
         'Reset Environment',
-        'Resets current environment to its default configuration.'
+        'Resets current environment to its default configuration'
     );
 
     $output .= frl_render_action_button(
