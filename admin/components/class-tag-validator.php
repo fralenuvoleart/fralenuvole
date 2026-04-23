@@ -1223,7 +1223,7 @@ class Frl_Tag_Validator
                     $dot_status = 'disabled';
                 } else {
                     // File not found - warning status
-                    $foundText = 'Critical CSS file not present';
+                    $foundText = 'Critical CSS not found';
                     $dot_status = 'warning';
                 }
             } else {
