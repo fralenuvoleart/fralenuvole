@@ -488,8 +488,10 @@ class Frl_Log_Manager
 			$this->set_entries_limit(intval($_POST['limit']));
 		}
 
-		if (isset($_POST['order'])) {
-			$this->set_sort_order(sanitize_text_field($_POST['order']));
+		// Validate against whitelist instead of just sanitizing
+		$allowed_orders = ['asc', 'desc'];
+		if (isset($_POST['order']) && in_array($_POST['order'], $allowed_orders, true)) {
+			$this->set_sort_order($_POST['order']);
 		}
 
 		if (isset($_POST['filter'])) {

@@ -11,7 +11,8 @@ if (!defined('ABSPATH')) {
 function frl_render_administrator_widget()
 {
     // Define link data in an array, grouped by section
-    $admin_links = [
+    // Filterable via 'frl_admin_dashboard_links' for customization
+    $admin_links = apply_filters('frl_admin_dashboard_links', [
         'Marketing' => [
             ['url' => 'https://lookerstudio.google.com/s/miZY1EoWyMo', 'text' => 'PBS Marketing Dashboard'],
             ['url' => 'https://search.google.com/search-console', 'text' => 'Google Search Console'],
@@ -26,7 +27,7 @@ function frl_render_administrator_widget()
             ['url' => 'https://my.quic.cloud/', 'text' => 'Quickcloud'],
             ['url' => 'https://app.integrately.com/my-automations', 'text' => 'Integrately'],
         ],
-    ];
+    ]);
 
     // Return only the inner content (headings and lists)
     $output = '';

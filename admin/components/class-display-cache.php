@@ -231,7 +231,8 @@ class Frl_Cache_Display
             'transient-count-row'
         );
 
-        $cache_table = frl_ui_render_table('dashboard-cache', $cache_rows);
+        // Bypass table cache since parent widget is already cached
+        $cache_table = frl_ui_render_table('dashboard-cache', $cache_rows, '', HOUR_IN_SECONDS, true);
         $main_section = '<div class="widget-section">' . $cache_table . '</div>';
 
         // --- Hidden Sections ---
@@ -271,7 +272,7 @@ class Frl_Cache_Display
         // A basic check for non-empty array can be done for robustness.
         if (!frl_is_array_not_empty($cache_info)) {
             $no_info_message = frl_ui_render_table_row(esc_html__('Cache system details are unavailable or the system returned an empty response.', 'fralenuvole'), '');
-            return frl_ui_render_table('cache-info-table', $no_info_message, 'multicolumn-table');
+            return frl_ui_render_table('cache-info-table', $no_info_message, 'multicolumn-table', HOUR_IN_SECONDS, true);
         }
 
         $table_rows = frl_ui_render_table_row('Cache System Details', '', true, 'cache-system-header-row');
@@ -304,7 +305,7 @@ class Frl_Cache_Display
             $table_rows .= frl_ui_render_table_row(esc_html($label), $formatted_value);
         }
 
-        return frl_ui_render_table('cache-info-table', $table_rows, 'multicolumn-table');
+        return frl_ui_render_table('cache-info-table', $table_rows, 'multicolumn-table', HOUR_IN_SECONDS, true);
     }
 
     /**
@@ -352,8 +353,8 @@ class Frl_Cache_Display
             );
         }
 
-        // Create the separate groups table
-        return frl_ui_render_table('cache-groups-table', $groups_table_rows, 'multicolumn-table');
+        // Bypass table cache since parent widget is already cached
+        return frl_ui_render_table('cache-groups-table', $groups_table_rows, 'multicolumn-table', HOUR_IN_SECONDS, true);
     }
 
     /**
@@ -400,8 +401,8 @@ class Frl_Cache_Display
             );
         }
 
-        // Render the complete table
-        return frl_ui_render_table('options-table', $table_rows, 'multicolumn-table');
+        // Bypass table cache since parent widget is already cached
+        return frl_ui_render_table('options-table', $table_rows, 'multicolumn-table', HOUR_IN_SECONDS, true);
     }
 
 
@@ -512,8 +513,8 @@ class Frl_Cache_Display
             }
         }
 
-        // Render the complete table
-        return frl_ui_render_table('transients-table', $table_rows, 'multicolumn-table'); // Removed widget-table
+        // Bypass table cache since parent widget is already cached
+        return frl_ui_render_table('transients-table', $table_rows, 'multicolumn-table', HOUR_IN_SECONDS, true);
     }
 
 

@@ -11,7 +11,6 @@ if (!defined('ABSPATH')) {
 
 // Load Plugin UI Class Helpers
 require_once FRL_DIR_PATH . 'admin/helpers/functions-admin-ui.php';
-require_once FRL_DIR_PATH . 'admin/helpers/admin-class-helpers-ui.php';
 
 // Load UI components
 require_once(__DIR__ . '/ui/asset-loader.php');
@@ -35,7 +34,7 @@ require_once(__DIR__ . '/components/class-import-export.php');
 frl_cache_preload_groups(['staticdata', 'adminui']);
 
 // Register dashboard tab if not already registered
-frl_tab_register_tab(
+Frl_Tab_Manager::register_tab(
     'dashboard',
     [
         'title' => 'Dashboard',
@@ -45,7 +44,7 @@ frl_tab_register_tab(
 );
 
 // Hide tabs if user is not plugin admin
-frl_tab_hide_tabs_by_capability(['developer'], frl_has_access());
+Frl_Tab_Manager::hide_tabs_by_capability(['developer'], frl_has_access());
 
 // Critical hooks for immediate registration
 add_action('frl_dashboard_content',

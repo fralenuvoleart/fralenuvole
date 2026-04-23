@@ -70,6 +70,8 @@ function frl_asset_loader_scripts(): void
         'tag-validator-js' => 'assets/js/admin-tag-validator.js',
         'log-manager-css' => 'assets/css/admin-log-manager.css',
         'log-manager-js' => 'assets/js/admin-log-manager.js',
+        'import-export-js' => 'assets/js/admin-import-export.js',
+        'menu-order-js' => 'assets/js/admin-menu-order.js',
     ];
 
     frl_enqueue_scripts(
@@ -77,7 +79,7 @@ function frl_asset_loader_scripts(): void
         'asset_loader'
     );
 
-    // Localize scripts (if needed, keep separate)
+    // Localize scripts
     wp_localize_script(
         FRL_PREFIX . '-tag-validator',
         'frlTagValidator',
@@ -94,6 +96,37 @@ function frl_asset_loader_scripts(): void
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce'   => wp_create_nonce('log_manager_nonce'),
         )
+    );
+    // Generate export URLs
+    $export_action = 'frl_post_export_settings';
+    $export_url = admin_url('admin-post.php') . '?' . http_build_query([
+        'action' => $export_action,
+        'nonce' => frl_create_nonce('export_settings_nonce')
+    ]);
+
+    $export_translations_url = admin_url('admin-post.php') . '?' . http_build_query([
+        'action' => 'frl_post_export_translations',
+        'nonce' => frl_create_nonce('export_translations_nonce')
+    ]);
+
+    wp_localize_script(
+        FRL_PREFIX . '-import-export',
+        'frlImportExport',
+        [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'exportUrl' => $export_url,
+            'translationsExportUrl' => $export_translations_url,
+            'importNonce' => frl_create_nonce('ajax_import_nonce'),
+            'translationNonce' => frl_create_nonce('ajax_translation_nonce'),
+            'strings' => [
+                'selectFile' => esc_js(__('Please select a file to import.', FRL_PREFIX)),
+                'unknownError' => esc_js(__('Unknown error', FRL_PREFIX)),
+                'importError' => esc_js(__('Error during import: ', FRL_PREFIX)),
+                'importRetry' => esc_js(__('Error during import. Please try again.', FRL_PREFIX)),
+                'translationImportError' => esc_js(__('Error during translation import: ', FRL_PREFIX)),
+                'translationRetry' => esc_js(__('Error during translation import. Please try again.', FRL_PREFIX)),
+            ],
+        ]
     );
 }
 

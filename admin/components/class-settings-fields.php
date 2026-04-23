@@ -150,13 +150,13 @@ class Frl_Settings_Fields
 	public function frl_settings_content()
 	{
 		// Get the current active tab from Tab Manager
-		$active_tab = frl_tab_get_active_tab();
+		$active_tab = Frl_Tab_Manager::get_active_tab();
 
 		// Set this to true to enable vertical tabs, false for horizontal
 		$use_vertical_tabs = true;
 
 		// Let the Tab Manager render the container start
-		frl_tab_render_tab_container_start($use_vertical_tabs, '', $active_tab);
+		Frl_Tab_Manager::render_tab_container_start($use_vertical_tabs, '', $active_tab);
 
 		// Render the header
 		echo frl_ui_render_plugin_settings_header();
@@ -179,7 +179,7 @@ class Frl_Settings_Fields
 
 				<?php
 				// Render all custom tabs from the registry - still inside the form
-				frl_tab_render_all_custom_tabs();
+				Frl_Tab_Manager::render_all_custom_tabs();
 
 				// Use the custom renderer with hooks for widget insertion
 				$this->custom_do_settings_sections(FRL_NAME);
@@ -195,7 +195,7 @@ class Frl_Settings_Fields
 		echo apply_filters(FRL_PREFIX . '_after_settings_content', '');
 
 		// Let the Tab Manager close the container
-		frl_tab_render_tab_container_end();
+		Frl_Tab_Manager::render_tab_container_end();
 	}
 
 	public function frl_setup_sections()
@@ -414,7 +414,7 @@ class Frl_Settings_Fields
 		}
 
 		// Use the Tab Manager to render tabs from sections
-		frl_tab_render_tabs_from_sections($section_keys);
+		Frl_Tab_Manager::render_tabs_from_sections($section_keys);
 
 		// Store the active tab for use elsewhere in this class if needed
 		$this->active_tab = $active_tab;
@@ -499,7 +499,7 @@ class Frl_Settings_Fields
 		$redirect_args['tab'] = $active_tab_index; // Use numeric index for redirect arg
 
 		// 3. Save active tab index for potential use after redirect
-		frl_tab_save_active_tab($active_tab_index);
+		Frl_Tab_Manager::save_active_tab($active_tab_index);
 
 		// 4. Get all potentially submitted values, sanitized
 		$submitted_values = self::_get_submitted_values();
@@ -562,7 +562,7 @@ class Frl_Settings_Fields
 			$active_tab_id = substr($active_tab_value, 5); // e.g., general
 
 			// Find the numeric index corresponding to this ID
-			$all_tabs = frl_tab_get_sorted_tabs(); // Use the public static method
+			$all_tabs = Frl_Tab_Manager::get_sorted_tabs();
 			foreach ($all_tabs as $index => $tab_data) {
 				if ($tab_data['id'] === $active_tab_id) {
 					$active_tab_index = $index;
@@ -574,7 +574,7 @@ class Frl_Settings_Fields
 			$active_tab_index = isset($_POST[$post_action]) ? intval($_POST[$post_action]) : 0;
 
 			// Find the ID corresponding to this numeric index
-			$all_tabs = frl_tab_get_sorted_tabs(); // Use the public static method
+			$all_tabs = Frl_Tab_Manager::get_sorted_tabs();
 			if (isset($all_tabs[$active_tab_index])) {
 				$active_tab_id = $all_tabs[$active_tab_index]['id'];
 				$active_tab_fragment = 'tabs-' . $active_tab_id; // Construct fragment
@@ -648,7 +648,7 @@ class Frl_Settings_Fields
 	 */
 	private static function _apply_field_validation(?string $active_tab_id, array $submitted_values): array
 	{
-		$validation_rules = $active_tab_id ? frl_tab_get_validation_rules($active_tab_id) : [];
+		$validation_rules = $active_tab_id ? Frl_Tab_Manager::get_validation_rules($active_tab_id) : [];
 		$validated_values = [];
 		$validation_errors = [];
 
