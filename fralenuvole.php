@@ -2,7 +2,7 @@
 
 /**
  * Plugin Name: Fralenuvole
- * Description: Comprehensive multi-environment and performance management framework with all-in-one backend suite for admins and devs.
+ * Description: Multi-environment and performance management framework with comprehensive backend suite for admins and devs.
  * Author: Francesco Castronovo
  * Author URI: https://fralenuvole.art
  * Plugin URI: https://fralenuvole.art
