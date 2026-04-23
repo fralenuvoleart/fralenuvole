@@ -705,7 +705,7 @@ class Frl_Environment_Display
                         $plugin_file = WP_PLUGIN_DIR . '/' . $plugin_path;
                         $is_installed = is_readable($plugin_file);
                         $is_active = in_array($plugin_path, $active_plugins_from_db);
-                        $status_text = 'Unloaded';
+                        $status_text = 'Excluded';
                         if (!$is_installed) {
                             $status_text .= ' (Uninstalled)';
                         }
@@ -750,7 +750,7 @@ class Frl_Environment_Display
                         $plugin_file = WP_PLUGIN_DIR . '/' . $plugin_path;
                         $is_installed = is_readable($plugin_file);
                         $plugin_name = frl_get_plugin_name_from_path($plugin_path);
-                        $status_text = $is_installed ? 'Unloaded' : '(Uninstalled)';
+                        $status_text = $is_installed ? 'Excluded' : '(Uninstalled)';
 
                         // Render multi-column row: [Plugin Name, Status]
                         $output_backend .= frl_ui_render_multi_column_row([
