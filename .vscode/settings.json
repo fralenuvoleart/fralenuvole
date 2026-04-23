@@ -1,0 +1,6 @@
+{
+    "phpstan.config": ".dev/phpstan.neon",
+    "intelephense.environment.includePaths": [
+        "./vendor/php-stubs/wordpress-stubs"
+    ]
+}

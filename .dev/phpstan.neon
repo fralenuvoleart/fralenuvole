@@ -3,25 +3,25 @@ parameters:
     treatPhpDocTypesAsCertain: false
     reportUnmatchedIgnoredErrors: false
     paths:
-        - . # Scans root + subdirectories recursively
+        - ../ # Scans root + subdirectories recursively
     excludePaths:
-        - vendor (?)
-        - node_modules (?)
-        - tests (?)
-        - docs (?)
-        - memory-bank (?)
-        - assets/fonts (?)
-        - assets/images (?)
-        - assets/icons (?)
+        - ../vendor (?)
+        - ../node_modules (?)
+        - ../tests (?)
+        - ../docs (?)
+        - ../memory-bank (?)
+        - ../assets/fonts (?)
+        - ../assets/images (?)
+        - ../assets/icons (?)
     bootstrapFiles:
-        - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+        - ../vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
         - phpstan-bootstrap.php
-        - includes/bootstrap.php
-        - phpstan-stubs/polylang.php
-        - phpstan-stubs/wpml.php
-        - phpstan-stubs/acf.php
-        - phpstan-stubs/wsform.php
-        - phpstan-stubs/memberpress.php
+        - ../includes/bootstrap.php
+        - stubs/polylang.php
+        - stubs/wpml.php
+        - stubs/acf.php
+        - stubs/wsform.php
+        - stubs/memberpress.php
     ignoreErrors:
         # Defensive isset checks on arrays - PHPStan incorrectly flags these
         # when it infers types from literal array definitions

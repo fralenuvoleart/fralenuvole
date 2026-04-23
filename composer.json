@@ -19,7 +19,7 @@
         "php-stubs/wordpress-stubs": "^6.9"
     },
     "scripts": {
-        "phpstan": "phpstan analyse --memory-limit=4G",
-        "phpstan:baseline": "phpstan analyse --memory-limit=4G --generate-baseline"
+        "phpstan": "XDEBUG_MODE=off php vendor/bin/phpstan analyse --memory-limit=4G --configuration .dev/phpstan.neon",
+        "phpstan:baseline": "XDEBUG_MODE=off php vendor/bin/phpstan analyse --memory-limit=4G --configuration .dev/phpstan.neon --generate-baseline"
     }
 }

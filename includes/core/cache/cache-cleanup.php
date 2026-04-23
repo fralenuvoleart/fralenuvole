@@ -20,6 +20,11 @@ add_action('profile_update',              'frl_clear_user_cache',              1
 add_action('updated_option',              'frl_clear_option_cache',            10, 1);
 add_action('updated_option',              'frl_clear_acf_option_icon_cache',   10, 1);
 
+/**
+ * Register term-change hooks that require a rewrite flush.
+ *
+ * @return void
+ */
 function frl_register_hooks_rewrite_flush(): void
 {
     foreach (['category', 'post_tag'] as $taxonomy) {
@@ -32,7 +37,8 @@ function frl_register_hooks_rewrite_flush(): void
 /**
  * Clear all post-related caches (schema, permalinks, meta, icons, language switcher, featured image).
  *
- * @param int $post_id Post ID
+ * @param int $post_id Post ID.
+ * @return void
  */
 function frl_clear_post_cache($post_id)
 {
@@ -97,6 +103,7 @@ function frl_clear_post_cache($post_id)
  * Clear translated option cache for all active languages.
  *
  * @param string $option_name The updated option name.
+ * @return void
  */
 function frl_clear_option_cache($option_name)
 {
@@ -134,6 +141,7 @@ function frl_clear_option_cache($option_name)
  * Clear icon cache when ACF options (keys starting with 'options_') are updated.
  *
  * @param string $option_name Name of the updated option.
+ * @return void
  */
 function frl_clear_acf_option_icon_cache($option_name)
 {
@@ -151,6 +159,7 @@ function frl_clear_acf_option_icon_cache($option_name)
  * Delete plugin transient matching an updated option name.
  *
  * @param string $option Name of the updated option.
+ * @return void
  */
 function frl_clear_option_transient($option)
 {
@@ -168,6 +177,7 @@ function frl_clear_option_transient($option)
  * Clear tracked meta cache for a user.
  *
  * @param int $user_id User ID.
+ * @return void
  */
 function frl_clear_user_cache($user_id)
 {
@@ -176,6 +186,8 @@ function frl_clear_user_cache($user_id)
 
 /**
  * Invalidate translation caches when Polylang translations are saved.
+ *
+ * @return void
  */
 function frl_clear_translation_cache()
 {
@@ -191,6 +203,7 @@ function frl_clear_translation_cache()
  * Clear navigation cache for a saved navigation post.
  *
  * @param int $nav_id Navigation post ID.
+ * @return void
  */
 function frl_clear_navigation_cache($nav_id)
 {
@@ -204,6 +217,7 @@ function frl_clear_navigation_cache($nav_id)
  * Clear permalink and tracked meta caches when a term is saved.
  *
  * @param int $term_id Term ID.
+ * @return void
  */
 function frl_clear_term_permalink_cache($term_id)
 {
@@ -224,6 +238,7 @@ function frl_clear_term_permalink_cache($term_id)
  *
  * @param string $type Object type ('post', 'term', 'user').
  * @param int    $id   Object ID.
+ * @return void
  */
 function frl_clear_tracked_meta_cache(string $type, int $id)
 {
