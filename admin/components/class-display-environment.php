@@ -668,6 +668,113 @@ class Frl_Environment_Display
         return $plugins_table;
     }
 
+    /**
+     * Get plugin exclusions status for display in dashboard.
+     *
+     * Displays two sections:
+     * - "Unloaded in Frontend": Plugins excluded from frontend context
+     * - "Unloaded in Backend": Plugins excluded in admin context for users without required capability
+     *
+     * @return string HTML table with exclusion status
+     */
+    public function get_plugins_exclusions_status()
+    {
+        $output_frontend = '';
+        $output_backend = '';
+        $active_plugins_from_db = get_option('active_plugins', []);
+
+        // --- Process Frontend Exclusion List ---
+        $frontend_enabled = frl_get_option('excluded_plugins_frontend_enabled');
+        if ($frontend_enabled) {
+            $frontend_list = frl_textlist_to_array(frl_get_option('excluded_plugins_frontend'));
+            if (!empty($frontend_list)) {
+                // Flatten nested array
+                $flat_list = [];
+                foreach ($frontend_list as $items) {
+                    if (is_array($items)) {
+                        $flat_list = array_merge($flat_list, $items);
+                    } else {
+                        $flat_list[] = $items;
+                    }
+                }
+                $flat_list = array_filter($flat_list, 'is_string');
+
+                if (!empty($flat_list)) {
+                    $output_frontend = frl_ui_render_table_row('Unloaded in Frontend', '', true);
+                    foreach ($flat_list as $plugin_path) {
+                        $plugin_file = WP_PLUGIN_DIR . '/' . $plugin_path;
+                        $is_installed = is_readable($plugin_file);
+                        $is_active = in_array($plugin_path, $active_plugins_from_db);
+                        $status_text = 'Blocked';
+                        if (!$is_installed) {
+                            $status_text .= ' (Uninstalled)';
+                        }
+                        $output_frontend .= frl_ui_render_table_row(frl_get_plugin_name_from_path($plugin_path), $status_text);
+                    }
+                }
+            }
+        }
+
+        if (empty($output_frontend)) {
+            $output_frontend = frl_ui_render_table_row('Unloaded in Frontend', '', true);
+            $output_frontend .= frl_ui_render_table_row('(None configured)', '');
+        }
+
+        // --- Process Backend (Capability-based) Exclusion List ---
+        $cap_enabled = frl_get_option('excluded_plugins_bycap_enabled');
+        $required_cap = frl_get_option('excluded_plugins_bycap_cap') ?: 'delete_plugins';
+
+        if ($cap_enabled) {
+            $cap_list = frl_textlist_to_array(frl_get_option('excluded_plugins_bycap'));
+            if (!empty($cap_list)) {
+                // Flatten nested array
+                $flat_list = [];
+                foreach ($cap_list as $items) {
+                    if (is_array($items)) {
+                        $flat_list = array_merge($flat_list, $items);
+                    } else {
+                        $flat_list[] = $items;
+                    }
+                }
+                $flat_list = array_filter($flat_list, 'is_string');
+
+                if (!empty($flat_list)) {
+                    // Header row with columns: Plugin Name, Required Capability
+                    $header_columns = [
+                        'Plugin',
+                        'Required Capability'
+                    ];
+                    $output_backend = frl_ui_render_multi_column_header($header_columns, 'frl-exclusions-header');
+                    $output_backend .= frl_ui_render_table_row('Unloaded in Backend', '', true);
+
+                    foreach ($flat_list as $plugin_path) {
+                        $plugin_file = WP_PLUGIN_DIR . '/' . $plugin_path;
+                        $is_installed = is_readable($plugin_file);
+                        $plugin_name = frl_get_plugin_name_from_path($plugin_path);
+                        $status_text = $is_installed ? 'Blocked' : 'Blocked (Uninstalled)';
+
+                        // Render multi-column row: [Plugin Name, Status + Capability]
+                        $output_backend .= frl_ui_render_multi_column_row([
+                            $plugin_name,
+                            $required_cap
+                        ], false, 'frl-exclusion-row');
+                    }
+                }
+            }
+        }
+
+        if (empty($output_backend)) {
+            $output_backend = frl_ui_render_table_row('Unloaded in Backend', '', true);
+            $output_backend .= frl_ui_render_table_row('(None configured)', '');
+        }
+
+        $output_exclusions = $output_frontend . $output_backend;
+
+        $exclusions_table = frl_ui_render_table('env-plugins-exclusions-table', $output_exclusions, 'widget-plugins-exclusions');
+
+        return $exclusions_table;
+    }
+
     private function get_modules_status($env_config)
     {
         $output = '';

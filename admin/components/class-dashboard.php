@@ -74,6 +74,15 @@ class Frl_Admin_Dashboard
         );
 
         $widget_content .= frl_ui_render_widget(
+            'plugins-exclusions-overview',
+            $this->render_plugins_exclusions_widget(),
+            'Third-Party Plugins Exclusions',
+            'plugins-exclusions-overview',
+            0,
+            true
+        );
+
+        $widget_content .= frl_ui_render_widget(
             'widget-admin-actions',
             frl_render_clear_cache_buttons() . frl_render_admin_actions_buttons(),
         );
@@ -88,5 +97,16 @@ class Frl_Admin_Dashboard
 
         // Render the final widget
         return $widget_content;
+    }
+
+    /**
+     * Render the plugin exclusions widget.
+     *
+     * @return string HTML content
+     */
+    public function render_plugins_exclusions_widget()
+    {
+        $env_display = new Frl_Environment_Display();
+        return $env_display->get_plugins_exclusions_status();
     }
 }
