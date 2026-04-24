@@ -18,13 +18,10 @@ function frl_render_administrator_widget()
             ['url' => 'https://search.google.com/search-console', 'text' => 'Google Search Console'],
             ['url' => 'https://analytics.google.com/analytics/web/', 'text' => 'Google Analytics'],
             ['url' => 'https://ads.google.com/aw/overview?ocid=256107330', 'text' => 'Google Adwords'],
-            ['url' => 'https://clarity.microsoft.com/projects/view/njfczopmu0/dashboard', 'text' => 'Clarity'],
-            ['url' => 'https://www.semrush.com/projects/', 'text' => 'SEMrush'],
         ],
         'Administration' => [
             ['url' => 'https://tagmanager.google.com/#/home', 'text' => 'Google Tag Manager'],
             ['url' => 'https://dash.cloudflare.com', 'text' => 'Cloudflare'],
-            ['url' => 'https://my.quic.cloud/', 'text' => 'Quickcloud'],
             ['url' => 'https://app.integrately.com/my-automations', 'text' => 'Integrately'],
         ],
     ]);

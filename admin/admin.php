@@ -85,7 +85,9 @@ function frl_load_plugin_ui()
 }
 
 /**
- * Admin init hook
+ * Admin init hook.
+ *
+ * @return void
  */
 function frl_admin_init()
 {
@@ -112,10 +114,11 @@ function frl_add_column_featured($columns)
 }
 
 /**
- * Add featured image to posts list
+ * Add featured image to posts list.
  *
- * @param string $column_name Current column name
- * @param int $post_id Post ID
+ * @param string $column_name Current column name.
+ * @param int $post_id Post ID.
+ * @return string The column name.
  */
 function frl_add_column_featured_image($column_name, $post_id)
 {
@@ -126,8 +129,10 @@ function frl_add_column_featured_image($column_name, $post_id)
 }
 
 /**
- * Main function to set up all admin menus
- * Acts as an entry point for various menu-related operations
+ * Main function to set up all admin menus.
+ * Acts as an entry point for various menu-related operations.
+ *
+ * @return void
  */
 function frl_set_custom_admin_menu()
 {
@@ -148,7 +153,7 @@ function frl_set_custom_admin_menu()
  * Capture the admin menu as it exists when called.
  * This populates a global variable for the UI to use.
  *
- * @since x.x.x
+ * @return void
  */
 function frl_capture_original_admin_menu() {
     global $menu, $frl_original_admin_menu;
@@ -164,7 +169,7 @@ function frl_capture_original_admin_menu() {
  * to reorder the global $menu array. The desired order is fetched from the
  * 'am_menu_order' option. Items not in the custom order maintain their original position.
  *
- * @since x.x.x
+ * @return void
  */
 function frl_reorder_admin_menu()
 {
@@ -236,10 +241,12 @@ function frl_reorder_admin_menu()
 }
 
 /**
- * Register the main plugin settings page
+ * Register the main plugin settings page.
  *
  * PERFORMANCE OPTIMIZATION:
- * - Now uses selective component loading to only load settings UI files
+ * - Now uses selective component loading to only load settings UI files.
+ *
+ * @return void
  */
 function frl_add_plugin_menu()
 {
@@ -261,8 +268,9 @@ function frl_add_plugin_menu()
 
 
 /**
- * Triggered by plugin menu
- * @return bool Whether class was loaded
+ * Render the admin UI settings page.
+ *
+ * @return bool True upon successful rendering.
  */
 function frl_render_admin_ui()
 {
@@ -279,12 +287,14 @@ function frl_render_admin_ui()
 }
 
 /**
- * Enqueue admin-specific styles and scripts
+ * Enqueue admin-specific styles and scripts.
  *
  * This function is hooked to admin_enqueue_scripts (see line 17) and loads
  * the basic CSS needed for all admin pages. UI-specific assets for the
  * settings page are loaded separately by Frl Settings_Fields::load_ui_assets()
  * to avoid loading them on all admin pages.
+ *
+ * @return void
  */
 function frl_admin_scripts()
 {
@@ -324,7 +334,9 @@ function frl_gutenberg_editor_css()
 }
 
 /**
- * Remove menu items for non-admin users based on plugin settings
+ * Remove menu items for non-admin users based on plugin settings.
+ *
+ * @return void
  */
 function frl_remove_admin_menus()
 {
@@ -362,7 +374,10 @@ function frl_remove_admin_menus()
 }
 
 /**
- * Remove menu items for non-admin users based on plugin settings
+ * Remove a specific menu item for non-admin users based on plugin settings.
+ *
+ * @param string|array $handle Menu handle (string for main menu, array for submenu).
+ * @return void
  */
 function frl_remove_admin_menus_item($handle)
 {
@@ -396,7 +411,11 @@ function frl_remove_admin_menus_item($handle)
 
 
 /**
- * Generate style to remove admin menu item based on plugin settings
+ * Generate style to remove admin menu item based on plugin settings.
+ *
+ * @param string $target The menu handle or target to hide.
+ * @param bool $is_class Whether to target by class instead of href.
+ * @return string The CSS style string.
  */
 function frl_generate_style_remove_admin_menu($target, $is_class = false)
 {
@@ -411,7 +430,9 @@ function frl_generate_style_remove_admin_menu($target, $is_class = false)
 }
 
 /**
- * Add translation-related menu items when Polylang is active
+ * Add translation-related menu items when Polylang is active.
+ *
+ * @return void
  */
 function frl_add_translation_menu()
 {
@@ -427,7 +448,7 @@ function frl_add_translation_menu()
 }
 
 /**
- * Maybe load the metabox class if we're on a post edit screen
+ * Maybe load the metabox class if we're on a post edit screen.
  *
  * This function is hooked to current_screen (see line 15) and conditionally loads
  * the metabox class only when viewing a post edit screen. This improves performance
@@ -437,7 +458,8 @@ function frl_add_translation_menu()
  * - Added early check for the custom_metaboxes option to avoid unnecessary loading
  * - Added caching of the option check to avoid repeated DB queries
  *
- * @param WP_Screen $screen Current admin screen
+ * @param WP_Screen $screen Current admin screen.
+ * @return void
  */
 function frl_maybe_load_metabox_class($screen)
 {
@@ -550,9 +572,10 @@ function frl_get_file_nicename($filename, $as_title = false)
 }
 
 /**
- * Dynamically modify image alt text during upload
+ * Dynamically modify image alt text during upload.
  *
- * @param int $attachment_id The ID of the newly uploaded attachment
+ * @param int $attachment_id The ID of the newly uploaded attachment.
+ * @return void
  */
 function frl_update_image_metadata($attachment_id)
 {
@@ -582,7 +605,7 @@ function frl_update_image_metadata($attachment_id)
 }
 
 /**
- * Add and customize dashboard widgets
+ * Add and customize dashboard widgets.
  *
  * This function is hooked to wp_dashboard_setup (see line 21) and handles both
  * adding custom dashboard widgets and removing default WordPress widgets based
@@ -591,6 +614,8 @@ function frl_update_image_metadata($attachment_id)
  *
  * PERFORMANCE OPTIMIZATION: Widget content is now loaded only when the widget
  * is actually rendered rather than loading all widget content up front.
+ *
+ * @return void
  */
 function frl_custom_dashboard_widgets()
 {
@@ -675,7 +700,6 @@ function frl_custom_dashboard_widgets()
 
             // Ensure the Renderer class is loaded before trying to use its static method
             // We can do this once before the loop, or check within
-            // Safest might be to ensure it's loaded *if* we enter this block
             static $renderer_class_loaded = null;
             if ($renderer_class_loaded === null) {
                 $renderer_path = FRL_DIR_PATH . 'admin/ui/class-dashboard-renderer.php';

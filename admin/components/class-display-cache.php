@@ -16,7 +16,9 @@ if (!defined('ABSPATH')) {
 class Frl_Cache_Display
 {
     /**
-     * Constructor
+     * Constructor.
+     *
+     * @return void
      */
     public function __construct()
     {
@@ -26,7 +28,7 @@ class Frl_Cache_Display
     /**
      * Get the persistent and runtime cache labels for the dashboard.
      *
-     * @return array An associative array with 'persistent' and 'runtime' labels.
+     * @return array{persistent: string, object_cache: string, runtime: string} Labels for the dashboard.
      */
     public static function get_cache_dashboard_labels()
     {
@@ -66,7 +68,7 @@ class Frl_Cache_Display
      * This method fetches raw data from the Cache Manager and enriches it with
      * descriptive text and status labels suitable for display.
      *
-     * @return array An array with 'slug', 'label', 'is_functional', 'is_persistent', 'is_dropin', 'backend_class', and 'description'.
+     * @return array{slug: string, label: string, is_functional: bool, is_persistent: bool, is_dropin: bool, backend_class: string, description: string} System details.
      */
     public static function get_cache_system_details()
     {
@@ -156,8 +158,7 @@ class Frl_Cache_Display
      * Renders the full "Options & Cache" widget section for the dashboard.
      *
      * @param array $env_data Environment data passed from the dashboard.
-     * @return array An array containing two keys: 'main' for the visible widget HTML
-     *               and 'hidden' for the toggleable, full-width sections.
+     * @return array{main: string, hidden: string} Visible and hidden HTML content.
      */
     public function render_dashboard_widget($env_data)
     {
@@ -261,10 +262,10 @@ class Frl_Cache_Display
     }
 
     /**
-     * Render cache info table
+     * Render cache info table.
      *
-     * @param array $cache_info The cache details from frl_cache_display_get_system_details()
-     * @return string HTML for the cache info table
+     * @param array $cache_info The cache details from get_cache_system_details().
+     * @return string HTML for the cache info table.
      */
     private function render_cache_info_table($cache_info)
     {
@@ -309,9 +310,9 @@ class Frl_Cache_Display
     }
 
     /**
-     * Render cache groups table with 7 columns
+     * Render cache groups table with 7 columns.
      *
-     * @return string HTML for the cache groups table
+     * @return string HTML for the cache groups table.
      */
     private function render_cache_groups_table()
     {
@@ -358,9 +359,9 @@ class Frl_Cache_Display
     }
 
     /**
-     * Render the options comparison table
+     * Render the options comparison table.
      *
-     * @return string HTML for the options comparison table
+     * @return string HTML for the options comparison table.
      */
     private function render_options_table()
     {
@@ -409,7 +410,7 @@ class Frl_Cache_Display
     /**
      * Render the transients details table, grouped by cache group.
      *
-     * @param array $transients_data The transient details from get_transients_details()
+     * @param array $transients_data The transient details from get_transients_details().
      * @return string HTML for the transients details table.
      */
     private function render_transients_details_table($transients_data)
@@ -519,10 +520,10 @@ class Frl_Cache_Display
 
 
     /**
-     * Get comprehensive information about cache groups
+     * Get comprehensive information about cache groups.
      *
-     * @param string|null $group The cache group, or null to get all groups
-     * @return array|null Group info array or array of all groups with comprehensive info when $group is null
+     * @param string|null $group The cache group, or null to get all groups.
+     * @return array|null Group info array or array of all groups when $group is null.
      */
     public static function get_groups_info(?string $group = null)
     {
@@ -576,12 +577,12 @@ class Frl_Cache_Display
     }
 
     /**
-     * Get comprehensive info for a single specific group
+     * Get comprehensive info for a single specific group.
      *
-     * @param string $group The cache group
-     * @param array  $config The cache configuration
-     * @param bool   $cache_functional Whether the object cache is functional
-     * @return array Group info array
+     * @param string $group The cache group.
+     * @param array $config The cache configuration.
+     * @param bool $cache_functional Whether the object cache is functional.
+     * @return array Group info array.
      */
     private static function get_group_info(string $group, array $config, bool $cache_functional)
     {
@@ -649,7 +650,7 @@ class Frl_Cache_Display
     /**
      * Get details for all plugin-specific transients.
      *
-     * @return array An array of transient details, each containing name, type, size, expires.
+     * @return array{details: array, count: int} Transient details and total count.
      */
     private function get_transients_details()
     {
@@ -747,9 +748,9 @@ class Frl_Cache_Display
     }
 
     /**
-     * Get options comparison data (DB vs cached values)
+     * Get options comparison data (DB vs cached values).
      *
-     * @return array Associative array with option data
+     * @return array Associative array with option data.
      */
     private function get_options_comparison()
     {
@@ -868,10 +869,10 @@ class Frl_Cache_Display
     }
 
     /**
-     * Format option value for display
+     * Format option value for display.
      *
-     * @param mixed $value The option value to format
-     * @return string Formatted value
+     * @param mixed $value The option value to format.
+     * @return string Formatted value.
      */
     private function format_option_value($value)
     {
@@ -944,8 +945,13 @@ class Frl_Cache_Display
         return '<code>' . esc_html((string)$value) . '</code>';
     }
 
-    // Add a helper function to compare values, handling arrays/objects
-    // This simplifies the difference check in the main loop
+    /**
+     * Compare two values, handling arrays and objects.
+     *
+     * @param mixed $val1 First value.
+     * @param mixed $val2 Second value.
+     * @return bool True if values are different.
+     */
     private function frl_values_are_different($val1, $val2): bool
     {
         // Handle N/A comparison first, as it's a special display case.
@@ -961,10 +967,10 @@ class Frl_Cache_Display
     }
 
     /**
-     * Check if a value is boolean
+     * Check if a value is boolean or boolean-like.
      *
-     * @param mixed $value The value to check
-     * @return bool True if the value is boolean or boolean-like
+     * @param mixed $value The value to check.
+     * @return bool True if the value is boolean-like.
      */
     private function is_boolean_value($value)
     {
@@ -977,10 +983,10 @@ class Frl_Cache_Display
     }
 
     /**
-     * Convert TTL seconds to human-readable format
+     * Convert TTL seconds to human-readable format.
      *
-     * @param int $seconds TTL in seconds
-     * @return string Human-readable time format
+     * @param int $seconds TTL in seconds.
+     * @return string Human-readable time format.
      */
     private function format_ttl($seconds)
     {

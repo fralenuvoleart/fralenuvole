@@ -15,11 +15,11 @@ if (! defined('ABSPATH')) exit;
 class Frl_Import_Export
 {
     /**
-     * Render the import/export widget
+     * Render the import/export widget.
      *
-     * @param string $title Widget title
-     * @param string $description Widget description
-     * @return string HTML content
+     * @param string $title       Widget title.
+     * @param string $description Widget description.
+     * @return string HTML content of the widget.
      */
     public static function render(
         $title = '',
@@ -45,13 +45,12 @@ class Frl_Import_Export
     }
 
     /**
-     * Render the import/export content
+     * Render the import/export content.
      *
-     * @return string HTML content
+     * @return string HTML content of the import/export sections.
      */
     public static function render_content()
     {
-        // Cache the static structure of the content but keep the dynamic parts as placeholders
 
         $output = '<div class="metabox-holder">';
 

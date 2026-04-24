@@ -27,7 +27,9 @@ class Frl_Environment_Display
     private static $cached_all_transients = null;
 
     /**
-     * Constructor
+     * Constructor.
+     *
+     * @return void
      */
     public function __construct()
     {
@@ -35,7 +37,9 @@ class Frl_Environment_Display
     }
 
     /**
-     * Main render method
+     * Main render method.
+     *
+     * @return string HTML output.
      */
     public function render()
     {
@@ -58,7 +62,7 @@ class Frl_Environment_Display
      * Renders the full "Environment" widget section for the dashboard.
      *
      * @param array $env_data The environment data from get_environment_stats().
-     * @return array An array containing 'main' and 'hidden' HTML strings.
+     * @return array{main: string, hidden: string} An array containing 'main' and 'hidden' HTML strings.
      */
     public function render_dashboard_widget($env_data)
     {
@@ -123,7 +127,10 @@ class Frl_Environment_Display
     }
 
     /**
-     * Render environment template
+     * Render environment template.
+     *
+     * @param array $data Environment data.
+     * @return string HTML output.
      */
     private function render_environment_table($data)
     {
@@ -236,7 +243,10 @@ class Frl_Environment_Display
     }
 
     /**
-     * Render plugin options in a structured format
+     * Render plugin options in a structured format.
+     *
+     * @param array $env_config Environment configuration.
+     * @return string HTML output.
      */
     private function render_plugin_options($env_config)
     {
@@ -333,10 +343,10 @@ class Frl_Environment_Display
     }
 
     /**
-     * Get environment statistics for display
+     * Get environment statistics for display.
      *
-     * @param bool $force_refresh Whether to force fresh data from database
-     * @return array Environment data including stored state, type, transient count, and plugin options count
+     * @param bool $force_refresh Whether to force fresh data from database.
+     * @return array{config: array, type: string, stored_state: array, source: string, options_count: int, cached_options_count: int, options_mismatch: bool} Environment data.
      */
     public function get_environment_stats($force_refresh = false)
     {
@@ -462,6 +472,11 @@ class Frl_Environment_Display
         return $result;
     }
 
+    /**
+     * Get status of Must-Use plugins.
+     *
+     * @return string HTML table with MU plugin status.
+     */
     private function get_mu_plugins_status()
     {
         // Initialize output sections
@@ -535,6 +550,12 @@ class Frl_Environment_Display
         return $mu_plugins_table;
     }
 
+    /**
+     * Get status of managed plugins.
+     *
+     * @param array $env_config Environment configuration.
+     * @return string HTML table with plugin status.
+     */
     private function get_plugins_status($env_config)
     {
         // Initialize output sections
@@ -672,10 +693,10 @@ class Frl_Environment_Display
      * Get plugin exclusions status for display in dashboard.
      *
      * Displays two sections:
-     * - "Frontend Exclusions": Plugins excluded from frontend context
-     * - "Backend Exclusions": Plugins excluded in admin context for users without required capability
+     * - "Frontend Exclusions": Plugins excluded from frontend context.
+     * - "Backend Exclusions": Plugins excluded in admin context for users without required capability.
      *
-     * @return string HTML table with exclusion status
+     * @return string HTML table with exclusion status.
      */
     public function get_plugins_exclusions_status()
     {
@@ -778,6 +799,12 @@ class Frl_Environment_Display
         return $exclusions_table;
     }
 
+    /**
+     * Get status of managed modules.
+     *
+     * @param array $env_config Environment configuration.
+     * @return string HTML table with module status.
+     */
     private function get_modules_status($env_config)
     {
         $output = '';
@@ -832,9 +859,9 @@ class Frl_Environment_Display
     }
 
     /**
-     * Generate a warning message for empty environment state
+     * Generate a warning message for empty environment state.
      *
-     * @return string Warning message HTML
+     * @return string Warning message HTML.
      */
     private function get_warning_message()
     {
@@ -849,10 +876,10 @@ class Frl_Environment_Display
     }
 
     /**
-     * Generate warning message for environment state mismatch
+     * Generate warning message for environment state mismatch.
      *
-     * @param array $stored_state The stored environment state
-     * @return string Warning message HTML or empty string if no mismatch
+     * @param array $stored_state The stored environment state.
+     * @return string Warning message HTML or empty string if no mismatch.
      */
     private function get_state_mismatch_warning($stored_state)
     {

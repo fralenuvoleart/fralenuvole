@@ -13,11 +13,11 @@ if (!defined('ABSPATH')) {
 Frl_Settings_Fields::init_filters();
 
 /**
- * Get or create the settings page instance
+ * Get or create the settings page instance.
  *
  * This function implements a singleton pattern for the Frl_Settings_Fields class.
  *
- * @return Frl_Settings_Fields The single settings page instance
+ * @return Frl_Settings_Fields The single settings page instance.
  */
 function frl_get_settings_page()
 {
@@ -64,13 +64,21 @@ class Frl_Settings_Fields
 	];
 
 	/**
-	 * Initialize static filters for the class
+	 * Initialize static filters for the class.
+	 *
+	 * @return void
 	 */
 	public static function init_filters()
 	{
 		// No filters needed - all tabs are handled consistently
 	}
 
+	/**
+	 * Constructor.
+	 *
+	 * @param array $args Initial properties to set.
+	 * @return void
+	 */
 	public function __construct($args = [])
 	{
 		if (frl_is_array_not_empty($args)) {
@@ -99,8 +107,11 @@ class Frl_Settings_Fields
 	}
 
 	/**
-	 * Register action handlers for each registered widget
-	 * This connects the widget registry with the action hooks
+	 * Register action handlers for each registered widget.
+	 *
+	 * This connects the widget registry with the action hooks.
+	 *
+	 * @return void
 	 */
 	public function register_widget_actions()
 	{
@@ -137,7 +148,11 @@ class Frl_Settings_Fields
 		}
 	}
 
-	// Changed to static method so it can be called without an instance
+	/**
+	 * Render the settings page.
+	 *
+	 * @return void
+	 */
 	public static function render_settings_page()
 	{
 		// Get the settings page instance
@@ -147,6 +162,11 @@ class Frl_Settings_Fields
 		$settings_page->frl_settings_content();
 	}
 
+	/**
+	 * Render the main settings content.
+	 *
+	 * @return void
+	 */
 	public function frl_settings_content()
 	{
 		// Get the current active tab from Tab Manager
@@ -198,6 +218,11 @@ class Frl_Settings_Fields
 		frl_tab_render_tab_container_end();
 	}
 
+	/**
+	 * Setup and register settings sections.
+	 *
+	 * @return void
+	 */
 	public function frl_setup_sections()
 	{
 		if (!empty($this->processed_sections)) {

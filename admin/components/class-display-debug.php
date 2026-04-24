@@ -20,9 +20,9 @@ if (! defined('ABSPATH')) {
 class Frl_Debug_Display
 {
 	/**
-	 * Render Debug Constants and Error Reporting Settings in a two-column layout
+	 * Render Debug Constants and Error Reporting Settings in a two-column layout.
 	 *
-	 * @return string HTML output of the debug configuration widget
+	 * @return string HTML output of the debug configuration widget.
 	 */
 	public function render()
 	{
@@ -151,10 +151,10 @@ class Frl_Debug_Display
 	}
 
 	/**
-	 * Convert error reporting level to readable format
+	 * Convert error reporting level to readable format.
 	 *
-	 * @param int $level Error reporting level
-	 * @return string Human-readable representation
+	 * @param int $level Error reporting level.
+	 * @return string Human-readable representation.
 	 */
 	private static function get_readable_error_level($level)
 	{

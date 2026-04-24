@@ -18,7 +18,9 @@ require_once FRL_DIR_PATH . 'admin/helpers/admin-class-helpers-core.php';
 require_once FRL_DIR_PATH . 'admin/helpers/functions-admin-action-handlers.php';
 
 /**
- * Display admin notices
+ * Display admin notices stored in transients.
+ *
+ * @return void
  */
 function frl_show_admin_notices()
 {
@@ -45,7 +47,9 @@ function frl_show_admin_notices()
 }
 
 /**
- * Display all admin notices
+ * Display all admin notices, including transient and persistent warnings.
+ *
+ * @return void
  */
 function frl_display_all_admin_notices()
 {
@@ -86,8 +90,9 @@ function frl_display_all_admin_notices()
 /**
  * Display a standard persistent warning notice in the admin area.
  *
- * @param string $message The main warning message text.
+ * @param string $message           The main warning message text.
  * @param string $settings_link_text Text for the link to the settings page.
+ * @return void
  */
 function frl_display_persistent_warning($message, $settings_link_text = '')
 {
@@ -106,10 +111,11 @@ function frl_display_persistent_warning($message, $settings_link_text = '')
 }
 
 /**
- * Normalize HTML content for storage
- * @param string $content HTML content
- * @param bool $for_comparison Whether for comparison
- * @return string Normalized content
+ * Normalize HTML content for storage or comparison.
+ *
+ * @param string|null $content      HTML content to normalize.
+ * @param bool        $for_comparison Whether to normalize whitespace for comparison.
+ * @return string Normalized content.
  */
 function frl_normalize_html_content($content, $for_comparison = false)
 {
@@ -130,13 +136,12 @@ function frl_normalize_html_content($content, $for_comparison = false)
 }
 
 /**
- * Normalize text content for comparison
+ * Normalize text content for comparison.
  *
- * This function handles text content for comparison by normalizing whitespace,
- * making it easier to detect actual content changes versus formatting/spacing changes.
+ * Normalizes whitespace to detect actual content changes versus formatting changes.
  *
- * @param string $content The text content to normalize
- * @return string The normalized text for comparison
+ * @param mixed $content The text content to normalize.
+ * @return string The normalized text for comparison.
  */
 function frl_normalize_text_for_comparison($content)
 {
@@ -144,10 +149,13 @@ function frl_normalize_text_for_comparison($content)
 }
 
 /**
- * Batch update plugin options
- * @param array $options Options to update
- * @param bool $force_update Force update all options
- * @return int Number of options updated
+ * Batch update plugin options.
+ *
+ * Compares submitted values with current database state and updates only changed options.
+ *
+ * @param array<string, mixed> $options     Associative array of [option_key => value] to update.
+ * @param bool                 $force_update Whether to force update all provided options.
+ * @return int Number of options actually updated in the database.
  */
 function frl_batch_update_options($options, $force_update = false)
 {

@@ -49,34 +49,15 @@
     margin-top: 1em !important;
 }
 
-div#frl-widget-administrator,
-div#frl-widget-editor,
-#fralenuvole-metabox {
+div.postbox[id*="frl-widget"] {
     border-radius: 8px;
-    overflow: hidden;
-    background: var(--admin-menu-color) !important;
 }
 
-div#frl-widget-administrator *,
-div#frl-widget-editor *,
-#fralenuvole-metabox * {
-    color: var(--admin-color) !important;
-}
-
-div#frl-widget-administrator,
-div#frl-widget-editor {
-    border-color: #ffffff55 !important;
-}
-
-div#frl-widget-administrator h2,
-div#frl-widget-editor h2,
-#fralenuvole-metabox h2 {
+div.postbox[id*="frl-widget"] h2 {
     text-transform: uppercase;
 }
 
-div#frl-widget-administrator h3,
-div#frl-widget-editor h3,
-#fralenuvole-metabox h3 {
+.frl-dashboard-widget h3 {
     font-weight: 600;
     text-transform: uppercase;
     font-size: 13px;
@@ -237,7 +218,7 @@ div#frl-widget-editor h3,
 }
 
 .wp-list-table.media .column-primary .media-icon img,
-.column-frl-featured img{
+.column-frl-featured img {
     width: calc(100% - 10px) !important;
     aspect-ratio: 3/2;
     object-fit: cover;

@@ -24,10 +24,10 @@ if (!defined('ABSPATH')) {
 class Frl_Tag_Validator
 {
     /**
-     * Get form inputs HTML (not a complete form since we're inside the settings form)
+     * Get form inputs HTML.
      *
-     * @param string $url URL to pre-fill in the form
-     * @return string Form inputs HTML
+     * @param string $url URL to pre-fill in the form.
+     * @return string Form inputs HTML.
      */
     private function get_form_inputs_html($url = '')
     {
@@ -43,11 +43,10 @@ class Frl_Tag_Validator
     }
 
     /**
-     * Get page content directly without sanitizing the URL
-     * Using this for direct URL validation with minimal modification
+     * Get page content directly without sanitizing the URL.
      *
-     * @param string $url URL to fetch
-     * @return array Content and meta information
+     * @param string $url URL to fetch.
+     * @return array{html?: string, status?: int, checked_url: string, warning?: string, error?: string} Content and meta information.
      */
     private function direct_get_page_content($url)
     {
@@ -160,24 +159,13 @@ class Frl_Tag_Validator
     }
 
     /**
-     * Validate a URL against tags
+     * Validate a URL against tags.
      *
-     * This is the API for validations, as it handles:
-     * - Basic URL sanitization
-     * - Content fetching
-     * - Tag validation
-     * - Results formatting (with proper HTML escaping)
+     * This is the API for validations, handling sanitization, fetching, and tag validation.
      *
-     * Example usage with UI Renderer:
-     * ```php
-     * $validator = new Frl_Tag_Validator();
-     * $results = $validator->validate_url($url, '#frl-critical-css,#frl-preload-img,#frl-schema');
-     *
-     * $html = frl_ui_render_tag_validation_results($results, $url);
-     *
-     * @param string $url URL to validate
-     * @param string $tags_string Comma-separated list of tags to validate
-     * @return array Validation results or error message
+     * @param string $url URL to validate.
+     * @param string $tags_string Comma-separated list of tags to validate.
+     * @return array{tags: array<string, mixed>, checked_url: string, warning?: string, error?: string} Validation results or error message.
      */
     public function validate_url($url, $tags_string)
     {

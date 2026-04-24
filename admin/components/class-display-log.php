@@ -12,8 +12,9 @@ if (! defined('ABSPATH')) {
 }
 
 /**
- * Register AJAX handlers to follow the plugin's naming convention.
- * These functions will be auto-discovered by frl_autodiscover_admin_actions()
+ * AJAX handler to clear the debug log.
+ *
+ * @return void
  */
 function frl_post_ajax_debug_log_clear()
 {
@@ -21,12 +22,22 @@ function frl_post_ajax_debug_log_clear()
 	$log_manager->clear_debug_log();
 }
 
+/**
+ * AJAX handler to refresh log entries.
+ *
+ * @return void
+ */
 function frl_post_ajax_debug_log_refresh()
 {
 	$log_manager = new Frl_Log_Manager();
 	$log_manager->ajax_get_log_entries();
 }
 
+/**
+ * AJAX handler to download the debug log.
+ *
+ * @return void
+ */
 function frl_post_ajax_debug_log_download()
 {
 	$log_manager = new Frl_Log_Manager();
@@ -70,7 +81,7 @@ class Frl_Log_Manager
 	private $error_filter = 'all';
 
 	/**
-	 * Constructor.
+	 * Initialize the log manager with default settings.
 	 */
 	public function __construct()
 	{
@@ -114,9 +125,9 @@ class Frl_Log_Manager
 	}
 
 	/**
-	 * Get log entries from debug.log file.
+	 * Get log entries from the debug.log file.
 	 *
-	 * @return array Array of log entries.
+	 * @return array<int, array{date: string, type: string, message: string, lines: string[]}> Array of log entries.
 	 */
 	public function get_log_entries()
 	{
@@ -212,8 +223,9 @@ class Frl_Log_Manager
 	}
 
 	/**
-	 * Streaming version for large log files - optimized for performance
-	 * Maintains exact same behavior as original method but processes entries on-demand
+	 * Streaming version for large log files, optimized for performance.
+	 *
+	 * @return array<int, array{date: string, type: string, message: string, lines: string[]}> Array of log entries.
 	 */
 	private function get_log_entries_streaming()
 	{
@@ -231,7 +243,10 @@ class Frl_Log_Manager
 	}
 
 	/**
-	 * Read entries from beginning of file (for asc order)
+	 * Read entries from the beginning of the file (for ascending order).
+	 *
+	 * @param int $target_count Maximum number of entries to read.
+	 * @return array<int, array{date: string, type: string, message: string, lines: string[]}> Array of log entries.
 	 */
 	private function read_entries_forward($target_count)
 	{
@@ -298,7 +313,10 @@ class Frl_Log_Manager
 	}
 
 	/**
-	 * Read entries from end of file (for desc order) - more complex but efficient
+	 * Read entries from the end of the file (for descending order).
+	 *
+	 * @param int $target_count Maximum number of entries to read.
+	 * @return array<int, array{date: string, type: string, message: string, lines: string[]}> Array of log entries.
 	 */
 	private function read_entries_reverse($target_count)
 	{
