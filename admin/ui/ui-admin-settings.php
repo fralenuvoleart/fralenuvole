@@ -9,28 +9,27 @@ if (!defined('ABSPATH')) {
  * options-page.php - Creates plugin options page
  */
 
-// Load Plugin UI Class Helpers
+// Load UI Helpers
 require_once FRL_DIR_PATH . 'admin/helpers/functions-admin-ui.php';
 require_once FRL_DIR_PATH . 'admin/helpers/admin-class-helpers-ui.php';
+require_once(FRL_DIR_PATH . 'admin/helpers/functions-admin-import-export.php');
+
+// Load UI interface
+require_once(FRL_DIR_PATH . 'admin/ui/ui-asset-loader.php');
+require_once(FRL_DIR_PATH . 'admin/ui/class-tab-registry.php');
+require_once(FRL_DIR_PATH . 'admin/ui/class-tab-renderer.php');
+require_once(FRL_DIR_PATH . 'admin/ui/class-tab-manager.php');
+require_once(FRL_DIR_PATH . 'admin/ui/class-ui-renderer.php');
 
 // Load UI components
-require_once(__DIR__ . '/ui/asset-loader.php');
-require_once(__DIR__ . '/ui/class-tab-registry.php');
-require_once(__DIR__ . '/ui/class-tab-renderer.php');
-require_once(__DIR__ . '/ui/class-tab-manager.php');
-require_once(__DIR__ . '/ui/class-ui-renderer.php');
-
-require_once(__DIR__ . '/components/class-dashboard.php');
-require_once(__DIR__ . '/components/class-display-environment.php');
-require_once(__DIR__ . '/components/class-display-cache.php');
-require_once(__DIR__ . '/components/class-tag-validator.php');
-require_once(__DIR__ . '/components/class-settings-fields.php');
-require_once(__DIR__ . '/components/class-display-log.php');
-require_once(__DIR__ . '/components/class-display-debug.php');
-
-// Functions with frl_post_ prefix are auto-registered in frl_autodiscover_admin_actions() in admin.php
-require_once(__DIR__ . '/helpers/functions-admin-import-export.php');
-require_once(__DIR__ . '/components/class-import-export.php');
+require_once(FRL_DIR_PATH . 'admin/components/class-dashboard.php');
+require_once(FRL_DIR_PATH . 'admin/components/class-display-environment.php');
+require_once(FRL_DIR_PATH . 'admin/components/class-display-cache.php');
+require_once(FRL_DIR_PATH . 'admin/components/class-tag-validator.php');
+require_once(FRL_DIR_PATH . 'admin/components/class-settings-fields.php');
+require_once(FRL_DIR_PATH . 'admin/components/class-display-log.php');
+require_once(FRL_DIR_PATH . 'admin/components/class-display-debug.php');
+require_once(FRL_DIR_PATH . 'admin/components/class-import-export.php');
 
 // Preload admin caches immediately
 //before any hooks or components are initialized

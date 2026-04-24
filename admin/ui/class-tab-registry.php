@@ -14,7 +14,8 @@ if (!defined('ABSPATH')) {
  */
 class Frl_Tab_Registry
 {
-    // Position constants (mirrored from Frl_Tab_Manager for convenience)
+    // Position constants - reference Frl_Tab_Manager to avoid duplication
+    // Using direct values to avoid class loading dependency
     const POSITION_FIRST = 0;
     const POSITION_DEFAULT = 500;
     const POSITION_FORM = 1000;

@@ -72,7 +72,7 @@ function frl_load_plugin_ui()
     }
 
     // Load required files
-    require_once FRL_DIR_PATH . 'admin/admin-settings-page.php';
+    require_once FRL_DIR_PATH . 'admin/ui/ui-admin-settings.php';
 
     add_action('admin_init', 'frl_get_settings_page', 10, 0);
     // The hook MUST be available on admin-post.php:

@@ -66,7 +66,7 @@ class Frl_Import_Export
         $output .= '<div class="inside">';
         $output .= '<p>' . __('Export all plugin settings as .json file.') . '</p>';
 
-        // Export URL is set via wp_localize_script in asset-loader.php
+        // Export URL is set via wp_localize_script in ui-asset-loader.php
         $output .= '<p><a href="#" id="frl-export-settings-link" class="button button-secondary">' .
             __('Export Settings') . '</a></p>';
 
@@ -92,7 +92,7 @@ class Frl_Import_Export
         $output .= '<div class="inside">';
         $output .= '<p>' . __('Export all string translations as .json file.') . '</p>';
 
-        // Translations export URL is set via wp_localize_script in asset-loader.php
+        // Translations export URL is set via wp_localize_script in ui-asset-loader.php
         $output .= '<p><a href="#" id="frl-export-translations-link" class="button button-secondary">' .
             __('Export Translations') . '</a></p>';
 
