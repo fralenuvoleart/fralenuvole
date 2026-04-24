@@ -5,9 +5,12 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Renders the 'User Visits' dashboard widget content.
- * This function is intended to be used as the render_callback.
- * @return string The HTML content for the widget.
+ * Render the 'User Visits' dashboard widget content.
+ *
+ * Aggregates recent user activity from user meta, sorting by timestamp
+ * to show the most recent visits.
+ *
+ * @return string The generated HTML content for the widget.
  */
 function frl_render_user_visits_widget()
 {

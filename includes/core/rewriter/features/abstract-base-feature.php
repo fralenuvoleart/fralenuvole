@@ -23,6 +23,9 @@ require_once __DIR__ . '/../interface-feature.php';
  * - Rewrite rule generation
  * - URL request handling
  * - Priority assignment
+ *
+ * @package Fralenuvole
+ * @since 3.0.0
  */
 
 /**
@@ -75,6 +78,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Check if this feature is enabled via configuration
+     *
+     * @return bool True if the feature is enabled
      */
     abstract public function is_enabled(): bool;
 
@@ -128,6 +133,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Get a human-readable name for this feature (for logging/debugging)
+     *
+     * @return string The feature name
      */
     abstract public function get_name(): string;
 
@@ -143,6 +150,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Check if this feature uses catch-all rules
+     *
+     * @return bool True if the feature uses catch-all rules
      */
     public function uses_catch_all(): bool
     {
@@ -153,6 +162,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
      * Register this feature with WordPress hooks
      *
      * This is called automatically by the coordinator
+     *
+     * @return void
      */
     final public function register(): void
     {
@@ -190,6 +201,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
      * and after the core rule/request hooks have been added. Override this method
      * in concrete features instead of using __construct() for hook registration.
      * The constructor must remain reserved exclusively for property initialisation.
+     *
+     * @return void
      */
     protected function register_additional_hooks(): void
     {
@@ -198,6 +211,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Add rewrite rules for this feature (called by WordPress init hook)
+     *
+     * @return void
      */
     final public function add_rules(): void
     {
@@ -272,6 +287,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
      * True when this feature is active and the current request is a public page request.
      * Use as the single early-exit guard in all request-filter callbacks so the two
      * conditions are never checked independently in different methods.
+     *
+     * @return bool True if active and valid page request
      */
     protected function is_active_page_request(): bool
     {
@@ -280,6 +297,9 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Filter WordPress request (called by request hook)
+     *
+     * @param array $query_vars The query variables to filter
+     * @return array Filtered query variables
      */
     final public function filter_request(array $query_vars): array
     {
@@ -359,6 +379,10 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
      * Check if two regex patterns could match the same URL
      *
      * This is a simplified conflict detection with optimized pattern compilation
+     *
+     * @param string $p1 First pattern
+     * @param string $p2 Second pattern
+     * @return bool True if patterns conflict
      */
     protected function patterns_conflict(string $p1, string $p2): bool
     {
@@ -415,6 +439,9 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Extract the initial literal prefix of a rewrite regex until the first meta-character.
+     *
+     * @param string $pattern The regex pattern
+     * @return string The static prefix or empty string
      */
     private function extract_static_prefix(string $pattern): string
     {
@@ -439,6 +466,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Add catch-all rewrite rules (for features that use catch-all)
+     *
+     * @return void
      */
     final public function add_catch_all_rules(): void
     {
@@ -534,6 +563,9 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Filter catch-all requests (for features that use catch-all)
+     *
+     * @param array $query_vars The query variables to filter
+     * @return array Filtered query variables
      */
     final public function filter_catch_all_request(array $query_vars): array
     {
@@ -572,6 +604,9 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Add catch-all query variable to WordPress
+     *
+     * @param array $vars The query variables array
+     * @return array Updated query variables
      */
     final public function add_catch_all_query_var(array $vars): array
     {
@@ -636,6 +671,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
     /**
      * Optional: Features can override to provide their own exclusion prefixes
      * to protect their specific URL spaces from catch-all hijacking.
+     *
+     * @return array Array of regex patterns to exclude
      */
     protected function get_exclusion_patterns(): array
     {
@@ -644,6 +681,9 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Get configuration option for this feature
+     *
+     * @param string $option_name The option name
+     * @return string The option value or empty string
      */
     protected function get_option(string $option_name): string
     {
@@ -652,6 +692,9 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
     /**
      * Parse a text list configuration into array format
+     *
+     * @param string $config The configuration string
+     * @return array Parsed configuration array
      */
     protected function parse_config(string $config): array
     {
@@ -663,6 +706,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
      *
      * This ensures cache keys change when relevant configuration changes,
      * preventing stale cache issues without affecting current behavior.
+     *
+     * @return string MD5 hash of configuration data
      */
     protected function get_config_hash(): string
     {
@@ -693,6 +738,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
     /**
      * Get feature-specific configuration for cache hash
      * Override in child classes to include feature-specific options
+     *
+     * @return array Feature-specific configuration data
      */
     protected function get_feature_config_for_hash(): array
     {
@@ -702,6 +749,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
     /**
      * Self-register this feature with the rewriter system
      * Call this method in feature files to enable auto-discovery
+     *
+     * @return void
      */
     final public function self_register(): void
     {

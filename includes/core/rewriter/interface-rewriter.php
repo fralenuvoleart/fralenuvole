@@ -8,6 +8,9 @@ if (!defined('ABSPATH')) {
  * Interface for rewriter implementations.
  *
  * Defines the contract that all rewriter implementations must follow.
+ *
+ * @package Fralenuvole
+ * @since 3.0.0
  */
 interface Frl_Rewriter_Interface {
     /**

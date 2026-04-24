@@ -39,11 +39,11 @@ class Frl_Tab_Registry
     private $sorted_tabs = null;
 
     /**
-     * Register a tab
+     * Register a tab in the registry.
      *
-     * @param string $tab_id
-     * @param array $args
-     * @param string $type
+     * @param string $tab_id Unique identifier for the tab.
+     * @param array $args Tab configuration arguments.
+     * @param string $type Tab type ('custom' or 'form').
      * @return void
      */
     public function register($tab_id, $args = [], $type = 'custom')
@@ -71,10 +71,10 @@ class Frl_Tab_Registry
     }
 
     /**
-     * Register a custom tab with hooks
+     * Register a custom tab and set up its content action hooks.
      *
-     * @param string $tab_id
-     * @param array $args
+     * @param string $tab_id Unique identifier for the tab.
+     * @param array $args Tab configuration arguments.
      * @return void
      */
     public function register_custom($tab_id, $args = [])
@@ -125,10 +125,10 @@ class Frl_Tab_Registry
     }
 
     /**
-     * Get tabs by type
+     * Retrieve registered tabs, optionally filtered by type.
      *
-     * @param string|null $type
-     * @return array
+     * @param string|null $type Tab type to filter by.
+     * @return array List of registered tabs.
      */
     public function get_tabs($type = null)
     {
@@ -139,9 +139,9 @@ class Frl_Tab_Registry
     }
 
     /**
-     * Get sorted tabs
+     * Retrieve all registered tabs sorted by their position.
      *
-     * @return array
+     * @return array[] List of tabs with shape {id: string, type: string, config: array, position: int}.
      */
     public function get_sorted_tabs()
     {
@@ -180,11 +180,11 @@ class Frl_Tab_Registry
     }
 
     /**
-     * Associate sections with a tab
+     * Associate one or more sections with a specific tab.
      *
-     * @param string $tab_id
-     * @param array $sections
-     * @return bool
+     * @param string $tab_id The tab identifier.
+     * @param string[] $sections Array of section identifiers.
+     * @return bool True if the tab exists and sections were associated.
      */
     public function associate_sections($tab_id, array $sections)
     {
@@ -209,10 +209,10 @@ class Frl_Tab_Registry
     }
 
     /**
-     * Get sections for a tab
+     * Retrieve sections associated with a specific tab.
      *
-     * @param string $tab_id
-     * @return array|null
+     * @param string $tab_id The tab identifier.
+     * @return string[]|null List of section identifiers or null if tab not found.
      */
     public function get_sections($tab_id)
     {
@@ -226,11 +226,11 @@ class Frl_Tab_Registry
     }
 
     /**
-     * Add field group to a tab
+     * Add a field group configuration to a specific tab.
      *
-     * @param string $tab_id
-     * @param array $field_group
-     * @return bool
+     * @param string $tab_id The tab identifier.
+     * @param array $field_group Field group configuration (must contain 'id' and 'fields').
+     * @return bool True if the tab exists and field group was added.
      */
     public function add_field_group($tab_id, array $field_group)
     {
@@ -256,10 +256,10 @@ class Frl_Tab_Registry
     }
 
     /**
-     * Get field groups for a tab
+     * Retrieve field groups associated with a specific tab.
      *
-     * @param string $tab_id
-     * @return array|null
+     * @param string $tab_id The tab identifier.
+     * @return array|null List of field groups or null if tab not found.
      */
     public function get_field_groups($tab_id)
     {
@@ -273,11 +273,11 @@ class Frl_Tab_Registry
     }
 
     /**
-     * Set validation rules for a tab
+     * Define validation rules for a specific tab.
      *
-     * @param string $tab_id
-     * @param array $validation_rules
-     * @return bool
+     * @param string $tab_id The tab identifier.
+     * @param array $validation_rules Validation rules configuration.
+     * @return bool True if the tab exists and rules were set.
      */
     public function set_validation_rules($tab_id, array $validation_rules)
     {
@@ -294,10 +294,10 @@ class Frl_Tab_Registry
     }
 
     /**
-     * Get validation rules for a tab
+     * Retrieve validation rules for a specific tab.
      *
-     * @param string $tab_id
-     * @return array|null
+     * @param string $tab_id The tab identifier.
+     * @return array|null Validation rules or null if tab not found.
      */
     public function get_validation_rules($tab_id)
     {
@@ -311,7 +311,7 @@ class Frl_Tab_Registry
     }
 
     /**
-     * Invalidate sorted tabs cache
+     * Clear the internal cache of sorted tabs to force recalculation.
      *
      * @return void
      */

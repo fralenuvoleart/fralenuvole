@@ -918,7 +918,7 @@ const FRL_DEFAULT_FIELDS = array(
 			'disable_translator' => array(
 				'type' => 'checkbox',
 				'label' => 'Disable Translator',
-				'description' => 'Disable dynamic translation features for post, options, users, terms metadata. Note: the core translation service for shortcodes and blocks will still be active.',
+				'description' => 'Disable dynamic translation features for post, options, users, terms metadata.',
 				'default' => '0',
 			),
 			'disable_rewriter' => array(

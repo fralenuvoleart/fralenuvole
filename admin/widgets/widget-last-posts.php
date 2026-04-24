@@ -5,8 +5,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Renders the 'Last Updates' dashboard widget content.
- * @return string The HTML content for the widget.
+ * Render the 'Last Updates' dashboard widget content.
+ *
+ * Fetches the 5 most recently modified posts of any type and renders them as a list.
+ *
+ * @return string The generated HTML content for the widget.
  */
 function frl_render_last_posts_widget()
 {

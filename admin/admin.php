@@ -35,7 +35,9 @@ add_filter('plugin_action_links_' . FRL_NAME . '/' . FRL_PLUGIN_FILE, 'frl_plugi
 
 
 /**
- * Register admin hooks
+ * Initialize admin functionality after plugins are loaded.
+ *
+ * Loads the plugin UI and discovers admin action handlers.
  *
  * @return void
  */
@@ -60,7 +62,9 @@ function frl_admin_plugins_loaded()
 }
 
 /**
- * Load plugin UI components
+ * Load plugin UI components and register settings hooks.
+ *
+ * Loads the main settings page and hooks into the settings update process.
  *
  * @return void
  */
@@ -85,7 +89,9 @@ function frl_load_plugin_ui()
 }
 
 /**
- * Admin init hook.
+ * Initialize admin-specific filters and hooks.
+ *
+ * Configures custom columns for posts and pages if the featured post list is enabled.
  *
  * @return void
  */
@@ -102,10 +108,10 @@ function frl_admin_init()
 }
 
 /**
- * Add featured image column to posts list
+ * Add the 'Featured' column to the posts and pages list tables.
  *
- * @param array $columns Existing columns
- * @return array Modified columns
+ * @param array $columns Existing columns.
+ * @return array Modified columns array.
  */
 function frl_add_column_featured($columns)
 {
@@ -114,11 +120,11 @@ function frl_add_column_featured($columns)
 }
 
 /**
- * Add featured image to posts list.
+ * Render the featured image thumbnail in the custom 'Featured' column.
  *
  * @param string $column_name Current column name.
  * @param int $post_id Post ID.
- * @return string The column name.
+ * @return string The original column name.
  */
 function frl_add_column_featured_image($column_name, $post_id)
 {
@@ -129,8 +135,10 @@ function frl_add_column_featured_image($column_name, $post_id)
 }
 
 /**
- * Main function to set up all admin menus.
- * Acts as an entry point for various menu-related operations.
+ * Orchestrate the setup of all custom admin menus.
+ *
+ * Captures the original menu state, adds plugin-specific menus,
+ * handles restrictions for non-admin users, and applies custom ordering.
  *
  * @return void
  */
@@ -150,8 +158,10 @@ function frl_set_custom_admin_menu()
 }
 
 /**
- * Capture the admin menu as it exists when called.
- * This populates a global variable for the UI to use.
+ * Capture the current state of the admin menu.
+ *
+ * Stores the global $menu array into a plugin-specific global variable
+ * to allow for stable reordering and comparison.
  *
  * @return void
  */
@@ -163,11 +173,10 @@ function frl_capture_original_admin_menu() {
 }
 
 /**
- * Reorder the main admin menu items based on a custom order from plugin options.
+ * Reorder the main admin menu items based on plugin settings.
  *
- * This function is called by frl_set_custom_admin_menu and uses usort()
- * to reorder the global $menu array. The desired order is fetched from the
- * 'am_menu_order' option. Items not in the custom order maintain their original position.
+ * Uses a custom order map fetched from 'am_menu_order'. Items not specified
+ * in the custom order maintain their original relative positions.
  *
  * @return void
  */
@@ -241,10 +250,7 @@ function frl_reorder_admin_menu()
 }
 
 /**
- * Register the main plugin settings page.
- *
- * PERFORMANCE OPTIMIZATION:
- * - Now uses selective component loading to only load settings UI files.
+ * Register the main plugin settings page in the WordPress admin menu.
  *
  * @return void
  */
@@ -268,7 +274,9 @@ function frl_add_plugin_menu()
 
 
 /**
- * Render the admin UI settings page.
+ * Render the main plugin settings interface.
+ *
+ * Ensures the settings page is rendered only once per request.
  *
  * @return bool True upon successful rendering.
  */
@@ -287,12 +295,9 @@ function frl_render_admin_ui()
 }
 
 /**
- * Enqueue admin-specific styles and scripts.
+ * Enqueue global admin styles and scripts.
  *
- * This function is hooked to admin_enqueue_scripts (see line 17) and loads
- * the basic CSS needed for all admin pages. UI-specific assets for the
- * settings page are loaded separately by Frl Settings_Fields::load_ui_assets()
- * to avoid loading them on all admin pages.
+ * Loads the base CSS required for all plugin-related admin pages.
  *
  * @return void
  */
@@ -334,7 +339,10 @@ function frl_gutenberg_editor_css()
 }
 
 /**
- * Remove menu items for non-admin users based on plugin settings.
+ * Remove specific admin menu items based on plugin settings.
+ *
+ * Handles removal for both general users and specific non-admin roles
+ * based on the 'am_remove_links' and 'am_remove_links_handles' options.
  *
  * @return void
  */
@@ -374,7 +382,10 @@ function frl_remove_admin_menus()
 }
 
 /**
- * Remove a specific menu item for non-admin users based on plugin settings.
+ * Remove a specific menu or submenu item.
+ *
+ * If the item cannot be removed via standard WordPress functions,
+ * it injects a CSS style to hide the element from the UI.
  *
  * @param string|array $handle Menu handle (string for main menu, array for submenu).
  * @return void
@@ -411,11 +422,11 @@ function frl_remove_admin_menus_item($handle)
 
 
 /**
- * Generate style to remove admin menu item based on plugin settings.
+ * Generate CSS to hide a specific admin menu item.
  *
  * @param string $target The menu handle or target to hide.
- * @param bool $is_class Whether to target by class instead of href.
- * @return string The CSS style string.
+ * @param bool $is_class Whether to target by CSS class instead of href.
+ * @return string The generated CSS style string.
  */
 function frl_generate_style_remove_admin_menu($target, $is_class = false)
 {
@@ -430,7 +441,7 @@ function frl_generate_style_remove_admin_menu($target, $is_class = false)
 }
 
 /**
- * Add translation-related menu items when Polylang is active.
+ * Add translation-related menu items if Polylang is active.
  *
  * @return void
  */
@@ -448,17 +459,12 @@ function frl_add_translation_menu()
 }
 
 /**
- * Maybe load the metabox class if we're on a post edit screen.
+ * Conditionally load the metabox class on post edit screens.
  *
- * This function is hooked to current_screen (see line 15) and conditionally loads
- * the metabox class only when viewing a post edit screen. This improves performance
- * by avoiding loading unnecessary code on other admin pages.
+ * Improves performance by only loading metabox logic when the user is
+ * actually editing a post or page and the feature is enabled.
  *
- * PERFORMANCE OPTIMIZATION:
- * - Added early check for the custom_metaboxes option to avoid unnecessary loading
- * - Added caching of the option check to avoid repeated DB queries
- *
- * @param WP_Screen $screen Current admin screen.
+ * @param WP_Screen $screen Current admin screen object.
  * @return void
  */
 function frl_maybe_load_metabox_class($screen)
@@ -482,14 +488,12 @@ function frl_maybe_load_metabox_class($screen)
 }
 
 /**
- * Allow additional file types to be uploaded
+ * Extend allowed upload MIME types.
  *
- * This function is hooked to upload_mimes (see line 20) and adds support for
- * WebP and SVG file uploads based on plugin settings. These formats are disabled
- * by default in WordPress but can be safely enabled with proper validation.
+ * Adds support for WebP and SVG formats based on plugin settings.
  *
- * @param array $mimes An associative array of allowed file types
- * @return array Modified array of allowed file types
+ * @param array $mimes Associative array of allowed file types.
+ * @return array Modified array of allowed file types.
  */
 function frl_enable_mime_support(array $mimes): array
 {
@@ -505,11 +509,14 @@ function frl_enable_mime_support(array $mimes): array
 }
 
 /**
- * Sanitize a filename with options for different output formats
+ * Sanitize a filename or convert it to a readable title.
  *
- * @param string $filename The original filename to sanitize
- * @param bool $as_title Whether to format as a title (true) or filename (false)
- * @return string Sanitized filename or title
+ * Handles transliteration of accented characters, case normalization,
+ * and removal of trailing numbers.
+ *
+ * @param string $filename The original filename to sanitize.
+ * @param bool $as_title Whether to format as a title (true) or filename (false).
+ * @return string The sanitized filename or formatted title.
  */
 function frl_get_file_nicename($filename, $as_title = false)
 {
@@ -572,7 +579,10 @@ function frl_get_file_nicename($filename, $as_title = false)
 }
 
 /**
- * Dynamically modify image alt text during upload.
+ * Automatically set image metadata based on the filename during upload.
+ *
+ * Generates a clean title from the filename and updates the Alt text,
+ * Title, Caption, and Description of the attachment.
  *
  * @param int $attachment_id The ID of the newly uploaded attachment.
  * @return void
@@ -605,15 +615,10 @@ function frl_update_image_metadata($attachment_id)
 }
 
 /**
- * Add and customize dashboard widgets.
+ * Configure and register custom dashboard widgets.
  *
- * This function is hooked to wp_dashboard_setup (see line 21) and handles both
- * adding custom dashboard widgets and removing default WordPress widgets based
- * on plugin settings. It uses capability checks to ensure the right widgets
- * are shown to the right users.
- *
- * PERFORMANCE OPTIMIZATION: Widget content is now loaded only when the widget
- * is actually rendered rather than loading all widget content up front.
+ * Handles the registration of various plugin widgets, including capability
+ * checks and conditional enabling based on plugin options.
  *
  * @return void
  */
@@ -753,13 +758,10 @@ function frl_custom_dashboard_widgets()
 }
 
 /**
- * Add Settings link to plugin action links in the Plugins list table
+ * Add a 'Settings' link to the plugin's action links in the Plugins list.
  *
- * This function adds a "Settings" link to the plugin's row in the plugins list table,
- * making it easier for users to access the plugin settings page directly.
- *
- * @param array $links Array of plugin action links
- * @return array Modified array of plugin action links
+ * @param array $links Array of existing plugin action links.
+ * @return array Modified array of plugin action links.
  */
 function frl_plugin_settings_link(array $links)
 {

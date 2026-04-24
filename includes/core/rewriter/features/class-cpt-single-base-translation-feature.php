@@ -47,21 +47,41 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
         add_filter('rewrite_rules_array', [$this, 'prioritize_translated_cpt_rules'], 9999, 1);
     }
 
+    /**
+     * Get a human-readable name for this feature (for logging/debugging)
+     *
+     * @return string The feature name
+     */
     public function get_name(): string
     {
         return "CPT Single Base Translation ({$this->cpt_slug})";
     }
 
+    /**
+     * Check if this feature is enabled via configuration
+     *
+     * @return bool True if the feature is enabled
+     */
     public function is_enabled(): bool
     {
         return !empty($this->mappings) && post_type_exists($this->cpt_slug);
     }
 
+    /**
+     * Load configuration from options
+     *
+     * @return void
+     */
     public function load_configuration(): void
     {
         $this->mappings = Frl_Rewriter_Path_Utils::parse_lang_mapping_option("translate_cpt_slugs_{$this->cpt_slug}");
     }
 
+    /**
+     * Generate rewrite rules for this feature only
+     *
+     * @return array Associative array of pattern => rewrite pairs
+     */
     public function generate_rules(): array
     {
         if (!$this->is_enabled()) {
@@ -119,11 +139,23 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
         return $my_rules + $tail;
     }
 
+    /**
+     * Check if this feature should handle the given request URI
+     *
+     * @param string $request_uri The raw request URI
+     * @return bool True if this feature should handle the request
+     */
     public function applies_to_request(string $request_uri): bool
     {
         return !empty($this->resolve_request($request_uri));
     }
 
+    /**
+     * Resolve the request URI to WordPress query variables
+     *
+     * @param string $request_uri The request URI to resolve
+     * @return array WordPress query variables or empty array if not handled
+     */
     public function resolve_request(string $request_uri): array
     {
         // Keyed by cpt_slug to prevent cross-instance cache pollution when multiple CPTs are multilingual.
@@ -148,61 +180,27 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
             $lang_esc = Frl_Rewriter_Path_Utils::escape_for_regex($lang, '#');
             $base_esc = Frl_Rewriter_Path_Utils::escape_for_regex($translated_base, '#');
 
-            // Comment pagination
-            if (preg_match("#^{$lang_esc}/{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$#", $uri, $matches)) {
-                return $cache[$this->cpt_slug][$request_uri] = [
+            $single_req = Frl_Rewriter_Path_Utils::parse_cpt_single_request($uri, $lang_esc, $base_esc);
+            if ($single_req) {
+                $res = [
                     'post_type'    => $this->cpt_slug,
-                    'name'         => $matches[1],
-                    $cpt_query_var => $matches[1],
-                    'cpage'        => (int) $matches[2],
-                    'lang'         => $lang,
+                    'name'         => $single_req['name'],
+                    $cpt_query_var => $single_req['name'],
                 ];
-            }
-            if (preg_match("#^{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$#", $uri, $matches)) {
-                return $cache[$this->cpt_slug][$request_uri] = [
-                    'post_type'    => $this->cpt_slug,
-                    'name'         => $matches[1],
-                    $cpt_query_var => $matches[1],
-                    'cpage'        => (int) $matches[2],
-                ];
-            }
 
-            // Feed
-            if (preg_match("#^{$lang_esc}/{$base_esc}/(.+?)/feed/?$#", $uri, $matches)) {
-                return $cache[$this->cpt_slug][$request_uri] = [
-                    'post_type'    => $this->cpt_slug,
-                    'name'         => $matches[1],
-                    $cpt_query_var => $matches[1],
-                    'feed'         => 'feed',
-                    'lang'         => $lang,
-                ];
-            }
-            if (preg_match("#^{$base_esc}/(.+?)/feed/?$#", $uri, $matches)) {
-                return $cache[$this->cpt_slug][$request_uri] = [
-                    'post_type'    => $this->cpt_slug,
-                    'name'         => $matches[1],
-                    $cpt_query_var => $matches[1],
-                    'feed'         => 'feed',
-                ];
-            }
+                if ($single_req['type'] === 'comment-page') {
+                    $res['cpage'] = $single_req['paged'];
+                } elseif ($single_req['type'] === 'feed') {
+                    $res['feed'] = 'feed';
+                } elseif ($single_req['type'] === 'embed') {
+                    $res['embed'] = 'true';
+                }
 
-            // Embed
-            if (preg_match("#^{$lang_esc}/{$base_esc}/(.+?)/embed/?$#", $uri, $matches)) {
-                return $cache[$this->cpt_slug][$request_uri] = [
-                    'post_type'    => $this->cpt_slug,
-                    'name'         => $matches[1],
-                    $cpt_query_var => $matches[1],
-                    'embed'        => 'true',
-                    'lang'         => $lang,
-                ];
-            }
-            if (preg_match("#^{$base_esc}/(.+?)/embed/?$#", $uri, $matches)) {
-                return $cache[$this->cpt_slug][$request_uri] = [
-                    'post_type'    => $this->cpt_slug,
-                    'name'         => $matches[1],
-                    $cpt_query_var => $matches[1],
-                    'embed'        => 'true',
-                ];
+                if ($single_req['lang']) {
+                    $res['lang'] = $lang;
+                }
+
+                return $cache[$this->cpt_slug][$request_uri] = $res;
             }
 
             // Main post slug (support hierarchical CPTs by using pagename)
@@ -242,6 +240,8 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 
     /**
      * Canonicalize CPT single URLs to translated base.
+     *
+     * @return void
      */
     public function maybe_redirect_canonical(): void
     {
@@ -268,6 +268,8 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 
     /**
      * Get the CPT slug this feature handles
+     *
+     * @return string The CPT slug
      */
     public function get_cpt_slug(): string
     {
@@ -276,6 +278,8 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 
     /**
      * Get all configured translated bases for this CPT
+     *
+     * @return array Array of translated base slugs
      */
     public function get_translated_bases(): array
     {
@@ -284,6 +288,8 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 
     /**
      * Get exclusion patterns for this feature
+     *
+     * @return array Array of regex patterns to exclude
      */
     public function get_exclusion_patterns(): array
     {
@@ -294,11 +300,26 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 
     // --- URL Transformation Methods ---
 
+    /**
+     * Check if this transformer applies to the given object.
+     * (Optional: override in features that transform outgoing URLs)
+     *
+     * @param mixed $object The object to check
+     * @return bool True if this transformer should process the object
+     */
     public function applies_to($object): bool
     {
         return isset($object->post_type) && $object->post_type === $this->cpt_slug;
     }
 
+    /**
+     * Transform a URL for the given object.
+     * (Optional: override in features that transform outgoing URLs)
+     *
+     * @param string $url The URL to transform
+     * @param mixed $object The object (post, term) the URL belongs to
+     * @return string The transformed URL
+     */
     public function transform(string $url, $object): string
     {
         if (!$this->is_enabled() || !$this->applies_to($object)) {

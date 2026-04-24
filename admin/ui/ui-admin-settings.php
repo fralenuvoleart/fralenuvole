@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Fralenuvole
- * options-page.php - Creates plugin options page
+ * Fralenuvole Admin Settings UI
+ *
+ * Orchestrates the loading of UI components and defines content rendering callbacks.
  */
 
 // Load UI Helpers
@@ -70,7 +71,9 @@ add_action('frl_after_section_developer_content',
     0);
 
 /**
- * Add a custom widgets to the dashboard tab
+ * Render the dashboard tab content.
+ *
+ * @return void
  */
 function frl_dashboard_content_render()
 {
@@ -78,8 +81,8 @@ function frl_dashboard_content_render()
 }
 
 /**
- * Render the Logs tab content
- * Used as a callback for the logs tab action hook.
+ * Render the import/export settings content.
+ *
  * @return void
  */
 function frl_settings_content_render()
@@ -88,8 +91,8 @@ function frl_settings_content_render()
 }
 
 /**
- * Render the Logs tab content
- * Used as a callback for the logs tab action hook.
+ * Render the developer tools content (logs and debug display).
+ *
  * @return void
  */
 function frl_before_developer_content_render()
@@ -98,6 +101,11 @@ function frl_before_developer_content_render()
     echo frl_debug_display_render();
 }
 
+/**
+ * Render content after the developer tools section.
+ *
+ * @return void
+ */
 function frl_after_developer_content_render()
 {
 }

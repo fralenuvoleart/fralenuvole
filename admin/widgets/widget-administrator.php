@@ -5,8 +5,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Renders the 'Admin Panel' dashboard widget content.
- * @return string The HTML content for the widget.
+ * Render the 'Admin Panel' dashboard widget content.
+ *
+ * Uses the 'frl_admin_dashboard_links' filter to allow customization of the links.
+ *
+ * @return string The generated HTML content for the widget.
  */
 function frl_render_administrator_widget()
 {

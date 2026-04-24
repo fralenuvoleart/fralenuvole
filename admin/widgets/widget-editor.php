@@ -5,8 +5,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Renders the 'Editor Panel' dashboard widget content.
- * @return string The HTML content for the widget.
+ * Render the 'Editor Panel' dashboard widget content.
+ *
+ * Provides a set of quick links for content editors.
+ *
+ * @return string The generated HTML content for the widget.
  */
 function frl_render_editor_widget()
 {

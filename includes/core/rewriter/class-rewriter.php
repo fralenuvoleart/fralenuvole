@@ -59,6 +59,9 @@ if (is_admin()) {
  *
  * This class acts as a facade for the coordinator-based system, which now
  * handles both incoming request parsing and outgoing URL transformation.
+ *
+ * @package Fralenuvole
+ * @since 3.0.0
  */
 final class Frl_Rewriter implements Frl_Rewriter_Interface
 {
@@ -68,6 +71,11 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     private static ?self $instance = null;
     private static bool $hooks_registered = false;
 
+    /**
+     * Private constructor - use init() to get instance
+     *
+     * @return void
+     */
     private function __construct()
     {
         $this->coordinator = Frl_Rewriter_Coordinator::init();
@@ -75,6 +83,11 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         // Validation and feature caching are deferred to runtime to ensure CPTs and mappings are loaded.
     }
 
+    /**
+     * Get the singleton instance
+     *
+     * @return self The rewriter instance
+     */
     public static function init(): self
     {
         if (self::$instance === null) {
@@ -83,6 +96,11 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         return self::$instance;
     }
 
+    /**
+     * Register WordPress hooks for URL transformation and cache invalidation
+     *
+     * @return void
+     */
     private function register_hooks(): void
     {
         if (self::$hooks_registered) {
@@ -100,11 +118,26 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     }
 
 
+    /**
+     * Filter post link for URL transformation
+     *
+     * @param string $link The post link URL
+     * @param mixed $post The post object
+     * @return string The transformed post link
+     */
     public function filter_post_link(string $link, $post): string
     {
         return $this->transform_url($link, $post);
     }
 
+    /**
+     * Filter term link for URL transformation
+     *
+     * @param string $link The term link URL
+     * @param mixed $term The term object or term ID
+     * @param string $taxonomy The taxonomy name (optional)
+     * @return string The transformed term link
+     */
     public function filter_term_link(string $link, $term, string $taxonomy = ''): string
     {
         if (is_int($term)) {
@@ -121,6 +154,10 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
      *
      * Iterates through features in priority order and applies ALL
      * matching transformations (composition). Caches the result.
+     *
+     * @param string $url The URL to transform
+     * @param mixed $object The object (post/term) the URL belongs to
+     * @return string The transformed URL
      */
     private function transform_url(string $url, $object): string
     {
@@ -251,6 +288,8 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     /**
      * Add rewrite rules (delegated to coordinator)
      * Required by Frl_Rewriter_Interface
+     *
+     * @return void
      */
     public function add_rewrite_rules(): void
     {
@@ -262,6 +301,8 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
 
     /**
      * Get the coordinator instance (for advanced usage)
+     *
+     * @return Frl_Rewriter_Coordinator The coordinator instance
      */
     public function get_coordinator(): Frl_Rewriter_Coordinator
     {
@@ -270,6 +311,8 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
 
     /**
      * Check if any features are enabled
+     *
+     * @return bool True if any features are enabled
      */
     public function has_any_features_enabled(): bool
     {
@@ -398,6 +441,8 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     /**
      * Force a full rewrite rules refresh, resetting the coordinator's in-memory
      * config hash so the validation cache also re-evaluates.
+     *
+     * @return void
      */
     public static function force_rules_refresh(): void
     {
@@ -409,6 +454,8 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     /**
      * Register cache invalidation hooks.
      * Called during plugin initialization.
+     *
+     * @return void
      */
     public static function register_cache_invalidation_hooks(): void
     {

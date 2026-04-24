@@ -15,10 +15,10 @@ if (!defined('ABSPATH')) {
 class Frl_Tab_Renderer
 {
     /**
-     * Generate tab navigation HTML
+     * Generate the HTML for the tab navigation menu.
      *
-     * @param array $all_tabs Sorted tabs from registry
-     * @return string
+     * @param array[] $all_tabs Sorted list of tabs with shape {id: string, type: string, config: array, position: int}.
+     * @return string The generated HTML for the navigation.
      */
     public function generate_navigation(array $all_tabs)
     {
@@ -48,11 +48,11 @@ class Frl_Tab_Renderer
     }
 
     /**
-     * Render all custom tabs
-     *
-     * @param array $custom_tabs
-     * @return void
-     */
+    * Render all registered custom tabs in sorted order.
+    *
+    * @param array $custom_tabs Array of custom tab configurations.
+    * @return void
+    */
     public function render_all_custom(array $custom_tabs)
     {
         uasort($custom_tabs, function ($a, $b) {
@@ -73,12 +73,12 @@ class Frl_Tab_Renderer
     }
 
     /**
-     * Render a custom tab container
-     *
-     * @param string $tab_id
-     * @param string $action_hook
-     * @return void
-     */
+    * Render the HTML container for a specific custom tab and trigger its content hook.
+    *
+    * @param string $tab_id The tab identifier.
+    * @param string $action_hook The action hook to trigger for tab content.
+    * @return void
+    */
     public function render_custom_tab($tab_id, $action_hook)
     {
 ?>
@@ -93,13 +93,13 @@ class Frl_Tab_Renderer
     }
 
     /**
-     * Render tab container start
-     *
-     * @param bool $vertical
-     * @param string $additional_class
-     * @param int $active_tab
-     * @return void
-     */
+    * Render the opening HTML for the tab container.
+    *
+    * @param bool $vertical Whether the layout is vertical.
+    * @param string $additional_class Extra CSS classes for the container.
+    * @param int|null $active_tab The active tab index.
+    * @return void
+    */
     public function render_container_start($vertical = true, $additional_class = '', $active_tab = null)
     {
         $tab_class = $vertical ? 'frl-tabs vertical-tabs' : 'frl-tabs';
@@ -111,24 +111,24 @@ class Frl_Tab_Renderer
     }
 
     /**
-     * Render tab container end
-     *
-     * @return void
-     */
+    * Render the closing HTML for the tab container.
+    *
+    * @return void
+    */
     public function render_container_end()
     {
         echo '</div>';
     }
 
     /**
-     * Render tabs from sections
-     *
-     * @param array $sections
-     * @param int $position_start
-     * @param callable $register_callback
-     * @param callable $get_navigation
-     * @return void
-     */
+    * Register tabs based on sections and render the navigation menu.
+    *
+    * @param array $sections Array of section configurations.
+    * @param int $position_start Starting position for the tabs.
+    * @param callable $register_callback Callback to register each tab.
+    * @param callable $get_navigation Callback to retrieve the navigation HTML.
+    * @return void
+    */
     public function render_tabs_from_sections($sections, $position_start, $register_callback, $get_navigation)
     {
         // Register tabs via callback
@@ -159,13 +159,13 @@ class Frl_Tab_Renderer
     }
 
     /**
-     * Render field groups for a tab
-     *
-     * @param array $field_groups
-     * @param callable $field_callback
-     * @param array $args
-     * @return void
-     */
+    * Render field groups for a specific tab using a provided field rendering callback.
+    *
+    * @param array $field_groups List of field group configurations.
+    * @param callable $field_callback Callback function to render each individual field.
+    * @param array $args Additional arguments passed to the field callback.
+    * @return void
+    */
     public function render_field_groups($field_groups, $field_callback, $args = [])
     {
         if (!$field_callback || empty($field_groups)) {

@@ -50,6 +50,9 @@ class Frl_Environment_Files
 
     /**
      * Load raw file content from environment includes, with caching.
+     *
+     * @param string $option_name The option name to load.
+     * @return string|null The file content or null if not found.
      */
     public static function load_environment_file($option_name)
     {
@@ -74,16 +77,32 @@ class Frl_Environment_Files
                 $content = file_get_contents($filepath);
 
                 if (str_contains($content, '<?php')) {
-                    $current_error_level = error_reporting();
-                    error_reporting(0);
-                    set_error_handler(function () { return true; }, E_ALL);
-
+                    // Validate PHP syntax by evaluating in a sandbox
                     $has_syntax_error = false;
                     $error_message = '';
-
-                    restore_error_handler();
-                    error_reporting($current_error_level);
-
+                    
+                    try {
+                        // Create a temporary file to test syntax
+                        $temp_file = tempnam(sys_get_temp_dir(), 'env_');
+                        file_put_contents($temp_file, $content);
+                        
+                        // Use php -l to check syntax
+                        $output = [];
+                        $return_code = 0;
+                        exec('php -l ' . escapeshellarg($temp_file), $output, $return_code);
+                        
+                        if ($return_code !== 0) {
+                            $has_syntax_error = true;
+                            $error_message = implode("\n", $output);
+                        }
+                        
+                        unlink($temp_file);
+                    } catch (Exception $e) {
+                        // If syntax check fails, log and continue
+                        $has_syntax_error = true;
+                        $error_message = $e->getMessage();
+                    }
+                    
                     if ($has_syntax_error) {
                         frl_log('PHP syntax error in environment file: {file} - {error}', ['file' => $filepath, 'error' => $error_message]);
                     }

@@ -10,6 +10,9 @@ require_once __DIR__ . '/abstract-base-feature.php';
  * CPT Archive Translation Feature
  *
  * Handles only archive URLs for a CPT under translated slug mappings.
+ *
+ * @package Fralenuvole
+ * @since 3.0.0
  */
 class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 {
@@ -18,6 +21,11 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
     /** Cached result of is_enabled() — computed once after load_configuration() runs. */
     private ?bool $enabled = null;
 
+    /**
+     * Constructor
+     *
+     * @param string $cpt_slug The CPT slug to translate
+     */
     public function __construct(string $cpt_slug)
     {
         $this->cpt_slug = $cpt_slug;
@@ -38,11 +46,21 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
         add_filter('frl_rewriter_url_prefixes', [$this, 'contribute_url_prefixes'], 10, 1);
     }
 
+    /**
+     * Get a human-readable name for this feature (for logging/debugging)
+     *
+     * @return string The feature name
+     */
     public function get_name(): string
     {
         return "CPT Archive Base Translation ({$this->cpt_slug})";
     }
 
+    /**
+     * Check if this feature is enabled via configuration
+     *
+     * @return bool True if the feature is enabled
+     */
     public function is_enabled(): bool
     {
         if ($this->enabled === null) {
@@ -52,12 +70,22 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
         return $this->enabled;
     }
 
+    /**
+     * Load configuration from options
+     *
+     * @return void
+     */
     public function load_configuration(): void
     {
         $this->mappings = Frl_Rewriter_Path_Utils::parse_lang_mapping_option("translate_cpt_slugs_{$this->cpt_slug}");
         $this->enabled  = null; // Invalidate so is_enabled() recomputes with fresh mappings.
     }
 
+    /**
+     * Generate rewrite rules for this feature only
+     *
+     * @return array Associative array of pattern => rewrite pairs
+     */
     public function generate_rules(): array
     {
         if (!$this->is_enabled()) {
@@ -80,6 +108,12 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
         return $rules;
     }
 
+    /**
+     * Check if this feature should handle the given request URI
+     *
+     * @param string $request_uri The raw request URI
+     * @return bool True if this feature should handle the request
+     */
     public function applies_to_request(string $request_uri): bool
     {
         // Resolve the request and cache the result. If resolution is successful,
@@ -87,6 +121,12 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
         return !empty($this->resolve_request($request_uri));
     }
 
+    /**
+     * Resolve the request URI to WordPress query variables
+     *
+     * @param string $request_uri The request URI to resolve
+     * @return array WordPress query variables or empty array if not handled
+     */
     public function resolve_request(string $request_uri): array
     {
         // Keyed by cpt_slug to prevent cross-instance cache pollution when multiple CPTs are multilingual.
@@ -104,11 +144,13 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
             $lang_esc = Frl_Rewriter_Path_Utils::escape_for_regex($lang, '#');
             $base_esc = Frl_Rewriter_Path_Utils::escape_for_regex($translated, '#');
 
-            if (preg_match("#^(?:{$lang_esc}/)?{$base_esc}/page/?([0-9]+)/?$#", $path, $m)) {
-                return $cache[$this->cpt_slug][$request_uri] = ['post_type' => $this->cpt_slug, 'paged' => (int) $m[1], 'lang' => $lang];
-            }
-            if (preg_match("#^(?:{$lang_esc}/)?{$base_esc}/?$#", $path)) {
-                return $cache[$this->cpt_slug][$request_uri] = ['post_type' => $this->cpt_slug, 'lang' => $lang];
+            $pagination = Frl_Rewriter_Path_Utils::parse_pagination($path, "#^(?:{$lang_esc}/)?{$base_esc}/page/?([0-9]+)/?$#", null, 1);
+            if (preg_match("#^(?:{$lang_esc}/)?{$base_esc}/?$#", $pagination['path'])) {
+                $res = ['post_type' => $this->cpt_slug, 'lang' => $lang];
+                if ($pagination['paged'] > 1) {
+                    $res['paged'] = $pagination['paged'];
+                }
+                return $cache[$this->cpt_slug][$request_uri] = $res;
             }
         }
         return $cache[$this->cpt_slug][$request_uri] = [];

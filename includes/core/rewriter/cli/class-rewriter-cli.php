@@ -20,6 +20,9 @@ if (!class_exists('WP_CLI')) {
 
 /**
  * WP-CLI commands for FRL rewriter diagnostics.
+ *
+ * @package Fralenuvole
+ * @since 3.0.0
  */
 class Frl_Rewriter_CLI {
 
@@ -29,6 +32,10 @@ class Frl_Rewriter_CLI {
      * ## EXAMPLES
      *
      *     wp frl rewrites test
+     *
+     * @param array $args Array of positional arguments
+     * @param array $assoc_args Array of associative arguments
+     * @return void
      */
     public function test( $args, $assoc_args ) {
         $rewriter = Frl_Rewriter::init();

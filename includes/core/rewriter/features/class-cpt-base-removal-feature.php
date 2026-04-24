@@ -117,11 +117,21 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         $query->is_404 = false;
     }
 
+    /**
+     * Get a human-readable name for this feature (for logging/debugging)
+     *
+     * @return string The feature name
+     */
     public function get_name(): string
     {
         return 'CPT Base Removal';
     }
 
+    /**
+     * Load configuration from options
+     *
+     * @return void
+     */
     public function ensure_config_loaded(): void
     {
         if ($this->config_loaded) {
@@ -141,6 +151,11 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         $this->config_loaded = true;
     }
 
+    /**
+     * Check if this feature is enabled via configuration
+     *
+     * @return bool True if the feature is enabled
+     */
     public function is_enabled(): bool
     {
         // Defensive: ensure config is loaded even if called before init/20
@@ -151,8 +166,9 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
     }
 
     /**
-     * Enable explicit catch-all rule so URLs are resolved before hitting 404.
-     * WP will add the query var automatically via abstract-base feature.
+     * Get the catch-all query variable name for this feature (if it uses catch-all)
+     *
+     * @return string The catch-all query variable name
      */
     public function get_catch_all_query_var(): string
     {
@@ -217,12 +233,23 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         });
     }
 
+    /**
+     * Generate rewrite rules for this feature only
+     *
+     * @return array Associative array of pattern => rewrite pairs
+     */
     public function generate_rules(): array
     {
         // This feature uses a catch-all approach handled by the abstract base class.
         return [];
     }
 
+    /**
+     * Check if this feature should handle the given request URI
+     *
+     * @param string $request_uri The raw request URI
+     * @return bool True if this feature should handle the request
+     */
     public function applies_to_request(string $request_uri): bool
     {
         if (!$this->is_enabled()) {
@@ -256,9 +283,8 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         $slug = implode('/', $parts);
 
         // Check for pagination
-        if (preg_match('#^(.+?)/page/?([0-9]+)/?$#', $slug, $matches)) {
-            $slug = $matches[1];
-        }
+        $pagination = Frl_Rewriter_Path_Utils::parse_pagination($slug, '#^(.+?)/page/?([0-9]+)/?$#', 1, 2);
+        $slug = $pagination['path'];
 
         // Per-request caches to minimize DB work. Note: PHP static variables are
         // method-scoped, so these are NOT shared with resolve_request()'s statics.
@@ -327,6 +353,12 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         return false; // No matching posts found
     }
 
+    /**
+     * Resolve the request URI to WordPress query variables
+     *
+     * @param string $request_uri The request URI to resolve
+     * @return array WordPress query variables or empty array if not handled
+     */
     public function resolve_request(string $request_uri): array
     {
         if (!$this->is_enabled()) {
@@ -346,11 +378,9 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         $slug = implode('/', $parts);
 
         // Check for pagination.
-        $paged = 1;
-        if (preg_match('#^(.+?)/page/?([0-9]+)/?$#', $slug, $matches)) {
-            $slug = $matches[1];
-            $paged = (int) $matches[2];
-        }
+        $pagination = Frl_Rewriter_Path_Utils::parse_pagination($slug, '#^(.+?)/page/?([0-9]+)/?$#', 1, 2);
+        $slug = $pagination['path'];
+        $paged = $pagination['paged'];
 
         // Per-request caches. The persistent frl_cache_remember layer is shared with
         // applies_to_request() via the same cache key; both store ['cpt','id','name'] or false.
@@ -416,6 +446,13 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     // --- URL Transformation Methods ---
 
+    /**
+     * Check if this transformer applies to the given object.
+     * (Optional: override in features that transform outgoing URLs)
+     *
+     * @param mixed $object The object to check
+     * @return bool True if this transformer should process the object
+     */
     public function applies_to($object): bool
     {
         if (!$this->is_enabled() || !isset($object->post_type)) {
@@ -426,6 +463,14 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         return $applies;
     }
 
+    /**
+     * Transform a URL for the given object.
+     * (Optional: override in features that transform outgoing URLs)
+     *
+     * @param string $url The URL to transform
+     * @param mixed $object The object (post, term) the URL belongs to
+     * @return string The transformed URL
+     */
     public function transform(string $url, $object): string
     {
         if (!$this->applies_to($object)) {
@@ -457,6 +502,13 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     /**
      * Build query variables for found post - extracted for code reuse
+     *
+     * @param object $post The post object
+     * @param string $cpt The CPT slug
+     * @param string $lang The language code
+     * @param int $paged The page number
+     * @param string $full_slug The full slug path
+     * @return array Array of query variables
      */
     private function build_query_vars($post, string $cpt, string $lang, int $paged, string $full_slug = ''): array
     {

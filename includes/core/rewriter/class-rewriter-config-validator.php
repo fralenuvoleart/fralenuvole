@@ -3,7 +3,8 @@
  * Rewriter Configuration Validator
  *
  * Provides admin-only validation warnings for potential configuration conflicts.
- * DOES NOT affect URL generation or resolution - purely diagnostic.
+ * This class is loaded only in admin context and does not affect URL generation
+ * or resolution - purely diagnostic.
  *
  * @package Fralenuvole
  * @since 3.0.0
@@ -19,6 +20,9 @@ if (!defined('ABSPATH')) {
  *
  * This class only provides warnings and diagnostics.
  * It never blocks functionality or changes URL behavior.
+ *
+ * @package Fralenuvole
+ * @since 3.0.0
  */
 class Frl_Rewriter_Config_Validator {
 
@@ -112,6 +116,8 @@ class Frl_Rewriter_Config_Validator {
 
     /**
      * Check for duplicate translated slugs across features
+     *
+     * @return array Array of warning messages
      */
     private static function check_duplicate_translations(): array {
         $warnings = [];
@@ -162,6 +168,8 @@ class Frl_Rewriter_Config_Validator {
 
     /**
      * Check for potential semantic overlaps
+     *
+     * @return array Array of warning messages
      */
     private static function check_semantic_overlaps(): array {
         $warnings = [];
@@ -187,6 +195,8 @@ class Frl_Rewriter_Config_Validator {
 
     /**
      * Check for language code conflicts with actual slugs
+     *
+     * @return array Array of warning messages
      */
     private static function check_language_conflicts(): array {
         $warnings = [];

@@ -75,3 +75,17 @@ const FRL_TRANSLATOR_REPEATER_SUBFIELD_TYPES = [
 
 // Debug: log missing translation functions.
 const FRL_TRANSLATOR_LOG_MISSING_TRANSLATION = false;
+
+// Translation delimiters for placeholders.
+const FRL_TRANSLATOR_DELIMITER_TEXT = [
+    'start' => '{{', 
+    'end' => '}}'
+];
+
+const FRL_TRANSLATOR_DELIMITER_LINK = [
+    'start' => '##', 
+    'end' => '##'
+];
+
+// Maximum number of strings to queue for registration per request to prevent memory exhaustion.
+const FRL_TRANSLATOR_MAX_QUEUE_SIZE = 500;

@@ -10,12 +10,18 @@ if (!defined('ABSPATH')) {
  *
  * Provides essential URL parsing and manipulation functions
  * using existing plugin helpers where possible.
+ *
+ * @package Fralenuvole
+ * @since 3.0.0
  */
 final class Frl_Rewriter_Path_Utils
 {
 
     /**
      * Parse URL into components.
+     *
+     * @param string $url The URL to parse
+     * @return array Array with 'home_url', 'lang_prefix', and 'segments' keys
      */
     public static function parse_url_segments(string $url): array
     {
@@ -44,6 +50,11 @@ final class Frl_Rewriter_Path_Utils
 
     /**
      * Rebuild URL from components.
+     *
+     * @param string $home_url The home URL
+     * @param string $lang_prefix The language prefix
+     * @param array $segments The URL segments
+     * @return string Rebuilt URL
      */
     public static function rebuild_url(string $home_url, string $lang_prefix, array $segments): string
     {
@@ -66,6 +77,11 @@ final class Frl_Rewriter_Path_Utils
 
     /**
      * Safe regex replacement with error handling.
+     *
+     * @param string $pattern The regex pattern
+     * @param string $replacement The replacement string
+     * @param string $subject The subject string
+     * @return string Result of replacement or original subject on error
      */
     public static function safe_preg_replace(string $pattern, string $replacement, string $subject): string
     {
@@ -91,6 +107,9 @@ final class Frl_Rewriter_Path_Utils
 
     /**
      * Collapse multiple slashes into single slashes.
+     *
+     * @param string $url The URL to collapse
+     * @return string URL with collapsed slashes
      */
     public static function collapse_slashes(string $url): string
     {
@@ -116,6 +135,9 @@ final class Frl_Rewriter_Path_Utils
 
     /**
      * Detect post language using existing helper.
+     *
+     * @param int $post_id The post ID
+     * @return string Language code
      */
     public static function detect_post_language(int $post_id): string
     {
@@ -124,6 +146,10 @@ final class Frl_Rewriter_Path_Utils
 
     /**
      * Detect term language using existing helper.
+     *
+     * @param int $term_id The term ID
+     * @param string $taxonomy The taxonomy name
+     * @return string Language code
      */
     public static function detect_term_language(int $term_id, string $taxonomy): string
     {
@@ -253,17 +279,21 @@ final class Frl_Rewriter_Path_Utils
 
         // All registered public CPT base slugs (prevents catch-all from hijacking CPT archives).
         $cpts = get_post_types(['public' => true, '_builtin' => false], 'objects');
-        foreach ($cpts as $cpt_obj) {
-            if (isset($cpt_obj->rewrite['slug']) && $cpt_obj->rewrite['slug'] !== '') {
-                $patterns[] = self::escape_for_regex($cpt_obj->rewrite['slug']);
+        if (is_array($cpts)) {
+            foreach ($cpts as $cpt_obj) {
+                if (is_object($cpt_obj) && isset($cpt_obj->rewrite['slug']) && $cpt_obj->rewrite['slug'] !== '') {
+                    $patterns[] = self::escape_for_regex($cpt_obj->rewrite['slug']);
+                }
             }
         }
 
         // Public taxonomy rewrite bases (prevents catch-all from capturing taxonomy archives).
         $taxes = get_taxonomies(['public' => true], 'objects');
-        foreach ($taxes as $tax) {
-            if (isset($tax->rewrite['slug']) && $tax->rewrite['slug'] !== '') {
-                $patterns[] = self::escape_for_regex($tax->rewrite['slug']);
+        if (is_array($taxes)) {
+            foreach ($taxes as $tax) {
+                if (is_object($tax) && isset($tax->rewrite['slug']) && $tax->rewrite['slug'] !== '') {
+                    $patterns[] = self::escape_for_regex($tax->rewrite['slug']);
+                }
             }
         }
 
@@ -273,7 +303,7 @@ final class Frl_Rewriter_Path_Utils
         if ($pages) {
             $langs = self::get_active_languages_safe();
             foreach ($pages as $page) {
-                if (!empty($page->post_name)) {
+                if (is_object($page) && !empty($page->post_name)) {
                     $slug = $page->post_name;
                     $patterns[] = self::escape_for_regex($slug);
                     foreach ($langs as $lang) {
@@ -333,6 +363,12 @@ final class Frl_Rewriter_Path_Utils
         });
     }
 
+    /**
+     * Get post slug from post object
+     *
+     * @param object $object Post object
+     * @return string Post slug or empty string
+     */
     public static function get_post_slug($object): string
     {
         return isset($object->post_name) ? (string) $object->post_name : '';
@@ -352,6 +388,8 @@ final class Frl_Rewriter_Path_Utils
 
     /**
      * Extract static first segment from permalink structure (if not a placeholder)
+     *
+     * @return string Static base or empty string
      */
     public static function get_static_permalink_base(): string
     {
@@ -381,6 +419,8 @@ final class Frl_Rewriter_Path_Utils
     /**
      * Clear static caches for memory management
      * Call this during plugin deactivation or cache clearing
+     *
+     * @return void
      */
     public static function clear_static_caches(): void
     {
@@ -389,12 +429,11 @@ final class Frl_Rewriter_Path_Utils
         frl_cache_clear('rewriter');
     }
 
-    /* =============================================================
-     * Small utility helpers extracted during 2025-08 refactor
-     * =========================================================== */
-
     /**
      * Parse a lang=>base option into associative array, cached.
+     *
+     * @param string $option_name The option name to parse
+     * @return array Associative array of lang=>base pairs
      */
     public static function parse_lang_mapping_option(string $option_name): array
     {
@@ -416,6 +455,8 @@ final class Frl_Rewriter_Path_Utils
 
     /**
      * Get current request URL (path portion, no query) for comparison.
+     *
+     * @return string Current request URL
      */
     public static function get_current_request_url(): string
     {
@@ -426,6 +467,9 @@ final class Frl_Rewriter_Path_Utils
 
     /**
      * Helper to issue 301 redirect to canonical if current URL differs.
+     *
+     * @param string $canonical The canonical URL to redirect to
+     * @return void
      */
     public static function maybe_redirect_if_needed(string $canonical): void
     {
@@ -447,19 +491,56 @@ final class Frl_Rewriter_Path_Utils
     }
 
     /**
-     * Minimal debug info helper referenced by docs.
-     * Does not alter behaviour; safe to call anywhere.
+     * Extract pagination from a path using a provided pattern.
+     *
+     * @param string $path The path to parse
+     * @param string $pattern Regex pattern to match pagination
+     * @param int|null $prefix_idx Index of the capture group containing the cleaned path, or null to use preg_replace
+     * @param int $paged_idx Index of the capture group containing the page number
+     * @return array Array with 'path' (cleaned) and 'paged' (int)
      */
-    public static function get_debug_info(): array
+    public static function parse_pagination(string $path, string $pattern = '#/page/?([0-9]+)/?$#', ?int $prefix_idx = null, int $paged_idx = 1): array
     {
-        try {
-            return [
-                'permalink_structure' => self::get_permalink_structure(),
-                'has_category'        => self::has_category_structure(),
-                'active_languages'    => self::get_active_languages_safe(),
-            ];
-        } catch (\Throwable $e) {
-            return [];
+        if (preg_match($pattern, $path, $matches)) {
+            $paged = (int) $matches[$paged_idx];
+            $cleaned_path = ($prefix_idx !== null) ? $matches[$prefix_idx] : preg_replace($pattern, '', $path);
+            return ['path' => $cleaned_path, 'paged' => $paged];
         }
+        return ['path' => $path, 'paged' => 1];
+    }
+
+    /**
+     * Parse a CPT single post request for special types (feed, embed, comment-page).
+     *
+     * @param string $uri The request URI
+     * @param string $lang_esc Escaped language prefix
+     * @param string $base_esc Escaped CPT base
+     * @return array|null Result array with 'name', 'type', 'paged' (optional), and 'lang' (bool), or null if no match
+     */
+    public static function parse_cpt_single_request(string $uri, string $lang_esc, string $base_esc): ?array
+    {
+        // Comment pagination
+        if (preg_match("#^{$lang_esc}/{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$#", $uri, $matches)) {
+            return ['name' => $matches[1], 'type' => 'comment-page', 'paged' => (int) $matches[2], 'lang' => true];
+        }
+        if (preg_match("#^{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$#", $uri, $matches)) {
+            return ['name' => $matches[1], 'type' => 'comment-page', 'paged' => (int) $matches[2], 'lang' => false];
+        }
+        // Feed
+        if (preg_match("#^{$lang_esc}/{$base_esc}/(.+?)/feed/?$#", $uri, $matches)) {
+            return ['name' => $matches[1], 'type' => 'feed', 'lang' => true];
+        }
+        if (preg_match("#^{$base_esc}/(.+?)/feed/?$#", $uri, $matches)) {
+            return ['name' => $matches[1], 'type' => 'feed', 'lang' => false];
+        }
+        // Embed
+        if (preg_match("#^{$lang_esc}/{$base_esc}/(.+?)/embed/?$#", $uri, $matches)) {
+            return ['name' => $matches[1], 'type' => 'embed', 'lang' => true];
+        }
+        if (preg_match("#^{$base_esc}/(.+?)/embed/?$#", $uri, $matches)) {
+            return ['name' => $matches[1], 'type' => 'embed', 'lang' => false];
+        }
+
+        return null;
     }
 }

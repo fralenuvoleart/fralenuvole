@@ -11,7 +11,9 @@ if (!defined('ABSPATH')) {
  */
 
 /**
- * Initialize themekit
+ * Initialize Themekit modules and hooks.
+ *
+ * @return void
  */
 function frl_themekit_init()
 {
@@ -108,7 +110,9 @@ function frl_themekit_font_display_swap_filter($theme_json_data)
 }
 
 /**
- * Enqueue themekit base stylesheet.
+ * Enqueue Themekit base stylesheet.
+ *
+ * @return void
  */
 function frl_themekit_enqueue_base_styles()
 {
@@ -117,8 +121,9 @@ function frl_themekit_enqueue_base_styles()
 }
 
 /**
- * Add classes to body tag
- * @param string $classes A space-separated string of body classes.
+ * Add user and role classes to the admin body tag.
+ *
+ * @param string|array $classes A space-separated string or array of body classes.
  * @return string The modified string of classes.
  */
 function frl_themekit_admin_body_classes($classes)
@@ -150,8 +155,10 @@ function frl_themekit_admin_body_classes($classes)
 }
 
 /**
- * Add classes to body tag
- * @return array Modified array of allowed file types.
+ * Add dynamic context classes (UID, Role, Slug, Path) to the frontend body tag.
+ *
+ * @param array $classes Array of body classes.
+ * @return array Modified array of body classes.
  */
 function frl_themekit_frontend_body_classes($classes)
 {
@@ -235,7 +242,9 @@ function frl_themekit_frontend_body_classes($classes)
 }
 
 /**
- * Register patterns categories for blocks
+ * Register custom block pattern categories.
+ *
+ * @return void
  */
 function frl_themekit_register_patterns_categories()
 {
@@ -249,7 +258,9 @@ function frl_themekit_register_patterns_categories()
 }
 
 /**
- * Remove WordPress Core Blocks Patterns
+ * Remove WordPress Core block patterns and remote patterns.
+ *
+ * @return void
  */
 function frl_themekit_remove_core_block_patterns()
 {
@@ -264,78 +275,105 @@ function frl_themekit_remove_core_block_patterns()
 }
 
 /**
- * Remove block patterns registered by specific providers (themes/plugins).
+ * Remove block patterns registered by specific providers (themes/plugins) based on options.
+ *
+ * @return void
  */
 function frl_themekit_remove_provider_block_patterns()
 {
     $raw = frl_get_option('themekit_remove_provider_patterns');
-    $list = frl_textlist_to_array($raw);
-    if (empty($list)) return;
+    if (empty($raw)) return;
 
-    // Flatten [['ollie'], ['greenshift']] -> ['ollie','greenshift'] and normalize
-    $providers = array_values(array_filter(array_map(function ($row) {
-        return isset($row[0]) ? strtolower(trim($row[0])) : '';
-    }, $list), fn($v) => $v !== ''));
+    $cache_key = 'themekit_remove_patterns_' . md5($raw);
 
-    if (empty($providers)) return;
+    $patterns_to_remove = frl_cache_remember('theme', $cache_key, function () use ($raw) {
+        $list = frl_textlist_to_array($raw);
+        if (empty($list)) return [];
 
-    $registry = WP_Block_Patterns_Registry::get_instance();
-    $patterns = $registry->get_all_registered();
-    if (empty($patterns)) return;
+        // Flatten [['ollie'], ['greenshift']] -> ['ollie','greenshift'] and normalize
+        $providers = array_values(array_filter(array_map(function ($row) {
+            return isset($row[0]) ? strtolower(trim($row[0])) : '';
+        }, $list), fn($v) => $v !== ''));
 
-    foreach ($patterns as $pattern) {
-        if (!isset($pattern['name']) || !is_string($pattern['name'])) continue;
-        $name = strtolower($pattern['name']); // e.g., 'ollie/hero'
-        foreach ($providers as $provider) {
-            if ($provider !== '' && str_starts_with($name, $provider . '/')) {
-                unregister_block_pattern($pattern['name']);
-                break;
+        if (empty($providers)) return [];
+
+        $registry = WP_Block_Patterns_Registry::get_instance();
+        $patterns = $registry->get_all_registered();
+        if (empty($patterns)) return [];
+
+        $matched = [];
+        foreach ($patterns as $pattern) {
+            if (!isset($pattern['name']) || !is_string($pattern['name'])) continue;
+            $name = strtolower($pattern['name']); // e.g., 'ollie/hero'
+            foreach ($providers as $provider) {
+                if ($provider !== '' && str_starts_with($name, $provider . '/')) {
+                    $matched[] = $pattern['name'];
+                    break;
+                }
             }
         }
+        return $matched;
+    });
+
+    foreach ($patterns_to_remove as $pattern_name) {
+        unregister_block_pattern($pattern_name);
     }
 }
 
 /**
- * Dequeue/deregister styles enqueued by specific providers (themes/plugins) or exact handles.
- * Runs late so removals win.
+ * Dequeue and deregister styles from specific providers or handles based on options.
+ *
+ * @return void
  */
 function frl_themekit_remove_provider_styles()
 {
     $raw = frl_get_option('themekit_remove_provider_styles');
-    $list = frl_textlist_to_array($raw);
-    if (empty($list)) return;
+    if (empty($raw)) return;
 
-    $tokens = array_values(array_filter(array_map(function ($row) {
-        return isset($row[0]) ? strtolower(trim($row[0])) : '';
-    }, $list), fn($v) => $v !== ''));
+    $cache_key = 'themekit_remove_styles_' . md5($raw);
 
-    if (empty($tokens)) return;
+    $handles_to_remove = frl_cache_remember('theme', $cache_key, function () use ($raw) {
+        $list = frl_textlist_to_array($raw);
+        if (empty($list)) return [];
 
-    $wp_styles = wp_styles();
-    if (!$wp_styles || empty($wp_styles->registered)) return;
+        $tokens = array_values(array_filter(array_map(function ($row) {
+            return isset($row[0]) ? strtolower(trim($row[0])) : '';
+        }, $list), fn($v) => $v !== ''));
 
-    foreach ($wp_styles->registered as $handle => $style) {
-        $handle_l = strtolower((string)$handle);
-        $src = strtolower((string)($style->src ?? ''));
+        if (empty($tokens)) return [];
 
-        foreach ($tokens as $t) {
-            if ($t === '') continue;
-            // Exact handle match (e.g., 'global-styles')
-            $match = ($handle_l === $t)
-                // Handle contains token (some providers prefix handles)
-                || str_contains($handle_l, $t)
-                // URL path contains provider slug under plugins/themes
-                || ($src !== '' && (
-                    str_contains($src, '/plugins/' . $t . '/')
-                    || str_contains($src, '/themes/' . $t . '/')
-                ));
+        $wp_styles = wp_styles();
+        if (!$wp_styles || empty($wp_styles->registered)) return [];
 
-            if ($match) {
-                wp_dequeue_style($handle);
-                wp_deregister_style($handle);
-                break;
+        $matched = [];
+        foreach ($wp_styles->registered as $handle => $style) {
+            $handle_l = strtolower((string)$handle);
+            $src = strtolower((string)($style->src ?? ''));
+
+            foreach ($tokens as $t) {
+                if ($t === '') continue;
+                // Exact handle match (e.g., 'global-styles')
+                $match = ($handle_l === $t)
+                    // Handle contains token (some providers prefix handles)
+                    || str_contains($handle_l, $t)
+                    // URL path contains provider slug under plugins/themes
+                    || ($src !== '' && (
+                        str_contains($src, '/plugins/' . $t . '/')
+                        || str_contains($src, '/themes/' . $t . '/')
+                    ));
+
+                if ($match) {
+                    $matched[] = $handle;
+                    break;
+                }
             }
         }
+        return $matched;
+    });
+
+    foreach ($handles_to_remove as $handle) {
+        wp_dequeue_style($handle);
+        wp_deregister_style($handle);
     }
 }
 

@@ -13,6 +13,9 @@ class Frl_Environment_State
 
     /**
      * Get current state snapshot.
+     *
+     * @param bool $include_timestamp Whether to include last_updated timestamp.
+     * @return array The current state array.
      */
     public static function get_current_state($include_timestamp = false)
     {
@@ -36,6 +39,9 @@ class Frl_Environment_State
 
     /**
      * Compare stored snapshot hosts vs current request/runtime URL hosts.
+     *
+     * @param array $stored_state The stored state array to compare against.
+     * @return bool True if hosts differ, false otherwise.
      */
     public static function environment_host_changed($stored_state)
     {
@@ -54,6 +60,8 @@ class Frl_Environment_State
 
     /**
      * Check if environment state has changed (host-only), with throttle handled by caller.
+     *
+     * @return bool True if state changed, false otherwise.
      */
     public static function check_environment_state()
     {

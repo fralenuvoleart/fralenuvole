@@ -8,6 +8,9 @@ if (!defined('ABSPATH')) {
 /**
  * Contract that every independent rewriter feature must fulfil.
  * This enables early static inspection (IDE / PHPStan) without altering runtime behaviour.
+ *
+ * @package Fralenuvole
+ * @since 3.0.0
  */
 interface Frl_Rewriter_Feature_Interface
 {

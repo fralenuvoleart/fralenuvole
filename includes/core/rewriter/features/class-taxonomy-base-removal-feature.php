@@ -99,11 +99,21 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         }
     }
 
+    /**
+     * Get a human-readable name for this feature (for logging/debugging)
+     *
+     * @return string The feature name
+     */
     public function get_name(): string
     {
         return 'Taxonomy Base Removal';
     }
 
+    /**
+     * Check if this feature is enabled via configuration
+     *
+     * @return bool True if the feature is enabled
+     */
     public function is_enabled(): bool
     {
         // Defensive: ensure config is loaded even if called before init/20
@@ -113,6 +123,11 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         return !empty($this->taxonomy_slugs);
     }
 
+    /**
+     * Load configuration from options
+     *
+     * @return void
+     */
     public function load_configuration(): void
     {
         $config = $this->get_option('remove_tax_base');
@@ -129,7 +144,9 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
     }
 
     /**
-     * Enable explicit catch-all so taxonomy URLs resolve without 404.
+     * Get the catch-all query variable name for this feature (if it uses catch-all)
+     *
+     * @return string The catch-all query variable name
      */
     public function get_catch_all_query_var(): string
     {
@@ -185,6 +202,11 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         return $cached;
     }
 
+    /**
+     * Generate rewrite rules for this feature only
+     *
+     * @return array Associative array of pattern => rewrite pairs
+     */
     public function generate_rules(): array
     {
         if (!$this->is_enabled()) {
@@ -244,6 +266,8 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
      * CPT translation features contribute their prefixes via the frl_rewriter_url_prefixes
      * filter (registered in their register_additional_hooks()). This keeps the taxonomy
      * feature decoupled from FRL_REWRITER_MULTILINGUAL_CPT and any future features.
+     *
+     * @return array Array of URL prefixes
      */
     private function get_configured_prefixes(): array
     {
@@ -279,12 +303,20 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     /**
      * Extract static first segment from permalink structure (if not a placeholder)
+     *
+     * @return string The static permalink base or empty string
      */
     private function get_static_permalink_base(): string
     {
         return Frl_Rewriter_Path_Utils::get_static_permalink_base();
     }
 
+    /**
+     * Check if this feature should handle the given request URI
+     *
+     * @param string $request_uri The raw request URI
+     * @return bool True if this feature should handle the request
+     */
     public function applies_to_request(string $request_uri): bool
     {
         if (!$this->is_enabled()) {
@@ -329,6 +361,12 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         return true; // Could be a taxonomy term URL
     }
 
+    /**
+     * Resolve the request URI to WordPress query variables
+     *
+     * @param string $request_uri The request URI to resolve
+     * @return array WordPress query variables or empty array if not handled
+     */
     public function resolve_request(string $request_uri): array
     {
         if (!$this->is_enabled()) {
@@ -338,11 +376,9 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         $path = Frl_Rewriter_Path_Utils::extract_request_path($request_uri);
 
         // Check for pagination first
-        $paged = 1;
-        if (preg_match('#/page/([0-9]+)/?$#', $path, $paged_matches)) {
-            $paged = (int) $paged_matches[1];
-            $path = preg_replace('#/page/([0-9]+)/?$#', '', $path);
-        }
+        $pagination = Frl_Rewriter_Path_Utils::parse_pagination($path, '#/page/([0-9]+)/?$#');
+        $path = $pagination['path'];
+        $paged = $pagination['paged'];
 
         $parts = explode('/', trim($path, '/'));
         $lang = frl_get_default_language(); // Assume default lang
@@ -396,6 +432,9 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
      * Early deterministic category disambiguation for static-base paths.
      * If WP parsed this as a post name under the static base but no post exists,
      * and the slug matches a handled taxonomy term, rewrite the request to that taxonomy.
+     *
+     * @param array $query_vars The query variables to disambiguate
+     * @return array The modified query variables
      */
     public function disambiguate_static_base_category(array $query_vars): array
     {
@@ -494,6 +533,8 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     /**
      * Get configured taxonomy slugs for exclusion pattern generation
+     *
+     * @return array Array of taxonomy slugs
      */
     public function get_taxonomy_slugs(): array
     {
@@ -502,6 +543,8 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     /**
      * Protect static permalink base from catch-all hijack when no post base translation is set.
+     *
+     * @return array Array of regex patterns to exclude
      */
     protected function get_exclusion_patterns(): array
     {
@@ -524,6 +567,9 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     /**
      * Check if a given taxonomy is handled by this feature
+     *
+     * @param string $taxonomy The taxonomy slug to check
+     * @return bool True if the taxonomy is handled by this feature
      */
     public function handles_taxonomy(string $taxonomy): bool
     {
@@ -532,6 +578,13 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
     // --- URL Transformation Methods ---
 
+    /**
+     * Check if this transformer applies to the given object.
+     * (Optional: override in features that transform outgoing URLs)
+     *
+     * @param mixed $object The object to check
+     * @return bool True if this transformer should process the object
+     */
     public function applies_to($object): bool
     {
         if (!isset($object->taxonomy)) {
@@ -540,6 +593,14 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         return in_array($object->taxonomy, $this->taxonomy_slugs, true);
     }
 
+    /**
+     * Transform a URL for the given object.
+     * (Optional: override in features that transform outgoing URLs)
+     *
+     * @param string $url The URL to transform
+     * @param mixed $object The object (post, term) the URL belongs to
+     * @return string The transformed URL
+     */
     public function transform(string $url, $object): string
     {
         if (!$this->is_enabled() || !$this->applies_to($object)) {
@@ -574,6 +635,12 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         return $home . $path;
     }
 
+    /**
+     * Get the base slug for a taxonomy for URL transformation
+     *
+     * @param string $taxonomy The taxonomy slug
+     * @return string The base slug to remove
+     */
     private function get_taxonomy_base_for_transform(string $taxonomy): string
     {
         if ($taxonomy === 'category') {

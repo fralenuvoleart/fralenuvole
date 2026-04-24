@@ -23,11 +23,12 @@ add_action('admin_footer', 'frl_enqueue_prism_scripts', 999, 0);
 add_action('wp_print_footer_scripts', 'frl_add_prism_init_script', 1000, 0);
 
 /**
- * Inline critical CSS to prevent FOUC (Flash of Unstyled Content)
- * Specifically targets tab visibility before main CSS loads.
- * Assumes this code only runs on the plugin's admin settings page.
+ * Inline critical CSS to prevent FOUC (Flash of Unstyled Content).
  *
- * @since X.Y.Z // TODO: Add appropriate version
+ * Specifically targets tab visibility before main CSS loads to ensure a smooth
+ * transition. Assumes this code only runs on the plugin's admin settings page.
+ *
+ * @return void
  */
 function frl_inline_critical_admin_css()
 {
@@ -50,9 +51,12 @@ function frl_inline_critical_admin_css()
 }
 
 /**
- * Enqueues styles and scripts for the admin UI.
+ * Enqueue styles and scripts for the admin UI.
  *
- * @since 1.0.0
+ * Handles the loading of core UI scripts, plugin-specific assets, and
+ * localization of data for various admin components.
+ *
+ * @return void
  */
 function frl_asset_loader_scripts(): void
 {
@@ -131,11 +135,13 @@ function frl_asset_loader_scripts(): void
 }
 
 /**
- * Enqueue Prism.js scripts and styles separately with deferred loading
+ * Enqueue Prism.js scripts and styles with deferred loading.
  *
- * PERFORMANCE OPTIMIZATION:
- * - Loads all Prism.js assets (CSS and JS) late in page lifecycle
- * - Uses async/defer attributes to prevent render blocking
+ * Performance Optimization:
+ * - Loads Prism.js assets late in the page lifecycle.
+ * - Uses async/defer attributes to prevent render blocking.
+ *
+ * @return void
  */
 function frl_enqueue_prism_scripts()
 {
@@ -197,14 +203,12 @@ function frl_enqueue_prism_scripts()
 }
 
 /**
- * Add centralized Prism initialization script to handle toggle buttons and syntax highlighting
+ * Add centralized Prism initialization script for syntax highlighting.
  *
- * This function adds a single initialization script that handles both:
- * 1. Toggle button functionality for code examples
- * 2. Prism syntax highlighting for all code blocks
+ * Handles both the initial highlighting of code blocks and re-initialization
+ * when dynamic content is loaded via the 'frl_content_loaded' event.
  *
- * It's called at the very end of the page to ensure all content is loaded
- * and it provides a custom event 'frl_content_loaded' for dynamic content
+ * @return void
  */
 function frl_add_prism_init_script()
 {
@@ -235,7 +239,12 @@ function frl_add_prism_init_script()
 }
 
 /**
- * Enqueue CodeMirror for textareas with IDs ending in '_html'
+ * Enqueue and initialize CodeMirror for HTML textareas.
+ *
+ * Targets textareas with IDs ending in '_html' and integrates them with
+ * the WordPress code editor.
+ *
+ * @return void
  */
 function frl_enqueue_codemirror_scripts()
 {

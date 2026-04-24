@@ -91,7 +91,12 @@ class Frl_Tab_Manager
     // =========================================================================
 
     /**
-     * Static facade for register_tab method
+     * Register a tab via the registry facade.
+     *
+     * @param string $tab_id Unique identifier for the tab.
+     * @param array $args Tab configuration arguments.
+     * @param string $type Tab type (e.g., 'custom', 'core').
+     * @return void
      */
     public static function register_tab($tab_id, $args = [], $type = 'custom'): void
     {
@@ -99,7 +104,11 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Static facade for register_custom_tab method
+     * Register a custom tab via the registry facade.
+     *
+     * @param string $tab_id Unique identifier for the tab.
+     * @param array $args Tab configuration arguments.
+     * @return void
      */
     public static function register_custom_tab($tab_id, $args = []): void
     {
@@ -111,7 +120,10 @@ class Frl_Tab_Manager
     // =========================================================================
 
     /**
-     * Get all tabs
+     * Retrieve registered tabs, optionally filtered by type.
+     *
+     * @param string|null $type Tab type to filter by.
+     * @return array List of registered tabs.
      */
     public static function get_registered_tabs($type = null)
     {
@@ -119,7 +131,9 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Get sorted tabs
+     * Retrieve tabs sorted by their defined position.
+     *
+     * @return array Sorted list of tabs.
      */
     public static function get_sorted_tabs()
     {
@@ -131,7 +145,11 @@ class Frl_Tab_Manager
     // =========================================================================
 
     /**
-     * Associate sections with a tab
+     * Associate a set of sections with a specific tab.
+     *
+     * @param string $tab_id The tab identifier.
+     * @param string[] $sections Array of section identifiers.
+     * @return bool True on success.
      */
     public static function associate_sections_with_tab($tab_id, array $sections): bool
     {
@@ -139,7 +157,10 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Get sections for a tab
+     * Retrieve sections associated with a specific tab.
+     *
+     * @param string $tab_id The tab identifier.
+     * @return array|null List of sections or null if none found.
      */
     public static function get_tab_sections($tab_id)
     {
@@ -147,7 +168,11 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Add field group to a tab
+     * Add a field group configuration to a specific tab.
+     *
+     * @param string $tab_id The tab identifier.
+     * @param array $field_group Field group configuration.
+     * @return bool True on success.
      */
     public static function add_field_group($tab_id, array $field_group)
     {
@@ -155,7 +180,10 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Get field groups for a tab
+     * Retrieve field groups associated with a specific tab.
+     *
+     * @param string $tab_id The tab identifier.
+     * @return array List of field groups.
      */
     public static function get_tab_field_groups($tab_id)
     {
@@ -163,7 +191,11 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Set validation rules for a tab
+     * Define validation rules for a specific tab.
+     *
+     * @param string $tab_id The tab identifier.
+     * @param array $validation_rules Validation rules configuration.
+     * @return bool True on success.
      */
     public static function set_tab_validation_rules($tab_id, array $validation_rules)
     {
@@ -171,7 +203,10 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Get validation rules for a tab
+     * Retrieve validation rules for a specific tab.
+     *
+     * @param string $tab_id The tab identifier.
+     * @return array|null Validation rules or null if none defined.
      */
     public static function get_validation_rules($tab_id)
     {
@@ -183,7 +218,9 @@ class Frl_Tab_Manager
     // =========================================================================
 
     /**
-     * Render all custom tabs
+     * Render all registered custom tabs.
+     *
+     * @return void
      */
     public static function render_all_custom_tabs(): void
     {
@@ -192,7 +229,11 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Render a custom tab
+     * Render a specific custom tab using a provided or default action hook.
+     *
+     * @param string $tab_id The tab identifier.
+     * @param string $action_hook Optional custom action hook for content.
+     * @return void
      */
     public static function render_custom_tab($tab_id, $action_hook = ''): void
     {
@@ -203,7 +244,12 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Render tab container start
+     * Render the opening HTML for the tab container.
+     *
+     * @param bool $vertical Whether the layout is vertical.
+     * @param string $additional_class Extra CSS classes for the container.
+     * @param int|null $active_tab The active tab index.
+     * @return void
      */
     public static function render_tab_container_start($vertical = true, $additional_class = '', $active_tab = null)
     {
@@ -214,7 +260,9 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Render tab container end
+     * Render the closing HTML for the tab container.
+     *
+     * @return void
      */
     public static function render_tab_container_end()
     {
@@ -222,7 +270,9 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Render tab navigation
+     * Render the tab navigation menu, cached based on user access.
+     *
+     * @return string The generated HTML for the navigation.
      */
     public static function render_tab_navigation()
     {
@@ -238,7 +288,11 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Render tabs from sections
+     * Register and render tabs based on a provided sections array.
+     *
+     * @param array $sections Array of section configurations.
+     * @param int $position_start Starting position for the tabs.
+     * @return void
      */
     public static function render_tabs_from_sections($sections, $position_start = 1000): void
     {
@@ -258,7 +312,12 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Render field groups for a tab
+     * Render field groups for a specific tab using a provided callback.
+     *
+     * @param string $tab_id The tab identifier.
+     * @param callable $field_callback Callback function to render each field.
+     * @param array $args Additional arguments passed to the callback.
+     * @return void
      */
     public static function render_tab_field_groups($tab_id, $field_callback, $args = []): void
     {
@@ -271,7 +330,9 @@ class Frl_Tab_Manager
     // =========================================================================
 
     /**
-     * Get active tab
+     * Determine the currently active tab from request or transient storage.
+     *
+     * @return int The active tab index.
      */
     public static function get_active_tab()
     {
@@ -293,7 +354,10 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Save active tab
+     * Persist the active tab index in a transient for post-save redirection.
+     *
+     * @param mixed $active_tab The tab index to save.
+     * @return void
      */
     public static function save_active_tab($active_tab)
     {
@@ -305,7 +369,12 @@ class Frl_Tab_Manager
     // =========================================================================
 
     /**
-     * Add content to a tab
+     * Attach content to a tab via a WordPress action hook.
+     *
+     * @param string $tab_id The tab identifier.
+     * @param string $content The HTML content to add.
+     * @param int $priority Execution priority.
+     * @return void
      */
     public static function add_tab_content($tab_id, $content, $priority = 10): void
     {
@@ -315,7 +384,10 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Get tab action hook
+     * Get the action hook name associated with a specific tab.
+     *
+     * @param string $tab_id The tab identifier.
+     * @return string The action hook name.
      */
     public static function get_tab_action_hook($tab_id)
     {
@@ -323,7 +395,11 @@ class Frl_Tab_Manager
     }
 
     /**
-     * Hide tabs by capability
+     * Restrict access to specific tabs based on user capabilities.
+     *
+     * @param string[] $hidden_tabs Array of tab identifiers to hide.
+     * @param bool|null $has_access Optional override for access check.
+     * @return void
      */
     public static function hide_tabs_by_capability($hidden_tabs, $has_access = null)
     {

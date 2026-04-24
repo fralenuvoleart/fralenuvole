@@ -2,7 +2,11 @@
 
 ## Design Goal
 
-ANY change to the code of one feature must not alter the runtime behaviour of any other feature.
+The primary goal of the Rewriter is to solve the **"URL Hijacking"** problem. When implementing "catch-all" rules (e.g., removing CPT bases like `/product/`), these rules can intercept requests intended for Pages, Posts, or other CPTs. 
+
+The system provides a deterministic, priority-based framework to ensure that specific, high-priority routes (like translated CPT archives) are protected from being hijacked by general, low-priority rules.
+
+**Core Constraint**: ANY change to the code of one feature must not alter the runtime behaviour of any other feature.
 
 ### How independence is achieved
 
@@ -11,7 +15,27 @@ ANY change to the code of one feature must not alter the runtime behaviour of an
 - **Separate rule generation** — each feature calls `add_rewrite_rule()` independently in `register()`
 - **Unique catch-all query vars** — `frl_tax_base_path` vs `frl_cpt_base_path` prevent collisions
 - **No direct class-to-class coupling** — features never call methods or access properties of other features
-- **Filter-based coordination** — the one intentional inter-feature dependency is loose: `Frl_CPT_Archive_Base_Translation_Feature` publishes its translated URL prefixes via the `frl_rewriter_url_prefixes` filter; `Frl_Taxonomy_Base_Removal_Feature` (via `Frl_Rewriter_Path_Utils::compute_exclusion_patterns()`) consumes it to build correct catch-all exclusion lists. Absence of the CPT archive feature degrades gracefully (incomplete exclusions, no errors).
+- **Filter-based coordination** — the one intentional inter-feature dependency is loose: `Frl_CPT_Archive_Base_Translation_Feature` publishes its translated URL prefixes via the `frl_rewriter_url_prefixes` filter; `Frl_Rewriter_Path_Utils::compute_exclusion_patterns()` consumes it to build correct catch-all exclusion lists. Absence of the CPT archive feature degrades gracefully (incomplete exclusions, no errors).
+
+---
+
+## Architectural Principles
+
+The system follows a **Layered Feature Architecture** to ensure scalability and maintainability.
+
+### 1. Layered Design
+- **Facade (`Frl_Rewriter`)**: The primary entry point. It abstracts the coordinator's complexity and provides a clean API for URL transformation and cache management.
+- **Coordinator (`Frl_Rewriter_Coordinator`)**: The central engine. It handles feature discovery, priority sorting, and cross-feature conflict validation.
+- **Feature Strategy (`Frl_Rewriter_Feature_Base`)**: An abstract base class that enforces a strict contract for every feature (rule generation, request resolution, and URL transformation).
+
+### 2. Modularity & Isolation
+Each feature is a self-contained unit. Adding a new rewrite capability requires creating a new class without modifying the core coordinator or other features.
+
+### 3. Defensive Design
+To prevent a single buggy feature from crashing the entire site, the system employs:
+- **Registration Guards**: `try-catch` blocks during feature instantiation and registration.
+- **Validation**: A pre-registration check to detect pattern conflicts between features.
+- **Strict Typing**: Consistent use of PHP 7.4+ type hinting to prevent runtime type errors.
 
 ---
 
@@ -157,16 +181,18 @@ fralenuvole.php
 
 ## URL Transformation Pipeline (`transform_url`)
 
+The transformation pipeline is optimized for high-frequency calls (e.g., in large menus or ACF relationship fields).
+
 ```
 transform_url($url, $object)
   │
   ├─ 1. Object validity guard       (return $url if not object)
   ├─ 2. REST API guard              (return $url — never cache/transform for REST)
   ├─ 3. Fast-path cache lookup      frl_cache_get('permalinks', $cache_key)  → return on hit
-  ├─ 4. Re-entrancy guard           static $processing_urls[]  (prevents ACF recursion)
+  ├─ 4. Re-entrancy guard           static $processing_urls[]  (prevents infinite loops during recursion)
   ├─ 5. get_enabled_features()      array_filter — only reached on cache miss
   ├─ 6. Dispatcher cache            static $feature_match_cache[$signature]
-  │       maps object type → applicable features (memory guard at 1 024 entries)
+  │       maps object type → applicable features (LRU pattern, memory guard at 1 024 entries)
   └─ 7. frl_cache_remember()        apply features in priority order, store result
 ```
 
@@ -176,6 +202,11 @@ transform_url($url, $object)
 ---
 
 ## Caching Architecture
+
+### Performance Optimizations
+- **Regex Optimization**: Uses non-capturing groups `(?:...)` and **Exclusion Grouping** (combining language-prefixed patterns) to minimize regex complexity and execution time.
+- **Lazy Computation**: Configuration hashes are computed only on first access to minimize bootstrap overhead.
+- **LRU Match Cache**: The dispatcher cache uses a Least Recently Used (LRU) eviction policy to keep memory usage stable while maintaining high hit rates for common object types.
 
 ### Cache groups (WordPress object cache, per-request)
 
@@ -260,8 +291,6 @@ Implemented in `cli/class-rewriter-cli.php`, registered via the plugin's CLI loa
 ## Debugging
 
 ```php
-// Dump URL parsing context
-$debug = Frl_Rewriter_Path_Utils::get_debug_info();
 
 // Clear all rewriter caches (object cache groups + transient + flush WP rules)
 Frl_Rewriter::clear_rewriter_caches();

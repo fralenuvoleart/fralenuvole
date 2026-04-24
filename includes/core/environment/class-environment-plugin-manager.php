@@ -7,7 +7,11 @@ if (!defined('ABSPATH')) {
 class Frl_Environment_Plugin_Manager
 {
     /**
-     * Apply plugins activation state
+     * Apply plugins activation state.
+     *
+     * @param array $config The environment configuration array.
+     * @param array $results Reference to results array to populate.
+     * @return void
      */
     public static function apply_plugins_activation_status($config, &$results)
     {
@@ -36,7 +40,13 @@ class Frl_Environment_Plugin_Manager
     }
 
     /**
-     * Process plugins activation/deactivation based on environment
+     * Process plugins activation/deactivation based on environment.
+     *
+     * @param array $plugins Array of plugin paths to process.
+     * @param bool $should_deactivate True to deactivate, false to activate.
+     * @param array $ignored_plugins Array of ignored plugin paths.
+     * @param array $results Reference to results array to populate.
+     * @return void
      */
     public static function process_plugins_activation_status($plugins, $should_deactivate, $ignored_plugins, &$results)
     {

@@ -19,6 +19,15 @@ if (!defined('ABSPATH')) {
 final class Frl_Translation_Service
 {
     private static ?self $instance = null;
+    private Frl_Translation_Adapter_Interface $adapter;
+
+    // Configuration properties for better readability and avoid array access.
+    private string $prefix;
+    private string $name;
+    private string $delimiter_text_start;
+    private string $delimiter_text_end;
+    private string $delimiter_link_start;
+    private string $delimiter_link_end;
 
     // Caches to hold state within a single request, preventing redundant lookups.
     private array $is_multilingual_cache = [];
@@ -31,10 +40,25 @@ final class Frl_Translation_Service
     // Private constructor to enforce the singleton pattern.
     private function __construct()
     {
+        require_once FRL_DIR_PATH . 'includes/core/translator/adapters/interface.php';
+        require_once FRL_DIR_PATH . 'includes/core/translator/adapters/polylang.php';
+
+        // Initialize configuration properties from constants.
+        $this->prefix              = FRL_PREFIX;
+        $this->name                = FRL_NAME;
+        $this->delimiter_text_start = FRL_TRANSLATOR_DELIMITER_TEXT['start'];
+        $this->delimiter_text_end   = FRL_TRANSLATOR_DELIMITER_TEXT['end'];
+        $this->delimiter_link_start = FRL_TRANSLATOR_DELIMITER_LINK['start'];
+        $this->delimiter_link_end   = FRL_TRANSLATOR_DELIMITER_LINK['end'];
+
+        // Default to Polylang adapter. In a more complex system, this could be determined by a config.
+        $this->adapter = new Frl_Polylang_Adapter();
     }
 
     /**
      * Get the singleton instance of the service.
+     *
+     * @return self
      */
     public static function get_instance(): self
     {
@@ -46,22 +70,19 @@ final class Frl_Translation_Service
 
     /**
      * Checks for multilingual function availability.
+     *
+     * @return bool
      */
     public function has_multilingual_plugin(): bool
     {
-        // Check for the presence of either WPML or Polylang's main constant/function.
-        // This is a more robust way to detect a multilingual environment.
-        if (defined('ICL_SITEPRESS_VERSION') || function_exists('pll_the_languages') || defined('PLL')) {
-            $check_result = true;
-        } else {
-            $check_result = false;
-        }
-
-        return $check_result;
+        return (defined('ICL_SITEPRESS_VERSION') || function_exists('pll_the_languages') || defined('PLL'));
     }
 
     /**
      * Checks for multilingual function availability.
+     *
+     * @param string|null $function_name Optional function name to check for existence.
+     * @return bool
      */
     public function is_multilingual(?string $function_name = null): bool
     {
@@ -71,25 +92,15 @@ final class Frl_Translation_Service
             return $this->is_multilingual_cache[$check_type];
         }
 
-        $has_multilingual_plugin = $this->has_multilingual_plugin();
-
         if ($function_name !== null) {
             $check_result = function_exists($function_name);
 
-            if (
-                defined('FRL_TRANSLATOR_LOG_MISSING_TRANSLATION') && FRL_TRANSLATOR_LOG_MISSING_TRANSLATION &&
-                $has_multilingual_plugin && !$check_result
-            ) {
+           $log_missing = defined('FRL_TRANSLATOR_LOG_MISSING_TRANSLATION') && FRL_TRANSLATOR_LOG_MISSING_TRANSLATION;
+           if ($log_missing && $this->has_multilingual_plugin() && !$check_result) {
                 frl_log('Multilingual function ' . $function_name . ' does not exist');
             }
         } else {
-            // Check for the presence of either WPML or Polylang's main constant/function.
-            // Detect a multilingual environment.
-            if ($has_multilingual_plugin) {
-                $check_result = true;
-            } else {
-                $check_result = false;
-            }
+            $check_result = $this->has_multilingual_plugin();
         }
 
         $this->is_multilingual_cache[$check_type] = $check_result;
@@ -98,20 +109,15 @@ final class Frl_Translation_Service
 
     /**
      * Get current language.
+     *
+     * @return string
      */
     public function get_language(): string
     {
         if ($this->language_cache === null) {
-            $language = 'en';
-            if ($this->is_multilingual('pll_current_language')) {
-                $lang = pll_current_language();
-                if (is_string($lang) && strlen($lang) === 2) $language = $lang;
-            } else {
-                $lang = substr(get_locale(), 0, 2);
-                if (strlen($lang) === 2) $language = $lang;
-            }
+            $language = $this->adapter->get_current_language();
+            
             global $wp_query;
-
             if (isset($wp_query->query['lang']) && is_string($wp_query->query['lang']) && strlen($wp_query->query['lang']) === 2) {
                 $language = $wp_query->query['lang'];
             }
@@ -123,33 +129,36 @@ final class Frl_Translation_Service
 
     /**
      * Get default language.
+     *
+     * @return string
      */
     public function get_default_language(): string
     {
         if ($this->default_language_cache === null) {
-            $this->default_language_cache = $this->is_multilingual('pll_default_language') ? pll_default_language() : 'en';
+            $this->default_language_cache = $this->adapter->get_default_language();
         }
         return $this->default_language_cache;
     }
 
     /**
      * Get active site languages.
+     *
+     * @return array
      */
     public function get_active_languages(): array
     {
         if ($this->active_languages_cache === null) {
-            $languages = [];
-            if ($this->is_multilingual('pll_languages_list')) {
-                /** @disregard P1010 Undefined type */
-                $languages = pll_languages_list(['fields' => 'slug']);
-            }
-            $this->active_languages_cache = !empty($languages) ? $languages : [$this->get_default_language()];
+            $this->active_languages_cache = $this->adapter->get_active_languages();
         }
         return apply_filters('frl_active_languages', $this->active_languages_cache);
     }
 
     /**
      * Get a string's translation.
+     *
+     * @param string $string The string to translate.
+     * @param string|null $lang Optional target language.
+     * @return string
      */
     public function get_translation(string $string, ?string $lang = null): string
     {
@@ -162,7 +171,7 @@ final class Frl_Translation_Service
         $cache_key = substr(md5($string . '_' . $version), 0, 12);
 
         return frl_cache_remember('translations', $cache_key, function () use ($string, $language) {
-            $translation = $this->attempt_string_translation($string, $language);
+            $translation = $this->adapter->translate_string($string, $language);
             if ($translation !== null) {
                 return frl_validate_html_fragment($translation);
             }
@@ -172,6 +181,10 @@ final class Frl_Translation_Service
 
     /**
      * Get a block's translation.
+     *
+     * @param string $block_content The content of the block.
+     * @param array $block The block attributes and context.
+     * @return string
      */
     public function get_translation_block(string $block_content, array $block): string
     {
@@ -180,8 +193,9 @@ final class Frl_Translation_Service
         }
 
         // Check for the translation class. If not present, no processing is needed.
-        $has_translate_class = (!empty($block['attrs']['className']) && str_contains($block['attrs']['className'], FRL_PREFIX . '-translate')) ||
-            (!empty($block['attrs']['css_class']) && str_contains($block['attrs']['css_class'], FRL_PREFIX . '-translate'));
+        $prefix = $this->prefix;
+        $has_translate_class = (!empty($block['attrs']['className']) && str_contains($block['attrs']['className'], $prefix . '-translate')) ||
+            (!empty($block['attrs']['css_class']) && str_contains($block['attrs']['css_class'], $prefix . '-translate'));
 
         if (!$has_translate_class) {
             return $block_content;
@@ -198,7 +212,11 @@ final class Frl_Translation_Service
 
             // 1. Gather all strings that need registration.
             $strings_to_register = [];
-            if (preg_match_all('/{{([^{}]+)}}/', $block_content, $string_matches)) {
+            $tStart = preg_quote($this->delimiter_text_start, '/');
+            $tEnd   = preg_quote($this->delimiter_text_end, '/');
+            $text_pattern = "/{$tStart}(.*?){$tEnd}/";
+
+            if (preg_match_all($text_pattern, $block_content, $string_matches)) {
                 $strings_to_register = array_unique(array_map('trim', $string_matches[1]));
             }
 
@@ -226,21 +244,26 @@ final class Frl_Translation_Service
 
     /**
      * Get a post permalink's translation.
+     *
+     * @param int $id Post ID.
+     * @param string $lang Target language.
+     * @return string
      */
     public function get_translation_permalink(int $id, string $lang): string
     {
-        $cache_key = "post_{$id}"; // Key must be language-specific
+        // Include $lang in key because the target language may differ from request language added by cache manager.
+        $cache_key = "post_{$id}_{$lang}";
 
         return frl_cache_remember('permalinks', $cache_key, function () use ($id, $lang) {
             $default_language = $this->get_default_language();
 
             // If no multilingual plugin or we want the default language, get direct permalink.
-            if (!$this->is_multilingual('pll_get_post') || $lang === $default_language) {
+            if (!$this->has_multilingual_plugin() || $lang === $default_language) {
                 return get_permalink($id) ?: '#';
             }
 
             // Get the ID of the translated post.
-            $translated_id = pll_get_post($id, $lang);
+            $translated_id = $this->adapter->get_post_translation($id, $lang);
 
             // If a translation exists for the target language, return its permalink.
             if ($translated_id) {
@@ -254,10 +277,16 @@ final class Frl_Translation_Service
 
     /**
      * Get a term permalink's translation.
+     *
+     * @param string $slug Term slug.
+     * @param string $language Target language.
+     * @param string $taxonomy Taxonomy name.
+     * @return string
      */
     public function get_translation_term_permalink(string $slug, string $language, string $taxonomy = 'category'): string
     {
-        $cache_key = "term_" . sanitize_key($slug) . "_{$taxonomy}";
+            // Include $lang in key because the target language may differ from request language added by cache manager.
+        $cache_key = "term_" . sanitize_key($slug) . "_{$taxonomy}_{$language}";
         return frl_cache_remember(
             'permalinks',
             $cache_key,
@@ -292,7 +321,7 @@ final class Frl_Translation_Service
                 }
 
                 // Get translated term ID and term
-                $translated_id = icl_object_id($term_id, $taxonomy, true, $language) ?? $term_id;
+                $translated_id = $this->adapter->get_object_id($term_id, $taxonomy, true, $language);
                 $translated_term = get_term($translated_id);
 
                 $link = get_term_link($translated_term) ?? '#';
@@ -303,6 +332,9 @@ final class Frl_Translation_Service
 
     /**
      * Get translations for a batch of strings.
+     *
+     * @param array $strings List of strings to translate.
+     * @return array Map of original strings to translations.
      */
     public function get_translation_batch_strings(array $strings): array
     {
@@ -350,6 +382,10 @@ final class Frl_Translation_Service
 
     /**
      * Get translations for a batch of permalink slugs.
+     *
+     * @param array $slugs List of slugs to translate.
+     * @param string|null $language Optional target language.
+     * @return array Map of original slugs to translated permalinks.
      */
     public function get_translation_batch_permalinks(array $slugs, ?string $language = null): array
     {
@@ -469,6 +505,9 @@ final class Frl_Translation_Service
 
     /**
      * Register a string for translation.
+     *
+     * @param string $string The string to register.
+     * @return void
      */
     public function register_translation(string $string): void
     {
@@ -482,7 +521,7 @@ final class Frl_Translation_Service
         $default_language = $this->get_default_language();
 
         if ($current_language !== $default_language) {
-            $translation = $this->attempt_string_translation($string, $current_language);
+            $translation = $this->adapter->translate_string($string, $current_language);
             if ($translation !== null) {
                 return;
             }
@@ -493,11 +532,15 @@ final class Frl_Translation_Service
         if (strlen($identifier) > 64) {
             $identifier = substr($identifier, 0, 60) . '_' . substr(md5($string), 0, 3);
         }
-        icl_register_string(FRL_NAME, $identifier, $string);
+        $domain = $this->name;
+        $this->adapter->register_string($domain, $identifier, $string);
     }
 
     /**
      * Queues strings for registration at shutdown.
+     *
+     * @param array $strings List of strings to queue.
+     * @return void
      */
     public function queue_string_registration(array $strings): void
     {
@@ -507,6 +550,9 @@ final class Frl_Translation_Service
         if (!empty($newly_found_strings)) {
             // Add new strings to the request's batch.
             foreach ($newly_found_strings as $new_str) {
+                if (count($this->string_registration_queue) >= FRL_TRANSLATOR_MAX_QUEUE_SIZE) {
+                    break;
+                }
                 $this->string_registration_queue[$new_str] = true; // Mark as found
             }
         }
@@ -521,6 +567,8 @@ final class Frl_Translation_Service
 
     /**
      * Processes the queued strings for registration. Hooked to 'shutdown'.
+     *
+     * @return void
      */
     public function process_string_registration_queue(): void
     {
@@ -533,16 +581,16 @@ final class Frl_Translation_Service
 
     /**
      * Get post translations IDs for a given post ID.
+     *
+     * @param int $post_id Post ID.
+     * @return array Language-keyed map of post IDs.
      */
     public function get_post_translations(int $post_id): array
     {
         if ($post_id <= 0) return [];
         return frl_cache_remember('postdata', "post_{$post_id}_translations", function () use ($post_id) {
-            if ($this->is_multilingual('pll_get_post_translations')) {
-                $translations = pll_get_post_translations($post_id);
-                if (!empty($translations)) return $translations;
-            }
-            return [$this->get_default_language() => $post_id];
+            $translations = $this->adapter->get_post_translations($post_id);
+            return $translations;
         });
     }
 
@@ -560,15 +608,7 @@ final class Frl_Translation_Service
         }
 
         return frl_cache_remember('postdata', "term_{$term_id}_translations", function () use ($term_id) {
-            if ($this->is_multilingual('pll_get_term_translations')) {
-                $translations = pll_get_term_translations($term_id);
-                if (!empty($translations)) {
-                    return $translations;
-                }
-            }
-
-            // Fallback – map default language to provided term ID.
-            return [$this->get_default_language() => $term_id];
+            return $this->adapter->get_term_translations($term_id);
         });
     }
 
@@ -589,15 +629,15 @@ final class Frl_Translation_Service
 
     /**
      * Detect language for a specific post ID.
+     *
+     * @param int $post_id Post ID.
+     * @return string
      */
     private function detect_post_language(int $post_id): string
     {
-        // Try Polylang first
-        if ($this->is_multilingual('pll_get_post_language')) {
-            $lang = pll_get_post_language($post_id);
-            if (!empty($lang) && is_string($lang)) {
-                return $lang;
-            }
+        $lang = $this->adapter->get_post_language($post_id);
+        if ($lang) {
+            return $lang;
         }
 
         // Fallback to global language
@@ -606,15 +646,15 @@ final class Frl_Translation_Service
 
     /**
      * Detect language for a specific term ID.
+     *
+     * @param int $term_id Term ID.
+     * @return string
      */
     private function detect_term_language(int $term_id): string
     {
-        // Try Polylang first
-        if (function_exists('pll_get_term_language')) {
-            $lang = pll_get_term_language($term_id);
-            if (!empty($lang) && is_string($lang)) {
-                return $lang;
-            }
+        $lang = $this->adapter->get_term_language($term_id);
+        if ($lang) {
+            return $lang;
         }
 
         // Fallback to global language
@@ -623,6 +663,8 @@ final class Frl_Translation_Service
 
     /**
      * Get the global translation version.
+     *
+     * @return int
      */
     public function get_translation_version(): int
     {
@@ -631,11 +673,21 @@ final class Frl_Translation_Service
 
     /**
      * Efficiently processes a string for all placeholder patterns ({{...}} and ##...##).
+     *
+     * @param string $content The content to process.
+     * @return string
      */
     private function _process_all_patterns(string $content): string
     {
         // Use a single regex to find all placeholder types in one pass.
-        if (!preg_match_all('/{{([^{}]+)}}|##([^#]+)##/', $content, $matches, PREG_SET_ORDER)) {
+        $tStart = preg_quote($this->delimiter_text_start, '/');
+        $tEnd   = preg_quote($this->delimiter_text_end, '/');
+        $lStart = preg_quote($this->delimiter_link_start, '/');
+        $lEnd   = preg_quote($this->delimiter_link_end, '/');
+
+        $combined_pattern = "/{$tStart}(.*?){$tEnd}|{$lStart}(.*?){$lEnd}/";
+
+        if (!preg_match_all($combined_pattern, $content, $matches, PREG_SET_ORDER)) {
             return $content;
         }
 
@@ -656,7 +708,13 @@ final class Frl_Translation_Service
         $translated_permalinks = !empty($permalinks_to_translate) ? $this->get_translation_batch_permalinks(array_unique($permalinks_to_translate)) : [];
 
         // Use a single replace callback for performance.
-        return preg_replace_callback('/{{([^{}]+)}}|##([^#]+)##/', function ($match) use ($translated_strings, $translated_permalinks) {
+        $tStart = preg_quote($this->delimiter_text_start, '/');
+        $tEnd   = preg_quote($this->delimiter_text_end, '/');
+        $lStart = preg_quote($this->delimiter_link_start, '/');
+        $lEnd   = preg_quote($this->delimiter_link_end, '/');
+        $combined_pattern = "/{$tStart}(.*?){$tEnd}|{$lStart}(.*?){$lEnd}/";
+
+        return preg_replace_callback($combined_pattern, function ($match) use ($translated_strings, $translated_permalinks) {
             if (!empty($match[1])) {
                 $original = trim($match[1]);
                 // Fetch the translated string (or fall back to original).
@@ -704,6 +762,10 @@ final class Frl_Translation_Service
 
     /**
      * Generates the cache key for block translation.
+     *
+     * @param array $block The block attributes and context.
+     * @param string $content_hash Hash of the normalized content.
+     * @return string
      */
     private function generate_block_cache_key(array $block, string $content_hash): string
     {
@@ -715,7 +777,7 @@ final class Frl_Translation_Service
         $mod_timestamp = '0';
 
         if (!empty($block['context']['postId'])) {
-            $context_post_id = absint($block['context']['postId']);
+            $context_post_id = (int) absint($block['context']['postId']);
             $context_post_type = $block['context']['postType'] ?? 'post';
             $container_id = $context_post_id;
             if (in_array($context_post_type, ['wp_template_part', 'wp_template'])) {
@@ -726,7 +788,7 @@ final class Frl_Translation_Service
                 $container_type = 'post';
             }
         } elseif (isset($block['attrs']['ref'])) {
-            $ref_id = absint($block['attrs']['ref']);
+            $ref_id = (int) absint($block['attrs']['ref']);
             if ($ref_id > 0) {
                 $container_id = $ref_id;
                 $container_type = 'reusable';
@@ -750,10 +812,14 @@ final class Frl_Translation_Service
 
     /**
      * Processes a string for ##slug## patterns with caching.
+     *
+     * @param string $content The content to process.
+     * @return string
      */
     public function process_permalink_patterns(string $content): string
     {
-        if (!str_contains($content, '##')) {
+        $lStart = $this->delimiter_link_start;
+        if (!str_contains($content, $lStart)) {
             return $content;
         }
 
@@ -761,7 +827,11 @@ final class Frl_Translation_Service
 
         return frl_cache_remember('permalinks', $cache_key, function () use ($content) {
             // This callback only runs on a cache miss.
-            if (!preg_match_all('/##([^#]+)##/', $content, $matches)) {
+            $lStart = preg_quote($this->delimiter_link_start, '/');
+            $lEnd   = preg_quote($this->delimiter_link_end, '/');
+            $link_pattern = "/{$lStart}(.*?){$lEnd}/";
+
+            if (!preg_match_all($link_pattern, $content, $matches)) {
                 return $content;
             }
 
@@ -772,86 +842,14 @@ final class Frl_Translation_Service
 
             $translated_permalinks = $this->get_translation_batch_permalinks($slugs_to_translate);
 
-            return preg_replace_callback('/##([^#]+)##/', function ($match) use ($translated_permalinks) {
+            $lStart = preg_quote($this->delimiter_link_start, '/');
+            $lEnd   = preg_quote($this->delimiter_link_end, '/');
+            $link_pattern = "/{$lStart}(.*?){$lEnd}/";
+
+            return preg_replace_callback($link_pattern, function ($match) use ($translated_permalinks) {
                 $original = trim($match[1]);
                 return $translated_permalinks[$original] ?? '#';
             }, $content);
         });
     }
-
-    private function attempt_string_translation(string $string, string $language): ?string {
-        if ($this->is_multilingual('pll_translate_string')) {
-            $translation = pll_translate_string($string, $language);
-            if ($translation !== $string) {
-                return $translation;
-            }
-        }
-        return null;
-    }
-}
-
-// =================================================================
-// BCompatibility Helper Functions
-// =================================================================
-
-function frl_is_multilingual(?string $function_name = null): bool
-{
-    return Frl_Translation_Service::get_instance()->is_multilingual($function_name);
-}
-
-function frl_get_language(?int $id = null, string $type = 'post'): string
-{
-    if ($id === null) {
-        return Frl_Translation_Service::get_instance()->get_language();
-    }
-    return Frl_Translation_Service::get_instance()->get_object_language($id, $type);
-}
-
-function frl_get_default_language(): string
-{
-    return Frl_Translation_Service::get_instance()->get_default_language();
-}
-
-function frl_get_active_languages(): array
-{
-    return Frl_Translation_Service::get_instance()->get_active_languages();
-}
-
-function frl_get_translation(string $string, ?string $lang = null): string
-{
-    return Frl_Translation_Service::get_instance()->get_translation($string, $lang);
-}
-
-function frl_get_translation_block(string $block_content, array $block): string
-{
-    return Frl_Translation_Service::get_instance()->get_translation_block($block_content, $block);
-}
-
-/**
- * Mirror of frl_get_translation for permalinks: translate a single slug to a permalink.
- */
-function frl_get_translation_permalink(string $slug, ?string $language = null): string
-{
-    $map = frl_get_translation_batch_permalinks([$slug], $language);
-    return $map[$slug] ?? '#';
-}
-
-function frl_get_translation_batch_permalinks(array $slugs, ?string $language = null): array
-{
-    return Frl_Translation_Service::get_instance()->get_translation_batch_permalinks($slugs, $language);
-}
-
-function frl_process_permalink_patterns(string $content): string
-{
-    return Frl_Translation_Service::get_instance()->process_permalink_patterns($content);
-}
-
-function frl_get_post_translations(int $post_id): array
-{
-    return Frl_Translation_Service::get_instance()->get_post_translations($post_id);
-}
-
-function frl_get_term_translations(int $term_id): array
-{
-    return Frl_Translation_Service::get_instance()->get_term_translations($term_id);
 }

@@ -15,7 +15,9 @@ class Frl_Dashboard_Renderer
 {
 
     /**
-     * Constructor
+     * Initialize the dashboard renderer.
+     *
+     * @return void
      */
     public function __construct()
     {
@@ -25,9 +27,10 @@ class Frl_Dashboard_Renderer
     /**
      * Render a standard widget section with a title.
      *
-     * @param string $title The title/header for the section (e.g., 'Submissions Today').
+     * @param string $title The title/header for the section.
      * @param string $content_html The HTML content for the section.
      * @param string $section_class Optional CSS class for the section wrapper.
+     * @return void
      */
     public function render_section($title, $content_html, $section_class = 'frl-widget-section')
     {
@@ -43,18 +46,12 @@ class Frl_Dashboard_Renderer
     }
 
     /**
-     * Renders a complete dashboard widget, handling caching and orchestration.
+     * Render a complete dashboard widget with caching and orchestration.
      *
-     * This method orchestrates the rendering by:
-     * 1. Checking widget configuration for caching parameters.
-     * 2. Using frl_cache_remember (or _with_refresh) to get widget HTML.
-     * 3. The cache callback handles lazy-loading and executing the specific render_callback.
-     * 4. Echoing the final (potentially cached) HTML.
-     *
-     * @param array $widget_config The configuration array for the widget.
-     *                             Expected keys: 'key', 'title', 'render_callback'.
-     *                             Optional keys: 'render_file', 'cacheable' (bool), 'cache_ttl' (int),
-     *                                          'cache_refreshable' (bool), 'cache_group' (string).
+     * @param array $widget_config Widget configuration.
+     *                             Required: 'key' (string), 'render_callback' (callable).
+     *                             Optional: 'title' (string), 'render_file' (string), 'cache_ttl' (int), 'refresh_button' (bool).
+     * @return void
      */
     public static function render_widget(array $widget_config)
     {
@@ -111,7 +108,7 @@ class Frl_Dashboard_Renderer
     }
 
     /**
-     * Renders the refresh button form for a cacheable widget.
+     * Render the refresh button form for a cacheable widget.
      *
      * @param string $group The widget cache group.
      * @param string $key The widget cache key.

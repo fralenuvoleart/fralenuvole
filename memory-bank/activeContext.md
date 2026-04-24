@@ -13,6 +13,7 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 - **3-tier options cascade:** Static → Persistent → DB with value normalization
 - **Hook priority discipline:** plugins_loaded/5, init/10, init/15, init/20
 - **MU Plugin Loader:** `assets/mu/frl-mu-plugin.php` - plugin exclusion feature
+- **Translation Module:** Adapter-based architecture decoupling the service from translation providers (Polylang/WPML), utilizing deferred registration via `shutdown` hook and multi-level caching.
 
 ## ⚠️ Active Considerations
 - Ensure `init/15` rewriter registration stays strictly after `init/10` environment enforcement.
@@ -21,7 +22,7 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 ## 📁 Documentation
 - `docs/ARCHITECTURAL-REVIEW.md` - Plugin overview
 - `docs/HOOKS.md` - Critical hook priorities
-- `docs/REWRITER-FEATURES.md` - Rewriter subsystem architecture
+- `docs/REWRITER.md` - Rewriter subsystem architecture
 - `docs/plugin-exclusion-feature.md` - Plugin exclusion feature
 
 ---

@@ -28,6 +28,9 @@ foreach (glob(__DIR__ . '/features/*.php') as $feature_file) {
  * - Conflict detection and resolution
  * - Catch-all rule generation with proper exclusions
  * - Request routing to appropriate features
+ *
+ * @package Fralenuvole
+ * @since 3.0.0
  */
 class Frl_Rewriter_Coordinator
 {
@@ -39,12 +42,22 @@ class Frl_Rewriter_Coordinator
     /** Computed lazily on first access, after init/20 config loaders have run. */
     private ?string $config_hash = null;
 
+    /**
+     * Private constructor - use init() to get instance
+     *
+     * @return void
+     */
     private function __construct()
     {
         $this->register_features();
         $this->register_hooks();
     }
 
+    /**
+     * Get the singleton instance
+     *
+     * @return self The coordinator instance
+     */
     public static function init(): self
     {
         if (self::$instance === null) {
@@ -53,6 +66,14 @@ class Frl_Rewriter_Coordinator
         return self::$instance;
     }
 
+    /**
+     * Register all features with the coordinator
+     *
+     * Creates features, allows external registration via hook,
+     * and sorts features by priority.
+     *
+     * @return void
+     */
     private function register_features(): void
     {
         // Create and self-register all features first
@@ -70,6 +91,9 @@ class Frl_Rewriter_Coordinator
 
     /**
      * Add a feature to the coordinator (used by self-registering features)
+     *
+     * @param Frl_Rewriter_Feature_Base $feature The feature to add
+     * @return void
      */
     public function add_feature(Frl_Rewriter_Feature_Base $feature): void
     {
@@ -79,6 +103,8 @@ class Frl_Rewriter_Coordinator
     /**
      * Dynamically create and self-register all features from the configuration.
      * Includes safety nets for robust error handling.
+     *
+     * @return void
      */
     private function create_all_features(): void
     {
@@ -132,6 +158,11 @@ class Frl_Rewriter_Coordinator
         }
     }
 
+    /**
+     * Register WordPress hooks for feature registration
+     *
+     * @return void
+     */
     private function register_hooks(): void
     {
         // Delay feature registration until after CPTs are registered (on init)
@@ -145,6 +176,8 @@ class Frl_Rewriter_Coordinator
     /**
      * Return the config hash, computing it on first call (after init/20 config loaders have run).
      * This ensures features that load their enabled-state from the DB are correctly included.
+     *
+     * @return string The computed config hash
      */
     private function get_config_hash(): string
     {
@@ -156,6 +189,8 @@ class Frl_Rewriter_Coordinator
 
     /**
      * Validate that all features have non-conflicting patterns
+     *
+     * @return bool True if validation passes, false otherwise
      */
     public function validate_all_features(): bool
     {
@@ -203,12 +238,19 @@ class Frl_Rewriter_Coordinator
 
     /**
      * Get all registered features
+     *
+     * @return array Array of feature instances
      */
     public function get_features(): array
     {
         return $this->features;
     }
 
+    /**
+     * Get all enabled features
+     *
+     * @return array Array of enabled feature instances
+     */
     public function get_enabled_features(): array
     {
         return array_filter($this->features, function ($feature) {
@@ -229,6 +271,8 @@ class Frl_Rewriter_Coordinator
      * triggered by a settings change — option caches are still valid and must not
      * be cleared (which would delete WP's alloptions from object cache and create
      * a race window for concurrent requests). Kept public for external callers.
+     *
+     * @return void
      */
     public function force_refresh(): void
     {
@@ -244,6 +288,8 @@ class Frl_Rewriter_Coordinator
      * Invalidate the in-memory config hash so the next validate_all_features() call
      * recomputes with the current option values. Used by force_rules_refresh() which
      * delegates the full cache + WP-rules purge to clear_rewriter_caches().
+     *
+     * @return void
      */
     public function invalidate_config_hash(): void
     {
@@ -256,6 +302,16 @@ class Frl_Rewriter_Coordinator
      * Includes the actual option values (not just enabled/priority) so the
      * validate_all_features() cache invalidates when configuration changes —
      * e.g., when CPT slugs are added to remove_cpt_base without toggling any feature.
+     *
+     * @return string MD5 hash of configuration data
+     */
+    /**
+     * Generate unique hash of feature configurations.
+     *
+     * Includes the actual option values (not just enabled/priority) so the
+     * validate_all_features() cache invalidates when configuration changes.
+     *
+     * @return string MD5 hash of configuration data
      */
     private function generate_config_hash(): string
     {

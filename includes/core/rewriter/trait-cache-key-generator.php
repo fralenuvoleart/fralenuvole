@@ -8,6 +8,9 @@ if (!defined('ABSPATH')) {
 /**
  * Trait providing generate_cache_key() utility used by classes that transform URLs.
  * No dependencies on the consuming class except method invocation context.
+ *
+ * @package Fralenuvole
+ * @since 3.0.0
  */
 trait Frl_Rewriter_Cache_Key_Trait
 {

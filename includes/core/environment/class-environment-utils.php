@@ -12,6 +12,9 @@ trait Frl_Environment_Host_Normalizer
 {
     /**
      * Normalize a host for comparison: lowercase, trim, drop trailing :port and trailing dot.
+     *
+     * @param string $host The host string to normalize.
+     * @return string The normalized host string.
      */
     private static function normalize_host_value($host)
     {
@@ -30,6 +33,9 @@ trait Frl_Environment_Host_Normalizer
 
     /**
      * Extract host from a URL-like string and normalize it.
+     *
+     * @param string $url The URL string to extract host from.
+     * @return string The extracted and normalized host string.
      */
     private static function extract_host_from_url($url)
     {
@@ -50,7 +56,15 @@ trait Frl_Environment_Host_Normalizer
 class Frl_Environment_Utils
 {
     /**
-     * Log final environment change with structured context
+     * Log final environment change with structured context.
+     *
+     * @param array $config The environment configuration array.
+     * @param string $origin_host The origin host.
+     * @param string $dest_host The destination host.
+     * @param string $dest_siteurl The destination site URL.
+     * @param string $dest_home The destination home URL.
+     * @param array $transients The transients information array.
+     * @return void
      */
     public static function log_environment_change($config, $origin_host, $dest_host, $dest_siteurl, $dest_home, $transients)
     {
