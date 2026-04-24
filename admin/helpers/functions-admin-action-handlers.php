@@ -14,11 +14,12 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Auto-discover and register admin-post and AJAX handlers
- * Functions with frl_post_ prefix are auto-registered
+ * Auto-discover and register admin-post and AJAX handlers.
  *
- * This function registers handlers that process form submissions through WordPress's admin-post.php system.
- * It is completely independent from frl_process_plugin_actions which handles direct GET requests.
+ * Functions with the `frl_post_` prefix are auto-registered. This function registers handlers
+ * that process form submissions through WordPress's admin-post.php system.
+ *
+ * @return void
  */
 function frl_autodiscover_admin_actions()
 {
@@ -53,7 +54,7 @@ function frl_autodiscover_admin_actions()
 }
 
 /**
- * Handle dashboard widgets action
+ * Handle dashboard widgets action.
  *
  * @return void
  */
@@ -126,10 +127,10 @@ function frl_post_action_dashboard_widgets()
 }
 
 /**
- * Handle settings update
+ * Handle settings update.
  *
- * @param array|null $updated_options Updated options
- * @param bool $show_no_changes_notice Whether to show no changes notice
+ * @param array|null $updated_options      Updated options to apply.
+ * @param bool       $show_no_changes_notice Whether to show a notice if no changes were detected.
  * @return void
  */
 function frl_handle_settings_update($updated_options = null, $show_no_changes_notice = false)
@@ -139,9 +140,9 @@ function frl_handle_settings_update($updated_options = null, $show_no_changes_no
 }
 
 /**
- * Handle clear dashboard action
+ * Handle clear dashboard action.
  *
- * @return array<string, mixed>
+ * @return array{success: bool, message_parts: array, notice_type: string} Result of the clear operation.
  */
 function frl_handle_action_clear_dashboard()
 {
@@ -153,10 +154,10 @@ function frl_handle_action_clear_dashboard()
 }
 
 /**
- * Handle clear cache group action
+ * Handle clear cache group action.
  *
- * @param string $action Action name
- * @return array<string, mixed>
+ * @param string $action Action name containing the group to clear.
+ * @return array{success: bool, message_parts: array, notice_type: string} Result of the clear operation.
  */
 function frl_handle_action_clear_cache_group($action)
 {
@@ -233,9 +234,9 @@ function frl_handle_action_clear_cache_group($action)
 }
 
 /**
- * Handle clear opcache action
+ * Handle clear OPcache action.
  *
- * @return array<string, mixed>
+ * @return array{success: bool, message_parts: array, notice_type: string} Result of the OPcache reset.
  */
 function frl_handle_action_clear_cache_opcache()
 {
@@ -260,9 +261,9 @@ function frl_handle_action_clear_cache_opcache()
 }
 
 /**
- * Handle reset environment action
+ * Handle reset environment action.
  *
- * @return array<string, mixed>
+ * @return array{success: bool, message_parts: array, notice_type: string} Detailed results of the environment reset.
  */
 function frl_handle_action_reset_environment()
 {
@@ -358,9 +359,9 @@ function frl_handle_action_reset_environment()
 }
 
 /**
- * Handle reset environment ignored action
+ * Handle reset environment ignored list action.
  *
- * @return array<string, mixed>
+ * @return array{success: bool, message_parts: array, notice_type: string} Result of clearing ignored items.
  */
 function frl_handle_action_reset_environment_ignored()
 {
@@ -393,9 +394,9 @@ function frl_handle_action_reset_environment_ignored()
 }
 
 /**
- * Handle reset debug config action
+ * Handle reset debug configuration action.
  *
- * @return array<string, mixed>
+ * @return array{success: bool, message_parts: array, notice_type: string} Result of the debug config reset.
  */
 function frl_handle_action_reset_debug_config()
 {
@@ -414,9 +415,9 @@ function frl_handle_action_reset_debug_config()
 }
 
 /**
- * Handle reset plugin action
+ * Handle full plugin reset action.
  *
- * @return array<string, mixed>
+ * @return array{success: bool, message_parts: array, notice_type: string} Result of the plugin reset.
  */
 function frl_handle_action_reset_plugin()
 {
@@ -520,9 +521,9 @@ function frl_handle_action_reset_plugin()
 }
 
 /**
- * Handle sync mu-plugins action
+ * Handle MU-plugins synchronization action.
  *
- * @return array<string, mixed>
+ * @return array{success: bool, message_parts: array, notice_type: string} Result of the MU-plugins sync.
  */
 function frl_handle_action_sync_mu_plugins()
 {
@@ -555,9 +556,9 @@ function frl_handle_action_sync_mu_plugins()
 }
 
 /**
- * Handle delete mu-plugins action
+ * Handle MU-plugins deletion action.
  *
- * @return array<string, mixed>
+ * @return array{success: bool, message_parts: array, notice_type: string} Result of the MU-plugins deletion.
  */
 function frl_handle_action_delete_mu_plugins()
 {
@@ -590,9 +591,9 @@ function frl_handle_action_delete_mu_plugins()
 }
 
 /**
- * Handle delete orphan options action
+ * Handle deletion of orphaned plugin options.
  *
- * @return array<string, mixed>
+ * @return array{success: bool, message_parts: array, notice_type: string} Result of the orphan cleanup.
  */
 function frl_handle_action_delete_orphan_options()
 {

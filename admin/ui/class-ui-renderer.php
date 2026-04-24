@@ -114,7 +114,16 @@ class Frl_UI_Renderer
     }
 
     /**
-     * Renders a generic widget with title and content
+     * Renders a generic widget with title and content.
+     *
+     * @param string $id           Unique identifier for the widget.
+     * @param string $content      HTML content to render inside the widget.
+     * @param string $title        Optional widget title.
+     * @param string $class        Optional additional CSS class.
+     * @param int    $ttl          Cache TTL in seconds.
+     * @param bool   $bypass_cache Whether to bypass the cache and render directly.
+     * @param string $group        Cache group for the widget.
+     * @return string Rendered widget HTML.
      */
     public static function render_widget(
         $id,
@@ -122,8 +131,8 @@ class Frl_UI_Renderer
         $title = '',
         $class = '',
         $ttl = HOUR_IN_SECONDS,
-        $bypass_cache = false, // Add bypass cache flag
-        $group = 'adminui' // Add cache group
+        $bypass_cache = false,
+        $group = 'adminui'
     ) {
         // Sanitize the ID first using the helper method
         $sanitized_id = self::_sanitize_table_id($id);
@@ -200,7 +209,11 @@ class Frl_UI_Renderer
     }
 
     /**
-     * Renders a settings page header with title and description
+     * Renders a settings page header with title and description.
+     *
+     * @param string $title       The header title.
+     * @param string $description Optional header description.
+     * @return string HTML for the page header.
      */
     public static function render_page_header($title, $description = '')
     {
@@ -288,15 +301,23 @@ class Frl_UI_Renderer
     }
 
     /**
-     * Renders a table with provided content
+     * Renders a table with provided content.
+     *
+     * @param string $id           Unique identifier for the table.
+     * @param string $content      HTML content to render inside the table.
+     * @param string $class        Optional additional CSS class.
+     * @param int    $ttl          Cache TTL in seconds.
+     * @param bool   $bypass_cache Whether to bypass the cache and render directly.
+     * @param string $group        Cache group for the table.
+     * @return string Rendered table HTML.
      */
     public static function render_table(
-        $id,             // Now required
-        $content,         // Required
-        $class = '',     // Optional
-        $ttl = HOUR_IN_SECONDS, // Optional TTL
-        $bypass_cache = false, // Optional bypass cache
-        $group = 'adminui' // Optional cache group
+        $id,
+        $content,
+        $class = '',
+        $ttl = HOUR_IN_SECONDS,
+        $bypass_cache = false,
+        $group = 'adminui'
     ) {
         // Sanitize the ID first using the helper method
         $sanitized_id = self::_sanitize_table_id($id);
@@ -337,7 +358,13 @@ class Frl_UI_Renderer
     }
 
     /**
-     * Render a table row using divs with name and value
+     * Render a table row using divs with name and value.
+     *
+     * @param string $name      Row label/name.
+     * @param string $value     Row value.
+     * @param bool   $is_header Whether this is a header row.
+     * @param string $row_class Optional additional CSS class.
+     * @return string Rendered row HTML.
      */
     public static function render_table_row(
         $name,
@@ -473,7 +500,12 @@ class Frl_UI_Renderer
     // --------------------------------------------------
 
     /**
-     * Generate a status dot HTML with optional text
+     * Generate a status dot HTML with optional text.
+     *
+     * @param bool|string $status     Status indicator (boolean or class like 'enabled', 'disabled', 'warning').
+     * @param string       $text      Optional text to display.
+     * @param bool         $text_inside Whether the text should be inside the dot.
+     * @return string Rendered status dot HTML.
      */
     public static function render_status_dot($status, $text = '', $text_inside = false)
     {
@@ -635,7 +667,13 @@ class Frl_UI_Renderer
     }
 
     /**
-     * Render validation messages (errors and warnings)
+     * Render validation messages (errors and warnings).
+     *
+     * @param array  $validation       Validation results containing 'status' and 'messages'.
+     * @param string $id                Optional ID for the container.
+     * @param bool   $initially_hidden  Whether to start with messages hidden.
+     * @param bool   $in_table_row      Whether to wrap in a table row structure.
+     * @return string Rendered validation messages HTML.
      */
     public static function render_validation_messages($validation, $id = '', $initially_hidden = false, $in_table_row = false)
     {
@@ -683,7 +721,13 @@ class Frl_UI_Renderer
     // --------------------------------------------------
 
     /**
-     * Renders a settings form section with consistent styling
+     * Renders a settings form section with consistent styling.
+     *
+     * @param string $section_id Unique identifier for the section.
+     * @param string $title       Section title.
+     * @param string $content     Section content.
+     * @param string $class       Optional additional CSS class.
+     * @return string Rendered section HTML.
      */
     public static function render_settings_section($section_id, $title, $content, $class = '')
     {
@@ -727,7 +771,14 @@ class Frl_UI_Renderer
     }
 
     /**
-     * Renders a form with properly set up action URL and fields
+     * Renders a form with properly set up action URL and fields.
+     *
+     * @param string $action        The action to be processed by admin-post.php.
+     * @param string $content       The form fields content.
+     * @param string $nonce_action  Optional nonce action name.
+     * @param string $nonce_name    Optional nonce field name.
+     * @param array  $hidden_fields Associative array of hidden fields [name => value].
+     * @return string Rendered form HTML.
      */
     public static function render_form($action, $content, $nonce_action = '', $nonce_name = '_wpnonce', $hidden_fields = [])
     {
@@ -753,7 +804,11 @@ class Frl_UI_Renderer
     }
 
     /**
-     * Renders a field for settings forms
+     * Renders a field for settings forms.
+     *
+     * @param array  $field Field configuration array.
+     * @param mixed  $value Current value of the field.
+     * @return string Rendered field HTML.
      */
     public static function render_field($field, $value = '')
     {

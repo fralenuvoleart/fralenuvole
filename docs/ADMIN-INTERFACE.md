@@ -21,14 +21,14 @@ admin/
 │   ├── class-settings-fields.php      ← Settings form handling
 │   └── class-tag-validator.php        ← HTML tag validator
 ├── helpers/
-│   ├── admin-class-helpers-core.php   ← Core facade functions
-│   ├── admin-class-helpers-ui.php     ← UI facade functions (frl_tab_*, frl_ui_*)
+│   ├── functions-admin-class-helpers.php    ← Core facade functions
+│   ├── functions-admin-class-helpers-ui.php ← UI facade functions (frl_tab_*, frl_ui_*)
 │   ├── functions-admin.php            ← Batch updates, notices, normalization
-│   ├── functions-admin-action-handlers.php ← Admin-post action handlers
-│   ├── functions-admin-import-export.php   ← Import/export logic
+│   ├── functions-admin-action-handlers.php  ← Admin-post action handlers
+│   ├── functions-admin-import-export.php    ← Import/export logic
 │   └── functions-admin-ui.php         ← UI helper functions
 ├── ui/
-│   ├── ui-asset-loader.php               ← CSS/JS registration and loading
+│   ├── ui-asset-loader.php            ← CSS/JS registration and loading
 │   ├── class-dashboard-renderer.php   ← Dashboard widget renderer
 │   ├── class-tab-manager.php          ← Tab management facade
 │   ├── class-tab-registry.php         ← Tab registration and ordering
@@ -60,7 +60,7 @@ admin/admin.php (loaded via plugin bootstrap)
 
 ```
 admin-settings-page.php
-  → Load helpers (functions-admin-ui.php, admin-class-helpers-ui.php)
+  → Load helpers (functions-admin-ui.php, functions-admin-class-helpers-ui.php)
   → Load UI components (ui-asset-loader.php, class-tab-*.php, class-ui-renderer.php)
   → Load display components (class-dashboard.php, class-display-*.php)
   → Load import/export helpers
@@ -154,7 +154,7 @@ Frl_Dashboard_Renderer::render_widget([
 
 ## Facade Functions
 
-### Tab Functions (`admin-class-helpers-ui.php`)
+### Tab Functions (`functions-admin-class-helpers-ui.php`)
 
 | Function | Description |
 |----------|-------------|
@@ -169,7 +169,7 @@ Frl_Dashboard_Renderer::render_widget([
 | `frl_tab_render_all_custom_tabs()` | Render all custom tabs |
 | `frl_tab_render_tab_container_end()` | Render container end |
 
-### UI Functions (`admin-class-helpers-ui.php`)
+### UI Functions (`functions-admin-class-helpers-ui.php`)
 
 | Function | Description |
 |----------|-------------|

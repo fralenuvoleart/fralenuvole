@@ -10,7 +10,11 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Render the settings page
+ * Handle the saving of plugin settings.
+ *
+ * Proxies the request to Frl_Settings_Fields::handle_save_options().
+ *
+ * @return void
  */
 function frl_settings_fields_handle_save_options()
 {
@@ -23,7 +27,11 @@ function frl_settings_fields_handle_save_options()
 }
 
 /**
- * Render the settings page
+ * Render the plugin settings page.
+ *
+ * Proxies the request to Frl_Settings_Fields::render_settings_page().
+ *
+ * @return void
  */
 function frl_settings_fields_render_settings_page()
 {
@@ -34,7 +42,10 @@ function frl_settings_fields_render_settings_page()
 }
 
 /**
- * Render the wordpress dashboard widgets
+ * Render a WordPress dashboard widget.
+ *
+ * @param array $widget_config Configuration for the widget to render.
+ * @return void
  */
 function frl_dashboard_widget_render($widget_config)
 {

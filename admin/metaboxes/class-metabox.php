@@ -13,16 +13,33 @@ if (!frl_get_option('editor_metabox')) {
 	return;
 }
 
-// Meta Box Class: Frl_Metabox
+/**
+ * Class Frl_Metabox
+ *
+ * Handles the registration and rendering of custom guidelines metaboxes
+ * on the post edit screens.
+ */
 class Frl_Metabox
 {
 	private $screens = array('post', 'page', 'service');
 
+	/**
+	 * Constructor.
+	 *
+	 * Registers the metabox addition hook.
+	 *
+	 * @return void
+	 */
 	public function __construct()
 	{
 		add_action('add_meta_boxes', array($this, 'add_meta_boxes'));
 	}
 
+	/**
+	 * Register custom metaboxes for supported post types.
+	 *
+	 * @return void
+	 */
 	public function add_meta_boxes()
 	{
 		foreach ($this->screens as $s) {
@@ -37,6 +54,12 @@ class Frl_Metabox
 		}
 	}
 
+	/**
+	 * Callback function to render the metabox content.
+	 *
+	 * @param WP_Post $post The current post object.
+	 * @return void
+	 */
 	public function meta_box_callback($post)
 	{
 		if (!isset($post) || !is_object($post)) {

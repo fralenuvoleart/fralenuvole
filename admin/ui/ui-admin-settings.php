@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 
 // Load UI Helpers
 require_once FRL_DIR_PATH . 'admin/helpers/functions-admin-ui.php';
-require_once FRL_DIR_PATH . 'admin/helpers/admin-class-helpers-ui.php';
+require_once FRL_DIR_PATH . 'admin/helpers/functions-admin-class-helpers-ui.php';
 require_once(FRL_DIR_PATH . 'admin/helpers/functions-admin-import-export.php');
 
 // Load UI interface

@@ -10,10 +10,10 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Get registered tabs
+ * Get registered tabs.
  *
- * @param string|null $type Optional type filter
- * @return array Registered tabs
+ * @param string|null $type Optional type filter (e.g., 'custom').
+ * @return array<string, array> Registered tabs.
  */
 function frl_tab_get_registered_tabs($type = null): array
 {
@@ -25,10 +25,11 @@ function frl_tab_get_registered_tabs($type = null): array
 }
 
 /**
- * Register a tab
+ * Register a new tab in the Tab Manager.
  *
- * @param string $tab Tab name
- * @param array $args Tab arguments
+ * @param string $tab  Tab identifier.
+ * @param array  $args Tab configuration (title, description, position).
+ * @return void
  */
 function frl_tab_register_tab($tab, $args)
 {
@@ -51,9 +52,9 @@ function frl_tab_register_tab($tab, $args)
 }
 
 /**
- * Get the active tab index (0-based).
+ * Get the currently active tab index (0-based).
  *
- * @return int
+ * @return int Active tab index.
  */
 function frl_tab_get_active_tab()
 {
@@ -64,7 +65,10 @@ function frl_tab_get_active_tab()
 }
 
 /**
- * Save the active tab
+ * Save the active tab index.
+ *
+ * @param int $active_tab Tab index to save.
+ * @return void
  */
 function frl_tab_save_active_tab($active_tab)
 {
@@ -75,7 +79,9 @@ function frl_tab_save_active_tab($active_tab)
 }
 
 /**
- * Get the sorted tabs
+ * Get the list of registered tabs sorted by position.
+ *
+ * @return array<int, array> Sorted tabs.
  */
 function frl_tab_get_sorted_tabs()
 {
@@ -86,7 +92,10 @@ function frl_tab_get_sorted_tabs()
 }
 
 /**
- * Get the tab validation rules
+ * Get validation rules for a specific tab.
+ *
+ * @param string $tab_id Tab identifier.
+ * @return array|null Validation rules or null if not found.
  */
 function frl_tab_get_validation_rules($tab_id)
 {
@@ -97,10 +106,11 @@ function frl_tab_get_validation_rules($tab_id)
 }
 
 /**
- * Hide tabs by capability
+ * Hide specific tabs based on user capabilities.
  *
- * @param array $tabs Array of tabs to hide
- * @param bool|null $has_access Whether user has access
+ * @param array  $tabs       Array of tabs to evaluate.
+ * @param bool|null $has_access Whether the current user has the required access.
+ * @return void
  */
 function frl_tab_hide_tabs_by_capability($tabs, $has_access)
 {
@@ -111,7 +121,12 @@ function frl_tab_hide_tabs_by_capability($tabs, $has_access)
 }
 
 /**
- * Get the active tab
+ * Render the start of the tab container.
+ *
+ * @param bool   $vertical         Whether to use vertical tabs.
+ * @param string $additional_class Optional CSS class for the container.
+ * @param int|null $active_tab     Optional active tab index.
+ * @return void
  */
 function frl_tab_render_tab_container_start(
     $vertical = true,
@@ -129,7 +144,10 @@ function frl_tab_render_tab_container_start(
 }
 
 /**
- * Render all custom tabs
+ * Render tabs based on provided section keys.
+ *
+ * @param array $sections Array of section keys.
+ * @return void
  */
 function frl_tab_render_tabs_from_sections($sections)
 {
@@ -143,7 +161,9 @@ function frl_tab_render_tabs_from_sections($sections)
 }
 
 /**
- * Render all custom tabs
+ * Render all registered custom tabs.
+ *
+ * @return void
  */
 function frl_tab_render_all_custom_tabs()
 {
@@ -154,7 +174,9 @@ function frl_tab_render_all_custom_tabs()
 }
 
 /**
- * Render the tab container end
+ * Render the end of the tab container.
+ *
+ * @return void
  */
 function frl_tab_render_tab_container_end()
 {

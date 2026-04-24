@@ -10,8 +10,9 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Process translations import via AJAX
- * This is registered in the function below
+ * Process translations import via AJAX.
+ *
+ * @return void
  */
 function frl_post_ajax_import_translations()
 {
@@ -102,7 +103,9 @@ function frl_post_ajax_import_translations()
 }
 
 /**
- * Direct handler for exporting plugin settings
+ * Direct handler for exporting plugin settings.
+ *
+ * @return void
  */
 function frl_post_export_settings()
 {
@@ -140,7 +143,9 @@ function frl_post_export_settings()
 }
 
 /**
- * Direct handler for exporting translations
+ * Direct handler for exporting translations.
+ *
+ * @return void
  */
 function frl_post_export_translations()
 {
@@ -177,7 +182,9 @@ function frl_post_export_translations()
 }
 
 /**
- * Process a settings import via AJAX
+ * Process a settings import via AJAX.
+ *
+ * @return void
  */
 function frl_post_ajax_import_settings()
 {
@@ -279,10 +286,10 @@ function frl_post_ajax_import_settings()
 }
 
 /**
- * Build import message
+ * Build a human-readable summary message for the import process.
  *
- * @param array $results Import results
- * @return string Message HTML
+ * @param array<string, mixed> $results Import results containing counts of added/updated/error items.
+ * @return string Formatted message string.
  */
 function frl_build_import_message($results)
 {
@@ -325,9 +332,9 @@ function frl_build_import_message($results)
 }
 
 /**
- * Export translation strings
+ * Export translation strings to JSON.
  *
- * @return string JSON encoded translations
+ * @return string JSON encoded translations.
  */
 function frl_export_translation_strings()
 {
@@ -365,10 +372,10 @@ function frl_export_translation_strings()
 }
 
 /**
- * Import translation strings
+ * Import translation strings from a JSON string.
  *
- * @param string $json JSON string to import
- * @return array Import results
+ * @param string $json JSON string to import.
+ * @return array{file_strings: int, file_translations: int, file_languages: int, strings: array, translations: array, failed_strings: array, failed_translations: array} Import results.
  */
 function frl_import_translation_strings($json)
 {
@@ -542,11 +549,11 @@ function frl_prepare_settings_for_export(array $settings): array
 }
 
 /**
- * Verifies a nonce with the plugin's prefix.
+ * Verify a nonce using the plugin's prefix.
  *
  * @param string $nonce  The nonce value to verify.
  * @param string $action The action name.
- * @return bool|int False on failure, 1 if generated 0-12 hours ago, 2 if 12-24 hours ago.
+ * @return bool True if verified, false otherwise.
  */
 function frl_verify_nonce($nonce, $action)
 {

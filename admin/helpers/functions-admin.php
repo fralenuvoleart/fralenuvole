@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Load core helpers
-require_once FRL_DIR_PATH . 'admin/helpers/admin-class-helpers-core.php';
+require_once FRL_DIR_PATH . 'admin/helpers/functions-admin-class-helpers.php';
 
 // Load action handlers
 require_once FRL_DIR_PATH . 'admin/helpers/functions-admin-action-handlers.php';
