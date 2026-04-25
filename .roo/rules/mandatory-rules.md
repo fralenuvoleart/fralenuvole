@@ -34,3 +34,9 @@ Follow these steps for each interaction:
 3. At the end of each response, update memory with any new information gathered
 4. Create entities for recurring code patterns, architectural decisions, and significant bugs
 5. Connect related concepts using relations
+
+## 🚫 OVERTHINKING GUARDRAIL (FAILURE RECORD)
+- **Root cause of failure:** Over-analyzed problems instead of simply asking "where is this filter registered" and "is it gated behind a condition". Kept looping on user's simple instructions instead of executing them immediately.
+- **🔴 CRITICAL RULE: When user gives a direct instruction with clear intent — DO IT.** Do not over-analyze, do not loop on their words, do not ask for clarification. Execute the instruction as-is.
+- **🔴 CRITICAL RULE: Do not re-loop same topic over and over again.** If you already have the context, use it. Excessive file I/O wastes time and frustrates the user.
+- **🔴 CRITICAL RULE: If a fix causes a regression, revert immediately and report. Do not design "v2" without explicit user approval.** Let the user decide the next step.

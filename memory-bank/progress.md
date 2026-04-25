@@ -30,5 +30,7 @@
 - **Added cron args sanitization** — Ensures `$event['args']` is always an array in `pre_option_cron` filter to prevent `TypeError: count(): Argument #1 must be of type Countable|array, null given` at `class-wp-hook.php:325`.
 - **Fixed cron filter early-exit bug** — Cron filter was gated behind `if (!empty($excluded))`, so it was never added during cron when only backend exclusion was enabled (capability exclusion disabled). Moved cron filter addition before the empty-exclusion check so it always registers during WP Cron, ensuring args sanitization runs unconditionally.
 
+### FAILED ATTEMPTS (REVERTED)
+- **2026-04-25 — Cron args fix v1 (REVERTED):** Moved `frl_add_exclusion_filter_cron([])` call before the exclusion-settings early return inside `frl_plugins_exclusion_filter()`. Caused admin slowness because `wp_get_schedules()` + `frl_get_exclusion_options()` DB query ran on every cron request (server cron = `DOING_CRON` always true). User reverted. Lesson: safety filters must be independent of feature code; respect server-cron environment.
 ---
 *Last Updated: 2026-04-25*

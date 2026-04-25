@@ -22,6 +22,9 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 - Backend exclusion in MU plugin uses `frl_is_admin_page()` to match screens; `frl_textlist_to_array()` already handles `|` pipe format. **Timing**: `$pagenow` is null during `muplugins_loaded` (vars.php loads after), so `frl_is_admin_page()` falls back to `$_SERVER['SCRIPT_NAME']`.
 - Three-tier exclusion: Frontend (context) → Backend (screen) → Capability (user) — applied in priority order.
 
+## 🚫 FAILURE LOG
+- **2026-04-25 — CRON NULL ARGS FIX:** Attempted to fix `count(): null given` error during WP Cron. v1 fix (commit 94e0568) moved cron filter before exclusion-settings early return but caused admin slowness. User reverted everything. Root cause: over-analysis instead of simple execution; not respecting user's server-cron environment.
+
 ## 📁 Documentation
 - `docs/ARCHITECTURAL-REVIEW.md` - Plugin overview
 - `docs/HOOKS.md` - Critical hook priorities
