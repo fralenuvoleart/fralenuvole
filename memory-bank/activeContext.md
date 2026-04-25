@@ -22,12 +22,19 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 - Backend exclusion in MU plugin uses `frl_is_admin_page()` to match screens; `frl_textlist_to_array()` already handles `|` pipe format. **Timing**: `$pagenow` is null during `muplugins_loaded` (vars.php loads after), so `frl_is_admin_page()` falls back to `$_SERVER['SCRIPT_NAME']`.
 - Three-tier exclusion: Frontend (context) → Backend (screen) → Capability (user) — applied in priority order.
 - **Cache recursion safety:** `frl_cache_remember` uses object cache/transients (never the option system), so it is safe inside `pre_option_*` / `pre_site_option_*` filters. The `$wpdb->get_var()` fallback remains as the callback to avoid the `pre_site_option` filter chain.
+- **Static keys with explicit invalidation** — MU plugin cache keys are static strings (`mu_plugin_active_plugins`, `mu_plugin_network_active_plugins`) with `activated_plugin`/`deactivated_plugin` invalidation. No version-based auto-invalidation needed since hooks cover all activation paths.
+- **Caching hierarchy in MU plugin:**
+  - L1: Closure `static $cache` — dedup filtering step (per-request)
+  - L2: `frl_get_exclusion_options()` `static $options` — dedup entire function (per-request, protects cron query)
+  - L3: `frl_cache_remember` runtime cache — dedup persistent cache lookup (per-request)
+  - L4: `frl_cache_remember` persistent cache — avoid DB query (cross-request)
 
 ## 📁 Documentation
 - `docs/ARCHITECTURAL-REVIEW.md` - Plugin overview
 - `docs/HOOKS.md` - Critical hook priorities
 - `docs/REWRITER.md` - Rewriter subsystem architecture
-- `docs/PLUGIN-EXCLUSIONS-FEATURE.md` - Plugin exclusion feature (updated with cron cleanup)
+- `docs/PLUGIN-EXCLUSIONS-FEATURE.md` - Plugin exclusion feature (updated with caching details)
+- `plans/cache-evaluation-mu-plugin.md` - Cache evaluation plan and decisions
 
 ---
 *Last Updated: 2026-04-25*
