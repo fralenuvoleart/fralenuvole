@@ -310,6 +310,15 @@ function frl_add_exclusion_filter_cron(array $excluded): void
                         // Schedule doesn't exist — skip this orphaned event
                         continue;
                     }
+
+                    // Ensure args is always an array to prevent TypeError in
+                    // do_action_ref_array at wp-cron.php:191 when $v['args'] is null.
+                    // wp-cron.php passes $v['args'] directly to do_action_ref_array,
+                    // and class-wp-hook.php calls count() on it, which throws with null.
+                    if (!isset($event['args']) || !is_array($event['args'])) {
+                        $event['args'] = [];
+                    }
+
                     $filtered_events[$hash] = $event;
                 }
 

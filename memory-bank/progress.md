@@ -25,5 +25,9 @@
   - Fixed language-scoping bugs in translation caching.
   - Optimized performance by deferring string registration to the `shutdown` hook.
 
+### Fixes Applied (pending user confirmation)
+- **Fixed `index.php` dashboard screen matching** — `$pagenow` is null during `muplugins_loaded` because `wp-includes/vars.php` loads at `wp-settings.php:524`, after `muplugins_loaded` at line 511. Added `$_SERVER['SCRIPT_NAME']` fallback to `frl_is_admin_page()`.
+- **Added cron args sanitization** — Ensures `$event['args']` is always an array in `pre_option_cron` filter to prevent `TypeError: count(): Argument #1 must be of type Countable|array, null given` at `class-wp-hook.php:325`.
+
 ---
 *Last Updated: 2026-04-25*

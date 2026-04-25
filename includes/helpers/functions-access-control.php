@@ -227,11 +227,20 @@ function frl_is_admin_page($page, $param = 'page')
     }
 
     global $pagenow;
-    // Handle filename-based pages
+
+    // Handle filename-based pages (e.g. post.php, edit.php, index.php, etc.)
     if (is_string($page) && str_contains($page, '.php')) {
-        return $pagenow === $page;
+        // $pagenow may not be set yet during early hooks (muplugins_loaded),
+        // because wp-includes/vars.php loads after muplugins_loaded fires.
+        // Fall back to the script filename from the request.
+        $current_page = $pagenow;
+        if (empty($current_page)) {
+            $current_page = basename($_SERVER['SCRIPT_NAME'] ?? '');
+        }
+        return $current_page === $page;
     }
 
+    // Handle page slug-based screens (e.g. admin.php?page=my-plugin-slug)
     return isset($_GET[$param]) && $_GET[$param] === $page;
 }
 
