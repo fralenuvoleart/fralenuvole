@@ -25,7 +25,7 @@
 }
 
 #log-entries-table .widget-table-cell-name {
-    flex-basis: 120px;
+    flex-basis: 125px;
     flex-grow: 0;
     display: flex;
     flex-wrap: nowrap;
