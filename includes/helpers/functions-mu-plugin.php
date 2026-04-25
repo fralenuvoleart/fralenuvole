@@ -156,6 +156,13 @@ function frl_plugins_exclusion_filter(): void
     $plugin_handle = FRL_MU_NAME . '/' . FRL_MU_NAME . '.php';
     $excluded = array_diff($excluded, [$plugin_handle]);
 
+    // During WP Cron, add cron filter BEFORE the empty-exclusion check,
+    // because the cron filter also sanitizes args to prevent TypeError
+    // (count() on null), which is valuable regardless of exclusion state.
+    if (frl_is_cron_job_request()) {
+        frl_add_exclusion_filter_cron($excluded);
+    }
+
     if (empty($excluded)) {
         return;
     }
@@ -165,13 +172,6 @@ function frl_plugins_exclusion_filter(): void
 
     // Also handle network active plugins for multisite
     frl_add_exclusion_filter_network_active_plugins($excluded);
-
-    // During WP Cron, also filter orphaned cron events that reference schedules
-    // that were never registered (because the plugin that owns them was excluded).
-    // This prevents WordPress from logging invalid_schedule errors.
-    if (frl_is_cron_job_request()) {
-        frl_add_exclusion_filter_cron($excluded);
-    }
 }
 
 /**

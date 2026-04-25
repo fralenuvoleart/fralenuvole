@@ -84,7 +84,9 @@ When a plugin is excluded from loading, its custom cron schedules never get regi
 3. Removes events whose `schedule` name does not exist in the registered schedules.
 4. Returns the filtered array for WordPress to process.
 
-This filter is only added during WP Cron requests and is completely non-destructive — the database is never modified. If the exclusion is later removed, the plugin will load, register its schedules, and its cron events will work again.
+This filter is added **before** the empty-exclusion early return, so it runs even when no plugins are being actively excluded during the cron request. This ensures args sanitization (null→array) is always applied to protect against `TypeError` in `class-wp-hook.php:325`.
+
+The filter is completely non-destructive — the database is never modified. If the exclusion is later removed, the plugin will load, register its schedules, and its cron events will work again.
 
 Additionally, as a safety measure, the filter sanitizes `args` on every cron event to ensure it is always an array. This prevents `TypeError: count(): Argument #1 must be of type Countable|array, null given` in `class-wp-hook.php:325` when `do_action_ref_array` at `wp-cron.php:191` receives null args — a pre-existing WordPress issue that can occur when a cron event was stored with `args => null` in the database.
 
