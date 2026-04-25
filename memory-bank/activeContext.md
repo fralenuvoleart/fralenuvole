@@ -18,7 +18,7 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 ## ⚠️ Active Considerations
 - Ensure `init/15` rewriter registration stays strictly after `init/10` environment enforcement.
 - Monitor `write_attempted` flag in Options System to ensure zero duplicate DB writes.
-- MU plugin `pre_option_cron` filter removes orphaned cron events (unregistered schedules) during WP Cron to prevent `invalid_schedule` errors. Also sanitizes `args` to array to prevent `TypeError` on null args. **Fix applied (v5.4.0):** Cron filter registration moved before the exclusion-settings early return in `frl_plugins_exclusion_filter()` so it always runs during WP Cron even when all exclusion settings are disabled.
+- MU plugin `pre_option_cron` filter removes orphaned cron events (unregistered schedules) during WP Cron to prevent `invalid_schedule` errors. Also sanitizes `args` to array to prevent `TypeError` on null args.
 - Backend exclusion in MU plugin uses `frl_is_admin_page()` to match screens; `frl_textlist_to_array()` already handles `|` pipe format. **Timing**: `$pagenow` is null during `muplugins_loaded` (vars.php loads after), so `frl_is_admin_page()` falls back to `$_SERVER['SCRIPT_NAME']`.
 - Three-tier exclusion: Frontend (context) → Backend (screen) → Capability (user) — applied in priority order.
 
