@@ -438,6 +438,7 @@
 .form-table:has(#frl_debug:not(:checked)) tr:has( :where([name*="debug_"], [class*="debug_"])),
 .form-table:has(#frl_dash_widget_custom_html_enabled:not(:checked)) tr:has( [id*="dash_widget_custom_html"]:not([id*="dash_widget_custom_html_enabled"]) ),
 .form-table:has(#frl_excluded_plugins_frontend_enabled:not(:checked)) tr:has([id="frl_excluded_plugins_frontend"]),
+.form-table:has(#frl_excluded_plugins_backend_enabled:not(:checked)) tr:has([id="frl_excluded_plugins_backend"]),
 .form-table:has(#frl_excluded_plugins_bycap_enabled:not(:checked)) tr:has([id="frl_excluded_plugins_bycap_cap"]),
 .form-table:has(#frl_excluded_plugins_bycap_enabled:not(:checked)) tr:has([id="frl_excluded_plugins_bycap"])
 {
