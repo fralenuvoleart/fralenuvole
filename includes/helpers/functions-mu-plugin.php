@@ -72,6 +72,14 @@ function frl_get_exclusion_options(): array
  */
 function frl_plugins_exclusion_filter(): void
 {
+    // ── CRON ARGS SANITIZATION (always runs, regardless of exclusion settings) ──
+    // During WP Cron, register the pre_option_cron filter to sanitize null args,
+    // preventing count(): TypeError in class-wp-hook.php when event args are null.
+    // This must run BEFORE the exclusion-settings early return below.
+    if (frl_is_cron_job_request()) {
+        frl_add_exclusion_filter_cron([]);
+    }
+
     // Get exclusion settings
     $frontend_enabled = frl_get_option('excluded_plugins_frontend_enabled');
     $backend_enabled = frl_get_option('excluded_plugins_backend_enabled');
@@ -155,13 +163,6 @@ function frl_plugins_exclusion_filter(): void
     // Safeguard: Ensure the plugin itself is never excluded to avoid inconsistent state
     $plugin_handle = FRL_MU_NAME . '/' . FRL_MU_NAME . '.php';
     $excluded = array_diff($excluded, [$plugin_handle]);
-
-    // During WP Cron, add cron filter BEFORE the empty-exclusion check,
-    // because the cron filter also sanitizes args to prevent TypeError
-    // (count() on null), which is valuable regardless of exclusion state.
-    if (frl_is_cron_job_request()) {
-        frl_add_exclusion_filter_cron($excluded);
-    }
 
     if (empty($excluded)) {
         return;

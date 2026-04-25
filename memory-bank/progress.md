@@ -25,10 +25,11 @@
   - Fixed language-scoping bugs in translation caching.
   - Optimized performance by deferring string registration to the `shutdown` hook.
 
-### Fixes Applied (pending user confirmation)
+### Fixes Applied
 - **Fixed `index.php` dashboard screen matching** — `$pagenow` is null during `muplugins_loaded` because `wp-includes/vars.php` loads at `wp-settings.php:524`, after `muplugins_loaded` at line 511. Added `$_SERVER['SCRIPT_NAME']` fallback to `frl_is_admin_page()`.
 - **Added cron args sanitization** — Ensures `$event['args']` is always an array in `pre_option_cron` filter to prevent `TypeError: count(): Argument #1 must be of type Countable|array, null given` at `class-wp-hook.php:325`.
 - **Fixed cron filter early-exit bug** — Cron filter was gated behind `if (!empty($excluded))`, so it was never added during cron when only backend exclusion was enabled (capability exclusion disabled). Moved cron filter addition before the empty-exclusion check so it always registers during WP Cron, ensuring args sanitization runs unconditionally.
+- **Fixed: Cron filter bypassed when all exclusion settings disabled** — The entire `frl_plugins_exclusion_filter()` function early-returned at the "Nothing enabled" check (line 81) before reaching the cron filter registration. Moved `frl_add_exclusion_filter_cron()` call before the exclusion-settings early return so the args sanitization always runs during WP Cron, regardless of exclusion configuration.
 
 ---
 *Last Updated: 2026-04-25*
