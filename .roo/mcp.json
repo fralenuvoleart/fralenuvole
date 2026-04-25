@@ -54,7 +54,8 @@
 				"read_file",
 				"get_file_info",
 				"read_text_file",
-				"directory_tree"
+				"directory_tree",
+				"list_allowed_directories"
 			]
 		},
 		"tavily": {

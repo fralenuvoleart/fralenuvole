@@ -2,8 +2,22 @@
 
 ## Recent Updates (v5.4.0)
 - Plugin Exclusion Feature: MU-based loader to prevent specified plugins from loading without deactivating them
-  - Frontend exclusion: applies to all users
-  - Capability exclusion: applies only in admin for users without required cap
+  - **Frontend exclusion**: applies to all users in frontend context
+  - **Backend exclusion**: applies to all users in admin context, filtered by admin screen via `plugin-path|admin-screen` format
+  - **Capability exclusion**: applies in non-frontend contexts for users without required cap
+- **Fixed: Cron `invalid_schedule` error when excluded plugins have cron events**
+  - Added shared `frl_get_exclusion_options()` fetching both `active_plugins` and `cron` in one DB query
+  - Refactored `pre_option_active_plugins` to use shared function (no behavior change)
+  - Added `pre_option_cron` filter during WP Cron that removes orphaned events with unregistered schedules
+- **Backend exclusion wired in** — reads `excluded_plugins_backend_enabled` / `excluded_plugins_backend` options
+  - Uses existing `frl_is_admin_page()` helper for screen matching
+  - Uses existing `frl_textlist_to_array()` helper (already parses `|` pipe format)
+  - Admin screen after `|` is **required** (exclusion only activates on matching screen)
+- **Refactored MU plugin structure:**
+  - `assets/mu/frl-mu-plugin.php` → thin bootstrap (constant + bootstrap require + hook registration)
+  - `includes/helpers/functions-mu-plugin.php` → all exclusion logic (moved from MU plugin)
+  - Loaded only by the MU plugin, not polluting the main plugin's helper load
+  - Updated `docs/PLUGIN-EXCLUSIONS-FEATURE.md` with new file references
 - Translation Module Refactor:
   - Implemented Adapter Pattern for translation providers (Polylang/WPML).
   - Added strict typing to `field-translator.php`.
@@ -12,4 +26,4 @@
   - Optimized performance by deferring string registration to the `shutdown` hook.
 
 ---
-*Last Updated: 2026-04-21*
+*Last Updated: 2026-04-25*
