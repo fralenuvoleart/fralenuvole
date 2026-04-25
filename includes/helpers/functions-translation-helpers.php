@@ -49,7 +49,8 @@ function frl_get_language(?int $id = null, string $type = 'post'): string
         return 'en';
     }
     if ($id === null) {
-        return Frl_Translation_Service::get_instance()->get_language();
+        $language = Frl_Translation_Service::get_instance()->get_language();
+        return !empty($language) ? $language : 'en';
     }
     return Frl_Translation_Service::get_instance()->get_object_language($id, $type);
 }
@@ -104,7 +105,12 @@ function frl_get_translation(string $string, ?string $lang = null): string
  */
 function frl_get_translation_block(string $block_content, array $block): string
 {
-    // Translator can be completely disabled for non multilingual websites.
+    /**
+     * Three-tier guard architecture:
+     * 1. Fully disabled: Zero overhead, return content as-is.
+     * 2. Polylang off but not disabled: Safe Mode. Strip delimiters to keep site usable.
+     * 3. Polylang active: Full translation processing.
+     */
     if ( frl_get_option('disable_translator') ) {
         return $block_content;
     }

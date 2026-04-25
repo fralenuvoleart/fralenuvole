@@ -124,6 +124,12 @@ final class Frl_Translation_Service
 
             $this->language_cache = $language;
         }
+
+        // Ensure we never return an empty string (e.g. from Polylang on AJAX)
+        if (empty($this->language_cache)) {
+            $this->language_cache = 'en';
+        }
+
         return $this->language_cache;
     }
 
@@ -518,6 +524,9 @@ final class Frl_Translation_Service
         // Heuristic: If the string is already translated in the current language,
         // we assume it is registered and bail out to prevent redundant calls.
         $current_language = $this->get_language();
+        if (empty($current_language)) {
+            return;
+        }
         $default_language = $this->get_default_language();
 
         if ($current_language !== $default_language) {
