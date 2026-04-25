@@ -12,7 +12,7 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 - **5-backend cache system:** Litespeed, Docket Cache, Redis, Memcached, Transients
 - **3-tier options cascade:** Static → Persistent → DB with value normalization
 - **Hook priority discipline:** plugins_loaded/5, init/10, init/15, init/20
-- **MU Plugin Loader:** `assets/mu/frl-mu-plugin.php` (bootstrap) → `includes/helpers/functions-mu-plugin.php` (logic) — plugin exclusion feature with combined DB query (`active_plugins` + `cron`) and cron event cleanup
+- **MU Plugin Loader:** `assets/mu/frl-mu-plugin.php` (bootstrap) → `includes/helpers/functions-mu-plugin.php` (logic) — plugin exclusion feature with persistent caching of `active_plugins` via `frl_cache_remember` in the `options` group (WEEK_IN_SECONDS TTL). Cron data fetched fresh (too volatile to cache). Network active plugins also cached via a separate `frl_cache_remember` key. Cache invalidation on `activated_plugin`/`deactivated_plugin` hooks.
 - **Translation Module:** Adapter-based architecture decoupling the service from translation providers (Polylang/WPML), utilizing deferred registration via `shutdown` hook and multi-level caching.
 
 ## ⚠️ Active Considerations
@@ -21,9 +21,7 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 - MU plugin `pre_option_cron` filter removes orphaned cron events (unregistered schedules) during WP Cron to prevent `invalid_schedule` errors. Also sanitizes `args` to array to prevent `TypeError` on null args.
 - Backend exclusion in MU plugin uses `frl_is_admin_page()` to match screens; `frl_textlist_to_array()` already handles `|` pipe format. **Timing**: `$pagenow` is null during `muplugins_loaded` (vars.php loads after), so `frl_is_admin_page()` falls back to `$_SERVER['SCRIPT_NAME']`.
 - Three-tier exclusion: Frontend (context) → Backend (screen) → Capability (user) — applied in priority order.
-
-## 🚫 FAILURE LOG
-- **2026-04-25 — CRON NULL ARGS FIX:** Attempted to fix `count(): null given` error during WP Cron. v1 fix (commit 94e0568) moved cron filter before exclusion-settings early return but caused admin slowness. User reverted everything. Root cause: over-analysis instead of simple execution; not respecting user's server-cron environment.
+- **Cache recursion safety:** `frl_cache_remember` uses object cache/transients (never the option system), so it is safe inside `pre_option_*` / `pre_site_option_*` filters. The `$wpdb->get_var()` fallback remains as the callback to avoid the `pre_site_option` filter chain.
 
 ## 📁 Documentation
 - `docs/ARCHITECTURAL-REVIEW.md` - Plugin overview

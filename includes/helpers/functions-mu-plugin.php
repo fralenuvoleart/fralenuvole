@@ -36,31 +36,39 @@ function frl_get_exclusion_options(): array
     }
 
     global $wpdb;
+
+    // Cache active_plugins in the 'options' group with WEEK_IN_SECONDS TTL.
+    // This data changes only on plugin activation/deactivation — stable, ideal for caching.
+    // frl_cache_remember uses object cache/transients, never the option system,
+    // so it is safe inside pre_option_* filters (no recursion risk).
+    $options['active_plugins'] = frl_cache_remember(
+        'options',
+        'mu_plugin_active_plugins',
+        function () {
+            global $wpdb;
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+            $value = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+                    'active_plugins'
+                )
+            );
+            return $value ? (array) maybe_unserialize($value) : [];
+        },
+        WEEK_IN_SECONDS
+    );
+
+    // Fetch cron fresh (volatile data) — changes on every cron execution.
+    // Caching cron would risk serving stale data (missed or duplicated events).
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
     // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-    $rows = $wpdb->get_results(
+    $cron_value = $wpdb->get_var(
         $wpdb->prepare(
-            "SELECT option_name, option_value 
-             FROM {$wpdb->options} 
-             WHERE option_name IN (%s, %s)",
-            'active_plugins',
+            "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
             'cron'
         )
     );
-
-    $options = [
-        'active_plugins' => [],
-        'cron'           => [],
-    ];
-
-    foreach ((array) $rows as $row) {
-        if ($row->option_name === 'active_plugins') {
-            $options['active_plugins'] = (array) maybe_unserialize($row->option_value);
-        } elseif ($row->option_name === 'cron') {
-            $cron_value = maybe_unserialize($row->option_value);
-            $options['cron'] = is_array($cron_value) ? $cron_value : [];
-        }
-    }
+    $options['cron'] = $cron_value ? (array) maybe_unserialize($cron_value) : [];
 
     return $options;
 }
@@ -77,7 +85,7 @@ function frl_plugins_exclusion_filter(): void
     $backend_enabled = frl_get_option('excluded_plugins_backend_enabled');
     $cap_enabled = frl_get_option('excluded_plugins_bycap_enabled');
 
-    // Nothing enabled - skip
+    // If nothing enabled - skip both eclusions and cron filters
     if (!$frontend_enabled && !$backend_enabled && !$cap_enabled) {
         return;
     }
@@ -222,17 +230,28 @@ function frl_add_exclusion_filter_network_active_plugins(array $excluded): void
             return $cache;
         }
 
-        // Bypass the pre_site_option filter by accessing cache/db directly to prevent infinite recursion
-        global $wpdb;
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedQuery
-        $plugins = $wpdb->get_var(
-            $wpdb->prepare(
-                'SELECT meta_value FROM ' . $wpdb->sitemeta . ' WHERE meta_key = %s LIMIT 1',
-                'active_plugins'
-            )
+        // Use frl_cache_remember to wrap the direct DB query.
+        // The callback still uses $wpdb->get_var() to bypass pre_site_option filter
+        // (calling get_site_option() inside this filter would cause infinite recursion).
+        // frl_cache_remember uses object cache/transients (never get_site_option),
+        // so it is safe inside pre_site_option_* filters — no recursion risk.
+        $plugins = frl_cache_remember(
+            'options',
+            'mu_plugin_network_active_plugins',
+            function () {
+                global $wpdb;
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedQuery
+                $plugins = $wpdb->get_var(
+                    $wpdb->prepare(
+                        'SELECT meta_value FROM ' . $wpdb->sitemeta . ' WHERE meta_key = %s LIMIT 1',
+                        'active_plugins'
+                    )
+                );
+                return $plugins ? maybe_unserialize($plugins) : [];
+            },
+            WEEK_IN_SECONDS
         );
-        $plugins = $plugins ? maybe_unserialize($plugins) : [];
 
         $filtered = array_filter((array) $plugins, function ($plugin) use ($excluded) {
             return !in_array($plugin, $excluded);

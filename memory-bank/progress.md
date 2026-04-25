@@ -24,13 +24,21 @@
   - Introduced configurable delimiters and registration queue limits for stability.
   - Fixed language-scoping bugs in translation caching.
   - Optimized performance by deferring string registration to the `shutdown` hook.
+- **MU Plugin Performance Optimization:**
+  - Added persistent caching of `active_plugins` via `frl_cache_remember('options', 'mu_plugin_active_plugins', callback, WEEK_IN_SECONDS)`:
+    - Split the combined DB query (formerly `active_plugins` + `cron` in one query)
+    - `active_plugins` now cached in `options` group with WEEK_IN_SECONDS TTL (changes only on plugin activation/deactivation)
+    - `cron` stays fetched fresh per request (too volatile — changes on every WP Cron execution)
+  - Added persistent caching of network active plugins via `frl_cache_remember('options', 'mu_plugin_network_active_plugins', callback, WEEK_IN_SECONDS)`:
+    - Wraps the existing `$wpdb->get_var()` to `wp_sitemeta` (safe — cache layer never touches the `pre_site_option` filter chain)
+    - Direct DB callback still used as the cache miss fallback to prevent recursion
+  - Added cache invalidation in `cache-cleanup.php` via `activated_plugin`/`deactivated_plugin` hooks
+  - Verified: no recursion risk (`frl_cache_remember` uses object cache/transients, never `get_option()` on the filtered options)
 
 ### Fixes Applied (pending user confirmation)
 - **Fixed `index.php` dashboard screen matching** — `$pagenow` is null during `muplugins_loaded` because `wp-includes/vars.php` loads at `wp-settings.php:524`, after `muplugins_loaded` at line 511. Added `$_SERVER['SCRIPT_NAME']` fallback to `frl_is_admin_page()`.
 - **Added cron args sanitization** — Ensures `$event['args']` is always an array in `pre_option_cron` filter to prevent `TypeError: count(): Argument #1 must be of type Countable|array, null given` at `class-wp-hook.php:325`.
 - **Fixed cron filter early-exit bug** — Cron filter was gated behind `if (!empty($excluded))`, so it was never added during cron when only backend exclusion was enabled (capability exclusion disabled). Moved cron filter addition before the empty-exclusion check so it always registers during WP Cron, ensuring args sanitization runs unconditionally.
 
-### FAILED ATTEMPTS (REVERTED)
-- **2026-04-25 — Cron args fix v1 (REVERTED):** Moved `frl_add_exclusion_filter_cron([])` call before the exclusion-settings early return inside `frl_plugins_exclusion_filter()`. Caused admin slowness because `wp_get_schedules()` + `frl_get_exclusion_options()` DB query ran on every cron request (server cron = `DOING_CRON` always true). User reverted. Lesson: safety filters must be independent of feature code; respect server-cron environment.
 ---
 *Last Updated: 2026-04-25*

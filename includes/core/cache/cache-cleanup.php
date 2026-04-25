@@ -265,3 +265,22 @@ function frl_clear_tracked_meta_cache(string $type, int $id)
         frl_cache_clear('metafields', $tracking_key);
     }
 }
+
+/**
+ * Invalidate MU plugin exclusion caches when plugins are activated or deactivated.
+ *
+ * The MU plugin caches the active_plugins list (both site and network) in the
+ * 'options' cache group. When plugins are activated/deactivated, these caches
+ * must be purged so the exclusion filters use the new plugin list.
+ *
+ * @param string $plugin              Plugin basename (unused, kept for hook signature).
+ * @param bool   $network_wide        Whether the plugin is activated network-wide (unused).
+ * @return void
+ */
+function frl_purge_mu_plugin_exclusion_cache($plugin = '', $network_wide = false): void
+{
+    frl_cache_clear('options', 'mu_plugin_active_plugins');
+    frl_cache_clear('options', 'mu_plugin_network_active_plugins');
+}
+add_action('activated_plugin',   'frl_purge_mu_plugin_exclusion_cache', 10, 2);
+add_action('deactivated_plugin', 'frl_purge_mu_plugin_exclusion_cache', 10, 2);
