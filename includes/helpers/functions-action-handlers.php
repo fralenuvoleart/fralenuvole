@@ -119,10 +119,10 @@ function frl_process_plugin_actions()
  */
 function frl_handle_action_clear_plugin_transients()
 {
-    $deleted = frl_cache_clear('plugin_transients');
-    if (is_array($deleted) && isset($deleted['transients'])) {
-        frl_cache_clear('adminui');
+    $orchestrated = Frl_Cache_Operations::run('action_clear_plugin_transients');
 
+    $deleted = $orchestrated['steps'][0]['result'] ?? [];
+    if (is_array($deleted) && isset($deleted['transients'])) {
         return ['success' => true, 'message_parts' => [sprintf(
             __('Cleared %d plugin transients successfully', FRL_PREFIX),
             $deleted['transients']
@@ -139,10 +139,10 @@ function frl_handle_action_clear_plugin_transients()
  */
 function frl_handle_action_clear_website_transients()
 {
-    $deleted = frl_cache_clear('website_transients');
-    if (is_array($deleted) && isset($deleted['transients'])) {
-        frl_cache_clear('adminui');
+    $orchestrated = Frl_Cache_Operations::run('action_clear_website_transients');
 
+    $deleted = $orchestrated['steps'][0]['result'] ?? [];
+    if (is_array($deleted) && isset($deleted['transients'])) {
         return ['success' => true, 'message_parts' => [sprintf(
             __('Cleared %d website transients successfully', FRL_PREFIX),
             $deleted['transients']
@@ -161,13 +161,15 @@ function frl_handle_action_clear_website_transients()
  */
 function frl_handle_action_clear_scripts_tags()
 {
+    $orchestrated = Frl_Cache_Operations::run('action_clear_scripts_tags');
     $message_parts = [];
     $success = false;
 
-    foreach (FRL_CACHE_SCRIPTS_GROUPS as $group) {
-        $stats = frl_cache_clear($group);
+    foreach ($orchestrated['steps'] as $step) {
+        $group = $step['args'][0] ?? '';
+        $stats = $step['result'] ?? [];
 
-        if (is_array($stats) && isset($stats['persistent'])) {
+        if ($step['success'] && is_array($stats) && isset($stats['persistent'])) {
             $message_parts[] = sprintf(
                 __('%s cache cleared: %d persistent items deleted.', FRL_PREFIX),
                 ucfirst($group),
@@ -212,8 +214,15 @@ function frl_handle_action_clear_shortcodes()
  */
 function frl_handle_action_clear_cache_light()
 {
-    $stats = frl_cache_clear('light');
+    $orchestrated = Frl_Cache_Operations::run('clear_light');
+
+    if (!$orchestrated['success']) {
+        return ['success' => false, 'message_parts' => [__('Failed to clear cache or get stats.', FRL_PREFIX)], 'notice_type' => 'error'];
+    }
+
+    $stats = $orchestrated['steps'][0]['result'] ?? [];
     $message_parts = [];
+
     if (is_array($stats)) {
         $message_parts[] = sprintf(
             __('Light Caches cleared: %d runtime, %d object cache, %d plugin transients, %d key cache, %d deferred writes', FRL_PREFIX),
@@ -224,9 +233,9 @@ function frl_handle_action_clear_cache_light()
             $stats['deferred'] ?? 0
         );
         return ['success' => true, 'message_parts' => $message_parts, 'notice_type' => 'success'];
-    } else {
-        return ['success' => false, 'message_parts' => [__('Failed to clear cache or get stats.', FRL_PREFIX)], 'notice_type' => 'error'];
     }
+
+    return ['success' => false, 'message_parts' => [__('Failed to clear cache or get stats.', FRL_PREFIX)], 'notice_type' => 'error'];
 }
 
 /**
@@ -236,8 +245,15 @@ function frl_handle_action_clear_cache_light()
  */
 function frl_handle_action_clear_cache_all()
 {
-    $stats = frl_cache_clear('all');
+    $orchestrated = Frl_Cache_Operations::run('clear_all');
+
+    if (!$orchestrated['success']) {
+        return ['success' => false, 'message_parts' => [__('Failed to clear cache or get stats.', FRL_PREFIX)], 'notice_type' => 'error'];
+    }
+
+    $stats = $orchestrated['steps'][0]['result'] ?? [];
     $message_parts = [];
+
     if (is_array($stats)) {
         $message_parts[] = sprintf(
             __('All Caches cleared: %d runtime, %d object cache, %d plugin transients, %d key cache, %d deferred writes', FRL_PREFIX),
@@ -248,9 +264,9 @@ function frl_handle_action_clear_cache_all()
             $stats['deferred'] ?? 0
         );
         return ['success' => true, 'message_parts' => $message_parts, 'notice_type' => 'success'];
-    } else {
-        return ['success' => false, 'message_parts' => [__('Failed to clear cache or get stats.', FRL_PREFIX)], 'notice_type' => 'error'];
     }
+
+    return ['success' => false, 'message_parts' => [__('Failed to clear cache or get stats.', FRL_PREFIX)], 'notice_type' => 'error'];
 }
 
 /**
@@ -266,8 +282,10 @@ function frl_handle_action_clear_cache_hard()
         return ['success' => false, 'message_parts' => [__('You are not authorized to perform this action.', FRL_PREFIX)], 'notice_type' => 'error'];
     }
 
-    $stats = frl_cache_clear('hard');
-    frl_schedule_admin_rewrite_flush();
+    $orchestrated = Frl_Cache_Operations::run('action_hard');
+
+    // Step 0: frl_cache_clear('hard') — provides detailed stats for the UI message.
+    $stats = $orchestrated['steps'][0]['result'] ?? [];
 
     $message_parts = ['<strong>' . __('Hard Cache Reset', FRL_PREFIX) . '</strong>'];
     $notice_type = 'success';
@@ -308,8 +326,9 @@ function frl_handle_action_clear_cache_hard()
  */
 function frl_handle_action_flush_rewrite_rules()
 {
-    // Schedule the flush to avoid redirect race conditions. The actual flush and cache clearing will happen on the next admin page load.
-    frl_schedule_admin_rewrite_flush();
+    // Schedule the flush via the orchestrator to avoid redirect race conditions.
+    // The actual flush and cache clearing will happen on the next admin page load.
+    Frl_Cache_Operations::run('action_flush_rewrite_rules');
 
     return [
         'success' => true,

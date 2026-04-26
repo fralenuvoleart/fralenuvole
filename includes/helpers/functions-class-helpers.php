@@ -174,14 +174,22 @@ function frl_cache_clear(string $group, ?string $key = null, bool $include_depen
         return false;
     }
 
-    if ($group === 'hard') {
-        $result = Frl_Cache_Manager::hard_cache_reset();
-    } elseif ($group === 'opcache') {
+    // Delegate composite operations to the orchestrator for full visibility.
+    $orchestrated_groups = [
+        'hard'  => 'clear_hard',
+        'all'   => 'clear_all',
+        'light' => 'clear_light',
+    ];
+
+    if (isset($orchestrated_groups[$group])) {
+        $result = Frl_Cache_Operations::run($orchestrated_groups[$group]);
+        // Return the result from the primary cache step (step 0) for backward compatibility.
+        return $result['steps'][0]['result'] ?? [];
+    }
+
+    // Direct Frl_Cache_Manager calls for groups that don't need orchestration.
+    if ($group === 'opcache') {
         return Frl_Cache_Manager::opcache_reset();
-    } elseif ($group === 'all') {
-        $result = Frl_Cache_Manager::purge_all();
-    } elseif ($group === 'light') {
-        $result = Frl_Cache_Manager::purge_light();
     } elseif ($group === 'plugin_transients') {
         return Frl_Cache_Manager::clear_transients();
     } elseif ($group === 'website_transients') {
@@ -189,14 +197,6 @@ function frl_cache_clear(string $group, ?string $key = null, bool $include_depen
     } else {
         return Frl_Cache_Manager::clear_group_with_dependencies($group, $key, $include_dependencies);
     }
-
-    // Outbound: notify third-party cache plugins for broad purge operations.
-    // Driven entirely by FRL_THIRDPARTY_OUTBOUND_HOOKS config in the thirdparty module.
-    if (function_exists('frl_thirdparty_maybe_notify')) {
-        frl_thirdparty_maybe_notify($group);
-    }
-
-    return $result;
 }
 
 /**

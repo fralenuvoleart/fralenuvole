@@ -9,6 +9,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Cache operation definitions (multi-step composite operations).
+require_once __DIR__ . '/config-cache-operations.php';
+
 // Cache prefix for all operations
 const FRL_CACHE_PREFIX = FRL_PREFIX . '_cache_';
 
@@ -152,3 +155,4 @@ const FRL_CACHE_LOCK_TTL = 2;
 
 // Maximum number of transients to fetch per group in admin UI (/2 for transients timeout)
 const FRL_CACHE_MAX_TRANSIENTS_PER_GROUP = 50;
+

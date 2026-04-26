@@ -11,6 +11,12 @@
 - **Options:** 3-tier cascade (Static → Persistent → DB).
 - **Race Conditions:** Use `frl_cache_remember` with lock-based prevention.
 - **MU Plugin Caching:** `frl_cache_remember` is safe inside `pre_option_*` and `pre_site_option_*` filters because it uses object cache/transients (never `get_option()`/`get_site_option()`). The `should_bypass()` check only calls `get_option('frl_disable_plugin')` — a completely unrelated option. Cache invalidation via `activated_plugin`/`deactivated_plugin` hooks.
+- **Cache Operations:** `Frl_Cache_Operations` (`includes/core/cache/class-cache-operations.php`) dispatches multi-step cache operations defined in `FRL_CACHE_OPERATIONS` constant (`config/config-cache-operations.php`, loaded via `config/config.php`). Two-tier design:
+  - **`clear_*` tier** (`clear_hard`, `clear_all`, `clear_light`): Helper-level operations that `frl_cache_clear()` delegates to for composite cache groups. Each step documented with inline `note` fields.
+  - **`action_*` tier** (`action_hard`, `action_flush_rewrite_rules`, `action_clear_plugin_transients`, `action_clear_website_transients`, `action_clear_scripts_tags`): Admin-action-level operations called from action handlers.
+  - **Sequential execution, no abort:** All steps run regardless of intermediate failures. Caller inspects per-step results.
+  - **`fn` supports callable arrays:** `[ 'Frl_Cache_Manager', 'hard_cache_reset' ]` validated via `is_callable()`.
+  - **Preserved backwards compatibility:** All existing helper functions (`frl_cache_clear`, `frl_schedule_admin_rewrite_flush`) remain independently callable. The `FRL_CACHE_OPERATIONS` constant is the single source of truth for multi-step execution order.
 - **Cache Group Selection:** Data originating from `wp_options`/`wp_sitemeta` uses the `options` cache group. Use custom TTL (`WEEK_IN_SECONDS`) for stable configuration data that changes on a different cadence than typical plugin options.
 
 ## 🛠️ Developer Working Method
@@ -23,4 +29,4 @@
 The mandatory-rules.md in `memory-bank/` is the source of truth.
 
 ---
-*Last Updated: 2026-04-25*
+*Last Updated: 2026-04-26*

@@ -14,6 +14,12 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Hook priority discipline:** plugins_loaded/5, init/10, init/15, init/20
 - **MU Plugin Loader:** `assets/mu/frl-mu-plugin.php` (bootstrap) → `includes/helpers/functions-mu-plugin.php` (logic) — plugin exclusion feature with persistent caching of `active_plugins` via `frl_cache_remember` in the `options` group (WEEK_IN_SECONDS TTL). Cron data fetched fresh (too volatile to cache). Network active plugins also cached via a separate `frl_cache_remember` key. Cache invalidation on `activated_plugin`/`deactivated_plugin` hooks.
 - **Translation Module:** Adapter-based architecture decoupling the service from translation providers (Polylang/WPML), utilizing deferred registration via `shutdown` hook and multi-level caching.
+- **Cache Operations:** `Frl_Cache_Operations` (`includes/core/cache/class-cache-operations.php`) — runtime dispatcher for composite cache operations. The operation definitions live in `FRL_CACHE_OPERATIONS` constant (`config/config-cache-operations.php`, loaded via `config/config.php`). **Two-tier design:**
+  - **`clear_*` operations** (`clear_hard`, `clear_all`, `clear_light`): Helper-level operations that `frl_cache_clear()` delegates to for the three composite cache groups. Each enumerates granular steps (e.g., `hard_cache_reset()` + `frl_thirdparty_maybe_notify()`) with inline `note` fields documenting deferred chains.
+  - **`action_*` operations** (`action_hard`, `action_flush_rewrite_rules`, `action_clear_plugin_transients`, `action_clear_website_transients`, `action_clear_scripts_tags`): Admin-action-level operations called from action handlers. Compose `clear_*` ops with additional steps (e.g., rewrite flush). No `action_all` or `action_light` exists — those action handlers call `clear_all`/`clear_light` directly since they don't add extra steps.
+  - **No critical flag:** All steps execute sequentially regardless of failure; caller inspects per-step results.
+  - **`fn` supports callable arrays:** `[ 'Frl_Cache_Manager', 'hard_cache_reset' ]` for static method calls, checked via `is_callable()`.
+  - **All existing helper functions preserved** (`frl_cache_clear`, `frl_schedule_admin_rewrite_flush` remain independently callable). `frl_cache_clear('hard'/'all'/'light')` returns `$result['steps'][0]['result']` for backward compatibility with external callers.
 
 ## ⚠️ Active Considerations
 - Ensure `init/15` rewriter registration stays strictly after `init/10` environment enforcement.
@@ -35,6 +41,8 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 - `docs/REWRITER.md` - Rewriter subsystem architecture
 - `docs/PLUGIN-EXCLUSIONS-FEATURE.md` - Plugin exclusion feature (updated with caching details)
 - `plans/cache-evaluation-mu-plugin.md` - Cache evaluation plan and decisions
+- `plans/cache-orchestrator-implementation.md` - Orchestrator design and implementation plan
+- `plans/rewrite-flush-analysis.md` - Rewrite rules flush dependency analysis
 
 ---
-*Last Updated: 2026-04-25*
+*Last Updated: 2026-04-26*

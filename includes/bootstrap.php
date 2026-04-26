@@ -42,6 +42,8 @@ require_once FRL_DIR_PATH . 'includes/helpers/functions.php';
 require_once FRL_DIR_PATH . 'includes/core/cache/class-cache-manager.php';
 Frl_Cache_Manager::init();
 
+require_once FRL_DIR_PATH . 'includes/core/cache/class-cache-operations.php';
+
 require_once FRL_DIR_PATH . 'includes/core/error-handler.php';
 frl_errors_init();
 
