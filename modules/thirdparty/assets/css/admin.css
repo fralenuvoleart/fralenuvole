@@ -191,9 +191,15 @@ div.postbox[id^=fd_] .hndle.ui-sortable-handle {
     --neko-tab-bg: hsl(200, 100%, 25%) !important;
 }
 
-.neko-tab-title[role="tab"],
+.neko-tab-title[role="tab"]:not(.active),
 .neko-block-content > div[style*="background: linear-gradient"] {
     background: var(--neko-tab-bg) !important;
+}
+
+.neko-tab-title[role="tab"].inversed.active {
+    background: white !important;
+    color: var(--neko-font-color) !important;
+
 }
 
 .gIkkAW.ai,
@@ -204,6 +210,7 @@ div.postbox[id^=fd_] .hndle.ui-sortable-handle {
 
 .neko-logo,
 .neko-header-subtitle,
+.neko-header .neko-button .normal-content > span svg,
 div:has(>a[href*="meowapps"]),
 button[data-key="license"],
 .neko-pro-only,

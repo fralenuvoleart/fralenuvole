@@ -58,17 +58,22 @@ function frl_get_exclusion_options(): array
         WEEK_IN_SECONDS
     );
 
-    // Fetch cron fresh (volatile data) — changes on every cron execution.
-    // Caching cron would risk serving stale data (missed or duplicated events).
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-    $cron_value = $wpdb->get_var(
-        $wpdb->prepare(
-            "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
-            'cron'
-        )
-    );
-    $options['cron'] = $cron_value ? (array) maybe_unserialize($cron_value) : [];
+    // Fetch cron only during actual WP-Cron runs — it is never consumed on regular page loads.
+    // The cron filter (frl_add_exclusion_filter_cron) is only registered when frl_is_cron_job_request()
+    // is true (see line 170), so on non-cron requests this data is never used.
+    if (frl_is_cron_job_request()) {
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $cron_value = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+                'cron'
+            )
+        );
+        $options['cron'] = $cron_value ? (array) maybe_unserialize($cron_value) : [];
+    } else {
+        $options['cron'] = [];
+    }
 
     return $options;
 }

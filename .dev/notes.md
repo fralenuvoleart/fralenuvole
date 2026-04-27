@@ -1,11 +1,12 @@
-I want you now to review the translator and provide feedback:
+I want you to review the translator and provide feedback:
 - WHY was it done, to solve which problem?
 - Architecture
 - Features
 - Modularity
 - Best practices
--Performance (very important)
-- Area of improvement, if any and why
+- Performance (very important)
+- Issues, bugs, logical flaws
+- Areas of improvement, why and impact
 
 Review the files inside includes/core/translator/, check all file comments,PHPDocs and internal comments in the files. Make sure they are accurate, with full @param and @return definitions. Keep them succint and clear. 
 The code is the source of truth and comments must reflect it.
