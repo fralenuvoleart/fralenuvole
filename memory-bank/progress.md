@@ -34,6 +34,7 @@
     - Direct DB callback still used as the cache miss fallback to prevent recursion
   - Added cache invalidation in `cache-cleanup.php` via `activated_plugin`/`deactivated_plugin` hooks
   - Verified: no recursion risk (`frl_cache_remember` uses object cache/transients, never `get_option()` on the filtered options)
+  - **Cron query fix (confirmed applied):** The cron DB query in [`frl_get_exclusion_options()`](includes/helpers/functions-mu-plugin.php:30) is now guarded behind [`frl_is_cron_job_request()`](includes/helpers/functions-access-control.php:475). On non-cron requests, `$options['cron'] = []` without touching the DB. Cron data is intentionally NOT cached via `frl_cache_remember` — stale cron data would cause duplicate event execution during WP-Cron cycles. Request-level static cache in `frl_get_exclusion_options():32` handles per-request dedup.
 
 ### Cache Operation Orchestrator (v5.4.0)
 - **Added `Frl_Cache_Operations`** (`includes/core/cache/class-cache-operations.php`):

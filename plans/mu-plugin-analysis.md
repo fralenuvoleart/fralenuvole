@@ -365,6 +365,20 @@ if (frl_is_cron_job_request()) {
 
 See full plan at [`plans/fix-unnecessary-cron-query.md`](plans/fix-unnecessary-cron-query.md).
 
+### Why Cron Data Is NOT Cached via `frl_cache_remember`
+
+Unlike `active_plugins` (stable, cached with `WEEK_IN_SECONDS` TTL via `frl_cache_remember`), cron data is intentionally fetched fresh during WP-Cron runs. Here's why:
+
+1. **Cron changes on every execution cycle**: WordPress modifies the `cron` option during `wp-cron.php` — it removes processed events and reschedules recurring ones. A persistent cache would return stale events that were already processed, causing **duplicate execution**.
+
+2. **Stale data leads to correctness bugs**: If a cached cron array contains events that were already handled, those events would fire again. This is not a performance concern — it's a **correctness bug** with observable side effects (tasks running twice or not at all).
+
+3. **Race conditions**: Concurrent cron processes would race with cache TTL, potentially masking DB changes.
+
+4. **Request-level cache is sufficient**: The `static $options` cache in [`frl_get_exclusion_options():32`](../includes/helpers/functions-mu-plugin.php:32) already deduplicates the cron query within a single cron execution, where `get_option('cron')` might be called multiple times.
+
+**Verdict**: The original decision to NOT cache cron via `frl_cache_remember` was correct. The only bug was that cron was fetched on **every** request (not just cron requests), which is what the fix addresses. Cron data is safe for request-level caching (static variable) but NOT safe for cross-request persistent caching because it changes too frequently and stale data causes observable side effects.
+
 ---
 
 ## Summary
