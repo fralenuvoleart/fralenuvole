@@ -96,6 +96,11 @@ function frl_get_current_user()
         return $user;
     });
 
+    // 2. Ensure the cached value is actually a WP_User object
+    if (!($current_user instanceof WP_User)) {
+        $current_user = new WP_User(0);
+    }
+    
     return $current_user;
 }
 

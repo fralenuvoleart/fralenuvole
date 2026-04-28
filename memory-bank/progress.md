@@ -126,4 +126,21 @@
 
 ---
 
+---
+
+## Fixed: `frl_get_current_user()` returning non-WP_User from persistent cache (2026-04-28)
+
+- **Bug:** [`frl_get_current_user()`](includes/helpers/functions.php:68) could return a string value (non-`WP_User`) when the persistent cache (Redis, Memcached, or transients) returned corrupted or improperly deserialized data. This caused:
+  - `PHP Warning: Attempt to read property "ID" on string` at [`functions-access-control.php:44`](includes/helpers/functions-access-control.php:44), [:48](includes/helpers/functions-access-control.php:48), [:161](includes/helpers/functions-access-control.php:161)
+  - `PHP Fatal error: Call to a member function has_cap() on string` at [`functions-access-control.php:50`](includes/helpers/functions-access-control.php:50)
+- **Root cause:** `frl_cache_remember()` (called without explicit TTL in `frl_get_current_user()`) could return a stale/corrupted persistent cache value. While the cache miss callback has a `WP_User` type guard (`!($user instanceof WP_User) → new WP_User(0)`), the cache retrieval path (`Frl_Cache_Manager::get()`) returns whatever the persistent cache has stored without type validation.
+- **Fix:** Added a safety type guard in `frl_get_current_user()` at [`functions.php:101-103`](includes/helpers/functions.php:101):
+  ```php
+  if (!($current_user instanceof WP_User)) {
+      $current_user = new WP_User(0);
+  }
+  ```
+  This ensures `frl_get_current_user()` ALWAYS returns a `WP_User` instance, regardless of what the persistent cache returns. All 13 callers are safe with `WP_User(0)` — they access `->ID` or check `->ID > 0`.
+- **Stack trace:** Triggered during `plugins_loaded` via `frl_environment_init()` → `Frl_Environment_Manager::init()` → `frl_has_access()`.
+
 *Last Updated: 2026-04-28*

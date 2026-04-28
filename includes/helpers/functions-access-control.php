@@ -37,12 +37,12 @@ function frl_has_access($capability = FRL_PLUGIN_ACCESS)
     $capability = $capability ?: FRL_PLUGIN_ACCESS;
     $user = frl_get_current_user();
 
-    if ($capability === 'superadmin') {
-        return $user->ID === FRL_PLUGIN_SUPERADMIN_ID;
-    }
-
     if ($user->ID === FRL_PLUGIN_SUPERADMIN_ID) {
         return true;
+    }
+
+    if ($capability === 'superadmin') {
+        return $user->ID === FRL_PLUGIN_SUPERADMIN_ID;
     }
 
     $cache_key = "user_uid{$user->ID}_can_{$capability}";

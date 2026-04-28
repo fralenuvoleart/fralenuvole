@@ -69,12 +69,8 @@ class Frl_Rewriter_Coordinator
     /**
      * Register all features with the coordinator
      *
-     * Creates built-in features. The extension hook and priority sort
-     * are deferred to a plugins_loaded/7 action (see register_hooks())
-     * so that module-loaded features (loaded at plugins_loaded/5) are
-     * included in the sort. This enables external modules to add features
-     * via $coordinator->add_feature() at the correct plugin lifecycle
-     * stage without needing additional hooks.
+     * Creates features, allows external registration via hook,
+     * and sorts features by priority.
      *
      * @return void
      */
@@ -82,6 +78,14 @@ class Frl_Rewriter_Coordinator
     {
         // Create and self-register all features first
         $this->create_all_features();
+
+        // Allow external features to self-register via hook
+        do_action('frl_rewriter_register_features', $this);
+
+        // Sort features by priority
+        usort($this->features, function ($a, $b) {
+            return $a->get_priority() <=> $b->get_priority();
+        });
         // Config hash is computed lazily on first access (after init/20 config loaders run).
     }
 
@@ -155,43 +159,12 @@ class Frl_Rewriter_Coordinator
     }
 
     /**
-     * Register WordPress hooks for feature registration and module extension.
-     *
-     * The frl_rewriter_register_features action and priority sort run on
-     * plugins_loaded/7 — after frl_modules_init() at plugins_loaded/5 —
-     * so that module-loaded features (added via add_feature()) are included
-     * in the sort and registered alongside built-in features at init:15.
-     *
-     * Modules that need to add features should hook into this action or call
-     * $coordinator->add_feature() directly from their module entry point
-     * (loaded at plugins_loaded/5), then the automatic sort at prio 7
-     * places them in correct priority order. Features not listed in
-     * FRL_REWRITER_PRIORITIES default to priority 99 (lowest), which
-     * is suitable for additive features like domain-aware URL wrapping.
+     * Register WordPress hooks for feature registration
      *
      * @return void
      */
     private function register_hooks(): void
     {
-        // Fire the extension hook and sort after modules have loaded (plugins_loaded/7).
-        // Modules load at plugins_loaded/5 (inside frl_plugins_loaded()), so by prio 7
-        // any module that called $coordinator->add_feature() has its feature in the array.
-        add_action('plugins_loaded', function () {
-            /**
-             * Allows external features to self-register with the coordinator.
-             * Fires after module files have been loaded (plugins_loaded/5)
-             * so modules can hook into this action.
-             *
-             * @param Frl_Rewriter_Coordinator $coordinator The coordinator instance.
-             */
-            do_action('frl_rewriter_register_features', $this);
-
-            // Sort all features by priority (including module-added ones)
-            usort($this->features, function ($a, $b) {
-                return $a->get_priority() <=> $b->get_priority();
-            });
-        }, 7, 0);
-
         // Delay feature registration until after CPTs are registered (on init)
         add_action('init', function () {
             foreach ($this->features as $feature) {
