@@ -45,6 +45,7 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 - `plans/cache-evaluation-mu-plugin.md` - Cache evaluation plan and decisions
 - `plans/cache-orchestrator-implementation.md` - Orchestrator design and implementation plan
 - `plans/rewrite-flush-analysis.md` - Rewrite rules flush dependency analysis
+- `plans/cache-system-review.md` - Comprehensive cache system review (2026-04-28)
 
 ---
-*Last Updated: 2026-04-26*
+*Last Updated: 2026-04-28*

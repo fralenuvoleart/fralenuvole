@@ -80,5 +80,14 @@
 - **Bug:** [`frl_errors_handle_error()`](includes/core/error-handler.php:101) only checked `error_reporting() === 4437` to detect `@`-suppressed errors. In PHP 8.0+, `@` sets `error_reporting()` to `0`, not `4437`, so suppressed warnings (like `unserialize()` errors from excluded plugins' corrupted term meta) were being logged.
 - **Fix:** Added `$current_reporting === 0` check alongside the existing `4437` check at [line 148](includes/core/error-handler.php:148). Now correctly suppresses `@`-silenced errors on both PHP < 8.0 and PHP 8.0+.
 
+### Cache System Review Completed (2026-04-28)
+- **Comprehensive review** of `includes/core/cache/` system written to `plans/cache-system-review.md`
+- **Critical bugs identified:**
+  1. `'all_options, false'` string-as-parameter bug at [`functions-options.php:124`](includes/helpers/functions-options.php:124) and [:726](includes/helpers/functions-options.php:726) — dependency cascade not skipped on option updates
+  2. `metadata` group used at [`cache-cleanup.php:76`](includes/core/cache/cache-cleanup.php:76) but never registered in any cache configuration array — schema data only lives per-request
+- **Performance issues flagged:** preloading overhead, purge_all double work on transient-only sites, double serialization in hot path
+- **Modularity concerns:** all-static class, non-filterable constants, mixed responsibilities in `purge_all()` (auth cookie side effect)
+- See full review at [`plans/cache-system-review.md`](plans/cache-system-review.md)
+
 ---
 *Last Updated: 2026-04-28*

@@ -121,7 +121,7 @@ function frl_update_option($key, $value_param, $clear_cache = true, $autoload_pa
 
     if ($clear_cache) {
         // Only refresh the options cache entry itself – dependent groups must remain intact to avoid thrashing.
-        frl_cache_clear('options', 'all_options, false');
+        frl_cache_clear('options', 'all_options', false);
     }
 
     add_filter('pre_option_' . $prefixed_key,
@@ -723,7 +723,7 @@ function frl_handle_missing_option_key(string $key, bool $bypass_cache, array &$
         if (!$bypass_cache) {
             // Only refresh the options cache entry itself – dependent groups like
             // adminui must remain intact to avoid thrashing.
-            frl_cache_clear('options', 'all_options, false');
+            frl_cache_clear('options', 'all_options', false);
 
         }
         return $value;
