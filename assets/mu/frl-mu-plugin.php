@@ -30,4 +30,4 @@ require_once FRL_DIR_PATH . 'includes/helpers/functions-mu-plugin.php';
 /**
  * Setup plugin exclusion filter before other plugins load.
  */
-add_action('muplugins_loaded', 'frl_plugins_exclusion_filter', 5);
+add_action('muplugins_loaded', 'frl_filter_plugin_exclusions', 5);

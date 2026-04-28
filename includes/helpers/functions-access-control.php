@@ -14,78 +14,10 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Retrieves user data from the authentication cookie during early WordPress loading.
- *
- * This function is used when the global $current_user is not yet available (e.g., before plugins_loaded).
- * It performs direct database queries and implements static caching for performance.
- *
- * @return array|false Associative array with 'id' (int) and 'caps' (array) on success, false on failure.
- */
-function frl_get_auth_cookie_user_data()
-{
-    static $cache = null;
-    if ($cache !== null) {
-        return $cache;
-    }
-
-    $cookie_name = null;
-    if (defined('LOGGED_IN_COOKIE') && isset($_COOKIE[LOGGED_IN_COOKIE])) {
-        $cookie_name = LOGGED_IN_COOKIE;
-    } elseif (defined('COOKIEHASH')) {
-        $fallback = 'wordpress_logged_in_' . COOKIEHASH;
-        if (isset($_COOKIE[$fallback])) {
-            $cookie_name = $fallback;
-        }
-    } else {
-        foreach ($_COOKIE as $key => $value) {
-            if (strpos($key, 'wordpress_logged_in_') === 0) {
-                $cookie_name = $key;
-                break;
-            }
-        }
-    }
-
-    if (!$cookie_name || !isset($_COOKIE[$cookie_name])) {
-        return $cache = false;
-    }
-
-    $cookie_elements = explode('|', $_COOKIE[$cookie_name]);
-    if (count($cookie_elements) !== 4) {
-        return $cache = false;
-    }
-
-    list($username, $expiration, $token, $hmac) = $cookie_elements;
-    if (empty($username)) {
-        return $cache = false;
-    }
-
-    global $wpdb;
-    $meta_key = $wpdb->prefix . 'capabilities';
-    $row = $wpdb->get_row($wpdb->prepare(
-        "SELECT u.ID, um.meta_value
-         FROM {$wpdb->users} u
-         JOIN {$wpdb->usermeta} um ON u.ID = um.user_id
-         WHERE u.user_login = %s AND um.meta_key = %s
-         LIMIT 1",
-        $username,
-        $meta_key
-    ));
-
-    if (!$row) {
-        return $cache = false;
-    }
-
-    return $cache = [
-        'id'   => (int) $row->ID,
-        'caps' => maybe_unserialize($row->meta_value) ?: [],
-    ];
-}
-
-/**
  * Checks if the current user has the required access capability.
  *
- * Handles access checks both during early loading (using auth cookies) and after
- * WordPress is fully loaded (using standard capability checks).
+ * Uses standard WordPress capability checks via current_user_can().
+ * For early-loading scenarios (before plugins_loaded), use frl_mu_check_access() instead.
  *
  * @param string $capability The capability to check for. Defaults to FRL_PLUGIN_ACCESS.
  * @return bool True if the user has access, false otherwise.
@@ -95,32 +27,6 @@ function frl_has_access($capability = FRL_PLUGIN_ACCESS)
     // Bypass access check in migrate mode (break-glass)
     if (defined('FRL_MODE') && FRL_MODE === 'migrate') {
         return true;
-    }
-
-    // Early loading (before plugins_loaded)
-    if (!did_action('plugins_loaded')) {
-        $user_data = frl_get_auth_cookie_user_data();
-        if (!$user_data) {
-            return false;
-        }
-
-        if ($capability === 'superadmin') {
-            return $user_data['id'] === FRL_PLUGIN_SUPERADMIN_ID;
-        }
-
-        if ($user_data['id'] === FRL_PLUGIN_SUPERADMIN_ID) {
-            return true;
-        }
-
-        if (isset($user_data['caps'][$capability]) && $user_data['caps'][$capability]) {
-            return true;
-        }
-
-        if (isset($user_data['caps']['administrator']) && $user_data['caps']['administrator']) {
-            return true;
-        }
-
-        return false;
     }
 
     // Standard loading: current_user_can is available

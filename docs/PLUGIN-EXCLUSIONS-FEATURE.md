@@ -161,12 +161,21 @@ The filter is completely non-destructive — the database is never modified. If 
 
 Additionally, as a safety measure, the filter sanitizes `args` on every cron event to ensure it is always an array. This prevents `TypeError: count(): Argument #1 must be of type Countable|array, null given` in `class-wp-hook.php:325` when `do_action_ref_array` at `wp-cron.php:191` receives null args — a pre-existing WordPress issue that can occur when a cron event was stored with `args => null` in the database.
 
+## Early-Loading Access Check
+
+Capability-based exclusion runs during `muplugins_loaded` (before `plugins_loaded`), when WordPress user functions are not yet available. The dedicated [`frl_mu_check_access()`](includes/helpers/functions-mu-plugin.php:91) function handles this:
+
+1. If `plugins_loaded` has fired → delegates to standard [`frl_has_access()`](includes/helpers/functions-access-control.php:95)
+2. If early loading → uses [`frl_get_auth_cookie_user_data()`](includes/helpers/functions-mu-plugin.php:90) to read the auth cookie and query the DB directly
+
+The DB query in `frl_get_auth_cookie_user_data()` is cached cross-request via `frl_cache_remember` with a **300s TTL** (aligned with `frl_has_access()` standard path), keyed by username to prevent cross-user pollution.
+
 ## Files
 
 | File | Purpose |
 |------|---------|
 | `assets/mu/frl-mu-plugin.php` | MU loader bootstrap — defines `FRL_MU_NAME`, loads bootstrap + helpers, registers `muplugins_loaded` hook |
-| `includes/helpers/functions-mu-plugin.php` | All exclusion logic — combined DB query, exclusion types, cron cleanup |
-| `includes/helpers/functions-access-control.php` | Contains `frl_is_admin_page()` used by backend exclusion |
+| `includes/helpers/functions-mu-plugin.php` | All exclusion logic — combined DB query, exclusion types, cron cleanup, `frl_get_auth_cookie_user_data()`, `frl_mu_check_access()` |
+| `includes/helpers/functions-access-control.php` | Contains `frl_has_access()`, `frl_is_admin_page()` |
 | `includes/core/cache/cache-cleanup.php` | Cache invalidation hooks for `activated_plugin`/`deactivated_plugin` |
 | `config/config-cache.php` | Cache group configuration — data stored in `options` group |

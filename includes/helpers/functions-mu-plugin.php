@@ -17,65 +17,116 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Fetches exclusion-relevant WordPress options in a single DB query.
+ * Checks user access during early WordPress loading (before plugins_loaded).
  *
- * Used by both pre_option_active_plugins and pre_option_cron filters to
- * avoid separate DB round-trips while still bypassing WordPress option cache
- * (necessary to prevent infinite recursion inside pre_option_* filters).
+ * Used by the MU plugin's capability-based exclusion to verify user permissions
+ * before WordPress user functions are available. Falls back to frl_has_access()
+ * once plugins_loaded has fired.
  *
- * Results are cached in a static variable for per-request deduplication.
- *
- * @return array{active_plugins: string[], cron: array} Associative array with both options.
+ * @param string $capability The capability to check for.
+ * @return bool True if the user has access, false otherwise.
  */
-function frl_get_exclusion_options(): array
+function frl_mu_check_access(string $capability): bool
 {
-    static $options = null;
+    // Once plugins_loaded has fired, delegate to standard frl_has_access()
+    if (did_action('plugins_loaded')) {
+        return frl_has_access($capability);
+    }
 
-    if ($options !== null) {
-        return $options;
+    // Early loading: use auth cookie directly
+    $user_data = frl_get_auth_cookie_user_data();
+    if (!$user_data) {
+        return false;
+    }
+
+    if ($capability === 'superadmin') {
+        return $user_data['id'] === FRL_PLUGIN_SUPERADMIN_ID;
+    }
+
+    if ($user_data['id'] === FRL_PLUGIN_SUPERADMIN_ID) {
+        return true;
+    }
+
+    if (isset($user_data['caps'][$capability]) && $user_data['caps'][$capability]) {
+        return true;
+    }
+
+    if (isset($user_data['caps']['administrator']) && $user_data['caps']['administrator']) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Retrieves user data from the authentication cookie during early WordPress loading.
+ *
+ * Used by frl_mu_check_access() when the global $current_user is not yet available
+ * (before plugins_loaded). Performs direct database queries with cross-request
+ * caching via frl_cache_remember (300s TTL, username-scoped key).
+ *
+ * @return array|false Associative array with 'id' (int) and 'caps' (array) on success, false on failure.
+ */
+function frl_get_auth_cookie_user_data()
+{
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    $cookie_name = null;
+    if (defined('LOGGED_IN_COOKIE') && isset($_COOKIE[LOGGED_IN_COOKIE])) {
+        $cookie_name = LOGGED_IN_COOKIE;
+    } elseif (defined('COOKIEHASH')) {
+        $fallback = 'wordpress_logged_in_' . COOKIEHASH;
+        if (isset($_COOKIE[$fallback])) {
+            $cookie_name = $fallback;
+        }
+    } else {
+        foreach ($_COOKIE as $key => $value) {
+            if (strpos($key, 'wordpress_logged_in_') === 0) {
+                $cookie_name = $key;
+                break;
+            }
+        }
+    }
+
+    if (!$cookie_name || !isset($_COOKIE[$cookie_name])) {
+        return $cache = false;
+    }
+
+    $cookie_elements = explode('|', $_COOKIE[$cookie_name]);
+    if (count($cookie_elements) !== 4) {
+        return $cache = false;
+    }
+
+    list($username, $expiration, $token, $hmac) = $cookie_elements;
+    if (empty($username)) {
+        return $cache = false;
     }
 
     global $wpdb;
+    $meta_key = $wpdb->prefix . 'capabilities';
+    $row = frl_cache_remember('admin', 'auth_cookie_user_' . $username, function () use ($wpdb, $username, $meta_key) {
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT u.ID, um.meta_value
+             FROM {$wpdb->users} u
+             JOIN {$wpdb->usermeta} um ON u.ID = um.user_id
+             WHERE u.user_login = %s AND um.meta_key = %s
+             LIMIT 1",
+            $username,
+            $meta_key
+        ));
+    }, 300);
 
-    // Cache active_plugins in the 'options' group with WEEK_IN_SECONDS TTL.
-    // This data changes only on plugin activation/deactivation — stable, ideal for caching.
-    // frl_cache_remember uses object cache/transients, never the option system,
-    // so it is safe inside pre_option_* filters (no recursion risk).
-    $options['active_plugins'] = frl_cache_remember(
-        'options',
-        'mu_plugin_active_plugins',
-        function () {
-            global $wpdb;
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-            $value = $wpdb->get_var(
-                $wpdb->prepare(
-                    "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
-                    'active_plugins'
-                )
-            );
-            return $value ? (array) maybe_unserialize($value) : [];
-        },
-        WEEK_IN_SECONDS
-    );
-
-    // Fetch cron only during actual WP-Cron runs — it is never consumed on regular page loads.
-    // The cron filter (frl_add_exclusion_filter_cron) is only registered when frl_is_cron_job_request()
-    // is true (see line 170), so on non-cron requests this data is never used.
-    if (frl_is_cron_job_request()) {
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        $cron_value = $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
-                'cron'
-            )
-        );
-        $options['cron'] = $cron_value ? (array) maybe_unserialize($cron_value) : [];
-    } else {
-        $options['cron'] = [];
+    if (!$row) {
+        return $cache = false;
     }
 
-    return $options;
+    return $cache = [
+        'id'   => (int) $row->ID,
+        'caps' => maybe_unserialize($row->meta_value) ?: [],
+    ];
 }
 
 /**
@@ -83,7 +134,7 @@ function frl_get_exclusion_options(): array
  *
  * @return void
  */
-function frl_plugins_exclusion_filter(): void
+function frl_filter_plugin_exclusions(): void
 {
     // Get exclusion settings
     $frontend_enabled = frl_get_option('excluded_plugins_frontend_enabled');
@@ -145,7 +196,7 @@ function frl_plugins_exclusion_filter(): void
     // In frontend context, cap check is skipped (frontend exclusion takes precedence)
     if ($cap_enabled && !$is_frontend_context) {
         $required_cap = frl_get_option('excluded_plugins_bycap_cap') ?: 'delete_plugins';
-        if (!frl_has_access($required_cap)) {
+        if (!frl_mu_check_access($required_cap)) {
             $cap_list = frl_textlist_to_array(frl_get_option('excluded_plugins_bycap'));
             if (!empty($cap_list)) {
                 // Flatten nested array (frl_textlist_to_array returns nested arrays)
@@ -185,6 +236,68 @@ function frl_plugins_exclusion_filter(): void
 
     // Also handle network active plugins for multisite
     frl_add_exclusion_filter_network_active_plugins($excluded);
+}
+
+/**
+ * Fetches exclusion-relevant WordPress options in a single DB query.
+ *
+ * Used by both pre_option_active_plugins and pre_option_cron filters to
+ * avoid separate DB round-trips while still bypassing WordPress option cache
+ * (necessary to prevent infinite recursion inside pre_option_* filters).
+ *
+ * Results are cached in a static variable for per-request deduplication.
+ *
+ * @return array{active_plugins: string[], cron: array} Associative array with both options.
+ */
+function frl_get_exclusion_options(): array
+{
+    static $options = null;
+
+    if ($options !== null) {
+        return $options;
+    }
+
+    global $wpdb;
+
+    // Cache active_plugins in the 'options' group with WEEK_IN_SECONDS TTL.
+    // This data changes only on plugin activation/deactivation — stable, ideal for caching.
+    // frl_cache_remember uses object cache/transients, never the option system,
+    // so it is safe inside pre_option_* filters (no recursion risk).
+    $options['active_plugins'] = frl_cache_remember(
+        'options',
+        'mu_plugin_active_plugins',
+        function () {
+            global $wpdb;
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+            $value = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+                    'active_plugins'
+                )
+            );
+            return $value ? (array) maybe_unserialize($value) : [];
+        },
+        WEEK_IN_SECONDS
+    );
+
+    // Fetch cron only during actual WP-Cron runs — it is never consumed on regular page loads.
+    // The cron filter (frl_add_exclusion_filter_cron) is only registered when frl_is_cron_job_request()
+    // is true (see line 170), so on non-cron requests this data is never used.
+    if (frl_is_cron_job_request()) {
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $cron_value = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+                'cron'
+            )
+        );
+        $options['cron'] = $cron_value ? (array) maybe_unserialize($cron_value) : [];
+    } else {
+        $options['cron'] = [];
+    }
+
+    return $options;
 }
 
 /**
