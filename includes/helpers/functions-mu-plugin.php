@@ -381,12 +381,18 @@ function frl_add_exclusion_filter_network_active_plugins(array $excluded): void
 }
 
 /**
- * Filters cron option during WP Cron to remove events with unregistered schedules.
+ * Sanitizes the cron option to remove orphaned events and prevent TypeError on null args.
  *
- * When a plugin is excluded from loading, its custom cron schedules never get
- * registered. WordPress would otherwise log invalid_schedule errors when trying
- * to reschedule those events. This filter silently removes such orphaned events
- * from the cron array that WordPress processes, preventing error log noise.
+ * Uses the `option_cron` filter (not `pre_option_cron`) because the cron option is often
+ * stored in WordPress' `alloptions` cache for autoloaded options, which bypasses
+ * `pre_option_*` filters entirely. `option_cron` fires unconditionally — whether the
+ * value came from the alloptions cache or from a direct DB query.
+ *
+ * What this filter does:
+ * 1. Removes events with unregistered schedules (orphaned when a plugin is excluded).
+ * 2. Sanitizes `$event['args']` to always be an array, preventing a PHP 8+ TypeError
+ *    (`count(): Argument #1 must be of type Countable|array, null given`) when
+ *    wp-cron.php passes null args to do_action_ref_array().
  *
  * Note: This is a read-time filter only — it does not modify the database.
  * If the exclusion is later removed, the plugin will load, register its
@@ -397,10 +403,10 @@ function frl_add_exclusion_filter_network_active_plugins(array $excluded): void
  */
 function frl_add_exclusion_filter_cron(array $excluded): void
 {
-    add_filter('pre_option_cron', function ($pre, $option) use ($excluded) {
+    add_filter('option_cron', function ($cron, $option) use ($excluded) {
         // Only handle 'cron' option, pass through for all others
         if ($option !== 'cron') {
-            return $pre;
+            return $cron;
         }
 
         static $cache = null;
@@ -408,11 +414,6 @@ function frl_add_exclusion_filter_cron(array $excluded): void
         if ($cache !== null) {
             return $cache;
         }
-
-        // Get exclusion options via shared single-query helper.
-        // cron data was already fetched alongside active_plugins — zero extra DB queries.
-        $exclusion_options = frl_get_exclusion_options();
-        $cron = $exclusion_options['cron'];
 
         // If cron is empty or not an array, return as-is
         if (empty($cron) || !is_array($cron)) {
