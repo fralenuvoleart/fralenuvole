@@ -141,8 +141,11 @@ function frl_errors_handle_error($errlevel, $errstring, $errfile, $errline): boo
         }
     }
 
-    // Suppress errors silenced by the @ operator (PHP 8.0+)
-    if (error_reporting() === 4437) {
+    // Suppress errors silenced by the @ operator.
+    // PHP 8.0+: @ sets error_reporting() to 0.
+    // PHP < 8.0: @ sets error_reporting() to 4437 (E_ALL minus non-fatal errors).
+    $current_reporting = error_reporting();
+    if ($current_reporting === 0 || $current_reporting === 4437) {
         $is_handling_error = false;
         return true;
     }

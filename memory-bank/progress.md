@@ -76,5 +76,9 @@
 - **Docblock updated** on `frl_has_access()` to reference `frl_mu_check_access()` for early-loading scenarios.
 - **Zero regressions:** All 39 non-MU-plugin callers of `frl_has_access()` are in standard post-`plugins_loaded` contexts.
 
+### Fixed `@` Suppression Detection in Error Handler (2026-04-28)
+- **Bug:** [`frl_errors_handle_error()`](includes/core/error-handler.php:101) only checked `error_reporting() === 4437` to detect `@`-suppressed errors. In PHP 8.0+, `@` sets `error_reporting()` to `0`, not `4437`, so suppressed warnings (like `unserialize()` errors from excluded plugins' corrupted term meta) were being logged.
+- **Fix:** Added `$current_reporting === 0` check alongside the existing `4437` check at [line 148](includes/core/error-handler.php:148). Now correctly suppresses `@`-silenced errors on both PHP < 8.0 and PHP 8.0+.
+
 ---
 *Last Updated: 2026-04-28*
