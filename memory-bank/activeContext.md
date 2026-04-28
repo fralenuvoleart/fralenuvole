@@ -39,13 +39,24 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
 
 ## 📁 Documentation
 - `docs/ARCHITECTURAL-REVIEW.md` - Plugin overview
+- `docs/CACHE.md` - Cache system architectural reference (synthesized from source + plans)
 - `docs/HOOKS.md` - Critical hook priorities
 - `docs/REWRITER.md` - Rewriter subsystem architecture
 - `docs/PLUGIN-EXCLUSIONS-FEATURE.md` - Plugin exclusion feature (updated with caching details)
-- `plans/cache-evaluation-mu-plugin.md` - Cache evaluation plan and decisions
-- `plans/cache-orchestrator-implementation.md` - Orchestrator design and implementation plan
-- `plans/rewrite-flush-analysis.md` - Rewrite rules flush dependency analysis
-- `plans/cache-system-review.md` - Comprehensive cache system review (2026-04-28)
+- `plans/translator-regression-analysis.md` - Translator regression bugs (unfixed — keep)
+
+## ✅ Cache Documentation (2026-04-28)
+
+### Recent Audit — Cache Docs Reviewed & Fixed
+- **Audited** all PHPDocs, internal comments, and `@param`/`@return` blocks in [`includes/core/cache/`](includes/core/cache/)
+- **7 inaccuracies corrected** across 3 files:
+  - [`cache-cleanup.php`](includes/core/cache/cache-cleanup.php): stale dependency comment, navigation param description, init-registration phrasing, tracked-meta guard comment
+  - [`class-cache-manager.php`](includes/core/cache/class-cache-manager.php): stale "New" tracking comment, `purge_all()` early-return `@return` type, stale "REMOVED" fallback comment, stale "New feature" comment
+  - [`class-cache-operations.php`](includes/core/cache/class-cache-operations.php): `get_operation_map()` `@return` updated from generic `array` to specific shape
+- **2 code bugs patched:**
+  - [`atomic_clear_group()`](includes/core/cache/class-cache-manager.php:1478) return type normalized — maps `clear_group_with_dependencies()` output to documented `$stats` shape for consistent return regardless of cache backend
+  - [`frl_clear_navigation_cache()`](includes/core/cache/cache-cleanup.php:208) ID namespace collision — split into separate `frl_clear_navigation_cache()` (wp_navigation post) and new `frl_clear_menu_cache()` (nav_menu term) with distinct `wp_navigation_`/`wp_menu_` key prefixes
+- Principle: **code is truth, comments reflect the code**
 
 ---
 *Last Updated: 2026-04-28*

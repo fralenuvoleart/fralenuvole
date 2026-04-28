@@ -8,14 +8,14 @@ if (!defined('ABSPATH')) {
  * Cache cleanup hooks for posts, terms, users, options, and translations.
  */
 
-// Register term-change hooks that require a rewrite flush
+// On init, register term-change hooks that trigger rewrite flush
 add_action('init',                        'frl_register_hooks_rewrite_flush', 10, 0);
 add_action('update_option',               'frl_clear_option_transient',       10, 1);
 add_action('pll_save_strings_translations', 'frl_clear_translation_cache',     10, 0);
 add_action('edited_term',                 'frl_clear_term_permalink_cache',    10, 1);
 add_action('save_post',                   'frl_clear_post_cache',              10, 1);
 add_action('save_post_wp_navigation',     'frl_clear_navigation_cache',        10, 1);
-add_action('wp_update_nav_menu',          'frl_clear_navigation_cache',        10, 1);
+add_action('wp_update_nav_menu',          'frl_clear_menu_cache',              10, 1);
 add_action('profile_update',              'frl_clear_user_cache',              10, 1);
 add_action('updated_option',              'frl_clear_option_cache',            10, 1);
 add_action('updated_option',              'frl_clear_acf_option_icon_cache',   10, 1);
@@ -195,20 +195,36 @@ function frl_clear_translation_cache()
     frl_update_option('translation_version', time());
 
     // Clear translations cache group
-    // Dependencies will automatically clear nav and blocks groups
+    // Dependencies will automatically clear metafields group
     frl_cache_clear('translations');
 }
 
 /**
- * Clear navigation cache for a saved navigation post.
+ * Clear navigation cache when a navigation post (wp_navigation) is saved.
  *
- * @param int $nav_id Navigation post ID.
+ * @param int $post_id Post ID of the wp_navigation post.
  * @return void
  */
-function frl_clear_navigation_cache($nav_id)
+function frl_clear_navigation_cache($post_id)
 {
-    // Simply clear the navigation cache group
-    $cache_key = "wp_navigation_{$nav_id}";
+    // Clear the wp_navigation key within the permalinks group
+    $cache_key = "wp_navigation_{$post_id}";
+
+    frl_cache_clear('permalinks', $cache_key);
+}
+
+/**
+ * Clear navigation cache when a classic menu (nav_menu term) is updated.
+ *
+ * Uses a separate cache key prefix (wp_menu_) to avoid ID namespace
+ * collisions with wp_navigation post IDs.
+ *
+ * @param int $menu_id Menu term ID.
+ * @return void
+ */
+function frl_clear_menu_cache($menu_id)
+{
+    $cache_key = "wp_menu_{$menu_id}";
 
     frl_cache_clear('permalinks', $cache_key);
 }
@@ -242,7 +258,7 @@ function frl_clear_term_permalink_cache($term_id)
  */
 function frl_clear_tracked_meta_cache(string $type, int $id)
 {
-    // Validate ID - empty() catches both falsy values and 0, absint() ensures positive int
+    // Skip on zero ID; absint() ensures positive int
     if (empty($id)) {
         return;
     }

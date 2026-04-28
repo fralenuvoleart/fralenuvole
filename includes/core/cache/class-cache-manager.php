@@ -17,7 +17,7 @@ class Frl_Cache_Manager
     private static $key_cache = [];
     private static $group_keys = []; // Index of keys per group for efficient clearing
     private static $max_runtime_items = FRL_CACHE_RUNTIME_MAX_ITEMS;
-    private static $loaded_groups = []; // New tracking array for fully loaded groups
+    private static $loaded_groups = []; // Tracks which groups have been fully loaded this request
 
     // Consolidated LRU tracking
     private static $lru = [
@@ -850,7 +850,7 @@ class Frl_Cache_Manager
     /**
      * Purge all cache groups.
      *
-     * @return array{runtime: int, persistent: int, wordpress: int, key_cache: int, deferred: int, transients: int, object_cache: int, groups: array} Cache clearing stats.
+     * @return array|array{runtime: int, persistent: int, wordpress: int, key_cache: int, deferred: int, transients: int, object_cache: int, groups: array} Cache clearing stats, or empty array if already running.
      */
     public static function purge_all()
     {
@@ -937,7 +937,7 @@ class Frl_Cache_Manager
 
         $result = [];
 
-        // New feature: if $keys is null, retrieve all keys for the group
+        // If $keys is null, retrieve all keys for the group
         if ($keys === null) {
             // Check if we've already loaded all keys for this group in this request
             if (isset(self::$loaded_groups[$group])) {
@@ -1284,7 +1284,7 @@ class Frl_Cache_Manager
                 $result = wp_cache_flush_group(self::PREFIX . $group);
                 $count = is_numeric($result) ? $result : 1;
             } else {
-                // Fallback to full flush - REMOVED
+                // No group-level flush available; mark as cleared (count approximate)
                 $count = 1; // Indicate that *something* was likely cleared, though not precisely countable
             }
         } elseif (self::use_transient_fallback($group)) {
@@ -1487,7 +1487,12 @@ class Frl_Cache_Manager
 
         // For object cache, use existing methods (no transaction needed)
         if (self::is_object_cache_truly_functional()) {
-            return self::clear_group_with_dependencies($group, null, false);
+            $cg_result = self::clear_group_with_dependencies($group, null, false);
+            $stats['runtime_cleared']   = $cg_result['runtime'] ?? 0;
+            $stats['persistent_cleared'] = $cg_result['persistent'] ?? 0;
+            $stats['success']           = true;
+            $stats['group']             = $group;
+            return $stats;
         }
 
         // For transients, use transaction-based clearing

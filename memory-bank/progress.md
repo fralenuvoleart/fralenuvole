@@ -80,6 +80,20 @@
 - **Bug:** [`frl_errors_handle_error()`](includes/core/error-handler.php:101) only checked `error_reporting() === 4437` to detect `@`-suppressed errors. In PHP 8.0+, `@` sets `error_reporting()` to `0`, not `4437`, so suppressed warnings (like `unserialize()` errors from excluded plugins' corrupted term meta) were being logged.
 - **Fix:** Added `$current_reporting === 0` check alongside the existing `4437` check at [line 148](includes/core/error-handler.php:148). Now correctly suppresses `@`-silenced errors on both PHP < 8.0 and PHP 8.0+.
 
+### Cache System PHPDoc & Comment Audit (2026-04-28)
+- **Audited** all PHPDocs, `@param`/`@return` blocks, and internal comments in [`includes/core/cache/`](includes/core/cache/) (3 files)
+- **7 inaccuracies corrected:**
+  1. [`cache-cleanup.php:11`](includes/core/cache/cache-cleanup.php:11) — "Register term-change hooks" → "On init, register term-change hooks that trigger rewrite flush"
+  2. [`cache-cleanup.php:198`](includes/core/cache/cache-cleanup.php:198) — "nav and blocks groups" → "metafields group" (matched to actual `FRL_CACHE_DEPENDENCIES`)
+  3. [`cache-cleanup.php:203-205`](includes/core/cache/cache-cleanup.php:203) — Navigation cache doc/param updated to reflect both `save_post_wp_navigation` and `wp_update_nav_menu` usage
+  4. [`cache-cleanup.php:210`](includes/core/cache/cache-cleanup.php:210) — "Simply clear the navigation cache group" → "Clear the wp_navigation key within the permalinks group"
+  5. [`cache-cleanup.php:245`](includes/core/cache/cache-cleanup.php:245) — Tracked meta guard comment simplified for typed `int` param
+  6. [`class-cache-manager.php`](includes/core/cache/class-cache-manager.php) — 3 stale comments updated (`"New tracking"`, `"New feature"`, `"REMOVED"`); `purge_all()` `@return` updated for early-return case
+  7. [`class-cache-operations.php:150`](includes/core/cache/class-cache-operations.php:150) — `get_operation_map()` `@return` from generic `array` to typed shape
+- **2 code bugs patched:**
+  - [`atomic_clear_group()`](includes/core/cache/class-cache-manager.php:1478) return type normalized — maps `clear_group_with_dependencies()` output to documented `$stats` shape for consistent return regardless of cache backend (lines 1488-1496)
+  - [`frl_clear_navigation_cache()`](includes/core/cache/cache-cleanup.php:208) ID namespace collision — split into separate `frl_clear_navigation_cache()` (wp_navigation post) and new `frl_clear_menu_cache()` (nav_menu term) with distinct `wp_navigation_`/`wp_menu_` key prefixes (lines 17-18, 202-230)
+
 ### Cache System Review & Fixes Applied (2026-04-28)
 - **Comprehensive review** of `includes/core/cache/` system written to `plans/cache-system-review.md`
 - **6 fixes applied:**
@@ -91,7 +105,14 @@
   6. ✅ Unrecognized group warning — [`frl_log()`](includes/core/cache/class-cache-manager.php:1195) fires when group is in no config array
 - **Issues retracted after code review:** pre_option filter removal (plugin's own namespace only), $loaded_groups reset (only on full clears), auto_preload overhead (batching is optimal), all-static design and non-filterable constants (by user direction)
 - **Remaining:** `metadata` group not in `FRL_CACHE_PERSISTENT_GROUPS` — affects transient-only sites only
-- See updated review at [`plans/cache-system-review.md`](plans/cache-system-review.md)
+- (Review content archived in [`docs/CACHE.md §11`](docs/CACHE.md:565) — plan file deleted as obsolete)
 
 ---
+### Cache System Architectural Reference Written (2026-04-28)
+- **Wrote comprehensive [`docs/CACHE.md`](docs/CACHE.md)** — synthesized from source files (`includes/core/cache/`), config files (`config/config-cache*.php`), and existing plan reviews (`plans/cache-system-review.md`, `plans/cache-orchestrator-implementation.md`)
+- Covers: architecture overview, file map, group configuration, `Frl_Cache_Manager` internals (LRU, persistent cache, provider detection, language keys, dependency cascading, clearing tiers, atomic ops, race prevention, auth preservation), `Frl_Cache_Operations` orchestrator, cleanup hooks, helper API reference, clearing behavior reference, performance considerations, and complete bug/fix history
+- Serves as a future synthetic reference for developers to understand caching features and behavior without reading every source file
+
+---
+
 *Last Updated: 2026-04-28*

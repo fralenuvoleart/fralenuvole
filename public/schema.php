@@ -52,7 +52,7 @@ function frl_render_schema($schema_type)
     $cache_key = "schema_{$schema_type}_post_{$post_id}";
 
     // Get schema data only (no output)
-    $schema = frl_cache_remember('metadata', $cache_key, function () use ($schema_templates, $schema_type) {
+    $schema = frl_cache_remember('postdata', $cache_key, function () use ($schema_templates, $schema_type) {
 
         // Get post data efficiently
         $post = get_post();

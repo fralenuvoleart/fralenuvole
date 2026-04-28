@@ -147,7 +147,7 @@ final class Frl_Cache_Operations {
 	 * Returns every registered operation with its label, step descriptions,
 	 * and notes. Useful for admin UI, logging, and developer reference.
 	 *
-	 * @return array
+	 * @return array<string, array{label: string, steps: array, hooks: array}>
 	 */
 	public static function get_operation_map(): array {
 		$map = [];
