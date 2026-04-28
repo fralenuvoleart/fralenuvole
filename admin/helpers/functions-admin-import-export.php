@@ -506,7 +506,21 @@ function frl_import_translation_strings($json)
                 }
             }
 
+            // Validate the entire translations array survives serialization round-trip.
+            // Prevents writing data that would cause an unserialize() error when read back.
             if ($changed > 0) {
+                // phpcs:disable WordPress.PHP.DiscouragedPHPFunctions.serialize_unserialize
+                $roundtrip_test = @unserialize(@serialize($item['translations']));
+                // phpcs:enable
+                if ($roundtrip_test === false || $roundtrip_test !== $item['translations']) {
+                    $results['translations']['errors']++;
+                    $results['failed_translations'][] = sprintf(
+                        'Serialization integrity check failed for term_id %d. Skipping entry.',
+                        $term_id
+                    );
+                    continue;
+                }
+
                 update_term_meta(
                     $term_id,
                     '_pll_strings_translations',
