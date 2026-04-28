@@ -673,6 +673,9 @@ class Frl_Cache_Display
         $transients = [];
         $timeouts = [];
         foreach ($plugin_transients_raw as $row) {
+            if ($row->option_name === null) {
+                continue;
+            }
             if (str_contains($row->option_name, '_timeout_')) {
                 // Extract base key from timeout option name
                 $key = str_replace([$timeout_prefix, $site_timeout_prefix], '', $row->option_name);
