@@ -158,19 +158,23 @@ fralenuvole.php
                  ├─ create_all_features()   instantiate + self_register() each feature
                  │    ├─ FRL_REWRITER_FEATURES (Taxonomy + CPT Base Removal)
                  │    └─ FRL_REWRITER_MULTILINGUAL_CPT (Archive + Single per CPT)
-                 ├─ do_action('frl_rewriter_register_features')  extension point
-                 └─ usort() by priority
-            └─ register_hooks()
-                 ├─ add_filter('post_type_link', filter_post_link)
-                 ├─ add_filter('term_link', filter_term_link)
-                 └─ register_cache_invalidation_hooks()   (deferred to wp_loaded)
+                 └─ register_hooks()
+                      ├─ plugins_loaded/7: do_action('frl_rewriter_register_features')
+                      │                   + usort() by priority
+                      │                   (fires AFTER module init at plugins_loaded/5)
+                      ├─ init/15: feature->register() for every feature
+                      ├─ add_filter('post_type_link', filter_post_link)
+                      ├─ add_filter('term_link', filter_term_link)
+                      └─ register_cache_invalidation_hooks()   (deferred to wp_loaded)
 ```
 
 ### WordPress hook timeline
 
 | Hook | Priority | Action |
 |------|----------|--------|
-| `plugins_loaded` | — | Coordinator created, features instantiated |
+| `plugins_loaded` | 5 | Coordinator created, built-in features instantiated |
+| `plugins_loaded` | 5 | `frl_modules_init()` — module files loaded (inside `frl_plugins_loaded()`) |
+| `plugins_loaded` | 7 | `do_action('frl_rewriter_register_features')` + features sorted by priority |
 | `init` | 15 | `feature->register()` for every feature (adds rewrite rules) |
 | `init` | 20+ | Config option loaders (CPT / taxonomy registration) |
 | `wp_loaded` | 10 | Cache invalidation hooks wired to `update_option_*` actions |
@@ -346,4 +350,41 @@ Frl_Rewriter::init()->warm_cache_for_posts($posts);
 ```php
 frl_rewriter_is_loaded(): bool   // static-cached check (disable_rewriter option + class_exists)
 frl_rewriter_init(): void        // guarded init, called from fralenuvole.php
+```
+
+---
+
+## Module Plugability
+
+External modules (loaded via the Fralenuvole module system at `plugins_loaded/5`) can register custom rewriter features. The `frl_rewriter_register_features` action and priority sort fire at **`plugins_loaded/7`** — after module files have been loaded — so module-added features participate in priority ordering.
+
+### How to add a rewriter feature from a module
+
+1. **Create a feature class** extending `Frl_Rewriter_Feature_Base` with the required abstract methods.
+2. **In your module entry point** (loaded at `plugins_loaded/5`), call `$coordinator->add_feature()`:
+
+```php
+// modules/my-module/my-module.php
+add_action('frl_rewriter_register_features', function ($coordinator) {
+    $coordinator->add_feature(new My_Custom_Rewrite_Feature());
+});
+```
+
+Or directly, since the coordinator is already instantiated:
+
+```php
+$coordinator = Frl_Rewriter_Coordinator::init();
+$coordinator->add_feature(new My_Custom_Rewrite_Feature());
+```
+
+3. **Priority** defaults to **99** (lowest) for any feature class not listed in `FRL_REWRITER_PRIORITIES`. This is suitable for additive features — e.g., a domain-aware module that wraps the final URL with a mirror domain after all built-in features have transformed the path.
+
+### Timing diagram
+
+```
+plugins_loaded/5: Coordinator created, built-in features instantiated
+plugins_loaded/5: frl_modules_init() — module entry points execute
+plugins_loaded/7: do_action('frl_rewriter_register_features') + usort()
+                              ↑ modules' features included in sort
+init/15:          feature->register() for all features (including module ones)
 ```

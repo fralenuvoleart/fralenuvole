@@ -5,10 +5,10 @@
 - Design principles stored in memory-mcp entity: UserDesignPrinciples
 
 ## 🔄 Current Focus
-Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, and environment-based configuration.
+Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, and environment-based configuration.
 
 ## 🏗️ Architecture Overview
-- **Feature-based rewriter:** Independent feature classes that self-register
+- **Feature-based rewriter:** Independent feature classes that self-register. The extension hook (`frl_rewriter_register_features`) fires at `plugins_loaded/7` (after module init at `plugins_loaded/5`) so module-loaded features participate in priority sorting. Module features not listed in `FRL_REWRITER_PRIORITIES` default to priority 99.
 - **5-backend cache system:** Litespeed, Docket Cache, Redis, Memcached, Transients
 - **3-tier options cascade:** Static → Persistent → DB with value normalization
 - **Hook priority discipline:** plugins_loaded/5, init/10, init/15, init/20
@@ -58,5 +58,15 @@ Fralenuvole v5.4.0 - WordPress multilingual administrator plugin with URL rewrit
   - [`frl_clear_navigation_cache()`](includes/core/cache/cache-cleanup.php:208) ID namespace collision — split into separate `frl_clear_navigation_cache()` (wp_navigation post) and new `frl_clear_menu_cache()` (nav_menu term) with distinct `wp_navigation_`/`wp_menu_` key prefixes
 - Principle: **code is truth, comments reflect the code**
 
+## ✅ Rewriter Module Plugability (2026-04-28)
+
+### Applied
+- **Moved `do_action()` + `usort()`** from coordinator constructor to `plugins_loaded/7` hook in [`register_hooks()`](includes/core/rewriter/class-rewriter-coordinator.php:174)
+- Now: modules load at `plugins_loaded/5` → `frl_rewriter_register_features` fires at `plugins_loaded/7` → features sorted → registered at `init:15`
+- Zero regressions verified — only 2 internal references to the hook, no external dependents
+- Added clear module plugability documentation in [`docs/REWRITER.md`](docs/REWRITER.md) and code comments in the coordinator
+- Updated [`plans/rewriter-module-plugability.md`](plans/rewriter-module-plugability.md) with final approach
+
 ---
+
 *Last Updated: 2026-04-28*

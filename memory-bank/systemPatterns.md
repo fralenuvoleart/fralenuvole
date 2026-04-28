@@ -1,9 +1,11 @@
 # System Patterns (Fralenuvole 5.4.0)
 
 ## 🏗️ Core Architecture & Init Sequence
-- **P5 (plugins_loaded):** Translation Interception.
+- **P5 (plugins_loaded):** Translation Interception + Core components (rewriter coordinator created, built-in features instantiated).
+- **P5 (plugins_loaded):** `frl_modules_init()` — Module entry points execute (can call `$coordinator->add_feature()`).
+- **P7 (plugins_loaded):** `do_action('frl_rewriter_register_features')` + `usort()` — Module-loaded features included in priority sort.
 - **P10 (init):** Environment Enforcement (Domain-based).
-- **P15 (init):** Rewriter Registration (Post-environment).
+- **P15 (init):** Rewriter Registration (feature->register() for all features, including module-added).
 
 ## 🛡️ Critical Logic (No Regressions)
 - **Environment:** `pre_option_*` filters used for domain overrides.

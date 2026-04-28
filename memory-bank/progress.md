@@ -115,4 +115,15 @@
 
 ---
 
+## Rewriter Module Plugability (2026-04-28)
+
+- **Problem:** `frl_rewriter_register_features` action fired at coordinator construction time (`plugins_loaded/5`), before module files were loaded — modules couldn't register features.
+- **Fix:** Moved `do_action()` + `usort()` from `register_features()` (constructor) to a `plugins_loaded/7` hook in `register_hooks()`. Now modules load at `plugins_loaded/5` → action fires at `plugins_loaded/7` → features sorted → registered at `init:15`.
+- **Scope:** ~3 lines moved in [`class-rewriter-coordinator.php`](includes/core/rewriter/class-rewriter-coordinator.php). Zero regressions verified.
+- **Module DX:** Call `$coordinator->add_feature()` from module entry point. Default priority is 99 for features not in `FRL_REWRITER_PRIORITIES`.
+- **Docs:** [`docs/REWRITER.md`](docs/REWRITER.md) updated with bootstrap flow, timeline, and "Module Plugability" section.
+- **Plan:** [`plans/rewriter-module-plugability.md`](plans/rewriter-module-plugability.md) updated with final approach.
+
+---
+
 *Last Updated: 2026-04-28*
