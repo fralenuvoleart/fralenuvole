@@ -143,6 +143,8 @@ const FRL_CACHE_PRELOAD_BACKEND_GROUPS = [
  ];
 
 // Groups that affect page rendering and need immediate browser refresh
+const FRL_CACHE_RUNTIME_MAX_ITEMS = 1000;
+
 const FRL_CACHE_BROWSER_GROUPS = [
     'html',         // HTML fragments
     'permalinks',   // Permalinks

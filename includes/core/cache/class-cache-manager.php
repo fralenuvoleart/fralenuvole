@@ -16,7 +16,7 @@ class Frl_Cache_Manager
     private static $runtime_cache = [];
     private static $key_cache = [];
     private static $group_keys = []; // Index of keys per group for efficient clearing
-    private static $max_runtime_items = 1000;
+    private static $max_runtime_items = FRL_CACHE_RUNTIME_MAX_ITEMS;
     private static $loaded_groups = []; // New tracking array for fully loaded groups
 
     // Consolidated LRU tracking
@@ -43,6 +43,9 @@ class Frl_Cache_Manager
 
     /** Groups cleared this request (dedup). */
     private static $groups_cleared = [];
+
+    /** Flag: batch transient deletion already performed this request. */
+    private static $transients_batch_deleted = false;
 
     /** O(1) lookup maps. */
     private static $persistent_groups_map = [];
@@ -498,19 +501,12 @@ class Frl_Cache_Manager
 
         $cache_key = self::generate_key($group, $key);
 
-        // Sanitize value for serialization if needed
+        // Sanitize value for serialization if needed.
+        // frl_sanitize_for_serialization() is a no-op for safe types (arrays, strings, ints)
+        // and only transforms Closures/objects. Using its output directly avoids a redundant
+        // serialize() test call before wp_cache_set() serializes internally.
         if (function_exists('frl_sanitize_for_serialization')) {
-            $sanitized_value = $value; // Create copy to avoid mutating original
-            frl_sanitize_for_serialization($sanitized_value);
-
-            // Test if sanitization was necessary
-            try {
-                serialize($value);
-                // Original was serializable, use it
-            } catch (\Throwable $e) {
-                // Original wasn't serializable, use sanitized version
-                $value = $sanitized_value;
-            }
+            frl_sanitize_for_serialization($value);
         } else {
             // Fallback: check if value is serializable
             try {
@@ -826,6 +822,32 @@ class Frl_Cache_Manager
     }
 
     /**
+     * Execute a callback while preserving the current user's authentication state.
+     *
+     * Some cache operations (particularly those that touch the object cache or
+     * options table) can interfere with WordPress's auth cookie validation.
+     * This wrapper snapshots the auth state before the operation and restores
+     * it afterward, preventing unexpected logout during cache maintenance.
+     *
+     * @param callable $fn Callback to execute with auth preservation.
+     * @return mixed The return value of the callback.
+     */
+    private static function with_auth_preservation(callable $fn)
+    {
+        $current_user_id = frl_get_current_user()->ID;
+        $auth_cookie = wp_parse_auth_cookie('', 'logged_in');
+
+        $result = $fn();
+
+        if ($current_user_id && $auth_cookie) {
+            wp_set_auth_cookie($current_user_id, true);
+            wp_set_current_user($current_user_id);
+        }
+
+        return $result;
+    }
+
+    /**
      * Purge all cache groups.
      *
      * @return array{runtime: int, persistent: int, wordpress: int, key_cache: int, deferred: int, transients: int, object_cache: int, groups: array} Cache clearing stats.
@@ -836,75 +858,67 @@ class Frl_Cache_Manager
             return [];
         }
 
-        // Reset the cleared groups tracker for this batch operation
-        self::$groups_cleared = [];
+        return self::with_auth_preservation(function () {
+            // Reset the cleared groups tracker for this batch operation
+            self::$groups_cleared = [];
 
-        // Store auth state before any cache operations
-        $current_user_id = frl_get_current_user()->ID;
+            $stats = [
+                'runtime' => 0,
+                'persistent' => 0,
+                'wordpress' => 0,
+                'key_cache' => count(self::$key_cache),
+                'deferred' => count(self::$deferred_writes),
+                'transients' => 0,     // Add missing key expected by logged-user.php
+                'object_cache' => 0    // Add missing key expected by logged-user.php
+            ];
 
-        $auth_cookie = wp_parse_auth_cookie('', 'logged_in');
+            // 1. Start with a clean slate - clear all runtime variables
+            self::$runtime_cache = [];
+            self::$key_cache = [];
+            self::$lru['access_order'] = [];
+            self::$deferred_writes = [];
+            self::$loaded_groups = []; // Reset loaded groups tracking
 
-        $stats = [
-            'runtime' => 0,
-            'persistent' => 0,
-            'wordpress' => 0,
-            'key_cache' => count(self::$key_cache),
-            'deferred' => count(self::$deferred_writes),
-            'transients' => 0,     // Add missing key expected by logged-user.php
-            'object_cache' => 0    // Add missing key expected by logged-user.php
-        ];
-
-        // 1. Start with a clean slate - clear all runtime variables
-        self::$runtime_cache = [];
-        self::$key_cache = [];
-        self::$lru['access_order'] = [];
-        self::$deferred_writes = [];
-        self::$loaded_groups = []; // Reset loaded groups tracking
-
-        // Optimization: Perform a single batch transient deletion for all plugin transients
-        // if object cache is not functional, avoiding multiple DB calls in the loop.
-        if (!self::is_object_cache_truly_functional()) {
-            $transient_stats = self::delete_transients_from_db(self::PREFIX);
-            $stats['transients'] = $transient_stats['transients'];
-        }
-
-        // 3. Flush each cache group using the comprehensive method
-        // This ensures consistent behavior across all clearing operations
-        foreach (array_keys(self::$TTL) as $group) {            
-            // If we already cleared all transients, we don't need to clear them again per group,
-            // but we still need to clear runtime and WordPress caches via clear_group_with_dependencies.
-            // However, clear_group_with_dependencies will try to delete transients again.
-            // To prevent this redundant work, we can temporarily disable transient fallback if already cleared.
-            $group_stats = self::clear_group_with_dependencies($group, null, true);
-
-            // Aggregate statistics
-            $stats['runtime'] += $group_stats['runtime'];
-            
-            // If object cache is functional, aggregate persistent stats as object_cache
-            if (self::is_object_cache_truly_functional()) {
-                $stats['persistent'] += $group_stats['persistent'];
-                $stats['object_cache'] += $group_stats['persistent'];
-            } else {
-                // If using transients, the persistent stats from the loop might be 0 
-                // because we already cleared them in batch, or they might be redundant.
-                // We rely on the batch count above for 'transients' total.
-                $stats['persistent'] += $group_stats['persistent'];
+            // Optimization: Perform a single batch transient deletion for all plugin transients
+            // if object cache is not functional, avoiding multiple DB calls in the loop.
+            if (!self::is_object_cache_truly_functional()) {
+                $transient_stats = self::delete_transients_from_db(self::PREFIX);
+                $stats['transients'] = $transient_stats['transients'];
+                self::$transients_batch_deleted = true;
             }
-            
-            $stats['wordpress'] += $group_stats['wordpress'];
 
-            // Store group-specific stats too
-            $stats['groups'][$group] = $group_stats;
-        }
+            // 3. Flush each cache group using the comprehensive method
+            // This ensures consistent behavior across all clearing operations
+            foreach (array_keys(self::$TTL) as $group) {
+                $group_stats = self::clear_group_with_dependencies($group, null, true);
 
-        // Restore auth state after all operations
-        if ($current_user_id && $auth_cookie) {
-            wp_set_auth_cookie($current_user_id, true);
-            wp_set_current_user($current_user_id);
-        }
+                // Aggregate statistics
+                $stats['runtime'] += $group_stats['runtime'];
 
-        frl_is_already_running(__METHOD__, true);
-        return $stats;
+                // If object cache is functional, aggregate persistent stats as object_cache
+                if (self::is_object_cache_truly_functional()) {
+                    $stats['persistent'] += $group_stats['persistent'];
+                    $stats['object_cache'] += $group_stats['persistent'];
+                } else {
+                    // If using transients, the persistent stats from the loop might be 0
+                    // because we already cleared them in batch, or they might be redundant.
+                    // We rely on the batch count above for 'transients' total.
+                    $stats['persistent'] += $group_stats['persistent'];
+                }
+
+                $stats['wordpress'] += $group_stats['wordpress'];
+
+                // Store group-specific stats too
+                $stats['groups'][$group] = $group_stats;
+            }
+
+            // Reset batch-delete flag so subsequent calls (e.g., clear_transients for a specific group)
+            // are not incorrectly skipped.
+            self::$transients_batch_deleted = false;
+
+            frl_is_already_running(__METHOD__, true);
+            return $stats;
+        });
     }
 
     /**
@@ -1177,6 +1191,13 @@ class Frl_Cache_Manager
         ?string $key = null,
         bool $include_dependencies = true
     ) {
+        // Warn if group is not recognized in any configuration array
+        if (!isset(self::$TTL[$group]) && !isset(self::$persistent_groups_map[$group])) {
+            if (function_exists('frl_log')) {
+                frl_log("Cache: unrecognized group '{group}' — using defaults", ['group' => $group]);
+            }
+        }
+
         // Only track full group clears (not single-key clears)
         if ($key === null) {
             if (isset(self::$groups_cleared[$group])) {
@@ -1267,6 +1288,10 @@ class Frl_Cache_Manager
                 $count = 1; // Indicate that *something* was likely cleared, though not precisely countable
             }
         } elseif (self::use_transient_fallback($group)) {
+            // Skip per-group transient deletion if a batch delete already ran this request
+            if (self::$transients_batch_deleted) {
+                return 0;
+            }
             // Clear transients
             $result = self::clear_transients($group);
             $count = $result['transients'];

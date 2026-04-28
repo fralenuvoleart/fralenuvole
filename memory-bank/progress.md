@@ -80,14 +80,18 @@
 - **Bug:** [`frl_errors_handle_error()`](includes/core/error-handler.php:101) only checked `error_reporting() === 4437` to detect `@`-suppressed errors. In PHP 8.0+, `@` sets `error_reporting()` to `0`, not `4437`, so suppressed warnings (like `unserialize()` errors from excluded plugins' corrupted term meta) were being logged.
 - **Fix:** Added `$current_reporting === 0` check alongside the existing `4437` check at [line 148](includes/core/error-handler.php:148). Now correctly suppresses `@`-silenced errors on both PHP < 8.0 and PHP 8.0+.
 
-### Cache System Review Completed (2026-04-28)
+### Cache System Review & Fixes Applied (2026-04-28)
 - **Comprehensive review** of `includes/core/cache/` system written to `plans/cache-system-review.md`
-- **Critical bugs identified:**
-  1. `'all_options, false'` string-as-parameter bug at [`functions-options.php:124`](includes/helpers/functions-options.php:124) and [:726](includes/helpers/functions-options.php:726) — dependency cascade not skipped on option updates
-  2. `metadata` group used at [`cache-cleanup.php:76`](includes/core/cache/cache-cleanup.php:76) but never registered in any cache configuration array — schema data only lives per-request
-- **Performance issues flagged:** preloading overhead, purge_all double work on transient-only sites, double serialization in hot path
-- **Modularity concerns:** all-static class, non-filterable constants, mixed responsibilities in `purge_all()` (auth cookie side effect)
-- See full review at [`plans/cache-system-review.md`](plans/cache-system-review.md)
+- **6 fixes applied:**
+  1. ✅ `'all_options, false'` string-as-parameter bug at [`functions-options.php:124`](includes/helpers/functions-options.php:124) & [:726](includes/helpers/functions-options.php:726) — changed to separate arguments. Dependency skipping now works.
+  2. ✅ Auth cookie side-effect extracted — [`with_auth_preservation()`](includes/core/cache/class-cache-manager.php:828) wrapper method with docblock
+  3. ✅ Double `serialize()` eliminated — [`frl_sanitize_for_serialization()`](includes/core/cache/class-cache-manager.php:504) output used directly
+  4. ✅ `purge_all()` double work eliminated — [`$transients_batch_deleted`](includes/core/cache/class-cache-manager.php:47) flag skips redundant per-group transient deletion
+  5. ✅ LRU size made configurable — [`FRL_CACHE_RUNTIME_MAX_ITEMS = 1000`](config/config-cache.php:148) constant
+  6. ✅ Unrecognized group warning — [`frl_log()`](includes/core/cache/class-cache-manager.php:1195) fires when group is in no config array
+- **Issues retracted after code review:** pre_option filter removal (plugin's own namespace only), $loaded_groups reset (only on full clears), auto_preload overhead (batching is optimal), all-static design and non-filterable constants (by user direction)
+- **Remaining:** `metadata` group not in `FRL_CACHE_PERSISTENT_GROUPS` — affects transient-only sites only
+- See updated review at [`plans/cache-system-review.md`](plans/cache-system-review.md)
 
 ---
 *Last Updated: 2026-04-28*

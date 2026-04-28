@@ -195,95 +195,45 @@ When `get_multi($group, null)` is called for a persistent group with transient f
 
 ## 6. Issues, Bugs & Logical Flaws
 
-### 🔴 BUG: `'all_options, false'` Parameter Error (Critical)
+### 🔴 BUG: `'all_options, false'` Parameter Error (Critical) — ✅ FIXED
 
 In [`functions-options.php`](includes/helpers/functions-options.php):124 and :726:
 
 ```php
+// Before (broken):
 frl_cache_clear('options', 'all_options, false');
+// After (fixed):
+frl_cache_clear('options', 'all_options', false);
 ```
 
-The signature is `frl_cache_clear(string $group, ?string $key = null, bool $include_dependencies = true)`. The string `'all_options, false'` is being passed as the **key parameter**, not as two separate arguments. This means:
-- The key is set to the literal string `all_options, false`
-- The third parameter defaults to `true` — **dependencies are NOT skipped**
-
-The author intended `frl_cache_clear('options', 'all_options', false)` to skip dependency cascading, but the second argument leaked into the string.
-
-**Impact:** Clearing `options.all_options` triggers dependency cascade (clears `theme`, `html`, `environment`, `admin`, `adminui`, `rewriter`) every time ANY option is updated. This causes excessive cache thrashing — especially problematic in [`frl_update_option()`](includes/helpers/functions-options.php:105) which is called frequently.
+The `false` was inside the string literal, making it part of the cache key name rather than the third `$include_dependencies` argument. Now correctly skips dependency cascading on option updates.
 
 ### 🟡 ISSUE: `metadata` Group Not Registered in Persistent Groups
 
 In [`schema.php`](public/schema.php):55, the `frl_cache_remember()` call uses group `'metadata'`:
 
-```php
-$schema = frl_cache_remember('metadata', $cache_key, function () { ... });
-```
-
-The group `'metadata'` is **not defined** in `FRL_CACHE_PERSISTENT_GROUPS`, which means:
-
 | Cache Backend | Persistence Behavior |
 |--------------|---------------------|
-| Object cache active (Redis/Litespeed/Memcached/Docket) | ✅ Stored via `wp_cache_set()` with group key `frl_metadata` — persists correctly |
-| No object cache (transient-only) | ❌ **Not stored.** `use_transient_fallback('metadata')` returns `false` because `metadata` is not in `$persistent_groups_map`. The `set()` method at line 535 skips transient storage entirely. |
+| Object cache active (Redis/Litespeed/Memcached/Docket) | ✅ Stored via `wp_cache_set()` — persists correctly |
+| No object cache (transient-only) | ❌ `use_transient_fallback()` returns `false` — only per-request runtime cache |
 
-**Impact on transient-only sites:** Schema JSON-LD markup is regenerated on every page load — the per-request runtime cache still deduplicates within the same page, but no cross-request caching occurs.
+**Recommended:** Add `'metadata'` to `FRL_CACHE_PERSISTENT_GROUPS` for transient-only site support.
 
-**Recommended fix:** Add `'metadata'` to `FRL_CACHE_PERSISTENT_GROUPS` in [`config-cache.php`](config/config-cache.php) and optionally to `FRL_CACHE_TTL` with a specific TTL (e.g., `HOUR_IN_SECONDS` or `DAY_IN_SECONDS`). This ensures schema data is persisted via transients when no object cache is available.
+### 🟡 ISSUE: Auth Cookie Save/Restore in `purge_all()` — ✅ FIXED
 
-### 🟡 ISSUE: Auth Cookie Save/Restore in `purge_all()`
+Extracted into dedicated [`with_auth_preservation()`](includes/core/cache/class-cache-manager.php:828) wrapper method with documentation explaining the rationale (object cache/options table operations can interfere with WordPress auth cookie validation). `purge_all()` now delegates its core logic to a closure passed to this wrapper.
 
-In [`class-cache-manager.php`](includes/core/cache/class-cache-manager.php):842-904:
+### ❌ RETRACTED: `pre_option_*` Filter Removal
 
-```php
-$current_user_id = frl_get_current_user()->ID;
-$auth_cookie = wp_parse_auth_cookie('', 'logged_in');
-// ... cache clearing operations ...
-if ($current_user_id && $auth_cookie) {
-    wp_set_auth_cookie($current_user_id, true);
-    wp_set_current_user($current_user_id);
-}
-```
+The `remove_all_filters()` at line 1337 only targets `pre_option_frl_*` hooks. The `frl_` namespace is owned by this plugin — no other code would register on these hooks. Safe in practice.
 
-This is a side effect in a cache-purge method. The rationale is undocumented, but likely a workaround for a specific edge case where cache clearing corrupts the auth session. This should be documented with WHY it exists, or extracted into a separate concern.
+### ❌ RETRACTED: `$loaded_groups` Reset on Key-Level Clears
 
-### 🟡 ISSUE: `pre_option_*` Filter Removal in `reset_options_caches()`
+The `$loaded_groups` unset at line 1220-1221 is inside the `else` block (line 1214), which only executes on full-group clears (`$key === null`). Single-key clears do not touch `$loaded_groups`. Code is correct.
 
-In [`class-cache-manager.php`](includes/core/cache/class-cache-manager.php):1330-1342:
+### 🟡 ISSUE: `serialize()` Called Twice in Hot Path — ✅ FIXED
 
-```php
-foreach (array_keys($wp_filter) as $filter_name) {
-    if (str_starts_with($filter_name, 'pre_option_' . $prefix)) {
-        remove_all_filters($filter_name);
-    }
-}
-```
-
-This removes ALL `pre_option_frl_*` filters, including ones that might have been added by other plugins or themes. While the plugin likely owns all `frl_*` prefixed options, this is an aggressive cleanup that could break interoperability.
-
-### 🟡 ISSUE: `clear_group_with_dependencies()` Resets `$loaded_groups` on Key-Level Clears
-
-In [`class-cache-manager.php`](includes/core/cache/class-cache-manager.php):1219-1223:
-
-```php
-if (isset(self::$loaded_groups[$group])) {
-    unset(self::$loaded_groups[$group]);
-    $stats['runtime']++;
-}
-```
-
-When clearing a **single key** (not entire group), the `$loaded_groups` flag is still reset. This forces the next `get_multi(null)` call to re-query the database for all keys in the group, even though only one key changed. This could cause unnecessary DB queries.
-
-### 🟡 ISSUE: `serialize()` Called Twice in Hot Path
-
-In [`class-cache-manager.php`](includes/core/cache/class-cache-manager.php):502-522:
-
-```php
-try { serialize($value); } catch (\Throwable $e) { $value = $sanitized_value; }
-// ... later ...
-wp_cache_set($cache_key, $value, ..., $ttl);  // serializes again internally
-```
-
-The try-catch serializes the value just to test serializability. WordPress's `wp_cache_set()` will serialize again internally. For large data structures, this doubles serialization cost.
+Replaced the try-catch `serialize()` test with direct use of `frl_sanitize_for_serialization()` output. The sanitizer is a no-op for safe types (arrays, strings, ints) and only transforms Closures/objects — so its output is always safe to pass to `wp_cache_set()`. Eliminates the redundant pre-serialization test.
 
 ---
 
@@ -291,11 +241,11 @@ The try-catch serializes the value just to test serializability. WordPress's `wp
 
 ### P1 - Fix Bugs (Critical)
 
-| Bug | File:Line | Impact | Fix |
-|-----|-----------|--------|-----|
-| `'all_options, false'` string leak | [`functions-options.php`](includes/helpers/functions-options.php):124 | Excessive dependency cascade on every option update | Change to `frl_cache_clear('options', 'all_options', false)` |
-| Same bug at line 726 | [`functions-options.php`](includes/helpers/functions-options.php):726 | Same | Same fix |
-| `metadata` group not registered | [`cache-cleanup.php`](includes/core/cache/cache-cleanup.php):76 | Schema data not persisted across requests | Either add `metadata` to `FRL_CACHE_TTL` or change to use `'postdata'` group |
+| Bug | File:Line | Impact | Status |
+|-----|-----------|--------|--------|
+| `'all_options, false'` string leak | [`functions-options.php:124`](includes/helpers/functions-options.php:124) | Excessive dependency cascade on every option update | ✅ **FIXED** (2026-04-28) |
+| Same bug at line 726 | [`functions-options.php:726`](includes/helpers/functions-options.php:726) | Same | ✅ **FIXED** (2026-04-28) |
+| `metadata` group not in persistent groups | [`schema.php:55`](public/schema.php:55) | Schema data not persisted on transient-only sites (OK with object cache) | 🟡 Add `metadata` to `FRL_CACHE_PERSISTENT_GROUPS` + `FRL_CACHE_TTL` |
 
 ### P2 - Reduce `purge_all()` Double Work
 
@@ -365,24 +315,11 @@ if ($has_unsafe_types) {
 
 ### P8 - Optional Preloading
 
-Make `auto_preload()` skippable via a filter or option. The preloading of all frontend/backend groups on every page load is expensive for transient-only sites:
+*Retracted — preloading batches DB work into one operation; disabling it would scatter individual get_transient() calls across the page render, degrading performance.*
 
-```php
-// In auto_preload():
-if (!apply_filters('frl_cache_auto_preload', true)) {
-    return false;
-}
-```
+### P9 - Configurable LRU Size — ✅ FIXED
 
-### P9 - Configurable LRU Size
-
-Make `$max_runtime_items` configurable:
-
-```php
-private static $max_runtime_items = FRL_CACHE_RUNTIME_MAX_ITEMS;
-// With a default in config:
-const FRL_CACHE_RUNTIME_MAX_ITEMS = 1000;
-```
+Moved to constant `FRL_CACHE_RUNTIME_MAX_ITEMS = 1000` in [`config-cache.php`](config/config-cache.php). The class now references `self::$max_runtime_items = FRL_CACHE_RUNTIME_MAX_ITEMS`. Adjustable per-site via constant redefinition or config override.
 
 ---
 
@@ -406,16 +343,22 @@ Before declaring this review complete:
 
 The cache system is **well-architected for its purpose**: a unified multi-backend caching layer with language awareness, dependency cascading, and orchestrated operations. The code quality is high with good inline documentation.
 
-**Critical findings:**
-1. **Two instances of `'all_options, false'` string-as-parameter bug** that prevents dependency skipping during option updates — this causes unnecessary cache thrashing on every option change.
-2. **`metadata` group is used but never defined** — schema cache data only lives per-request.
+**Fixes applied during review (6):**
+1. ✅ `'all_options, false'` string-as-parameter bug fixed at both locations — dependency skipping now works
+2. ✅ `purge_all()` double work eliminated — `$transients_batch_deleted` flag skips redundant per-group transient deletion
+3. ✅ Auth cookie side-effect extracted — dedicated `with_auth_preservation()` wrapper with documentation
+4. ✅ Double `serialize()` eliminated — `frl_sanitize_for_serialization()` output used directly
+5. ✅ LRU size made configurable — `FRL_CACHE_RUNTIME_MAX_ITEMS` constant in config
+6. ✅ Unrecognized group warning added — `frl_log()` fires when group is in no config array
 
-**Moderate concerns:**
-- All-static design limits testability
-- `purge_all()` does redundant work on transient-only sites
-- `auto_preload()` overhead on every page load
-- Auth cookie management is a side effect in `purge_all()`
-- `reset_options_caches()` aggressively removes all `pre_option_frl_*` filters
+**Remaining considerations:**
+- `metadata` group (used by [`schema.php:55`](public/schema.php:55)) works with object cache but not on transient-only sites — add to `FRL_CACHE_PERSISTENT_GROUPS` if needed
+- Provider detection extraction, config filterability remain as potential future improvements
+
+**Retracted concerns (verified safe):**
+- `pre_option_frl_*` filter removal only targets plugin's own namespace — safe
+- `$loaded_groups` reset only fires on full-group clears — code is correct
+- `auto_preload()` batching is the optimal strategy — disabling would scatter DB work
 
 **Positive highlights:**
 - Clean separation of orchestration from execution
