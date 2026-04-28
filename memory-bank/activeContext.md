@@ -38,11 +38,11 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
   - L4: `frl_cache_remember` persistent cache — avoid DB query (cross-request)
 
 ## 📁 Documentation
-- `docs/ARCHITECTURAL-REVIEW.md` - Plugin overview
+- `docs/ARCHITECTURE.md` - Plugin overview
 - `docs/CACHE.md` - Cache system architectural reference (synthesized from source + plans)
 - `docs/HOOKS.md` - Critical hook priorities
 - `docs/REWRITER.md` - Rewriter subsystem architecture
-- `docs/PLUGIN-EXCLUSIONS-FEATURE.md` - Plugin exclusion feature (updated with caching details)
+- `docs/PLUGIN-EXCLUSIONS.md` - Plugin exclusion feature (updated with caching details)
 - `plans/translator-regression-analysis.md` - Translator regression bugs (unfixed — keep)
 
 ## ✅ Cache Documentation (2026-04-28)

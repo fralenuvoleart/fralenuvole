@@ -17,7 +17,7 @@
   - `assets/mu/frl-mu-plugin.php` → thin bootstrap (constant + bootstrap require + hook registration)
   - `includes/helpers/functions-mu-plugin.php` → all exclusion logic (moved from MU plugin)
   - Loaded only by the MU plugin, not polluting the main plugin's helper load
-  - Updated `docs/PLUGIN-EXCLUSIONS-FEATURE.md` with new file references
+  - Updated `docs/PLUGIN-EXCLUSIONS.md` with new file references
 - Translation Module Refactor:
   - Implemented Adapter Pattern for translation providers (Polylang/WPML).
   - Added strict typing to `field-translator.php`.
