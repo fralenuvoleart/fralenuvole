@@ -502,11 +502,17 @@ class Frl_Cache_Manager
         $cache_key = self::generate_key($group, $key);
 
         // Sanitize value for serialization if needed.
-        // frl_sanitize_for_serialization() is a no-op for safe types (arrays, strings, ints)
-        // and only transforms Closures/objects. Using its output directly avoids a redundant
-        // serialize() test call before wp_cache_set() serializes internally.
+        // Create a sanitized copy first. Only use it if the original is not
+        // directly serializable, to preserve objects (e.g. WP_User, stdClass)
+        // that wp_cache_set() handles internally.
         if (function_exists('frl_sanitize_for_serialization')) {
-            frl_sanitize_for_serialization($value);
+            $sanitized_value = $value;
+            frl_sanitize_for_serialization($sanitized_value);
+            try {
+                serialize($value);
+            } catch (\Throwable $e) {
+                $value = $sanitized_value;
+            }
         } else {
             // Fallback: check if value is serializable
             try {

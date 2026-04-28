@@ -73,7 +73,7 @@ function frl_clear_post_cache($post_id)
     if (defined('FRL_SCHEMA_TYPES') && frl_is_array_not_empty(FRL_SCHEMA_TYPES)) {
         foreach (FRL_SCHEMA_TYPES as $schema_type) {
             $cache_key = "schema_{$schema_type}_post_{$post_id}";
-            frl_cache_clear('metadata', $cache_key); // Clear specific key within the group
+            frl_cache_clear('postdata', $cache_key); // Clear specific key within the group
         }
     }
 
