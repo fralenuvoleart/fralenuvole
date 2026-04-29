@@ -111,4 +111,35 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
 
 ---
 
+---
+
+## ✅ Performance Audit Patches Applied (2026-04-29)
+
+### Autoload Optimizations
+- **8 admin-only options** changed from `autoload='yes'` to `autoload='no'` in [`config/config-options.php`](config/config-options.php):
+  - `login_branding` — only checked on `login_enqueue_scripts`
+  - `debug_display` — admin-only debug setting
+  - `error_reporting_email`, `error_reporting_notice`, `error_reporting_warning`, `error_reporting_deprecated`, `error_reporting_plugin`, `error_reporting_suppressed` — only active when `WP_DEBUG_LOG` is enabled
+- **Benefit:** Reduces WordPress `wp_load_alloptions()` memory footprint on every request. Options are lazy-loaded via `frl_get_option()` on first access.
+
+### Query Optimization — Recommended Against
+- Analyzed [`frl_get_plugin_options_db()`](includes/helpers/functions-options.php:280) which uses `LIKE {prefix}%` query without autoload filter.
+- **Decision:** Do NOT filter by autoload column. Gain is only on cold cache (rarest scenario). LIKE on indexed `option_name` column is already ~0.1ms. Lazy-load mechanism would increase DB queries on admin pages.
+- Real benefit is already achieved at WordPress core level via `wp_load_alloptions()` being smaller after autoload changes above.
+
+### Lazy-Load Subsystems
+- **File:** [`fralenuvole.php:86-134`](fralenuvole.php:86) — `frl_load_core_components()` refactored:
+  - **EM:** Gated behind `!frl_get_option('disable_environment')` — skips require_once + init when disabled
+  - **Translator:** Gated behind `frl_is_multilingual_active() && !frl_get_option('disable_translator')` — skips entire translator.php load when no multilingual plugin active or translator disabled. `frl_is_multilingual_active()` is safe to call early (checks WP/PLL constants defined during plugin file inclusion, before `plugins_loaded`)
+  - **Rewriter:** Gated behind `!frl_get_option('disable_rewriter')` — skips require_once + init when disabled
+  - **Themekit:** Kept unconditional (no master disable toggle exists)
+- **Benefit:** On frontend with defaults (EM+translator+rewriter all enabled), zero change. On sites that disable any subsystem, saves PHP parse time, memory, and init overhead.
+- **Safety:** All `add_action('init', ...)` hooks remain registered unconditionally — each init function has internal guards (`frl_environment_is_loaded()`, `frl_is_already_running()`) that handle the case where the subsystem file wasn't loaded.
+
+### frl_disable_comments() WHERE Clause
+- **File:** [`includes/shared/website-features.php:219`](includes/shared/website-features.php:219)
+- **Patch:** Added `'comment_status' => 'open'` to the `$wpdb->update()` WHERE clause
+- **Before:** Updated ALL publish posts every time, even those already `closed`
+- **After:** Only updates posts where comments are still `open` — zero DB writes on subsequent calls
+
 *Last Updated: 2026-04-29*

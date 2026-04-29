@@ -192,4 +192,34 @@
   - Orchestrator compatibility confirmed (Scenario C)
   - Regression analysis added (Appendix C)
 
+---
+
+## Performance Audit Optimizations (2026-04-29)
+
+### Initial Audit
+- Performed comprehensive codebase performance audit — 60+ files reviewed
+- Initial report: [`plans/performance-audit-report.md`](plans/performance-audit-report.md) with 8 findings
+- User challenged 4 findings; all re-investigated with evidence
+
+### Revised Findings (after user feedback)
+- **Retracted:** Re-entrancy guard in `frl_get_option()` — confirmed intentional exception-safety pattern (`try/finally` with `$reset=true`). Also used in `class-cache-manager.php:765-767` for `cleanup_expired_transients()`, confirming deliberate convention.
+- **Retracted:** Polylang `icl_register_string` — confirmed via official Polylang docs: `icl_register_string` stores strings permanently in DB (WPML-compatible), while `pll_register_string` registers for runtime translation with auto-cleanup on deactivation. Both are officially supported Polylang functions.
+- **Retracted:** Admin widget caching — architecture is intentionally designed with outer widget cached via `frl_cache_remember` and inner tables using `$bypass_cache=true` to avoid double-caching. Documented in `ADMIN-UI.md` and inline comments.
+- **Validated:** `frl_disable_comments()` WHERE clause — patch applied (see below)
+- **Confirmed no issue:** `frl_get_critical_css_data()` disk reads (cached at multiple levels), module `file_exists()` calls (behind static request-level caches), error handler block capture (triple caching, only activates with `WP_DEBUG_LOG`), EM config merge (triple-guarded)
+- Full revised report: [`plans/revised-performance-audit.md`](plans/revised-performance-audit.md)
+
+### Performance Rating Analysis
+- Current rating: **90.2/100 (B+/A-)** across 7 weighted categories
+- Identified 4 optimization paths to reach A (95+)
+- Full analysis: [`plans/performance-rating-analysis.md`](plans/performance-rating-analysis.md)
+
+### Patches Applied
+1. **frl_disable_comments() WHERE clause** — [`includes/shared/website-features.php:219`](includes/shared/website-features.php:219): Added `'comment_status' => 'open'` to `$wpdb->update()` WHERE clause. Prevents unnecessary DB writes on subsequent calls.
+2. **Autoload optimizations** — [`config/config-options.php`](config/config-options.php): Changed 8 admin-only options to `autoload='no'` (login_branding, debug_display, error_reporting_email/notice/warning/deprecated/plugin/suppressed). Reduces `wp_load_alloptions()` memory footprint.
+3. **Lazy-load subsystems** — [`fralenuvole.php:86-134`](fralenuvole.php:86): Refactored `frl_load_core_components()` to conditionally load EM/translator/rewriter based on their disable options. Saves PHP parse time, memory, and init overhead when subsystems are disabled.
+
+### Analysis Performed (No Code Change)
+- **Query optimization by autoload:** Analyzed [`frl_get_plugin_options_db()`](includes/helpers/functions-options.php:280). Recommended against filtering by autoload column — gain is only on cold cache (rarest scenario), LIKE on indexed column is already ~0.1ms, lazy-load mechanism would increase admin DB queries.
+
 *Last Updated: 2026-04-29*

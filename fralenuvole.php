@@ -85,22 +85,39 @@ function frl_plugins_loaded()
  */
 function frl_load_core_components()
 {
-    // Load core files first (cache-manager already loadd in bootstrap)
-    require_once FRL_DIR_PATH . 'includes/core/cache/cache-cleanup.php';   
-    require_once FRL_DIR_PATH . 'includes/core/environment/environment-manager.php';
-    require_once FRL_DIR_PATH . 'includes/core/translator/translator.php';
-    require_once FRL_DIR_PATH . 'includes/core/rewriter/class-rewriter.php';
+    // Load core files first (cache-manager already loaded in bootstrap)
+    require_once FRL_DIR_PATH . 'includes/core/cache/cache-cleanup.php';
+
+    // Environment Manager — only load + init if not explicitly disabled
+    if (!frl_get_option('disable_environment')) {
+        require_once FRL_DIR_PATH . 'includes/core/environment/environment-manager.php';
+        frl_environment_init();
+    }
+
+    // Translator — only load + init if a multilingual plugin is active AND translator is not disabled.
+    // frl_is_multilingual_active() checks Polylang/WPML constants which are defined
+    // during plugin file inclusion (before plugins_loaded), so it is safe to call here.
+    if (frl_is_multilingual_active() && !frl_get_option('disable_translator')) {
+        require_once FRL_DIR_PATH . 'includes/core/translator/translator.php';
+        frl_translator_init();
+    }
+
+    // Rewriter — only load + init if not explicitly disabled
+    if (!frl_get_option('disable_rewriter')) {
+        require_once FRL_DIR_PATH . 'includes/core/rewriter/class-rewriter.php';
+        frl_rewriter_init();
+    }
+
+    // Themekit — always loaded (no master disable toggle)
     require_once FRL_DIR_PATH . 'includes/core/themekit/themekit.php';
 
     // Load always-active features
     require_once FRL_DIR_PATH . 'includes/main.php';
     require_once FRL_DIR_PATH . 'public/shortcodes.php';
 
-    // Explicitly initialize components
-    frl_environment_init();
-    frl_translator_init();
-    frl_rewriter_init();
-
+    // These init functions handle their own internal guards:
+    // - frl_environment_enforce_settings() calls frl_environment_is_loaded() which returns false if EM file wasn't loaded
+    // - frl_shortcodes_init() / frl_themekit_init() are always safe (files loaded unconditionally above)
     add_action('init',
         'frl_environment_enforce_settings',
         10,

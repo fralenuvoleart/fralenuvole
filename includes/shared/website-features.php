@@ -216,7 +216,7 @@ function frl_disable_comments()
             $wpdb->update(
                 $wpdb->posts,
                 ['comment_status' => 'closed', 'ping_status' => 'closed'],
-                ['post_status' => 'publish'] // WHERE condition - original was ['post_type' => 'post']
+                ['post_status' => 'publish', 'comment_status' => 'open'] // WHERE condition: only affect posts with open comments
             );
             // Return '1' to mark the operation as completed in cache
             return '1';

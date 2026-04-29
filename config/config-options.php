@@ -203,6 +203,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'checkbox',
 				'default' => 1,
 				'sanitize_callback' => 'absint',
+				'autoload' => 'no',
 			),
 			'custom_avatar' => array(
 				'label' => 'Custom User Avatar',
@@ -612,6 +613,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'checkbox',
 				'default' => 1,
 				'sanitize_callback' => 'absint',
+				'autoload' => 'no',
 			),
 			'custom_ab_links' => array(
 				'label' => 'Custom Adminbar links',
@@ -754,6 +756,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'text',
 				'default' => 'delete_plugins',
 				'sanitize_callback' => 'sanitize_text_field',
+				'autoload' => 'no',
 			),
 			'dash_widget_custom_html_content_1' => array(
 				'label' => 'Widget 1 Content',
@@ -778,6 +781,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'text',
 				'default' => 'delete_plugins',
 				'sanitize_callback' => 'sanitize_text_field',
+				'autoload' => 'no',
 			),
 			'dash_widget_custom_html_content_2' => array(
 				'label' => 'Widget 2 Content',
@@ -802,6 +806,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'text',
 				'default' => 'delete_plugins',
 				'sanitize_callback' => 'sanitize_text_field',
+				'autoload' => 'no',
 			),
 			'dash_widget_custom_html_content_3' => array(
 				'label' => 'Widget 3 Content',
@@ -842,6 +847,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'checkbox',
 				'default' => 0,
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 			'excluded_plugins_backend' => array(
 				'label' => 'Backend Excluded Plugins',
@@ -849,6 +855,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'textlist',
 				'default' => '',
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 			'excluded_plugins_bycap_enabled' => array(
 				'label' => 'Enable Admin Capability Exclusion',
@@ -856,6 +863,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'checkbox',
 				'default' => 0,
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 			'excluded_plugins_bycap_cap' => array(
 				'label' => 'Required Capability',
@@ -863,6 +871,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'text',
 				'default' => 'delete_plugins',
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 			'excluded_plugins_bycap' => array(
 				'label' => 'Admin Excluded Plugins',
@@ -870,6 +879,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'textlist',
 				'default' => '',
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 		),
 	),
@@ -901,6 +911,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'checkbox',
 				'default' => 0,
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 			'section_title_error_reporting' => array(
 				'label' => 'Error reporting',
@@ -913,6 +924,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'checkbox',
 				'default' => 1,
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 			'error_reporting_notice' => array(
 				'label' => 'Log Notices',
@@ -920,6 +932,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'checkbox',
 				'default' => 1,
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 			'error_reporting_warning' => array(
 				'label' => 'Log Warnings',
@@ -927,6 +940,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'checkbox',
 				'default' => 1,
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 			'error_reporting_deprecated' => array(
 				'label' => 'Log Deprecated',
@@ -934,6 +948,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'checkbox',
 				'default' => 1,
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 			'error_reporting_plugin' => array(
 				'label' => 'Log Plugin Only',
@@ -941,6 +956,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'checkbox',
 				'default' => 1,
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 			'error_reporting_suppressed' => array(
 				'label' => 'Suppress error patterns',
@@ -949,6 +965,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'default' => '_load_textdomain_just_in_time',
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'restricted' => true,
+				'autoload' => 'no',
 			),
 		),
 	),
