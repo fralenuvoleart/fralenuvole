@@ -16,12 +16,13 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Access Control Caching:** [`frl_get_auth_cookie_user_data()`](includes/helpers/functions-mu-plugin.php:90) DB query now cached via `frl_cache_remember('admin', 'auth_cookie_user_' . $username, ..., 300)` — 300s TTL aligned with [`frl_has_access()`](includes/helpers/functions-access-control.php:95) standard path. Consistent "access control decisions cached for 5 minutes" rule across both functions. Both functions now live in [`functions-mu-plugin.php`](includes/helpers/functions-mu-plugin.php) alongside their sole consumer.
 - **Cron query fix (applied):** In [`frl_get_exclusion_options()`](includes/helpers/functions-mu-plugin.php:30), the cron DB query is now guarded behind [`frl_is_cron_job_request()`](includes/helpers/functions-access-control.php:475). On non-cron requests, `$options['cron'] = []` is set without touching the DB. On cron requests, fresh cron data is fetched via `$wpdb->get_var()`. Cron data is intentionally NOT cached via `frl_cache_remember` because stale cron data would cause duplicate event execution — the `cron` option changes on every WP-Cron execution cycle. Request-level static cache in `frl_get_exclusion_options():32` already deduplicates within a single request.
 - **Translation Module:** Adapter-based architecture decoupling the service from translation providers (Polylang/WPML), utilizing deferred registration via `shutdown` hook and multi-level caching.
-- **Cache Operations:** `Frl_Cache_Operations` (`includes/core/cache/class-cache-operations.php`) — runtime dispatcher for composite cache operations. The operation definitions live in `FRL_CACHE_OPERATIONS` constant (`config/config-cache-operations.php`, loaded via `config/config.php`). **Two-tier design:**
-  - **`clear_*` operations** (`clear_hard`, `clear_all`, `clear_light`): Helper-level operations that `frl_cache_clear()` delegates to for the three composite cache groups. Each enumerates granular steps (e.g., `hard_cache_reset()` + `frl_thirdparty_maybe_notify()`) with inline `note` fields documenting deferred chains.
-  - **`action_*` operations** (`action_hard`, `action_flush_rewrite_rules`, `action_clear_plugin_transients`, `action_clear_website_transients`, `action_clear_scripts_tags`): Admin-action-level operations called from action handlers. Compose `clear_*` ops with additional steps (e.g., rewrite flush). No `action_all` or `action_light` exists — those action handlers call `clear_all`/`clear_light` directly since they don't add extra steps.
+- **Cache Operations:** `Frl_Cache_Operations` (`includes/core/cache/class-cache-operations.php`) — runtime dispatcher for composite cache operations. The operation definitions live in `FRL_CACHE_OPERATIONS` constant (`config/config-cache-operations.php`, loaded via `config/config.php`). **Three-tier design:**
+  - **`clear_*` operations** (`clear_hard`, `clear_all`, `clear_light`, `clear_options`, `clear_rewriter`): Helper-level operations that `frl_cache_clear()` delegates to for composite cache groups. Each enumerates granular steps with inline `note` fields documenting deferred chains. `clear_options` and `clear_rewriter` added 2026-04-29 to give `clear_group_with_dependencies('options'/'rewriter')` full orchestrator visibility.
+  - **`action_*` operations** (`action_hard`, `action_flush_rewrite_rules`, `action_clear_plugin_transients`, `action_clear_website_transients`, `action_clear_scripts_tags`): Admin-action-level operations called from action handlers. Compose `clear_*` ops with additional steps (e.g., rewrite flush).
+  - **`env_*` operations** (`env_enforce_full`, `env_enforce_url_change`, `env_enforce_options`): Environment Manager operations triggered by `enforce_environment_settings()`. Added 2026-04-29 — each maps to a specific decision path in the change-type classifier. The classifier now dispatches via `Frl_Cache_Operations::run($env_op)` (guarded: only runs when `$env_op` is non-empty) instead of calling `frl_cache_clear()` / `frl_schedule_admin_rewrite_flush()` directly. `env_enforce_none` was removed — when nothing changed, the orchestrator call is skipped entirely.
   - **No critical flag:** All steps execute sequentially regardless of failure; caller inspects per-step results.
   - **`fn` supports callable arrays:** `[ 'Frl_Cache_Manager', 'hard_cache_reset' ]` for static method calls, checked via `is_callable()`.
-  - **All existing helper functions preserved** (`frl_cache_clear`, `frl_schedule_admin_rewrite_flush` remain independently callable). `frl_cache_clear('hard'/'all'/'light')` returns `$result['steps'][0]['result']` for backward compatibility with external callers.
+  - **All existing helper functions preserved** (`frl_cache_clear`, `frl_schedule_admin_rewrite_flush` remain independently callable). `frl_cache_clear('hard'/'all'/'light'/'options'/'rewriter')` returns `$result['steps'][0]['result']` for backward compatibility with external callers.
 
 ## ⚠️ Active Considerations
 - Ensure `init/15` rewriter registration stays strictly after `init/10` environment enforcement.
@@ -73,10 +74,10 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
 ## ✅ Environment Manager Patches Applied (2026-04-29)
 
 ### C1 — Change-type classifier for cache clears
-- **File:** [`class-environment-manager.php:228-258`](../includes/core/environment/class-environment-manager.php:228)
+- **File:** [`class-environment-manager.php:236-268`](../includes/core/environment/class-environment-manager.php:236)
 - **What:** Replaced monolithic `frl_cache_clear('all')` with a change-type classifier that inspects `$results` after all apply methods run.
-- **Logic:**
-  - Force mode → `frl_cache_clear('all')` (preserved)
+- **Logic (original):**
+  - Force mode → `frl_cache_clear('all')`
   - Plugin or module changes → `frl_cache_clear('all')` + `frl_schedule_admin_rewrite_flush()`
   - `siteurl`/`home` changes → `frl_cache_clear('all')`
   - Option-only changes → `frl_cache_clear('options')`
@@ -92,6 +93,17 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
 - **What:** Replaced per-option `add_action("update_option_{$prefixed_name}", ...)` with a single `add_action('updated_option', ...)` using an O(1) lookup map (`prefixed_name → config_key`).
 - **Key detail:** `updated_option` passes 3 args (`$option, $old_value, $new_value`) — the old hooks passed 2 (`$old_value, $new_value`). The `add_action()` call specifies `3` as `$accepted_args`.
 - **Win:** Reduces closure allocation from N (~15) to 1; simplifies code; adapts automatically to config changes.
+
+### C1 Orchestrator Integration (2026-04-29)
+- **What:** Refactored EM cache clears to go through `Frl_Cache_Operations::run()` instead of calling `frl_cache_clear()` / `frl_schedule_admin_rewrite_flush()` directly.
+- **Changes:**
+  - Added `clear_options` and `clear_rewriter` as proper `clear_*` operations in [`FRL_CACHE_OPERATIONS`](../config/config-cache-operations.php) — previously these bypassed the orchestrator (direct `Frl_Cache_Manager::clear_group_with_dependencies()` calls).
+  - Added both to the `$orchestrated_groups` map in [`frl_cache_clear()`](../includes/helpers/functions-class-helpers.php:178) so all `frl_cache_clear('options'/'rewriter')` calls now route through the orchestrator.
+  - Added 3 new `env_*` operations (`env_enforce_full`, `env_enforce_url_change`, `env_enforce_options`) that map to the classifier's decision paths. `env_enforce_none` was removed — the orchestrator call is now guarded (skipped when `$env_op` is empty).
+  - Refactored the classifier in [`class-environment-manager.php`](../includes/core/environment/class-environment-manager.php) to select an `env_*` operation key and dispatch via `Frl_Cache_Operations::run($env_op)` (guarded).
+  - The orchestrator now covers **all** cache clearing paths in a single `FRL_CACHE_OPERATIONS` registry — `clear_*` (helpers), `action_*` (admin actions), and `env_*` (environment manager).
+- **Zero regression risk:** Return values from `Frl_Cache_Operations::run()` are not used by the EM (only `$results` is used for UI). `frl_cache_clear()` return format unchanged via `$result['steps'][0]['result']` passthrough.
+- **Reference:** [`plans/env-manager-orchestrator-integration.md`](../plans/env-manager-orchestrator-integration.md)
 
 ### Key research finding — Third-party notification is a no-op during enforcement
 - [`frl_thirdparty_maybe_notify('all')`](../modules/thirdparty/thirdparty.php:230) notifies **zero** plugins because no outbound hook in [`FRL_THIRDPARTY_OUTBOUND_HOOKS`](../modules/thirdparty/config-constants-thirdparty.php:81) listens for the `'all'` trigger. Only `'hard'` and `'rewrite_flush'` have listeners (LiteSpeed, Breeze, WP Rocket).

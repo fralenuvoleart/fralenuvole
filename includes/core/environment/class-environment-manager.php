@@ -25,7 +25,9 @@ class Frl_Environment_Manager
     const ENV_FILES_PATH = FRL_DIR_PATH . FRL_ENV_FILES_PATH;
 
     /**
-     * Initialize environment manager
+     * Initialize environment manager.
+     *
+     * @return void
      */
     public static function init()
     {
@@ -51,7 +53,7 @@ class Frl_Environment_Manager
                 Frl_Environment_Monitor::setup_plugin_options_tracking();
             }
 
-            // Register hooks needed even if initialized? Revisit this maybe.
+            // Register hooks: admin bar switcher and plugin activation tracking.
             add_action('admin_bar_menu',
                 [self::class, 'add_environment_switcher'],
                 9999,
@@ -80,6 +82,9 @@ class Frl_Environment_Manager
     /**
      * Determine whether stored state hosts differ from current request
      * and runtime URL hosts. Ignores scheme, port, and path.
+     *
+     * @param array $stored_state The stored state array to compare.
+     * @return bool True if host changed, false otherwise.
      */
     private static function environment_host_changed($stored_state)
     {
@@ -92,6 +97,8 @@ class Frl_Environment_Manager
      * Detection rule (explicit): Only host changes across request/siteurl/home
      * trigger a state change. Scheme, port, and path differences are ignored.
      * This focuses on main domain vs subdomain changes.
+     *
+     * @return bool True if state changed, false otherwise.
      */
     private static function check_environment_state()
     {
@@ -116,9 +123,10 @@ class Frl_Environment_Manager
     }
 
     /**
-     * Check and enforce environment-specific settings
+     * Check and enforce environment-specific settings.
      *
-     * @param bool $force Whether to force applying settings regardless of state change
+     * @param bool $force Whether to force applying settings regardless of state change.
+     * @return array|null Results array if enforcement ran, null if skipped.
      */
     public static function enforce_environment_settings($force = false)
     {
@@ -225,12 +233,13 @@ class Frl_Environment_Manager
             // Apply module management
             Frl_Environment_Applier::apply_modules_options($config, $results, $force); // Pass force
 
-            // --- Change-type classifier: select cache clear level by what changed ---
-            // Targeted clears inside apply methods have been removed — all clearing is centralized here.
+            // --- Change-type classifier: select cache operation by what changed ---
+            // All cache clearing is now executed through the orchestrator (FRL_CACHE_OPERATIONS)
+            // for centralized visibility in get_operation_map().
+            $env_op = '';
+
             if ($force) {
-                // Force mode: full purge (preserve existing behavior)
-                // Targeted clears inside apply methods are already skipped via $force_mode
-                frl_cache_clear('all');
+                $env_op = 'env_enforce_full';
             } else {
                 $changed_wp_opts        = !empty($results['wp_options']['updated']);
                 $changed_plugin_opts    = !empty($results['plugin_options']['updated'])
@@ -241,20 +250,21 @@ class Frl_Environment_Manager
                                        || !empty($results['modules']['deactivated']);
 
                 if ($changed_plugins || $changed_modules) {
-                    // Plugin/module changes can register new post types, rewrite rules, shortcodes
-                    frl_cache_clear('all');
-                    frl_schedule_admin_rewrite_flush();
+                    $env_op = 'env_enforce_full';
                 } elseif ($changed_wp_opts
                     && (in_array('siteurl', $results['wp_options']['updated'])
                         || in_array('home', $results['wp_options']['updated']))
                 ) {
-                    // URL changes justify full purge
-                    frl_cache_clear('all');
+                    $env_op = 'env_enforce_url_change';
                 } elseif ($changed_plugin_opts || $changed_wp_opts) {
-                    // Option-only changes: clear options group
-                    frl_cache_clear('options');
+                    $env_op = 'env_enforce_options';
                 }
-                // Nothing changed → no cache clear needed
+                // Nothing changed → $env_op stays empty, orchestrator call is skipped.
+            }
+
+            // Execute selected operation through orchestrator for centralized visibility.
+            if ($env_op) {
+                Frl_Cache_Operations::run($env_op);
             }
 
             $current_state = self::get_current_state(true);
@@ -313,9 +323,11 @@ class Frl_Environment_Manager
     }
 
     /**
-     * Reset all customization tracking
-     * This clears the list of ignored plugins and options
-     * but does not immediately apply environment settings
+     * Reset all customization tracking.
+     * Clears the list of ignored plugins and options
+     * but does not immediately apply environment settings.
+     *
+     * @return array Result with cleared flags per type.
      */
     public static function reset_customizations()
     {
@@ -430,6 +442,10 @@ class Frl_Environment_Manager
      * Builds child nodes for every env domain except the current host and its
      * direct counterpart (already reachable via the button's own href).
      * Results are cached per user and per current domain.
+     *
+     * @param WP_Admin_Bar $wp_admin_bar The admin bar instance.
+     * @param string $current_domain The current request host.
+     * @return void
      */
     private static function add_environment_switcher_submenus($wp_admin_bar, $current_domain)
     {
@@ -474,12 +490,12 @@ class Frl_Environment_Manager
     }
 
     /**
-     * Get domain configuration for current domain (public access)
-     * @return array Domain configuration
+     * Get domain configuration for current domain (public access).
+     *
+     * @return array|null Domain configuration or null if not found.
      */
     public static function get_config()
     {
-        // Retrieve domain configuration
         $config = self::get_domain_config();
         // Log if configuration could not be determined
         if ($config === null) {
@@ -490,6 +506,8 @@ class Frl_Environment_Manager
 
     /**
      * Get domain configuration for current domain, with caching.
+     *
+     * @return array|null Domain configuration or null on failure.
      */
     private static function get_domain_config()
     {
@@ -513,6 +531,7 @@ class Frl_Environment_Manager
      * @param array $base Base configuration (e.g., FRL_ENV_DEFAULT).
      * @param array $type_partial Type-specific partial overrides (e.g., FRL_ENV_DEFAULT_PRODUCTION).
      * @param array $instance_partial Instance-specific partial overrides (e.g., FRL_ENV_PBS_PRODUCTION).
+     * @param array $extends_partial Optional template config from the 'extends' key.
      * @return array The fully merged configuration.
      */
     private static function merge_environment_configs(array $base, array $type_partial, array $instance_partial, array $extends_partial = []): array

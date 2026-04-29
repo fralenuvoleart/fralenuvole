@@ -147,17 +147,29 @@
 
 ## Environment Manager Patches (2026-04-29)
 
+### Orchestrator Integration — EM cache clears now use `Frl_Cache_Operations`
+- **What:** All EM-triggered cache clears now go through `Frl_Cache_Operations::run()` for centralized visibility.
+- **Changes:**
+  - **Added `clear_options` and `clear_rewriter`** as orchestrated `clear_*` operations in [`FRL_CACHE_OPERATIONS`](../config/config-cache-operations.php) — previously these bypassed the orchestrator (direct `Frl_Cache_Manager::clear_group_with_dependencies()`).
+  - **Added both to `$orchestrated_groups`** in [`frl_cache_clear()`](../includes/helpers/functions-class-helpers.php:178) — now `frl_cache_clear('options')` and `frl_cache_clear('rewriter')` route through the orchestrator, giving full visibility in `get_operation_map()`.
+  - **Added 3 `env_*` operations** — `env_enforce_full`, `env_enforce_url_change`, `env_enforce_options` — mapping to each decision path in the change-type classifier. `env_enforce_none` was removed per user direction (guard pattern: orchestrator call is skipped entirely when `$env_op` is empty).
+  - **Refactored classifier** in [`class-environment-manager.php`](../includes/core/environment/class-environment-manager.php) — selects the `env_*` operation key and dispatches via `Frl_Cache_Operations::run($env_op)` (guarded: only runs when `$env_op` is non-empty) instead of calling `frl_cache_clear()` / `frl_schedule_admin_rewrite_flush()` directly.
+- **Result:** The orchestrator now has three tiers — `clear_*` (helpers), `action_*` (admin actions), `env_*` (environment manager). Every cache clearing path is documented in one place.
+- **Reference:** [`plans/env-manager-orchestrator-integration.md`](../plans/env-manager-orchestrator-integration.md)
+
 ### C1 — Change-type classifier for cache clears
 - **Problem:** `enforce_environment_settings()` always called `frl_cache_clear('all')` after *any* environment change, regardless of what changed. This was wasteful for option-only changes and missed `flush_rewrite_rules()` for plugin/module changes.
 - **Findings:**
   - `frl_thirdparty_maybe_notify('all')` notifies **zero** plugins — no outbound hook listens for `'all'` trigger (only `'hard'` and `'rewrite_flush'`)
   - Module changes DO require rewrite flush (modules register features via `add_feature()` at `plugins_loaded/5`)
   - The monolithic `frl_cache_clear('all')` was redundant with targeted clears inside apply methods (double-clearing)
-- **Fix:** Replaced the monolithic clear with a change-type classifier at [`class-environment-manager.php:228`](../includes/core/environment/class-environment-manager.php:228):
-  - Plugin/module changes → `frl_cache_clear('all')` + `frl_schedule_admin_rewrite_flush()`
-  - `siteurl`/`home` changes → `frl_cache_clear('all')`
-  - Option-only changes → `frl_cache_clear('options')`
-  - Force mode → `frl_cache_clear('all')` (preserved)
+- **Fix:** Replaced the monolithic clear with a change-type classifier at [`class-environment-manager.php:236`](../includes/core/environment/class-environment-manager.php:236):
+  - Plugin/module changes → full purge + rewrite flush
+  - `siteurl`/`home` changes → full purge
+  - Option-only changes → options group clear
+  - Force mode → full purge (preserved)
+  - Nothing changed → no clear at all
+  - *Now dispatches via `Frl_Cache_Operations::run('env_enforce_*')`*
 
 ### C1+ — Remove redundant targeted clears
 - **Problem:** `apply_plugin_options()` and `apply_modules_options()` each independently called `frl_cache_clear('options')` when changes were made (non-force mode), but these were immediately overwritten by the parent `frl_cache_clear('all')`.

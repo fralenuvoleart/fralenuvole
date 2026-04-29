@@ -11,7 +11,9 @@ class Frl_Environment_Monitor
 {
     use Frl_Environment_Host_Normalizer;
     /**
-     * Set up hooks for tracking option changes
+     * Set up hooks for tracking option changes.
+     *
+     * @return void
      */
     public static function setup_plugin_options_tracking()
     {
@@ -40,7 +42,12 @@ class Frl_Environment_Monitor
     }
 
     /**
-     * Track manual option changes
+     * Track manual option changes.
+     *
+     * @param string $option_name Option name without prefix.
+     * @param mixed $old_value Old option value.
+     * @param mixed $new_value New option value.
+     * @return void
      */
     public static function track_plugin_options($option_name, $old_value, $new_value)
     {
@@ -67,7 +74,10 @@ class Frl_Environment_Monitor
     }
 
     /**
-     * Track manual plugin activation/deactivation changes
+     * Track manual plugin activation/deactivation changes.
+     *
+     * @param string $plugin Plugin basename (e.g., 'akismet/akismet.php').
+     * @return void
      */
     public static function track_plugins_activation_status($plugin)
     {
@@ -110,11 +120,17 @@ class Frl_Environment_Monitor
     }
 
     /**
-     * Check and update URLs for the current environment (admin-only path).
+     * Check and update URLs for the current environment.
+     * Compares current HTTP_HOST to siteurl/home and updates
+     * options if a mismatch is detected. Called on admin/migrate page loads.
+     *
+     * @return void
      */
     public static function check_urls()
     {
-        if (frl_is_already_running(__METHOD__)) return;
+        if (frl_is_already_running(__METHOD__)) {
+            return;
+        }
 
         $current_user_id = frl_get_current_user()->ID;
         $auth_cookie = wp_parse_auth_cookie('', 'logged_in');

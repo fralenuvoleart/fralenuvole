@@ -11,6 +11,10 @@ class Frl_Environment_Applier
 {
     /**
      * Optionally clear website transients once per destination host.
+     *
+     * @param array $config The environment configuration array.
+     * @param string $dest_host The destination host to scope the transient-clear flag.
+     * @return array{transients_deleted: int, transients_status: string}
      */
     public static function clear_website_transients_if_needed($config, $dest_host)
     {
@@ -48,7 +52,12 @@ class Frl_Environment_Applier
         ];
     }
     /**
-     * Apply WordPress options from the environment configuration
+     * Apply WordPress options (siteurl, home, blog_public, etc.) from environment config.
+     *
+     * @param array $config The environment configuration array.
+     * @param array &$results Reference to results array to populate.
+     * @param bool $force Whether to force application (unused here, kept for signature consistency).
+     * @return void
      */
     public static function apply_wordpress_options($config, &$results, $force)
     {
@@ -97,7 +106,12 @@ class Frl_Environment_Applier
     }
 
     /**
-     * Apply plugin options from domain configuration
+     * Apply plugin options from domain configuration.
+     *
+     * @param array $config The environment configuration array.
+     * @param array &$results Reference to results array to populate.
+     * @param bool $force_mode Whether to force application (unused here, kept for signature consistency).
+     * @return void
      */
     public static function apply_plugin_options($config, &$results, $force_mode = false)
     {
@@ -175,7 +189,12 @@ class Frl_Environment_Applier
     }
 
     /**
-     * Manage module activation states based on environment config
+     * Manage module activation states based on environment config.
+     *
+     * @param array $config The environment configuration array.
+     * @param array &$results Reference to results array to populate.
+     * @param bool $force_mode Whether to force application (unused here, kept for signature consistency).
+     * @return void
      */
     public static function apply_modules_options($config, &$results, $force_mode = false)
     {

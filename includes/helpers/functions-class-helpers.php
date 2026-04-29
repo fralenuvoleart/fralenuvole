@@ -176,9 +176,11 @@ function frl_cache_clear(string $group, ?string $key = null, bool $include_depen
 
     // Delegate composite operations to the orchestrator for full visibility.
     $orchestrated_groups = [
-        'hard'  => 'clear_hard',
-        'all'   => 'clear_all',
-        'light' => 'clear_light',
+        'hard'      => 'clear_hard',
+        'all'       => 'clear_all',
+        'light'     => 'clear_light',
+        'options'   => 'clear_options',
+        'rewriter'  => 'clear_rewriter',
     ];
 
     if (isset($orchestrated_groups[$group])) {
@@ -276,7 +278,9 @@ function frl_environment_is_loaded()
 }
 
 /**
- * Initialize the Environment Manager
+ * Initialize the Environment Manager.
+ *
+ * @return void
  */
 function frl_environment_init()
 {

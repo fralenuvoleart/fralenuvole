@@ -8,6 +8,8 @@ class Frl_Environment_Config
 {
     /**
      * Get domain configuration for current domain, with caching.
+     *
+     * @return array|null Domain configuration or null on failure.
      */
     public static function get_domain_config()
     {

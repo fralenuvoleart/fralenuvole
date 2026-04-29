@@ -1,7 +1,10 @@
 <?php
 
 /**
- * Environment Manager
+ * Bootstrap the Environment Manager subsystem.
+ *
+ * Loads all environment class files in dependency order.
+ *
  * @package Fralenuvole
  */
 
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Host normalization utilities for environment comparisons
 require_once __DIR__ . '/class-environment-utils.php';
 require_once __DIR__ . '/class-environment-config.php';
 require_once __DIR__ . '/class-environment-state.php';

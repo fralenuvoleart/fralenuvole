@@ -504,22 +504,30 @@ Added at `admin_bar_menu` priority 9999.
 
 ### 9.2 Cache Clearing on Enforcement
 
-After all applies run, `enforce_environment_settings()` calls `frl_cache_clear('all')`. This:
-1. Executes `Frl_Cache_Manager::purge_all()` — purges ALL cache groups including heavy groups, with dependency cascade
-2. Calls `frl_thirdparty_maybe_notify('all')` — note: the `'all'` trigger does not match any outbound hook's `triggers` array (defined in `FRL_THIRDPARTY_OUTBOUND_HOOKS` at [`modules/thirdparty/config-constants-thirdparty.php:81`](../../modules/thirdparty/config-constants-thirdparty.php:81)); only `'hard'` and `'rewrite_flush'` triggers have registered listeners. Third-party cache plugins are **not** notified during enforcement — they are only notified via explicit admin actions (e.g., "Clear All Cache (Hard)") or by the rewriter subsystem.
+All cache clearing during environment enforcement is executed through the **cache orchestrator** ([`FRL_CACHE_OPERATIONS`](../../config/config-cache-operations.php)) for centralized visibility. The change-type classifier in [`enforce_environment_settings()`](../../includes/core/environment/class-environment-manager.php:236) inspects `$results` after all apply methods run, selects the appropriate `env_*` operation, and dispatches it via `Frl_Cache_Operations::run()` (guarded — skipped when `$env_op` is empty).
 
-**Targeted clears inside apply methods (redundant during enforcement):**
+**Three tiers of operations in the orchestrator:**
 
-The `apply_plugin_options()` and `apply_modules_options()` methods each independently call `frl_cache_clear('options')` when changes are made **and** `$force_mode` is `false` (i.e., during state-change-triggered enforcement). In `$force_mode = true` (URL correction, reset), the internal clears are skipped.
+| Tier | Prefix | Purpose | Operations |
+|------|--------|---------|------------|
+| Helper | `clear_*` | Delegated from `frl_cache_clear()` | `clear_hard`, `clear_all`, `clear_light`, `clear_options`, `clear_rewriter` |
+| Action | `action_*` | Admin action handlers | `action_hard`, `action_flush_rewrite_rules`, `action_clear_plugin_transients`, `action_clear_website_transients`, `action_clear_scripts_tags` |
+| Environment | `env_*` | EM enforcement decisions | `env_enforce_full`, `env_enforce_url_change`, `env_enforce_options` |
 
-However, these targeted clears are **effectively redundant** during enforcement because the parent `frl_cache_clear('all')` immediately follows, purging the `options` group (and all others) regardless. The targeted clears exist because the apply methods are designed for independent operation — they can be called outside the enforcement context in the future.
+**Cache clear behavior by mode (via `env_*` operations):**
 
-**Cache clear behavior by mode:**
+| Mode | Operation | Steps | Third-party notification |
+|------|-----------|-------|------------------------|
+| State change (plugin/module) | `env_enforce_full` | `frl_cache_clear('all')` + `frl_schedule_admin_rewrite_flush()` | No — `clear_all` step calls `frl_thirdparty_maybe_notify('all')`, but `'all'` trigger has no registered listeners (see below) |
+| State change (URL change) | `env_enforce_url_change` | `frl_cache_clear('all')` | No (same reason) |
+| State change (options only) | `env_enforce_options` | `frl_cache_clear('options')` → delegates to `clear_options` operation in orchestrator | No — options-only clear does not notify third parties |
+| Force mode | `env_enforce_full` | `frl_cache_clear('all')` + `frl_schedule_admin_rewrite_flush()` | No (same reason) |
 
-| Mode | Targeted clears inside apply methods | Parent `frl_cache_clear('all')` | Third-party notification |
-|------|--------------------------------------|--------------------------------|------------------------|
-| State change (non-force) | Yes (if changes made) | Yes | No (`'all'` trigger not wired) |
-| Force (URL correction, reset) | Skipped | Yes | No (`'all'` trigger not wired) |
+**Third-party notification note:** The `clear_all` operation's `frl_thirdparty_maybe_notify('all')` step has no registered listeners — no outbound hook in [`FRL_THIRDPARTY_OUTBOUND_HOOKS`](../../modules/thirdparty/config-constants-thirdparty.php:81) defines a trigger matching `'all'`. Only `'hard'` and `'rewrite_flush'` triggers have registered listeners (LiteSpeed, Breeze, WP Rocket). Third-party cache plugins are **not** notified during enforcement — they are only notified via explicit admin actions (e.g., "Clear All Cache (Hard)") or by the rewriter subsystem.
+
+**Targeted clears inside apply methods (removed):**
+
+The `apply_plugin_options()` and `apply_modules_options()` methods **no longer** call `frl_cache_clear('options')` directly. All cache clearing is centralized in the change-type classifier. The targeted clears were removed as part of the C1+ patch — they were redundant with the parent classification.
 
 ### 9.3 URL Correction Caching
 

@@ -10,6 +10,8 @@ class Frl_Environment_Files
 {
     /**
      * Get list of option keys configured as 'file' that have a physical file for the current env prefix.
+     *
+     * @return array List of option keys with existing environment files.
      */
     public static function get_file_options_keys()
     {

@@ -6,9 +6,10 @@
  * Frl_Cache_Operations. Each operation is an ordered sequence of
  * steps with callable references, arguments, and inline documentation notes.
  *
- * Two tiers of operations:
+ * Three tiers of operations:
  *   clear_*  — Helper-level operations that frl_cache_clear() delegates to.
  *   action_* — Admin-action-level operations that action handlers call.
+ *   env_*    — Environment Manager operations triggered by enforce_environment_settings().
  *
  * @package Fralenuvole
  */
@@ -33,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 const FRL_CACHE_OPERATIONS = [
 
 	// =====================================================================
-	// HELPER OPERATIONS — frl_cache_clear() delegates here for 'hard'/'all'/'light'
+	// HELPER OPERATIONS — frl_cache_clear() delegates here for 'hard'/'all'/'light'/'options'/'rewriter'
 	// =====================================================================
 
 	'clear_hard'               => [
@@ -96,6 +97,36 @@ const FRL_CACHE_OPERATIONS = [
 		],
 	],
 
+	'clear_options'           => [
+		'label'    => 'Helper: frl_cache_clear("options")',
+		'steps'    => [
+			[
+				'fn'   => [ 'Frl_Cache_Manager', 'clear_group_with_dependencies' ],
+				'args' => [ 'options' ],
+				'note' => 'Clear options group with FRL_CACHE_DEPENDENCIES cascade: options → theme, html, environment, admin, adminui, rewriter → permalinks',
+			],
+		],
+		'hooks'    => [
+			'before' => 'frl_before_cache_operation_clear_options',
+			'after'  => 'frl_after_cache_operation_clear_options',
+		],
+	],
+
+	'clear_rewriter'          => [
+		'label'    => 'Helper: frl_cache_clear("rewriter")',
+		'steps'    => [
+			[
+				'fn'   => [ 'Frl_Cache_Manager', 'clear_group_with_dependencies' ],
+				'args' => [ 'rewriter' ],
+				'note' => 'Clear rewriter group with FRL_CACHE_DEPENDENCIES cascade: rewriter → permalinks',
+			],
+		],
+		'hooks'    => [
+			'before' => 'frl_before_cache_operation_clear_rewriter',
+			'after'  => 'frl_after_cache_operation_clear_rewriter',
+		],
+	],
+
 	// =====================================================================
 	// ACTION OPERATIONS — admin action handlers call here
 	// =====================================================================
@@ -132,6 +163,60 @@ const FRL_CACHE_OPERATIONS = [
 		'hooks'    => [
 			'before' => 'frl_before_cache_operation_action_flush_rewrite_rules',
 			'after'  => 'frl_after_cache_operation_action_flush_rewrite_rules',
+		],
+	],
+
+	// =====================================================================
+	// ENVIRONMENT OPERATIONS — triggered by Environment Manager enforce_environment_settings()
+	// =====================================================================
+
+	'env_enforce_full'        => [
+		'label'    => 'Env: Full enforcement — plugin/module change or force mode',
+		'steps'    => [
+			[
+				'fn'   => 'frl_cache_clear',
+				'args' => [ 'all' ],
+				'note' => 'Full cache purge via clear_all operation — plugins/modules can register new post types, rewrite rules, shortcodes; force mode bypasses throttle',
+			],
+			[
+				'fn'   => 'frl_schedule_admin_rewrite_flush',
+				'args' => [],
+				'note' => 'Schedule rewrite rules flush — module activation/deactivation can add/remove rewrite features via Frl_Rewriter_Coordinator::add_feature() at plugins_loaded/5',
+			],
+		],
+		'hooks'    => [
+			'before' => 'frl_before_env_enforce_full',
+			'after'  => 'frl_after_env_enforce_full',
+		],
+	],
+
+	'env_enforce_url_change'  => [
+		'label'    => 'Env: URL change detected — siteurl or home modified',
+		'steps'    => [
+			[
+				'fn'   => 'frl_cache_clear',
+				'args' => [ 'all' ],
+				'note' => 'Full cache purge via clear_all operation — site URLs changed (siteurl/home), all cached URLs are invalidated',
+			],
+		],
+		'hooks'    => [
+			'before' => 'frl_before_env_enforce_url_change',
+			'after'  => 'frl_after_env_enforce_url_change',
+		],
+	],
+
+	'env_enforce_options'     => [
+		'label'    => 'Env: Options-only change',
+		'steps'    => [
+			[
+				'fn'   => 'frl_cache_clear',
+				'args' => [ 'options' ],
+				'note' => 'Options group purge via clear_options operation — only plugin/WordPress options changed, no structural changes requiring full purge or rewrite flush',
+			],
+		],
+		'hooks'    => [
+			'before' => 'frl_before_env_enforce_options',
+			'after'  => 'frl_after_env_enforce_options',
 		],
 	],
 
