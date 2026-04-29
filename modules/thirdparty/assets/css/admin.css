@@ -187,19 +187,14 @@ div.postbox[id^=fd_] .hndle.ui-sortable-handle {
  * Meow Styles 
  */
  :root {
+    --frl-ai-title: "Fralenuvole AI";
     --neko-blue: var(--admin-menu-color, #00293d) !important;
     --neko-tab-bg: hsl(200, 100%, 25%) !important;
-}
-
-.neko-tab-title[role="tab"]:not(.active),
-.neko-block-content > div[style*="background: linear-gradient"] {
-    background: var(--neko-tab-bg) !important;
 }
 
 .neko-tab-title[role="tab"].inversed.active {
     background: white !important;
     color: var(--neko-font-color) !important;
-
 }
 
 .gIkkAW.ai,
@@ -208,21 +203,37 @@ div.postbox[id^=fd_] .hndle.ui-sortable-handle {
     background: var(--admin-accent-color, #e6571a) !important;
 }
 
+.neko-block-content > div[style*="background: linear-gradient"] {
+    background: #4dc3ff !important;
+}
+
+.neko-block-content > div[style*="background: linear-gradient"],
+.neko-block-content > div[style*="background: linear-gradient"] a,
+.neko-block-content > div[style*="background: linear-gradient"] svg {
+    color: var(--neko-font-color) !important;
+}
+
 .neko-logo,
 .neko-header-subtitle,
 .neko-header .neko-button .normal-content > span svg,
 div:has(>a[href*="meowapps"]),
-button[data-key="license"],
 .neko-pro-only,
 #mwai-editor-assistant-root button img,
 #mwai-editor-assistant-root div>img[alt="AI Assistant"],
 #mwai-editor-assistant-root .mwai-header-title > img,
-.mwai-magic-wand-trigger img,
+.wp-list-table .row-actions .ai_magic_wand,
 .mwai-document-settings button.is-primary svg,
-.mwai-document-settings button.components-panel__body-toggle svg,
+.mwai-document-settings button.components-panel__body-toggle svg[enable-background],
 div.sc-dFVmKS.eKQOex:has(.neko-settings-content > .neko-checkbox.disabled),
 .neko-block-content p:has(a),
-.neko-block-content span.neko-typo:has(a) {
+.neko-block-content span.neko-typo:has(a),
+#toplevel_page_meowapps-main-menu .wp-menu-name img,
+.neko-block-action .neko-pill.ai:has(.led.ai),
+button[data-key="license"],
+body:not(.uid-1) button[data-key="finetunes"],
+body:not(.uid-1) button[data-key="settings"],
+body:not(.uid-1) .neko-column.minimal .neko-quick-links .neko-link:nth-child(n+3),
+body.post-php:not(.uid-1)  #mwai-editor-assistant-root div:has(>div>.neko-select) {
     display: none !important;
 }
 
@@ -230,12 +241,37 @@ div.sc-dFVmKS.eKQOex:has(.neko-settings-content > .neko-checkbox.disabled),
     margin-right: 8px !important;
 }
 
+.neko-header-title,
+#toplevel_page_meowapps-main-menu .wp-menu-name {
+    position: relative;
+    text-indent: -999px;
+    overflow: hidden;
+    text-wrap: nowrap;
+}
+
+.neko-header-title {
+    min-width: 150px;
+}
+
+.neko-header-title:before,
+#toplevel_page_meowapps-main-menu .wp-menu-name:before {
+    content: var(--frl-ai-title);
+    position: absolute;  
+    top: 0;
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    text-indent: 0;
+    height: 100%;
+
+}
+
 .neko-header-logo-container:before,
 #mwai-editor-assistant-root > button:before,
 #mwai-editor-assistant-root div:has(>img[alt="AI Assistant"]):before,
 #mwai-editor-assistant-root .mwai-header-title:before,
 .mwai-document-settings button.components-panel__body-toggle:before,
-#adminmenu a.toplevel_page_meowapps-main-menu .wp-menu-image:before {
+#toplevel_page_meowapps-main-menu .wp-menu-image:before {
     content: "";
     height: 48px;
     min-width: 48px;
@@ -247,7 +283,7 @@ div.sc-dFVmKS.eKQOex:has(.neko-settings-content > .neko-checkbox.disabled),
 
 .neko-header-logo-container:before {
     background-position: 0 -8px;
-    filter: brightness(1.4);
+    filter: brightness(1.3);
 }
 
 #mwai-editor-assistant-root .mwai-header-title:before {
@@ -285,6 +321,10 @@ div.sc-dFVmKS.eKQOex:has(.neko-settings-content > .neko-checkbox.disabled),
     filter: brightness(2.5) grayscale(1);
 }
 
+.block-editor-block-contextual-toolbar button[aria-label="AI Wand"] svg {
+    filter: grayscale(1);
+}
+
 .mwai-document-settings button.is-primary {
     background: #f0f0f0;
     color: #333333;
@@ -295,4 +335,8 @@ div.sc-dFVmKS.eKQOex:has(.neko-settings-content > .neko-checkbox.disabled),
 .neko-checkbox.disabled,
 .neko-checkbox.disabled .neko-content {
     cursor: default !important;
+}
+
+.neko-block-content > div:has(.neko-checkbox.disabled):has(.neko-pro-only) {
+    display: none;
 }

@@ -881,38 +881,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'restricted' => true,
 				'autoload' => 'no',
 			),
-		),
-	),
-	'developer' => array(
-		'title' => 'Developer Tools',
-		'fields' => array(
-			'section_title_debug' => array(
-				'label' => 'Debug mode',
-				'description' => 'wp-config.php settings',
-				'type' => 'section_title',
-			),
-			'debug' => array(
-				'label' => 'WP_DEBUG',
-				'description' => 'Enable WordPress debug mode',
-				'type' => 'checkbox',
-				'default' => 1,
-				'restricted' => true,
-			),
-			'debug_log' => array(
-				'label' => 'WP_DEBUG_LOG',
-				'description' => 'Log errors to wp-content/debug.log',
-				'type' => 'checkbox',
-				'default' => 1,
-				'restricted' => true,
-			),
-			'debug_display' => array(
-				'label' => 'WP_DEBUG_DISPLAY',
-				'description' => 'Display errors and warnings on screen',
-				'type' => 'checkbox',
-				'default' => 0,
-				'restricted' => true,
-				'autoload' => 'no',
-			),
 			'section_title_error_reporting' => array(
 				'label' => 'Error reporting',
 				'description' => 'Error reporting settings',
@@ -964,6 +932,38 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'textlist',
 				'default' => '_load_textdomain_just_in_time',
 				'sanitize_callback' => 'sanitize_textarea_field',
+				'restricted' => true,
+				'autoload' => 'no',
+			),
+		),
+	),
+	'developer' => array(
+		'title' => 'Developer Tools',
+		'fields' => array(
+			'section_title_debug' => array(
+				'label' => 'Debug mode',
+				'description' => 'wp-config.php settings',
+				'type' => 'section_title',
+			),
+			'debug' => array(
+				'label' => 'WP_DEBUG',
+				'description' => 'Enable WordPress debug mode',
+				'type' => 'checkbox',
+				'default' => 1,
+				'restricted' => true,
+			),
+			'debug_log' => array(
+				'label' => 'WP_DEBUG_LOG',
+				'description' => 'Log errors to wp-content/debug.log',
+				'type' => 'checkbox',
+				'default' => 1,
+				'restricted' => true,
+			),
+			'debug_display' => array(
+				'label' => 'WP_DEBUG_DISPLAY',
+				'description' => 'Display errors and warnings on screen',
+				'type' => 'checkbox',
+				'default' => 0,
 				'restricted' => true,
 				'autoload' => 'no',
 			),
