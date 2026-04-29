@@ -241,13 +241,13 @@ function frl_filter_plugin_exclusions(): void
 /**
  * Fetches exclusion-relevant WordPress options in a single DB query.
  *
- * Used by both pre_option_active_plugins and pre_option_cron filters to
- * avoid separate DB round-trips while still bypassing WordPress option cache
- * (necessary to prevent infinite recursion inside pre_option_* filters).
+ * Used by pre_option_active_plugins and pre_site_option_active_sitewide_plugins
+ * filters to avoid separate DB round-trips while still bypassing WordPress option
+ * cache (necessary to prevent infinite recursion inside pre_option_* filters).
  *
  * Results are cached in a static variable for per-request deduplication.
  *
- * @return array{active_plugins: string[], cron: array} Associative array with both options.
+ * @return array{active_plugins: string[]} Associative array with active_plugins.
  */
 function frl_get_exclusion_options(): array
 {
@@ -279,23 +279,6 @@ function frl_get_exclusion_options(): array
         },
         WEEK_IN_SECONDS
     );
-
-    // Fetch cron only during actual WP-Cron runs — it is never consumed on regular page loads.
-    // The cron filter (frl_add_exclusion_filter_cron) is only registered when frl_is_cron_job_request()
-    // is true (see line 170), so on non-cron requests this data is never used.
-    if (frl_is_cron_job_request()) {
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        $cron_value = $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
-                'cron'
-            )
-        );
-        $options['cron'] = $cron_value ? (array) maybe_unserialize($cron_value) : [];
-    } else {
-        $options['cron'] = [];
-    }
 
     return $options;
 }

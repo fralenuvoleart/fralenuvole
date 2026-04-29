@@ -26,7 +26,8 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
 ## ⚠️ Active Considerations
 - Ensure `init/15` rewriter registration stays strictly after `init/10` environment enforcement.
 - Monitor `write_attempted` flag in Options System to ensure zero duplicate DB writes.
-- MU plugin `pre_option_cron` filter removes orphaned cron events (unregistered schedules) during WP Cron to prevent `invalid_schedule` errors. Also sanitizes `args` to array to prevent `TypeError` on null args.
+- MU plugin `option_cron` filter (changed from `pre_option_cron` 2026-04-28) removes orphaned cron events during WP Cron, sanitizes `args` to array. Changed because `pre_option_cron` is bypassed when `cron` is in WordPress' autoloaded `alloptions` cache. `option_cron` fires unconditionally.
+- Cron `args = NULL` in DB are pre-existing — placed by plugins calling `wp_schedule_event()` with null. The exclusion system is read-only (never writes to DB). The NULL errors were previously masked by excluded plugins' error handlers.
 - Backend exclusion in MU plugin uses `frl_is_admin_page()` to match screens; `frl_textlist_to_array()` already handles `|` pipe format. **Timing**: `$pagenow` is null during `muplugins_loaded` (vars.php loads after), so `frl_is_admin_page()` falls back to `$_SERVER['SCRIPT_NAME']`.
 - Three-tier exclusion: Frontend (context) → Backend (screen) → Capability (user) — applied in priority order.
 - **Cache recursion safety:** `frl_cache_remember` uses object cache/transients (never the option system), so it is safe inside `pre_option_*` / `pre_site_option_*` filters. The `$wpdb->get_var()` fallback remains as the callback to avoid the `pre_site_option` filter chain.
@@ -69,4 +70,4 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
 
 ---
 
-*Last Updated: 2026-04-28*
+*Last Updated: 2026-04-29*

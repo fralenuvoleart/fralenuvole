@@ -51,7 +51,7 @@ hello.php/hello.php|users.php                             # Excluded only on Use
 | REST — no cap | Capability list | BLOCKED |
 | Cron | Capability list | BLOCKED — orphaned cron events silently filtered |
 
-> **Note on Cron**: During WP Cron, there is no authenticated user, so capability-based exclusion always blocks the target plugin. To prevent `invalid_schedule` errors (WordPress trying to reschedule events whose schedules were never registered), a `pre_option_cron` filter strips orphaned events from the cron array before WordPress processes them. This filter is non-destructive — it does not modify the database.
+> **Note on Cron**: During WP Cron, there is no authenticated user, so capability-based exclusion always blocks the target plugin. To prevent `invalid_schedule` errors (WordPress trying to reschedule events whose schedules were never registered), an `option_cron` filter strips orphaned events from the cron array before WordPress processes them. This filter is non-destructive — it does not modify the database.
 
 ## DB Query Optimization
 
@@ -148,12 +148,13 @@ This covers all activation paths: admin UI, WP-CLI (`wp plugin activate`), progr
 
 ## Cron Event Cleanup
 
-When a plugin is excluded from loading, its custom cron schedules never get registered. WordPress would otherwise log `invalid_schedule` errors when trying to reschedule those events. The [`frl_add_exclusion_filter_cron()`](includes/helpers/functions-mu-plugin.php:248) function adds a `pre_option_cron` filter that:
+When a plugin is excluded from loading, its custom cron schedules never get registered. WordPress would otherwise log `invalid_schedule` errors when trying to reschedule those events. The [`frl_add_exclusion_filter_cron()`](includes/helpers/functions-mu-plugin.php:404) function adds an `option_cron` filter that:
 
-1. Retrieves the cron data (fetched fresh from DB via `frl_get_exclusion_options()` — one query per request at most).
+1. Receives the cron data directly from WordPress (via the `option_cron` filter parameter).
 2. Gets all currently registered schedules via `wp_get_schedules()`.
 3. Removes events whose `schedule` name does not exist in the registered schedules.
-4. Returns the filtered array for WordPress to process.
+4. Sanitizes `args` to always be an array, preventing TypeError from null args.
+5. Returns the filtered array for WordPress to process.
 
 This filter is added **before** the empty-exclusion early return, so it runs even when no plugins are being actively excluded during the cron request. This ensures args sanitization (null→array) is always applied to protect against `TypeError` in `class-wp-hook.php:325`.
 

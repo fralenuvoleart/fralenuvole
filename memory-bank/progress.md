@@ -64,10 +64,12 @@
 - **Zero regressions:** Orchestrator is purely additive. All `frl_cache_*` helpers remain independently callable. External callers of `frl_cache_clear('all')` (in `functions.php`, `class-environment-manager.php`, `functions-admin-action-handlers.php`) and `frl_cache_clear('light')` (in `plugin-lifecycle.php`) use return values for side effects only — compatible with `$result['steps'][0]['result']` passthrough.
 - **All 6 action handlers plus frl_cache_clear() composite groups are now fully visible** in one source: the `FRL_CACHE_OPERATIONS` constant. No more searching the codebase to understand multi-step flows.
 
-### Fixes Applied (pending user confirmation)
+### Fixes Applied (2026-04-28)
 - **Fixed `index.php` dashboard screen matching** — `$pagenow` is null during `muplugins_loaded` because `wp-includes/vars.php` loads at `wp-settings.php:524`, after `muplugins_loaded` at line 511. Added `$_SERVER['SCRIPT_NAME']` fallback to `frl_is_admin_page()`.
-- **Added cron args sanitization** — Ensures `$event['args']` is always an array in `pre_option_cron` filter to prevent `TypeError: count(): Argument #1 must be of type Countable|array, null given` at `class-wp-hook.php:325`.
+- **Added cron args sanitization** — Ensures `$event['args']` is always an array in `pre_option_cron` filter to prevent `TypeError: count(): Argument #1 must be of type Countable|array, null given` at `class-wp-hook.php:325`. **(Later changed to `option_cron` — see below)**
 - **Fixed cron filter early-exit bug** — Cron filter was gated behind `if (!empty($excluded))`, so it was never added during cron when only backend exclusion was enabled (capability exclusion disabled). Moved cron filter addition before the empty-exclusion check so it always registers during WP Cron, ensuring args sanitization runs unconditionally.
+- **Fixed `pre_option_cron` bypassed by alloptions cache** — Changed from `pre_option_cron` to `option_cron` in `frl_add_exclusion_filter_cron()`. `pre_option_*` filters are skipped when the option exists in WordPress' autoloaded `alloptions` cache. `option_*` fires unconditionally. This was why the cron args sanitization was ineffective — it was never actually running.
+- **Added import serialization validation** — Added `@unserialize(@serialize($item['translations']))` round-trip check in `frl_import_translation_strings()` before `update_term_meta()`. Prevents writing `_pll_strings_translations` data that would cause `unserialize()` errors when read back by Polylang.
 
 ### Refactored Early-Loading Access Check (2026-04-28)
 - **Moved `!did_action('plugins_loaded')` logic out of [`frl_has_access()`](includes/helpers/functions-access-control.php:95)** — the early-loading code path was only used by the MU plugin's capability-based exclusion. Now handled by dedicated [`frl_mu_check_access()`](includes/helpers/functions-mu-plugin.php:91) in the MU plugin helper file.
