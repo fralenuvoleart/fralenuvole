@@ -20,15 +20,23 @@ class Frl_Environment_Monitor
             return;
         }
 
-        foreach (array_keys($config['plugin_options']) as $option_name) {
-            $prefixed_name = frl_prefix($option_name);
-            add_action("update_option_{$prefixed_name}",
-                function ($old_value, $new_value) use ($option_name) {
-                    Frl_Environment_Monitor::track_plugin_options($option_name, $old_value, $new_value);
-                },
-                10,
-                2);
+        // Build O(1) lookup map: prefixed_option_name → unprefixed config_key
+        $managed_options = [];
+        foreach (array_keys($config['plugin_options']) as $key) {
+            $managed_options[frl_prefix($key)] = $key;
         }
+
+        // Single updated_option hook replaces 15+ individual update_option_{$name} hooks.
+        // updated_option (WP 4.7+) passes 3 args: $option, $old_value, $new_value
+        add_action('updated_option',
+            function ($option, $old_value, $new_value) use ($managed_options) {
+                if (isset($managed_options[$option])) {
+                    $config_key = $managed_options[$option];
+                    Frl_Environment_Monitor::track_plugin_options($config_key, $old_value, $new_value);
+                }
+            },
+            10,
+            3);
     }
 
     /**

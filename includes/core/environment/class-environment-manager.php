@@ -225,9 +225,37 @@ class Frl_Environment_Manager
             // Apply module management
             Frl_Environment_Applier::apply_modules_options($config, $results, $force); // Pass force
 
-            // After all environment changes, update the timestamp
-            // Use full purge to ensure clean slate for all environment changes
-            frl_cache_clear('all');
+            // --- Change-type classifier: select cache clear level by what changed ---
+            // Targeted clears inside apply methods have been removed — all clearing is centralized here.
+            if ($force) {
+                // Force mode: full purge (preserve existing behavior)
+                // Targeted clears inside apply methods are already skipped via $force_mode
+                frl_cache_clear('all');
+            } else {
+                $changed_wp_opts        = !empty($results['wp_options']['updated']);
+                $changed_plugin_opts    = !empty($results['plugin_options']['updated'])
+                                       || !empty($results['plugin_options']['file_loaded']);
+                $changed_plugins        = !empty($results['plugins']['activated'])
+                                       || !empty($results['plugins']['deactivated']);
+                $changed_modules        = !empty($results['modules']['activated'])
+                                       || !empty($results['modules']['deactivated']);
+
+                if ($changed_plugins || $changed_modules) {
+                    // Plugin/module changes can register new post types, rewrite rules, shortcodes
+                    frl_cache_clear('all');
+                    frl_schedule_admin_rewrite_flush();
+                } elseif ($changed_wp_opts
+                    && (in_array('siteurl', $results['wp_options']['updated'])
+                        || in_array('home', $results['wp_options']['updated']))
+                ) {
+                    // URL changes justify full purge
+                    frl_cache_clear('all');
+                } elseif ($changed_plugin_opts || $changed_wp_opts) {
+                    // Option-only changes: clear options group
+                    frl_cache_clear('options');
+                }
+                // Nothing changed → no cache clear needed
+            }
 
             $current_state = self::get_current_state(true);
 

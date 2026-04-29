@@ -145,4 +145,39 @@
   This ensures `frl_get_current_user()` ALWAYS returns a `WP_User` instance, regardless of what the persistent cache returns. All 13 callers are safe with `WP_User(0)` — they access `->ID` or check `->ID > 0`.
 - **Stack trace:** Triggered during `plugins_loaded` via `frl_environment_init()` → `Frl_Environment_Manager::init()` → `frl_has_access()`.
 
-*Last Updated: 2026-04-28*
+## Environment Manager Patches (2026-04-29)
+
+### C1 — Change-type classifier for cache clears
+- **Problem:** `enforce_environment_settings()` always called `frl_cache_clear('all')` after *any* environment change, regardless of what changed. This was wasteful for option-only changes and missed `flush_rewrite_rules()` for plugin/module changes.
+- **Findings:**
+  - `frl_thirdparty_maybe_notify('all')` notifies **zero** plugins — no outbound hook listens for `'all'` trigger (only `'hard'` and `'rewrite_flush'`)
+  - Module changes DO require rewrite flush (modules register features via `add_feature()` at `plugins_loaded/5`)
+  - The monolithic `frl_cache_clear('all')` was redundant with targeted clears inside apply methods (double-clearing)
+- **Fix:** Replaced the monolithic clear with a change-type classifier at [`class-environment-manager.php:228`](../includes/core/environment/class-environment-manager.php:228):
+  - Plugin/module changes → `frl_cache_clear('all')` + `frl_schedule_admin_rewrite_flush()`
+  - `siteurl`/`home` changes → `frl_cache_clear('all')`
+  - Option-only changes → `frl_cache_clear('options')`
+  - Force mode → `frl_cache_clear('all')` (preserved)
+
+### C1+ — Remove redundant targeted clears
+- **Problem:** `apply_plugin_options()` and `apply_modules_options()` each independently called `frl_cache_clear('options')` when changes were made (non-force mode), but these were immediately overwritten by the parent `frl_cache_clear('all')`.
+- **Fix:** Removed `$clear_cache_on_update` variable and `frl_cache_clear('options')` calls from both methods in [`class-environment-applier.php`](../includes/core/environment/class-environment-applier.php). All cache clearing is now centralized in the change-type classifier in `enforce_environment_settings()`.
+
+### P4 — Consolidate 15+ `update_option_{$name}` hooks
+- **Problem:** `setup_plugin_options_tracking()` registered individual `update_option_{$prefixed_name}` hooks for each managed option — creating N closures and N hook bucket entries per admin page load.
+- **Fix:** Replaced with a single `updated_option` hook using an O(1) lookup map at [`class-environment-monitor.php:16`](../includes/core/environment/class-environment-monitor.php:16):
+  - Builds `prefixed_name → config_key` map once
+  - `updated_option` passes 3 args (`$option, $old_value, $new_value`) — `add_action()` specifies `3` as `$accepted_args`
+  - `isset($managed_options[$option])` guard for O(1) check
+  - Reduces closure allocation from N (~15) to 1
+
+### Plan updated
+- [`plans/environment-manager-patches.md`](../plans/environment-manager-patches.md) revised per codebase investigation:
+  - C3 downgraded from P0→P3 (user feedback accepted)
+  - A1 (PSR-4), T1 (unit tests), T2 (integration tests) removed per user direction
+  - Third-party notification coverage gap documented (Appendix D)
+  - Module changes reclassified to require rewrite flush (Scenario B corrected)
+  - Orchestrator compatibility confirmed (Scenario C)
+  - Regression analysis added (Appendix C)
+
+*Last Updated: 2026-04-29*

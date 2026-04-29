@@ -105,9 +105,6 @@ class Frl_Environment_Applier
             return;
         }
 
-        $clear_cache_on_update = !$force_mode;
-        $any_change = false;
-
         if (frl_is_array_not_empty($config, 'plugin_options')) {
             $ignored_options = frl_get_option(Frl_Environment_Manager::IGNORE_OPTIONS_KEY) ?? [];
             $active_file_options = Frl_Environment_Files::get_file_options_keys();
@@ -133,7 +130,6 @@ class Frl_Environment_Applier
                             // Defer cache clearing for performance in loops
                             frl_update_option($key, $raw_content, false);
                             if ($old_value_for_results !== $raw_content) {
-                                $any_change = true;
                                 if (!isset($results['plugin_options']['file_loaded'])) {
                                     $results['plugin_options']['file_loaded'] = [];
                                 }
@@ -142,7 +138,6 @@ class Frl_Environment_Applier
                         } else {
                             frl_update_option($key, '', false);
                             if ($old_value_for_results !== '') {
-                                $any_change = true;
                                 if (!isset($results['plugin_options']['file_missing'])) {
                                     $results['plugin_options']['file_missing'] = [];
                                 }
@@ -152,7 +147,6 @@ class Frl_Environment_Applier
                     } else {
                         frl_update_option($key, '', false);
                         if ($old_value_for_results !== '') {
-                            $any_change = true;
                             if (!isset($results['plugin_options']['error'])) {
                                 $results['plugin_options']['error'] = [];
                             }
@@ -170,7 +164,6 @@ class Frl_Environment_Applier
                     }
                     frl_update_option($key, $processed_value, false);
                     if ($old_value_for_results !== $processed_value) {
-                        $any_change = true;
                         if (!isset($results['plugin_options']['updated'])) {
                             $results['plugin_options']['updated'] = [];
                         }
@@ -178,11 +171,6 @@ class Frl_Environment_Applier
                     }
                 }
             }
-        }
-
-        // Perform a single cache clear at the end if any changes were made and clearing is requested
-        if ($any_change && $clear_cache_on_update) {
-            frl_cache_clear('options');
         }
     }
 
@@ -194,9 +182,6 @@ class Frl_Environment_Applier
         if (!$config || empty($config['modules'])) {
             return;
         }
-
-        $clear_cache_on_update = !$force_mode;
-        $any_change = false;
 
         foreach ($config['modules'] as $module => $should_be_active) {
             $option_name = 'module_' . $module;
@@ -210,7 +195,6 @@ class Frl_Environment_Applier
             if ($target_status_bool !== $current_status_bool || (string)$current_status_raw !== $expected_raw_value) {
                 // Defer cache clearing for performance
                 frl_update_option($option_name, $expected_raw_value, false);
-                $any_change = true;
 
                 if ($target_status_bool) {
                     if (!isset($results['modules']['activated'])) $results['modules']['activated'] = [];
@@ -223,11 +207,6 @@ class Frl_Environment_Applier
                 if (!isset($results['modules']['no_change'])) $results['modules']['no_change'] = [];
                 $results['modules']['no_change'][] = $module;
             }
-        }
-
-        // Perform a single cache clear at the end if any changes were made and clearing is requested
-        if ($any_change && $clear_cache_on_update) {
-            frl_cache_clear('options');
         }
     }
 }

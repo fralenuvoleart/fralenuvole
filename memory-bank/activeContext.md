@@ -70,4 +70,33 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
 
 ---
 
+## ✅ Environment Manager Patches Applied (2026-04-29)
+
+### C1 — Change-type classifier for cache clears
+- **File:** [`class-environment-manager.php:228-258`](../includes/core/environment/class-environment-manager.php:228)
+- **What:** Replaced monolithic `frl_cache_clear('all')` with a change-type classifier that inspects `$results` after all apply methods run.
+- **Logic:**
+  - Force mode → `frl_cache_clear('all')` (preserved)
+  - Plugin or module changes → `frl_cache_clear('all')` + `frl_schedule_admin_rewrite_flush()`
+  - `siteurl`/`home` changes → `frl_cache_clear('all')`
+  - Option-only changes → `frl_cache_clear('options')`
+  - Nothing changed → no clear at all
+
+### C1+ — Removed redundant targeted clears from apply methods
+- **Files:** [`class-environment-applier.php:183-186`](../includes/core/environment/class-environment-applier.php:183), [`class-environment-applier.php:228-231`](../includes/core/environment/class-environment-applier.php:228)
+- **What:** Removed the `$clear_cache_on_update` variable and `frl_cache_clear('options')` calls from both `apply_plugin_options()` and `apply_modules_options()`.
+- **Rationale:** These were architecturally redundant with the central change-type classifier. They caused double-clearing in non-force mode (targeted clear + parent `all` clear). Centralizing all cache clearing in `enforce_environment_settings()` simplifies the apply methods and eliminates wasted I/O.
+
+### P4 — Consolidated 15+ `update_option_{$name}` hooks into single `updated_option`
+- **File:** [`class-environment-monitor.php:16-40`](../includes/core/environment/class-environment-monitor.php:16)
+- **What:** Replaced per-option `add_action("update_option_{$prefixed_name}", ...)` with a single `add_action('updated_option', ...)` using an O(1) lookup map (`prefixed_name → config_key`).
+- **Key detail:** `updated_option` passes 3 args (`$option, $old_value, $new_value`) — the old hooks passed 2 (`$old_value, $new_value`). The `add_action()` call specifies `3` as `$accepted_args`.
+- **Win:** Reduces closure allocation from N (~15) to 1; simplifies code; adapts automatically to config changes.
+
+### Key research finding — Third-party notification is a no-op during enforcement
+- [`frl_thirdparty_maybe_notify('all')`](../modules/thirdparty/thirdparty.php:230) notifies **zero** plugins because no outbound hook in [`FRL_THIRDPARTY_OUTBOUND_HOOKS`](../modules/thirdparty/config-constants-thirdparty.php:81) listens for the `'all'` trigger. Only `'hard'` and `'rewrite_flush'` have listeners (LiteSpeed, Breeze, WP Rocket).
+- This means the current `frl_cache_clear('all')` at the old line 230 never actually notified third-party caches. The C1 change removes this no-op call for option-only changes without introducing any regression.
+
+---
+
 *Last Updated: 2026-04-29*
