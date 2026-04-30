@@ -8,6 +8,7 @@
 Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, and environment-based configuration.
 
 ## 🏗️ Architecture Overview
+- **Error Handler:** Dual interception via `set_error_handler()` (PHP errors: `E_WARNING`, `E_NOTICE`, `E_DEPRECATED`, etc.) and `set_exception_handler()` (PHP 7+ uncaught Throwable: `TypeError`, `ValueError`, `DivisionByZeroError`, `ArgumentCountError`). Both registered at the earliest possible moment during MU plugin bootstrap. The exception handler [`frl_errors_handle_exception()`](includes/core/error-handler.php:304) delegates to the existing [`frl_errors_handle_error()`](includes/core/error-handler.php:105) for consistent formatting, suppression rules, and logging.
 - **Feature-based rewriter:** Independent feature classes that self-register. The extension hook (`frl_rewriter_register_features`) fires at `plugins_loaded/7` (after module init at `plugins_loaded/5`) so module-loaded features participate in priority sorting. Module features not listed in `FRL_REWRITER_PRIORITIES` default to priority 99.
 - **5-backend cache system:** Litespeed, Docket Cache, Redis, Memcached, Transients
 - **3-tier options cascade:** Static → Persistent → DB with value normalization
@@ -25,6 +26,7 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
   - **All existing helper functions preserved** (`frl_cache_clear`, `frl_schedule_admin_rewrite_flush` remain independently callable). `frl_cache_clear('hard'/'all'/'light'/'options'/'rewriter')` returns `$result['steps'][0]['result']` for backward compatibility with external callers.
 
 ## ⚠️ Active Considerations
+- **Exception handler added (2026-04-30):** `set_exception_handler('frl_errors_handle_exception')` installed at all three registration points — [`frl_errors_init()`](includes/core/error-handler.php:27), `muplugins_loaded/PHP_INT_MAX` re-bind, and `plugins_loaded/PHP_INT_MAX` re-bind. Catches `TypeError`, `ValueError`, `DivisionByZeroError`, `ArgumentCountError` that previously bypassed `set_error_handler()`. Delegates to existing [`frl_errors_handle_error()`](includes/core/error-handler.php:105) so all suppression rules (textlist, `@` operator, `error_reporting_plugin`) apply consistently. Each handler has an independent recursion guard.
 - Ensure `init/15` rewriter registration stays strictly after `init/10` environment enforcement.
 - Monitor `write_attempted` flag in Options System to ensure zero duplicate DB writes.
 - MU plugin `option_cron` filter removes orphaned cron events during WP Cron, sanitizes `args` to array, and **preserves the `version` key** (critical fix applied 2026-04-30). Changed from `pre_option_cron` 2026-04-28 because `pre_option_cron` is bypassed when `cron` is in WordPress' autoloaded `alloptions` cache.

@@ -229,6 +229,26 @@
 - **Meow CSS extracted** from [`admin.css`](modules/thirdparty/assets/css/admin.css) into [`admin-meow.css`](modules/thirdparty/assets/css/admin-meow.css) — ~46% of the original file now conditionally enqueued.
 - **Array-based plugin detection:** [`frl_thirdparty_admin_scripts()`](modules/thirdparty/thirdparty.php:39) loops through `['ai-engine/ai-engine.php', 'seo-engine/seo-engine.php']` and enqueues Meow CSS when any match is found.
 
+## Exception Handler Patch — Catch PHP 7+ Throwable types (2026-04-30)
+
+### Root Cause
+- `set_error_handler()` cannot intercept PHP 7+ uncaught `Throwable` types: `TypeError`, `ValueError`, `DivisionByZeroError`, `ArgumentCountError`. These slip through to PHP's default exception handler regardless of suppression rules.
+- The plugin previously only registered `set_error_handler()` — no `set_exception_handler()` existed.
+
+### Changes Applied
+
+#### [`includes/core/error-handler.php`](includes/core/error-handler.php)
+1. **`frl_errors_init()` line 27** — Added `set_exception_handler('frl_errors_handle_exception')` alongside existing `set_error_handler()`
+2. **`$rebind` closure line 34** — Added `set_exception_handler()` to the re-bind closure (protects both `muplugins_loaded/PHP_INT_MAX` and `plugins_loaded/PHP_INT_MAX` hooks)
+3. **New function [`frl_errors_handle_exception(Throwable $e): void`](includes/core/error-handler.php:304)** — Maps exception types to error levels, delegates to existing [`frl_errors_handle_error()`](includes/core/error-handler.php:105) for consistent formatting, suppression rules, and logging. Has independent recursion guard.
+
+### Verification
+- ✅ PHP syntax valid (`php -l includes/core/error-handler.php` — no errors)
+- ✅ No `set_exception_handler()` calls existed previously — confirmed via codebase grep
+- ✅ All 6 `frl_errors_handle_error` references accounted for — no signatures changed
+- ✅ Zero regressions: No existing function signatures changed, no hooks removed/modified, suppression rules apply identically
+- ✅ Both error and exception handlers have independent `static $is_handling` recursion guards
+
 ## Cron Version Stripping & Corruption Fix (2026-04-30)
 
 ### Root Cause
