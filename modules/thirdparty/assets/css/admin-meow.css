@@ -33,32 +33,6 @@
     color: var(--neko-font-color) !important;
 }
 
-.neko-logo,
-.neko-header-subtitle,
-.neko-header .neko-button .normal-content > span svg,
-div:has(>a[href*="meowapps"]),
-.neko-pro-only,
-#mwai-editor-assistant-root button img,
-#mwai-editor-assistant-root div>img[alt="AI Assistant"],
-#mwai-editor-assistant-root .mwai-header-title > img,
-.wp-list-table .row-actions .ai_magic_wand,
-.mwai-document-settings button.is-primary svg,
-.mwai-document-settings button.components-panel__body-toggle svg[enable-background],
-div.sc-dFVmKS.eKQOex:has(.neko-settings-content > .neko-checkbox.disabled),
-.neko-block-content p:has(a),
-.neko-block-content span.neko-typo:has(a),
-#toplevel_page_meowapps-main-menu .wp-menu-name img,
-.neko-block-action .neko-pill.ai:has(.led.ai),
-button[data-key="license"],
-body:not(.uid-1) button[data-key="settings"],
-body:not(.uid-1) button[data-key="finetunes"],
-body:not(.uid-1) button[data-key="traffic-analytics"],
-body:not(.uid-1) .neko-column.minimal .neko-quick-links .neko-link:nth-child(n+3),
-body.post-php:not(.uid-1) #mwai-editor-assistant-root div:has(>div>.neko-select),
-body:not([class*="role-admin"]) .neko-tab-panel-wrapper .neko-column.minimal .neko-button.primary:has(svg[class*="lucide-square-pen"]) {
-    display: none !important;
-}
-
 .neko-header-logo-container {
     margin-right: 8px !important;
 }
@@ -158,6 +132,34 @@ body:not([class*="role-admin"]) .neko-tab-panel-wrapper .neko-column.minimal .ne
     cursor: default !important;
 }
 
+.neko-logo,
+.neko-header-subtitle,
+.neko-header .neko-button .normal-content > span svg,
+div:has(>a[href*="meowapps"]),
+.neko-pro-only,
+#mwai-editor-assistant-root button img,
+#mwai-editor-assistant-root div>img[alt="AI Assistant"],
+#mwai-editor-assistant-root .mwai-header-title > img,
+.wp-list-table .row-actions .ai_magic_wand,
+.mwai-document-settings button.is-primary svg,
+.mwai-document-settings button.components-panel__body-toggle svg[enable-background],
+div.sc-dFVmKS.eKQOex:has(.neko-settings-content > .neko-checkbox.disabled),
+.neko-block-content p:has(a),
+.neko-block-content span.neko-typo:has(a),
+#toplevel_page_meowapps-main-menu .wp-menu-name img,
+.neko-block-action .neko-pill.ai:has(.led.ai),
+.neko-button.is-pro,
+button[data-key="license"],
+body:not(.uid-1) button[data-key="settings"],
+body:not(.uid-1) button[data-key="finetunes"],
+body:not(.uid-1) button[data-key="traffic-analytics"],
+body:not(.uid-1) .neko-column.minimal .neko-quick-links .neko-link:nth-child(n+3),
+body.post-php:not(.uid-1) #mwai-editor-assistant-root div:has(>div>.neko-select),
+body:not([class*="role-admin"]) .neko-tab-panel-wrapper .neko-column.minimal .neko-button.primary:has(svg[class*="lucide-square-pen"]) {
+    display: none !important;
+}
+
 .neko-block-content .neko-checkbox-group > div:has(.neko-checkbox.disabled):has(.neko-pro-only) {
     display: none;
 }
+
