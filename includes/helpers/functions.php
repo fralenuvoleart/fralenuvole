@@ -782,7 +782,7 @@ function frl_is_thirdparty_plugin_active(string $plugin_path): bool
                 ? array_keys((array) get_site_option('active_sitewide_plugins', []))
                 : [],
         ];
-    }, WEEK_IN_SECONDS);
+    });
 
     if (in_array($plugin_path, $active_plugins['site'], true)) {
         return true;
