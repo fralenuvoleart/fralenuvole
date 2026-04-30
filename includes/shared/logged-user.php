@@ -44,7 +44,7 @@ function frl_load_logged_user_scripts()
  */
 function frl_admin_bar_custom_menu()
 {
-    if (!frl_get_option('custom_ab_menu')) {
+    if (!frl_get_option('custom_ab_menu') || !frl_has_access('install_plugins') ) {
         return;
     }
 
