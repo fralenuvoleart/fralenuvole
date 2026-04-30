@@ -229,4 +229,27 @@
 - **Meow CSS extracted** from [`admin.css`](modules/thirdparty/assets/css/admin.css) into [`admin-meow.css`](modules/thirdparty/assets/css/admin-meow.css) — ~46% of the original file now conditionally enqueued.
 - **Array-based plugin detection:** [`frl_thirdparty_admin_scripts()`](modules/thirdparty/thirdparty.php:39) loops through `['ai-engine/ai-engine.php', 'seo-engine/seo-engine.php']` and enqueues Meow CSS when any match is found.
 
+## Cron Version Stripping & Corruption Fix (2026-04-30)
+
+### Root Cause
+- The `option_cron` filter in both `frl_add_cron_stability_filter()` and `frl_add_exclusion_filter_cron()` iterated `$cron` with `foreach ($cron as $timestamp => $hooks)` and used `if (!is_array($hooks)) { continue; }` — this **dropped the integer `'version' => 2` key**.
+- Without `version`, `_get_cron_array()` calls `_upgrade_cron_array()` on **every request**, which misinterprets the v2 hash-to-event MAP as v1 event data.
+- `$args['args']` on the hash map returns `null` → `md5(serialize(null))` = `dcca48101505dd86b703689a604fe3c4` → corruption marker key added → **exponential data growth**.
+
+### Changes Applied
+
+#### [`assets/mu/frl-mu-plugin.php`](assets/mu/frl-mu-plugin.php)
+- **Removed** `frl_add_cron_stability_filter();` call (was a no-op since it duplicated the exclusion filter's work)
+- **Cleaned up** floating docblock
+
+#### [`includes/helpers/functions-mu-plugin.php`](includes/helpers/functions-mu-plugin.php)
+1. **Added version preservation** in `frl_add_exclusion_filter_cron()` — `if (isset($cron['version'])) { $filtered['version'] = $cron['version']; }` — this is the **only fix needed**
+2. **Removed** `frl_add_cron_stability_filter()` (fully deleted — was a duplicate of the exclusion filter's logic)
+3. **Removed** `frl_cleanup_corrupted_cron()` + its `admin_init` hook (user will delete the corrupted cron option manually from DB)
+
+### Verification
+- ✅ PHP syntax valid for both files
+- ✅ `_get_cron_array()` now receives `version = 2` intact → `_upgrade_cron_array()` NOT called → warnings eliminated, no excessive DB writes
+- ✅ No cleanup function needed — user deletes the cron option manually to start fresh
+
 *Last Updated: 2026-04-30*

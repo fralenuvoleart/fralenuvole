@@ -176,24 +176,23 @@
     transition: all 0.1s ease-in-out;
 }
 
-.frl-tabs>.ui-tabs-nav li:hover a {
-    background: white;
-    border-left-color: #ccd0d4;
-    color: var(--admin-accent-color);
-}
-
 .frl-tabs>.ui-tabs-nav li.ui-tabs-active a {
     background: white;
-    color: var(--admin-accent-color);
-    border-left-color: var(--admin-accent-color);
+    border-left-color: inherit;
+    font-weight: bold;
     margin-right: -1px; /* Overlap border */
     position: relative;
     z-index: 2;
     box-shadow: none;
 }
 
+.frl-tabs>.ui-tabs-nav li:hover a {
+    background: white;
+    border-left-color: inherit;
+}
+
 .frl-tabs>.ui-tabs-nav li a:focus {
-    border-left-color: var(--admin-accent-color);
+    border-left-color: inherit;
     box-shadow: none;
     outline: none;
 }

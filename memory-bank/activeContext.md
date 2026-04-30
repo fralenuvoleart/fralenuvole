@@ -27,7 +27,8 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
 ## ⚠️ Active Considerations
 - Ensure `init/15` rewriter registration stays strictly after `init/10` environment enforcement.
 - Monitor `write_attempted` flag in Options System to ensure zero duplicate DB writes.
-- MU plugin `option_cron` filter (changed from `pre_option_cron` 2026-04-28) removes orphaned cron events during WP Cron, sanitizes `args` to array. Changed because `pre_option_cron` is bypassed when `cron` is in WordPress' autoloaded `alloptions` cache. `option_cron` fires unconditionally.
+- MU plugin `option_cron` filter removes orphaned cron events during WP Cron, sanitizes `args` to array, and **preserves the `version` key** (critical fix applied 2026-04-30). Changed from `pre_option_cron` 2026-04-28 because `pre_option_cron` is bypassed when `cron` is in WordPress' autoloaded `alloptions` cache.
+- **Version key must never be dropped** by any `option_cron` filter — its absence triggers `_upgrade_cron_array()` which calls `update_option('cron')` directly, creating `dcca4810...` corruption markers (md5 of null) and exponential data growth. The `foreach…continue` on non-array check was the naive mistake — fixed by explicitly preserving `$cron['version']`.
 - Cron `args = NULL` in DB are pre-existing — placed by plugins calling `wp_schedule_event()` with null. The exclusion system is read-only (never writes to DB). The NULL errors were previously masked by excluded plugins' error handlers.
 - Backend exclusion in MU plugin uses `frl_is_admin_page()` to match screens; `frl_textlist_to_array()` already handles `|` pipe format. **Timing**: `$pagenow` is null during `muplugins_loaded` (vars.php loads after), so `frl_is_admin_page()` falls back to `$_SERVER['SCRIPT_NAME']`.
 - Three-tier exclusion: Frontend (context) → Backend (screen) → Capability (user) — applied in priority order.
