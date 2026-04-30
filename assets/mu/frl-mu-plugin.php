@@ -28,6 +28,11 @@ require_once WP_PLUGIN_DIR . '/' . FRL_MU_NAME . '/includes/bootstrap.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-mu-plugin.php';
 
 /**
+ * Apply general system stability fixes.
+ */
+frl_add_cron_stability_filter();
+
+/**
  * Setup plugin exclusion filter before other plugins load.
  */
 add_action('muplugins_loaded', 'frl_filter_plugin_exclusions', 5);

@@ -1,15 +1,15 @@
 <?php
 
-/**
- * Fralenuvole MU-Plugin Helper Functions
- *
- * Contains all exclusion logic for the MU plugin loader.
- * Required only by assets/mu/frl-mu-plugin.php after bootstrap is loaded,
- * so all core helpers (frl_get_option, frl_is_admin, frl_textlist_to_array, etc.)
- * are available when these functions are called.
- *
- * @package Fralenuvole
- */
+
+
+ /*
+  * Contains all exclusion logic for the MU plugin loader.
+  * Required only by assets/mu/frl-mu-plugin.php after bootstrap is loaded,
+  * so all core helpers (frl_get_option, frl_is_admin, frl_textlist_to_array, etc.)
+  * are available when these functions are called.
+  *
+  * @package Fralenuvole
+  */
 
 // Exit if accessed directly.
 if (!defined('ABSPATH')) {
@@ -221,7 +221,8 @@ function frl_filter_plugin_exclusions(): void
     $excluded = array_diff($excluded, [$plugin_handle]);
 
     // During WP Cron, add cron filter BEFORE the empty-exclusion check,
-    // because the cron filter removes orphaned events when plugins are excluded.
+    // because the cron filter also sanitizes args to prevent TypeError
+    // (count() on null), which is valuable regardless of exclusion state.
     if (frl_is_cron_job_request()) {
         frl_add_exclusion_filter_cron($excluded);
     }
@@ -363,7 +364,7 @@ function frl_add_exclusion_filter_network_active_plugins(array $excluded): void
 }
 
 /**
- * Sanitizes the cron option to remove orphaned events.
+ * Sanitizes the cron option to remove orphaned events and prevent TypeError on null args.
  *
  * Uses the `option_cron` filter (not `pre_option_cron`) because the cron option is often
  * stored in WordPress' `alloptions` cache for autoloaded options, which bypasses
@@ -372,6 +373,9 @@ function frl_add_exclusion_filter_network_active_plugins(array $excluded): void
  *
  * What this filter does:
  * 1. Removes events with unregistered schedules (orphaned when a plugin is excluded).
+* 2. Sanitizes `$event['args']` to always be an array, preventing a PHP 8+ TypeError
+ *   (`count(): Argument #1 must be of type Countable|array, null given`) when
+ *   wp-cron.php passes null args to do_action_ref_array().
  *
  * Note: This is a read-time filter only — it does not modify the database.
  * If the exclusion is later removed, the plugin will load, register its
@@ -428,6 +432,80 @@ function frl_add_exclusion_filter_cron(array $excluded): void
                         continue;
                     }
 
+
+                    // Ensure args is always an array to prevent TypeError in
+                    // do_action_ref_array at wp-cron.php:191 when $v['args'] is null.
+                    // wp-cron.php passes $v['args'] directly to do_action_ref_array,
+                    // and class-wp-hook.php calls count() on it, which throws with null.
+                    if (!isset($event['args']) || !is_array($event['args'])) {
+                        $event['args'] = [];
+                    }
+                    
+                    $filtered_events[$hash] = $event;
+                }
+
+                if (!empty($filtered_events)) {
+                    $filtered_hooks[$hook] = $filtered_events;
+                }
+            }
+
+            if (!empty($filtered_hooks)) {
+                $filtered[$timestamp] = $filtered_hooks;
+            }
+        }
+
+        $cache = $filtered;
+        return $cache;
+    }, 10, 2);
+}
+
+
+/**
+* Adds a stability filter to the cron option to prevent TypeError on null args.
+*
+* This is a general stability fix for a known WordPress issue where cron events
+ * can be stored with null args, causing a Fatal TypeError in class-wp-hook.php.
+ *
+ * @return void
+ */
+function frl_add_cron_stability_filter(): void
+{
+    add_filter('option_cron', function ($cron, $option) {
+        // Only handle 'cron' option, pass through for all others
+        if ($option !== 'cron') {
+            return $cron;
+        }
+
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        // If cron is empty or not an array, return as-is
+        if (empty($cron) || !is_array($cron)) {
+            $cache = $cron;
+            return $cache;
+        }
+
+        $filtered = [];
+        foreach ($cron as $timestamp => $hooks) {
+            if (!is_array($hooks)) {
+                continue;
+            }
+
+            $filtered_hooks = [];
+            foreach ($hooks as $hook => $events) {
+                if (!is_array($events)) {
+                    continue;
+                }
+
+                $filtered_events = [];
+                foreach ($events as $hash => $event) {
+                    // Ensure args is always an array to prevent TypeError in
+                    // do_action_ref_array at wp-cron.php:191 when $v['args'] is null.
+                    if (!isset($event['args']) || !is_array($event['args'])) {
+                        $event['args'] = [];
+                    }
                     $filtered_events[$hash] = $event;
                 }
 
