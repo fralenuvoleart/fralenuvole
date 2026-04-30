@@ -221,6 +221,11 @@ class Frl_Cache_Manager
         $has_drop_in = wp_using_ext_object_cache();
         $provider_info['is_dropin'] = $has_drop_in;
 
+        // Set early to prevent infinite recursion: _is_plugin_globally_active()
+        // → frl_is_thirdparty_plugin_active() → frl_cache_remember() → get()
+        // → is_object_cache_truly_functional() → get_provider_details()
+        self::$cached_provider_details = $provider_info;
+
         if (!$has_drop_in) {
             $provider_info['slug'] = 'transients';
             $provider_info['label'] = 'WordPress Transients';
