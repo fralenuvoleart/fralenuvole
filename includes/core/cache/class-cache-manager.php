@@ -145,23 +145,7 @@ class Frl_Cache_Manager
      */
     private static function _is_plugin_globally_active($plugin_path)
     {
-        static $active_plugins_list = null;
-        static $network_active_plugins_list = null;
-
-        if ($active_plugins_list === null) {
-            $active_plugins_list = (array) get_option('active_plugins', []);
-        }
-        if ($network_active_plugins_list === null && is_multisite()) {
-            $network_active_plugins_list = (array) get_site_option('active_sitewide_plugins', []);
-        }
-
-        if (in_array($plugin_path, $active_plugins_list, true)) {
-            return true;
-        }
-        if (is_multisite() && isset($network_active_plugins_list[$plugin_path])) {
-            return true;
-        }
-        return false;
+        return frl_is_thirdparty_plugin_active($plugin_path);
     }
 
     /**

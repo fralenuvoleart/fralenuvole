@@ -6,7 +6,7 @@
  * Author: Francesco Castronovo
  * Author URI: https://fralenuvole.art
  * Plugin URI: https://fralenuvole.art
- * Version: 5.6.0
+ * Version: 5.7.0
  * Text Domain: fralenuvole
  * License: GPL2+
  * License URI: https://www.gnu.org/licenses/gpl-2.0.txt
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-const FRL_VERSION = '5.6.0';
+const FRL_VERSION = '5.7.0';
 
 // Load required core files and constants
 require_once __DIR__ . '/includes/bootstrap.php';

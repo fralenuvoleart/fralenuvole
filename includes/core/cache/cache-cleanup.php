@@ -297,6 +297,7 @@ function frl_purge_mu_plugin_exclusion_cache($plugin = '', $network_wide = false
 {
     frl_cache_clear('options', 'mu_plugin_active_plugins');
     frl_cache_clear('options', 'mu_plugin_network_active_plugins');
+    frl_cache_clear('options', 'thirdparty_active_plugins');
 }
 add_action('activated_plugin',   'frl_purge_mu_plugin_exclusion_cache', 10, 2);
 add_action('deactivated_plugin', 'frl_purge_mu_plugin_exclusion_cache', 10, 2);

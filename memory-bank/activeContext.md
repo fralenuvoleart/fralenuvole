@@ -142,4 +142,19 @@ Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Before:** Updated ALL publish posts every time, even those already `closed`
 - **After:** Only updates posts where comments are still `open` — zero DB writes on subsequent calls
 
-*Last Updated: 2026-04-29*
+## ✅ Thirdparty Helper + CSS Extraction (2026-04-30)
+
+### New Helper: [`frl_is_thirdparty_plugin_active()`](includes/helpers/functions.php:776)
+- **Location:** [`includes/helpers/functions.php:776`](includes/helpers/functions.php:776)
+- **Purpose:** Checks if a third-party plugin is active (site-wide or network-wide).
+- **Caching:** Uses [`frl_cache_remember()`](includes/helpers/functions-class-helpers.php:108) with `WEEK_IN_SECONDS` TTL in the `'options'` group — persistent caching since `get_option('active_plugins')` only changes on activate/deactivate.
+- **Invalidation:** Key `'thirdparty_active_plugins'` is cleared in [`frl_purge_mu_plugin_exclusion_cache()`](includes/core/cache/cache-cleanup.php:296) on `activated_plugin`/`deactivated_plugin` hooks.
+- **Multisite-safe:** Handles both `get_option('active_plugins')` and `get_site_option('active_sitewide_plugins')`.
+- **Refactored:** [`_is_plugin_globally_active()`](includes/core/cache/class-cache-manager.php:146) in the cache manager now delegates to this public helper, eliminating duplicated logic.
+
+### Meow CSS Extraction
+- **Extracted** Meow-specific CSS from [`admin.css`](modules/thirdparty/assets/css/admin.css) into dedicated [`admin-meow.css`](modules/thirdparty/assets/css/admin-meow.css) (~164 lines).
+- **Conditional enqueue:** [`frl_thirdparty_admin_scripts()`](modules/thirdparty/thirdparty.php:39) uses an array of known Meow plugin paths (`ai-engine/ai-engine.php`, `seo-engine/seo-engine.php`) and loops until one is found active — Meow CSS only enqueued when a match is hit.
+- **Benefit:** ~46% of original admin.css is now conditionally loaded. Maintainability improved (separate file for Meow tweaks).
+
+*Last Updated: 2026-04-30*

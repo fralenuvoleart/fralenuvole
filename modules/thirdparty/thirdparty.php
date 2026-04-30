@@ -26,7 +26,10 @@ function frl_thirdparty_public_scripts()
     if(!frl_is_valid_frontend_page_request()) {
         return;
     }
-    $assets = ['thirdparty-public-css' => 'modules/thirdparty/assets/css/public.css'];
+    $assets = [
+        'thirdparty-public-css' => 'modules/thirdparty/assets/css/public.css'
+    ];
+
     frl_enqueue_scripts($assets, 'thirdparty_public');
 }
 
@@ -35,7 +38,24 @@ function frl_thirdparty_public_scripts()
  */
 function frl_thirdparty_admin_scripts()
 {
-    $assets = ['thirdparty-admin-css' => 'modules/thirdparty/assets/css/admin.css'];
+    $assets = [
+        'thirdparty-admin-css' => 'modules/thirdparty/assets/css/admin.css'
+    ];
+    
+    // Load Meow-specific styles only when any Meow plugin is active.
+    // Array of known plugin paths — the same admin-meow.css applies to all.
+    $meow_plugins = [
+        'ai-engine/ai-engine.php',
+        'seo-engine/seo-engine.php',
+    ];
+    
+    foreach ($meow_plugins as $plugin_path) {
+        if (frl_is_thirdparty_plugin_active($plugin_path)) {
+            $assets['thirdparty-admin-meow-css'] = 'modules/thirdparty/assets/css/admin-meow.css';
+            break;
+        }
+    }
+    
     frl_enqueue_scripts($assets, 'thirdparty_admin');
 }
 

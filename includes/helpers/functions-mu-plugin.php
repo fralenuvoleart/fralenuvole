@@ -221,8 +221,7 @@ function frl_filter_plugin_exclusions(): void
     $excluded = array_diff($excluded, [$plugin_handle]);
 
     // During WP Cron, add cron filter BEFORE the empty-exclusion check,
-    // because the cron filter also sanitizes args to prevent TypeError
-    // (count() on null), which is valuable regardless of exclusion state.
+    // because the cron filter removes orphaned events when plugins are excluded.
     if (frl_is_cron_job_request()) {
         frl_add_exclusion_filter_cron($excluded);
     }
@@ -364,7 +363,7 @@ function frl_add_exclusion_filter_network_active_plugins(array $excluded): void
 }
 
 /**
- * Sanitizes the cron option to remove orphaned events and prevent TypeError on null args.
+ * Sanitizes the cron option to remove orphaned events.
  *
  * Uses the `option_cron` filter (not `pre_option_cron`) because the cron option is often
  * stored in WordPress' `alloptions` cache for autoloaded options, which bypasses
@@ -373,9 +372,6 @@ function frl_add_exclusion_filter_network_active_plugins(array $excluded): void
  *
  * What this filter does:
  * 1. Removes events with unregistered schedules (orphaned when a plugin is excluded).
- * 2. Sanitizes `$event['args']` to always be an array, preventing a PHP 8+ TypeError
- *    (`count(): Argument #1 must be of type Countable|array, null given`) when
- *    wp-cron.php passes null args to do_action_ref_array().
  *
  * Note: This is a read-time filter only — it does not modify the database.
  * If the exclusion is later removed, the plugin will load, register its
@@ -430,14 +426,6 @@ function frl_add_exclusion_filter_cron(array $excluded): void
                     if (!empty($event['schedule']) && !isset($schedules[$event['schedule']])) {
                         // Schedule doesn't exist — skip this orphaned event
                         continue;
-                    }
-
-                    // Ensure args is always an array to prevent TypeError in
-                    // do_action_ref_array at wp-cron.php:191 when $v['args'] is null.
-                    // wp-cron.php passes $v['args'] directly to do_action_ref_array,
-                    // and class-wp-hook.php calls count() on it, which throws with null.
-                    if (!isset($event['args']) || !is_array($event['args'])) {
-                        $event['args'] = [];
                     }
 
                     $filtered_events[$hash] = $event;

@@ -762,3 +762,34 @@ function frl_nonce_field($action, $name = '_wpnonce', $referer = true, $display 
     return wp_nonce_field(frl_prefix($action), $name, $referer, $display);
 }
 
+/**
+ * Checks if a third-party plugin is active (site-wide or network-wide).
+ *
+ * Cached via frl_cache_remember in the 'options' group with WEEK_IN_SECONDS TTL,
+ * since the active plugins list changes only on plugin activation/deactivation.
+ * Invalidated via frl_purge_mu_plugin_exclusion_cache() on activated_plugin/
+ * deactivated_plugin hooks.
+ *
+ * @param string $plugin_path Plugin path relative to plugins directory, e.g. 'mwai/mwai.php'.
+ * @return bool True if the plugin is active (site-wide or network-wide).
+ */
+function frl_is_thirdparty_plugin_active(string $plugin_path): bool
+{
+    $active_plugins = frl_cache_remember('options', 'thirdparty_active_plugins', function () {
+        return [
+            'site'   => (array) get_option('active_plugins', []),
+            'network' => is_multisite()
+                ? array_keys((array) get_site_option('active_sitewide_plugins', []))
+                : [],
+        ];
+    }, WEEK_IN_SECONDS);
+
+    if (in_array($plugin_path, $active_plugins['site'], true)) {
+        return true;
+    }
+    if (in_array($plugin_path, $active_plugins['network'], true)) {
+        return true;
+    }
+    return false;
+}
+

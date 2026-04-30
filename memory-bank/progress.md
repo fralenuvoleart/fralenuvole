@@ -222,4 +222,11 @@
 ### Analysis Performed (No Code Change)
 - **Query optimization by autoload:** Analyzed [`frl_get_plugin_options_db()`](includes/helpers/functions-options.php:280). Recommended against filtering by autoload column — gain is only on cold cache (rarest scenario), LIKE on indexed column is already ~0.1ms, lazy-load mechanism would increase admin DB queries.
 
-*Last Updated: 2026-04-29*
+## Thirdparty Helper + CSS Extraction (2026-04-30)
+- **New helper:** [`frl_is_thirdparty_plugin_active()`](includes/helpers/functions.php:776) — checks if a plugin is active (site-wide or network-wide) using `frl_cache_remember('options', 'thirdparty_active_plugins', callback, WEEK_IN_SECONDS)`.
+- **Invalidation:** Cache cleared in [`frl_purge_mu_plugin_exclusion_cache()`](includes/core/cache/cache-cleanup.php:296) on `activated_plugin`/`deactivated_plugin` hooks.
+- **Cache manager refactored:** [`_is_plugin_globally_active()`](includes/core/cache/class-cache-manager.php:146) delegates to the public helper, eliminating duplicated logic.
+- **Meow CSS extracted** from [`admin.css`](modules/thirdparty/assets/css/admin.css) into [`admin-meow.css`](modules/thirdparty/assets/css/admin-meow.css) — ~46% of the original file now conditionally enqueued.
+- **Array-based plugin detection:** [`frl_thirdparty_admin_scripts()`](modules/thirdparty/thirdparty.php:39) loops through `['ai-engine/ai-engine.php', 'seo-engine/seo-engine.php']` and enqueues Meow CSS when any match is found.
+
+*Last Updated: 2026-04-30*
