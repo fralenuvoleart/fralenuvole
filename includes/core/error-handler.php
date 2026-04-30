@@ -114,93 +114,94 @@ function frl_errors_handle_error($errlevel, $errstring, $errfile, $errline): boo
         return true;
     }
 
-    // Prevent recursion if an error occurs within the handler
+    // Prevent recursion if an error occurs within the handler.
+    // Uses try/finally to guarantee guard reset even if an unexpected
+    // exception propagates through internal calls (e.g., frl_log_add_details).
     static $is_handling_error = false;
     if ($is_handling_error) {
         return false;
     }
     $is_handling_error = true;
 
-    if (! defined('WP_DEBUG_LOG') || ! WP_DEBUG_LOG) { // @phpstan-ignore-line alwaysTrue
-        $is_handling_error = false;
-        return false;
-    }
+    try {
+        if (! defined('WP_DEBUG_LOG') || ! WP_DEBUG_LOG) { // @phpstan-ignore-line alwaysTrue
+            return false;
+        }
 
-    // Attempt to resolve file/line if missing via backtrace
-    if (($errfile === '' || !$errline)) { // @phpstan-ignore-line unreachableCode
-        $msg_signature = md5($errstring);
-        if (isset($backtrace_cache[$msg_signature])) {
-            $errfile = $backtrace_cache[$msg_signature]['file'];
-            $errline = $backtrace_cache[$msg_signature]['line'];
-        } else {
-            $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 6);
-            foreach ($bt as $frame) {
-                if (!empty($frame['file']) && !empty($frame['line'])) {
-                    $errfile = (string) $frame['file'];
-                    $errline = (int) $frame['line'];
-                    $backtrace_cache[$msg_signature] = ['file' => $errfile, 'line' => $errline];
-                    break;
+        // Attempt to resolve file/line if missing via backtrace
+        if (($errfile === '' || !$errline)) { // @phpstan-ignore-line unreachableCode
+            $msg_signature = md5($errstring);
+            if (isset($backtrace_cache[$msg_signature])) {
+                $errfile = $backtrace_cache[$msg_signature]['file'];
+                $errline = $backtrace_cache[$msg_signature]['line'];
+            } else {
+                $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 6);
+                foreach ($bt as $frame) {
+                    if (!empty($frame['file']) && !empty($frame['line'])) {
+                        $errfile = (string) $frame['file'];
+                        $errline = (int) $frame['line'];
+                        $backtrace_cache[$msg_signature] = ['file' => $errfile, 'line' => $errline];
+                        break;
+                    }
                 }
             }
         }
-    }
 
-    // Suppress errors silenced by the @ operator.
-    // PHP 8.0+: @ sets error_reporting() to 0.
-    // PHP < 8.0: @ sets error_reporting() to 4437 (E_ALL minus non-fatal errors).
-    $current_reporting = error_reporting();
-    if ($current_reporting === 0 || $current_reporting === 4437) {
-        $is_handling_error = false;
+        // Suppress errors silenced by the @ operator.
+        // PHP 8.0+: @ sets error_reporting() to 0.
+        // PHP < 8.0: @ sets error_reporting() to 4437 (E_ALL minus non-fatal errors).
+        $current_reporting = error_reporting();
+        if ($current_reporting === 0 || $current_reporting === 4437) {
+            return true;
+        }
+
+        // Suppress errors originating outside the plugin directory if enabled
+        if (frl_get_option('error_reporting_plugin', false)) {
+             if (!empty($errfile) && !str_contains($errfile, FRL_DIR_PATH)) {
+                  return true;
+             }
+        }
+
+        // Suppress based on custom rules
+        if (frl_errors_is_suppression_match($errstring)) {
+            return true;
+        }
+
+        // Determine error label
+        $label = '';
+        switch ($errlevel) {
+            case E_WARNING:
+            case E_USER_WARNING:
+                $label = 'PHP Warning: ';
+                break;
+            case E_NOTICE:
+            case E_USER_NOTICE:
+                $label = 'PHP Notice: ';
+                break;
+            case E_DEPRECATED:
+            case E_USER_DEPRECATED:
+                $label = 'PHP Deprecated: ';
+                break;
+            case E_USER_ERROR:
+            case E_ERROR:
+                $label = 'PHP Fatal error: ';
+                break;
+        }
+
+        $line = $label . (string) $errstring;
+        if ($errfile !== '' && $errline) {
+            $line .= ' in ' . $errfile . ' on line ' . (int) $errline;
+        }
+        if (function_exists('frl_log_add_details')) {
+            $line = frl_log_add_details($line);
+        }
+
+        $detailed_log_cache[$error_signature] = $line;
+        error_log($line);
         return true;
-    }
-
-    // Suppress errors originating outside the plugin directory if enabled
-    if (frl_get_option('error_reporting_plugin', false)) {
-         if (!empty($errfile) && !str_contains($errfile, FRL_DIR_PATH)) {
-              $is_handling_error = false;
-              return true;
-         }
-    }
-
-    // Suppress based on custom rules
-    if (frl_errors_is_suppression_match($errstring)) {
+    } finally {
         $is_handling_error = false;
-        return true;
     }
-
-    // Determine error label
-    $label = '';
-    switch ($errlevel) {
-        case E_WARNING:
-        case E_USER_WARNING:
-            $label = 'PHP Warning: ';
-            break;
-        case E_NOTICE:
-        case E_USER_NOTICE:
-            $label = 'PHP Notice: ';
-            break;
-        case E_DEPRECATED:
-        case E_USER_DEPRECATED:
-            $label = 'PHP Deprecated: ';
-            break;
-        case E_USER_ERROR:
-        case E_ERROR:
-            $label = 'PHP Fatal error: ';
-            break;
-    }
-
-    $line = $label . (string) $errstring;
-    if ($errfile !== '' && $errline) {
-        $line .= ' in ' . $errfile . ' on line ' . (int) $errline;
-    }
-    if (function_exists('frl_log_add_details')) {
-        $line = frl_log_add_details($line);
-    }
-
-    $detailed_log_cache[$error_signature] = $line;
-    error_log($line);
-    $is_handling_error = false;
-    return true;
 }
 
 /**
@@ -303,31 +304,35 @@ function frl_errors_is_suppression_match($errstring): bool
  */
 function frl_errors_handle_exception(Throwable $e): void
 {
-    // Prevent recursion if an exception occurs within the handler
+    // Prevent recursion if an exception occurs within the handler.
+    // Uses try/finally to guarantee guard reset even if the delegated
+    // error handler itself triggers an exception.
     static $is_handling = false;
     if ($is_handling) {
         return;
     }
     $is_handling = true;
 
-    // Map exception type to an error level for consistent logging
-    if ($e instanceof TypeError) {
-        $errno = E_ERROR;
-    } elseif ($e instanceof ValueError) {
-        $errno = E_WARNING;
-    } elseif ($e instanceof DivisionByZeroError) {
-        $errno = E_ERROR;
-    } elseif ($e instanceof ArgumentCountError) {
-        $errno = E_ERROR;
-    } else {
-        $errno = E_ERROR;
+    try {
+        // Map exception type to an error level for consistent logging
+        if ($e instanceof TypeError) {
+            $errno = E_ERROR;
+        } elseif ($e instanceof ValueError) {
+            $errno = E_WARNING;
+        } elseif ($e instanceof DivisionByZeroError) {
+            $errno = E_ERROR;
+        } elseif ($e instanceof ArgumentCountError) {
+            $errno = E_ERROR;
+        } else {
+            $errno = E_ERROR;
+        }
+
+        $errstr = get_class($e) . ': ' . $e->getMessage();
+
+        // Delegate to the existing error handler for consistent formatting,
+        // suppression rules, and logging via error_log()
+        frl_errors_handle_error($errno, $errstr, $e->getFile(), $e->getLine());
+    } finally {
+        $is_handling = false;
     }
-
-    $errstr = get_class($e) . ': ' . $e->getMessage();
-
-    // Delegate to the existing error handler for consistent formatting,
-    // suppression rules, and logging via error_log()
-    frl_errors_handle_error($errno, $errstr, $e->getFile(), $e->getLine());
-
-    $is_handling = false;
 }

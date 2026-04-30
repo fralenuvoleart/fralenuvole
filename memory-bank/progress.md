@@ -249,6 +249,14 @@
 - ✅ Zero regressions: No existing function signatures changed, no hooks removed/modified, suppression rules apply identically
 - ✅ Both error and exception handlers have independent `static $is_handling` recursion guards
 
+### Re-Entrancy Hardening (2026-04-30)
+- Refactored both [`frl_errors_handle_error()`](includes/core/error-handler.php:105) and [`frl_errors_handle_exception()`](includes/core/error-handler.php:304) from manual `$guard = false` at each return point to `try/finally` pattern.
+- **Before:** 5 manual reset points in error handler — brittle: if a new early return was added without reset, the guard would permanently disable the handler.
+- **After:** Single `finally` block guarantees reset regardless of exit path or unexpected exceptions from internal calls (`frl_log_add_details`, etc.).
+- **Consistent with** [`frl_errors_handle_doing_it_wrong()`](includes/core/error-handler.php:214) which already used `try/finally`.
+- ✅ PHP syntax valid
+- ✅ No behavioral changes — all return values identical
+
 ## Cron Version Stripping & Corruption Fix (2026-04-30)
 
 ### Root Cause
