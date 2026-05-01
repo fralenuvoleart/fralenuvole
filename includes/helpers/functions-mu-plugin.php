@@ -224,7 +224,7 @@ function frl_filter_plugin_exclusions(): void
     // because the cron filter also sanitizes args to prevent TypeError
     // (count() on null), which is valuable regardless of exclusion state.
     if (frl_is_cron_job_request()) {
-        frl_add_exclusion_filter_cron($excluded);
+        frl_add_exclusion_filter_cron();
     }
 
     if (empty($excluded)) {
@@ -384,9 +384,9 @@ function frl_add_exclusion_filter_network_active_plugins(array $excluded): void
  * @param string[] $excluded List of plugin paths to exclude (unused directly, kept for consistency).
  * @return void
  */
-function frl_add_exclusion_filter_cron(array $excluded): void
+function frl_add_exclusion_filter_cron(): void
 {
-    add_filter('option_cron', function ($cron, $option) use ($excluded) {
+    add_filter('option_cron', function ($cron, $option) {
         // Only handle 'cron' option, pass through for all others
         if ($option !== 'cron') {
             return $cron;
@@ -409,62 +409,49 @@ function frl_add_exclusion_filter_cron(array $excluded): void
         // have already loaded and registered their schedules via cron_schedules filter.
         $schedules = wp_get_schedules();
 
-        $filtered = [];
-
+        // Only iterate numeric timestamp keys — non-numeric keys (e.g. 'version')
+        // are left completely untouched, preserving the v2 cron array structure.
         foreach ($cron as $timestamp => $hooks) {
-            if (!is_array($hooks)) {
+            if (!is_array($hooks) || !is_numeric($timestamp)) {
                 continue;
             }
-
-            $filtered_hooks = [];
 
             foreach ($hooks as $hook => $events) {
                 if (!is_array($events)) {
                     continue;
                 }
 
-                $filtered_events = [];
-
                 foreach ($events as $hash => $event) {
-                    // If event has a schedule name, verify it's registered
+                    // If event has a schedule name, verify it's registered.
+                    // Unregistered schedule = orphaned event from an excluded plugin.
                     if (!empty($event['schedule']) && !isset($schedules[$event['schedule']])) {
-                        // Schedule doesn't exist — skip this orphaned event
+                        unset($cron[$timestamp][$hook][$hash]);
                         continue;
                     }
-
 
                     // Ensure args is always an array to prevent TypeError in
                     // do_action_ref_array at wp-cron.php:191 when $v['args'] is null.
                     // wp-cron.php passes $v['args'] directly to do_action_ref_array,
                     // and class-wp-hook.php calls count() on it, which throws with null.
                     if (!isset($event['args']) || !is_array($event['args'])) {
-                        $event['args'] = [];
+                        $cron[$timestamp][$hook][$hash]['args'] = [];
                     }
-                    
-                    $filtered_events[$hash] = $event;
                 }
 
-                if (!empty($filtered_events)) {
-                    $filtered_hooks[$hook] = $filtered_events;
+                // Clean up empty hook containers
+                if (empty($cron[$timestamp][$hook])) {
+                    unset($cron[$timestamp][$hook]);
                 }
             }
 
-            if (!empty($filtered_hooks)) {
-                $filtered[$timestamp] = $filtered_hooks;
+            // Clean up empty timestamp containers
+            if (empty($cron[$timestamp])) {
+                unset($cron[$timestamp]);
             }
         }
 
-        // Preserve the 'version' metadata key that WordPress core relies on.
-        // Without it, _get_cron_array() calls _upgrade_cron_array() on every request,
-        // which misinterprets the v2 hash-map as v1 event data,
-        // triggering an "Undefined array key args" warning and causing exponential
-        // data corruption (wrapping events in md5(serialize(null)) hash layers).
-        if (isset($cron['version'])) {
-            $filtered['version'] = $cron['version'];
-        }
-
-        $cache = $filtered;
-        return $cache;
+        $cache = $cron;
+        return $cron;
     }, 10, 2);
 }
 

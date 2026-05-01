@@ -280,4 +280,28 @@
 - ✅ `_get_cron_array()` now receives `version = 2` intact → `_upgrade_cron_array()` NOT called → warnings eliminated, no excessive DB writes
 - ✅ No cleanup function needed — user deletes the cron option manually to start fresh
 
-*Last Updated: 2026-04-30*
+## Cron Filter Refactored — In-Place Modification (2026-05-01)
+
+### Root Cause (User Feedback)
+- The user challenged the philosophical correctness of the filter approach: "what goes in, goes out. Why do we remove the version from the array, if we only need to remove the excluded events?"
+- The previous fix (2026-04-30) rebuilt the array from scratch (`$filtered = []` accumulator) and then conditionally preserved the version: `if (isset($cron['version'])) { $filtered['version'] = $cron['version']; }`.
+- This was fragile: **if corrupt data entered without a `version` key, the conditional would skip it, and the corruption cycle would perpetuate.** The fix was correct for clean data but not robust for corrupted data.
+
+### Changes Applied
+
+#### [`includes/helpers/functions-mu-plugin.php`](includes/helpers/functions-mu-plugin.php:387)
+- **Changed `frl_add_exclusion_filter_cron()`** from accumulator pattern to in-place modification:
+  - **Before:** `$filtered = []; foreach ($cron as $ts => $hooks) { if (!is_array($hooks)) continue; ... $filtered[$ts] = ... } if (isset($cron['version'])) { $filtered['version'] = $cron['version']; } return $filtered;`
+  - **After:** `foreach ($cron as $ts => $hooks) { if (!is_array($hooks) || !is_numeric($ts)) continue; ... unset($cron[$ts][$hook][$hash]); ... } return $cron;`
+- **Key change:** `!is_numeric($timestamp)` guard ensures `version` and any future metadata keys are never iterated over, never touched, never evaluated. The filter literally does not see them.
+- **Orphan cleanup:** Changed from "skip in accumulator" to `unset()` on the original array — same effect, simpler code.
+- **Args sanitization:** Changed from "copy with modified args to accumulator" to direct assignment `$cron[$ts][$hook][$hash]['args'] = []`.
+- **Removed:** The explicit `isset($cron['version'])` preservation block (lines 457-464 old) — no longer needed because version is never removed.
+
+### Verification
+- ✅ PHP syntax valid (`php -l includes/helpers/functions-mu-plugin.php` — no errors)
+- ✅ "What goes in, goes out" — filter returns the same array structure, only removing orphaned events and sanitizing null args
+- ✅ Version and any metadata keys pass through completely untouched — no conditional preservation logic to fail
+- ✅ Existing DB corruption still requires manual cleanup: `wp option delete cron`
+
+*Last Updated: 2026-05-01*
