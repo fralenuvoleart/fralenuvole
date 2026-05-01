@@ -44,8 +44,9 @@ This was fragile — if the version preservation step was conditional on the inp
 The root insight — **"what goes in, goes out"** — led to a simpler approach:
 
 1. **Don't rebuild the array** — modify `$cron` in-place using `unset()` for orphaned events
-2. **Skip non-numeric timestamp keys** — `!is_numeric($timestamp)` guard ensures `version` (and any future metadata) is **never touched**, not even looked at
-3. **No explicit version handling needed** — the `version` key naturally passes through because the iteration never processes it
+2. **Only skip non-array values** — `!is_array($hooks)` check skips `'version' => 2` naturally (2 is not an array), and the key stays in `$cron` since we never remove it
+3. **No explicit version handling needed** — the `version` key passes through because the foreach never processes it
+4. **No corrupted data cleanup** — corrupted entries from existing DB corruption pass through unchanged. The filter only removes orphaned events and fixes null args. Clean existing corruption with `wp option delete cron`
 
 ## What Changed
 

@@ -409,10 +409,11 @@ function frl_add_exclusion_filter_cron(): void
         // have already loaded and registered their schedules via cron_schedules filter.
         $schedules = wp_get_schedules();
 
-        // Only iterate numeric timestamp keys — non-numeric keys (e.g. 'version')
-        // are left completely untouched, preserving the v2 cron array structure.
+        // Non-array top-level keys (e.g. 'version' => 2) are skipped by the
+        // !is_array check below and pass through untouched, preserving the
+        // v2 cron array structure without needing explicit version handling.
         foreach ($cron as $timestamp => $hooks) {
-            if (!is_array($hooks) || !is_numeric($timestamp)) {
+            if (!is_array($hooks)) {
                 continue;
             }
 

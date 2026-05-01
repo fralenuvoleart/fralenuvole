@@ -257,28 +257,26 @@
 - ✅ PHP syntax valid
 - ✅ No behavioral changes — all return values identical
 
-## Cron Version Stripping & Corruption Fix (2026-04-30)
+## Cron Filter Simplified — Removed `!is_numeric` Guard (2026-05-01)
 
-### Root Cause
-- The `option_cron` filter in both `frl_add_cron_stability_filter()` and `frl_add_exclusion_filter_cron()` iterated `$cron` with `foreach ($cron as $timestamp => $hooks)` and used `if (!is_array($hooks)) { continue; }` — this **dropped the integer `'version' => 2` key**.
-- Without `version`, `_get_cron_array()` calls `_upgrade_cron_array()` on **every request**, which misinterprets the v2 hash-to-event MAP as v1 event data.
-- `$args['args']` on the hash map returns `null` → `md5(serialize(null))` = `dcca48101505dd86b703689a604fe3c4` → corruption marker key added → **exponential data growth**.
+### Context
+- The 2026-04-30 fix used an accumulator pattern that required explicit version preservation: `if (isset($cron['version'])) { $filtered['version'] = $cron['version']; }`.
+- This was correct for clean data but fragile — if corrupt data lacked the version key, `_upgrade_cron_array()` would re-corrupt it.
+- Refactored to **in-place modification** (2026-05-01) to eliminate the need for version preservation (skipped keys stay in `$cron`).
 
-### Changes Applied
+### Regression
+- Accidentally added `!is_numeric($timestamp)` guard thinking it was needed for version protection.
+- This caused corrupted entries (where md5 hashes like `40cd750bba9870f18aada2478b24840a` sit at the timestamp level) to be **skipped** instead of processed. The old accumulator code processed them and dropped them from the output.
+- Errors persisted: `could_not_set` for hooks `wp_update_user_counts`, `greenshift_check_cron_hook`, `docketcache_optimizedb`, `wp_update_themes`, `wp_update_plugins`.
 
-#### [`assets/mu/frl-mu-plugin.php`](assets/mu/frl-mu-plugin.php)
-- **Removed** `frl_add_cron_stability_filter();` call (was a no-op since it duplicated the exclusion filter's work)
-- **Cleaned up** floating docblock
-
-#### [`includes/helpers/functions-mu-plugin.php`](includes/helpers/functions-mu-plugin.php)
-1. **Added version preservation** in `frl_add_exclusion_filter_cron()` — `if (isset($cron['version'])) { $filtered['version'] = $cron['version']; }` — this is the **only fix needed**
-2. **Removed** `frl_add_cron_stability_filter()` (fully deleted — was a duplicate of the exclusion filter's logic)
-3. **Removed** `frl_cleanup_corrupted_cron()` + its `admin_init` hook (user will delete the corrupted cron option manually from DB)
-
-### Verification
-- ✅ PHP syntax valid for both files
-- ✅ `_get_cron_array()` now receives `version = 2` intact → `_upgrade_cron_array()` NOT called → warnings eliminated, no excessive DB writes
-- ✅ No cleanup function needed — user deletes the cron option manually to start fresh
+### Fix Applied
+- **Removed** `|| !is_numeric($timestamp)` from the first-level foreach guard. Now only `!is_array($hooks)` checks remain.
+- **Rationale:** `!is_array($hooks)` already handles `version => 2` — 2 is not an array, so it's skipped. The key stays in `$cron` naturally. No version-specific handling needed.
+- **Scope narrowed:** Filter now does **only** what it should:
+  1. Remove events with unregistered schedules (orphaned from excluded plugins)
+  2. Set null args to `[]`
+  3. Return — no corrupted data cleanup, no structure fixing
+- Existing DB corruption still requires manual cleanup: `wp option delete cron`
 
 ## Cron Filter Refactored — In-Place Modification (2026-05-01)
 
