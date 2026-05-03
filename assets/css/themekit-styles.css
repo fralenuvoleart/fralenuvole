@@ -118,13 +118,13 @@ nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-su
     transform: scale(1.1);
 }
 
-blockquote{
+blockquote.wp-block-quote {
     padding-top: 30px;
     padding-bottom: 30px;
 }
 
-blockquote:before,
-blockquote:after {
+blockquote.wp-block-quote:before,
+blockquote.wp-block-quote:after {
     font-size: 4em;
     line-height: 0.6em;
     text-indent: -0.15em;
@@ -132,13 +132,13 @@ blockquote:after {
     opacity: 0.3;
 }
 
-blockquote:before {
+blockquote.wp-block-quote:before {
     content: "“";
     float: left;
     margin-right: 0.75rem;
 }
 
-blockquote:after {
+blockquote.wp-block-quote:after {
     content: "”";
     float: right;
     margin-left: 0.75rem;
