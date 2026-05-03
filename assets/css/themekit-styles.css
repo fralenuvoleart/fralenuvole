@@ -123,6 +123,10 @@ blockquote.wp-block-quote {
     padding-bottom: 30px;
 }
 
+blockquote.wp-block-quote > :last-child:not(.bibleVerse) {
+    padding-right: 40px;
+}
+
 blockquote.wp-block-quote:before,
 blockquote.wp-block-quote:after {
     font-size: 4em;
