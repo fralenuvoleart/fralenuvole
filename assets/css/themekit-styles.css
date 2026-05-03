@@ -123,7 +123,7 @@ blockquote.wp-block-quote {
     padding-bottom: 30px;
 }
 
-blockquote.wp-block-quote > :last-child:not(.ubibleVerse) {
+blockquote.wp-block-quote > *:last-child:not(.ubibleVerse) {
     padding-right: 40px;
 }
 
