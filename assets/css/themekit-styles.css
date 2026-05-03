@@ -121,8 +121,8 @@ nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-su
 blockquote:before,
 blockquote:after {
     font-size: 4em;
-    line-height: 0.55em;
-    opacity: 0.5;
+    line-height: 0.6em;
+    opacity: 0.4;
 }
 
 blockquote:before {
@@ -133,8 +133,9 @@ blockquote:before {
 
 blockquote:after {
     content: "”";
-    float: left;
+    float: right;
     margin-left: 0.75rem;
+    line-height: 0;
 }
 
 .clearfix {
