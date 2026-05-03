@@ -118,6 +118,25 @@ nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-su
     transform: scale(1.1);
 }
 
+blockcode:before,
+blockcode:after {
+    font-size: 4em;
+    line-height: 0.55em;
+    opacity: 0.5;
+}
+
+blockcode:before {
+    content: "“";
+    float: left;
+    margin-right: 0.75rem;
+}
+
+blockcode:after {
+    content: "”";
+    float: left;
+    margin-left: 0.75rem;
+}
+
 .clearfix {
     margin-block: 0;
 }
@@ -183,7 +202,6 @@ nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-su
     grid-row-start: 2 !important;
     grid-row-end: 3 !important;
 }
-
 
 /* Regular rows */
 .bento-post-list .wp-block-post-template >li:nth-of-type(5) {
