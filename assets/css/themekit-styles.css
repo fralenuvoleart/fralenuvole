@@ -118,11 +118,16 @@ nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-su
     transform: scale(1.1);
 }
 
+blockquote{
+    padding-top: 30px;
+    padding-bottom: 30px;
+}
+
 blockquote:before,
 blockquote:after {
     font-size: 4em;
     line-height: 0.6em;
-    opacity: 0.4;
+    opacity: 0.3;
 }
 
 blockquote:before {
@@ -135,7 +140,7 @@ blockquote:after {
     content: "”";
     float: right;
     margin-left: 0.75rem;
-    line-height: 0;
+    line-height: 0.1em;
 }
 
 .clearfix {
