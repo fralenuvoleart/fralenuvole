@@ -128,6 +128,7 @@ blockquote:after {
     font-size: 4em;
     line-height: 0.6em;
     opacity: 0.3;
+    text-indent: -0.1em;
 }
 
 blockquote:before {
