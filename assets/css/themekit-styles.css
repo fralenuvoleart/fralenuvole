@@ -118,20 +118,20 @@ nav.wp-block-navigation li.wp-block-navigation-submenu ul.wp-block-navigation-su
     transform: scale(1.1);
 }
 
-blockcode:before,
-blockcode:after {
+blockquote:before,
+blockquote:after {
     font-size: 4em;
     line-height: 0.55em;
     opacity: 0.5;
 }
 
-blockcode:before {
+blockquote:before {
     content: "“";
     float: left;
     margin-right: 0.75rem;
 }
 
-blockcode:after {
+blockquote:after {
     content: "”";
     float: left;
     margin-left: 0.75rem;
