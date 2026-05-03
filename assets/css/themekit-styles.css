@@ -123,7 +123,7 @@ blockquote.wp-block-quote {
     padding-bottom: 30px;
 }
 
-blockquote.wp-block-quote > div:last-child {
+blockquote.wp-block-quote > div:last-of-type {
     padding-right: 40px;
 }
 
