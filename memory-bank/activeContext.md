@@ -14,7 +14,7 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Files created:**
   - [`modules/subdomain_adapter/config-constants-subdomain-adapter.php`](modules/subdomain_adapter/config-constants-subdomain-adapter.php) — `FRL_SUBDOMAIN_ADAPTER_MAP` and `FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS`
   - [`modules/subdomain_adapter/class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php) — `Frl_Subdomain_Adapter` singleton handler with `transform_url()`, filter methods, `pll_default_language` switch
-  - [`modules/subdomain_adapter/subdomain-adapter.php`](modules/subdomain_adapter/subdomain-adapter.php) — Module entry point
+  - [`modules/subdomain_adapter/subdomain_adapter.php`](modules/subdomain_adapter/subdomain_adapter.php) — Module entry point
 - **Files modified:**
   - [`config/environment/config-defaults.php`](config/environment/config-defaults.php:46) — Added `'subdomain_adapter' => false` to `FRL_ENV_DEFAULT['modules']`
   - [`config/environment/config-environment.php`](config/environment/config-environment.php:27) — Added `'subdomain_adapter' => true` to `FRL_ENV_PBS_TEMPLATE['modules']`

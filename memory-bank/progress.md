@@ -328,7 +328,7 @@
    - `transform_url()` — 4 cases: main+default (no-op), main+mapped (swap domain), subdomain+target (no-op via pll_default_language), subdomain+cross (swap to main + add prefix)
    - `redirect_non_target_content()` — 301 redirect on subdomain for non-target content
    - Guard pattern on all filters: `is_admin()`, `frl_is_rest_api_request()`, `is_preview()`, `!frl_translator_enabled()`, `!frl_get_language()`
-3. **`modules/subdomain_adapter/subdomain-adapter.php`** — Module entry point with header metadata, defensive constant check, singleton init
+3. **`modules/subdomain_adapter/subdomain_adapter.php`** — Module entry point with header metadata, defensive constant check, singleton init
 
 ### Files Modified
 4. **`config/environment/config-defaults.php`** — Added `'subdomain_adapter' => false` to `FRL_ENV_DEFAULT['modules']`

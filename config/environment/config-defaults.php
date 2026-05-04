@@ -43,9 +43,9 @@ const FRL_ENV_DEFAULT = [
         'thirdparty' => true,
         'pbnova' => false,
         'pbs' => false,
+        'subdomain_adapter' => false,
         'pbproperty' => false,
         'frl' => false,
-        'subdomain_adapter' => false,
     ],
     'wp_options' => [
         'blog_public' => 1,
