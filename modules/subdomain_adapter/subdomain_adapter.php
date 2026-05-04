@@ -2,10 +2,7 @@
 
 /**
  * Module Name: Subdomain Adapter
- * Description: Maps subdomains to Polylang languages and bidirectionally transforms
- *              URLs between a main domain and its language-specific subdomain mirrors.
- *              Uses pll_default_language filter for zero-cost URL generation on subdomains.
- *              Extensible: add new subdomain entries in config constants — no code changes.
+ * Description: Maps subdomains to Polylang languages and bidirectionally transforms URLs between main domain and its language-specific subdomain mirrors.
  *
  * @package Fralenuvole
  */
