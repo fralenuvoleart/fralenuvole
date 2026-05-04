@@ -5,7 +5,29 @@
 - Design principles stored in memory-mcp entity: UserDesignPrinciples
 
 ## 🔄 Current Focus
-Fralenuvole v5.6.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, and environment-based configuration.
+Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
+
+## ✅ Subdomain Adapter Module (2026-05-04)
+- **New module `subdomain_adapter`** implemented at [`modules/subdomain_adapter/`](modules/subdomain_adapter/)
+- **Purpose:** Bidirectional URL transformation between main domain and language-specific subdomain mirrors
+- **Key mechanism:** `pll_default_language` filter (p1) on subdomain makes Polylang treat the subdomain's language as default, generating clean URLs with zero `str_replace` cost
+- **Files created:**
+  - [`modules/subdomain_adapter/config-constants-subdomain-adapter.php`](modules/subdomain_adapter/config-constants-subdomain-adapter.php) — `FRL_SUBDOMAIN_ADAPTER_MAP` and `FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS`
+  - [`modules/subdomain_adapter/class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php) — `Frl_Subdomain_Adapter` singleton handler with `transform_url()`, filter methods, `pll_default_language` switch
+  - [`modules/subdomain_adapter/subdomain-adapter.php`](modules/subdomain_adapter/subdomain-adapter.php) — Module entry point
+- **Files modified:**
+  - [`config/environment/config-defaults.php`](config/environment/config-defaults.php:46) — Added `'subdomain_adapter' => false` to `FRL_ENV_DEFAULT['modules']`
+  - [`config/environment/config-environment.php`](config/environment/config-environment.php:27) — Added `'subdomain_adapter' => true` to `FRL_ENV_PBS_TEMPLATE['modules']`
+- **Hook architecture:**
+  - `pll_default_language` at p1 — switch default language on subdomain
+  - `pll_current_language` at p2 — safety net for language detection
+  - `pll_get_home_url` at p20 — correct home URLs for hreflang/switcher
+  - `post_link`, `post_type_link`, `page_link`, `term_link`, `wpseo_canonical` at p20 — URL transformation (after rewriter at p10)
+  - `template_redirect` at p5 — 301 redirect non-target content on subdomain
+- **Early exits:** Guards for `is_admin()`, `frl_is_rest_api_request()`, `is_preview()`, `!frl_translator_enabled()`, `!frl_get_language()`. Hooks only register when on a configured `main_domain` or mapped subdomain.
+- **Re-entrancy:** `frl_is_already_running()` guard in `register_hooks()`
+- **Performance:** Target-language URLs on subdomain have zero `str_replace` cost — the `pll_default_language` filter handles clean URL generation natively.
+- **Extensibility:** Add entries to `FRL_SUBDOMAIN_ADAPTER_MAP` + env config for new subdomains. Zero class code changes needed.
 
 ## 🏗️ Architecture Overview
 - **Error Handler:** Dual interception via `set_error_handler()` (PHP errors: `E_WARNING`, `E_NOTICE`, `E_DEPRECATED`, etc.) and `set_exception_handler()` (PHP 7+ uncaught Throwable: `TypeError`, `ValueError`, `DivisionByZeroError`, `ArgumentCountError`). Both registered at the earliest possible moment during MU plugin bootstrap. The exception handler [`frl_errors_handle_exception()`](includes/core/error-handler.php:304) delegates to the existing [`frl_errors_handle_error()`](includes/core/error-handler.php:105) for consistent formatting, suppression rules, and logging.

@@ -155,7 +155,8 @@ body:not(.uid-1) button[data-key="finetunes"],
 body:not(.uid-1) button[data-key="traffic-analytics"],
 body:not(.uid-1) .neko-column.minimal .neko-quick-links .neko-link:nth-child(n+3),
 body.post-php:not(.uid-1) #mwai-editor-assistant-root div:has(>div>.neko-select),
-body:not([class*="role-admin"]) .neko-tab-panel-wrapper .neko-column.minimal .neko-button.primary:has(svg[class*="lucide-square-pen"]) {
+body:not([class*="role-admin"]) .neko-tab-panel-wrapper .neko-column.minimal .neko-button.primary:has(svg[class*="lucide-square-pen"]),
+body:not(.uid-1) .wp-list-table.plugins tr[data-slug$="-engine"]{
     display: none !important;
 }
 

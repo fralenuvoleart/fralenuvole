@@ -302,4 +302,44 @@
 - ✅ Version and any metadata keys pass through completely untouched — no conditional preservation logic to fail
 - ✅ Existing DB corruption still requires manual cleanup: `wp option delete cron`
 
-*Last Updated: 2026-05-01*
+## Subdomain Adapter Module (2026-05-04)
+
+### Context
+- The plugin operates on `pbservices.ge` with Polylang and 4 languages as subfolders. A mirror copy of the site runs on `ru.pbservices.ge`.
+- Need: bidirectional URL transformation between main domain and subdomain — Russian content URLs from `pbservices.ge/ru/*` to `ru.pbservices.ge/*`, and cross-language links back to main domain from the subdomain.
+- Must be extensible for future subdomains (e.g., `ar.pbservices.ge`, `ru.pbproperty.ge`).
+
+### Architecture Decision
+- **Not** registered as a rewriter feature — rewriter's path utils hardcode `home_url()` for domain base, have no concept of domain swapping.
+- **Composition** at priority 20 (after rewriter's p10) — receives already-path-transformed URLs and applies domain-level transformation.
+- **`pll_default_language` filter** at p1 on subdomain makes Polylang treat the target language as default, generating clean URLs with zero `str_replace` cost.
+- Uses plugin's own `frl_get_language()` and `frl_translator_is_enabled()` helpers instead of raw Polylang calls.
+
+### Files Created
+1. **`modules/subdomain_adapter/config-constants-subdomain-adapter.php`** — `FRL_SUBDOMAIN_ADAPTER_MAP` (subdomain → lang + main_domain) and `FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS` (main_domain → default_lang)
+2. **`modules/subdomain_adapter/class-subdomain-adapter.php`** — `Frl_Subdomain_Adapter` singleton with:
+   - `detect()` — reads HTTP_HOST, O(1) map lookups, sets instance properties
+   - `is_configured()`, `is_on_subdomain()` — public query methods
+   - `register_hooks()` — lazy, only when on a configured domain; `frl_is_already_running()` guard
+   - `filter_pll_default_language()` — key mechanism, switches default language on subdomain
+   - `filter_pll_current_language()` — safety net
+   - `filter_pll_get_home_url()` — correct home URLs for hreflang/switcher in both directions
+   - `filter_post_link()`, `filter_post_type_link()`, `filter_page_link()`, `filter_term_link()`, `filter_canonical_url()` — URL transformation at p20
+   - `transform_url()` — 4 cases: main+default (no-op), main+mapped (swap domain), subdomain+target (no-op via pll_default_language), subdomain+cross (swap to main + add prefix)
+   - `redirect_non_target_content()` — 301 redirect on subdomain for non-target content
+   - Guard pattern on all filters: `is_admin()`, `frl_is_rest_api_request()`, `is_preview()`, `!frl_translator_enabled()`, `!frl_get_language()`
+3. **`modules/subdomain_adapter/subdomain-adapter.php`** — Module entry point with header metadata, defensive constant check, singleton init
+
+### Files Modified
+4. **`config/environment/config-defaults.php`** — Added `'subdomain_adapter' => false` to `FRL_ENV_DEFAULT['modules']`
+5. **`config/environment/config-environment.php`** — Added `'subdomain_adapter' => true` to `FRL_ENV_PBS_TEMPLATE['modules']` (inherited by PBS production, RU subdomain, and staging)
+
+### Key Design Properties
+- **Zero-cost target URLs:** On subdomain, `pll_default_language` filter makes Polylang generate clean URLs natively — no `str_replace` needed for the most common case.
+- **Early exits:** Hooks only register when on a configured domain. Each filter bails on admin/REST/preview.
+- **Re-entrancy:** `frl_is_already_running()` guard in `register_hooks()`.
+- **Extensibility:** Add entries to `FRL_SUBDOMAIN_ADAPTER_MAP` + env config for new subdomains. Zero class changes.
+- **Cross-environment support:** Per-entry `main_domain` enables `ru.pbproperty.ge` → `pbproperty.ge` mappings.
+- **Performance:** No DB queries, no regex. Pure `str_replace` operations guarded by early-exit conditions.
+
+*Last Updated: 2026-05-04*

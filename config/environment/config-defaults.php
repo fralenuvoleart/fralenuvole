@@ -45,6 +45,7 @@ const FRL_ENV_DEFAULT = [
         'pbs' => false,
         'pbproperty' => false,
         'frl' => false,
+        'subdomain_adapter' => false,
     ],
     'wp_options' => [
         'blog_public' => 1,

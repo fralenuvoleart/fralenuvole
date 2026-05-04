@@ -25,6 +25,7 @@ const FRL_ENV_PBS_TEMPLATE = [
     'webhook_config' => 'pbs',
     'modules' => [
         'pbs' => true,
+        'subdomain_adapter' => true,
     ],
     'plugin_options' => [
         'wsform_webhook' => true,
