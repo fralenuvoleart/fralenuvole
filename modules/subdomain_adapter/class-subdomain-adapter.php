@@ -6,9 +6,15 @@
  * Maps subdomains to Polylang languages and transforms URLs between a main domain
  * and its language-specific subdomain mirrors.
  *
+ * ## Configuration
+ *
+ * Fully data-driven from FRL_SUBDOMAIN_ADAPTER_MAP, a main-domain-keyed constant.
+ * Each main domain entry maps language slugs to subdomain hosts, with a 'default'
+ * key specifying the Polylang default language for that main domain.
+ *
  * ## How it works
  *
- * ### On the main domain (e.g., pbservices.ge):
+ * ### On a main domain (e.g., pbservices.ge):
  * - Russian content URLs → `ru.pbservices.ge/post-slug/` 
  * - Default language (EN) content URLs → unchanged (no subdomain)
  * - Other languages without subdomain mapping → unchanged
@@ -17,12 +23,11 @@
  * - The `pll_default_language` filter (p1) tells Polylang that RU is the default
  *   language. Polylang naturally hides the language prefix for the default language,
  *   generating clean URLs: `ru.pbservices.ge/post-slug/` — zero str_replace needed.
- * - Cross-language content (EN, IT, AR) → swapped to main domain with correct prefix
+ * - Cross-language content (EN, IT, AR) → swapped to primary main domain with correct prefix
  * - `template_redirect` (p5) 301-redirects non-target-language content to main domain
  *
  * ### Extensibility
- * Fully data-driven from FRL_SUBDOMAIN_ADAPTER_MAP and FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS.
- * Add new subdomain entries in the constants — zero class code changes needed.
+ * Add new main domain entries in FRL_SUBDOMAIN_ADAPTER_MAP — zero class code changes needed.
  *
  * @package Fralenuvole
  */
@@ -51,14 +56,22 @@ class Frl_Subdomain_Adapter {
     // Configuration (set once from constants in detect())
     // -------------------------------------------------------------------------
 
-    /** @var array<string, array{lang: string, main_domain: string}> subdomain_host => config */
-    private array $subdomain_map = [];
+    /**
+     * Main-domain-keyed config: main_domain => { lang => subdomain, 'default' => lang }.
+     *
+     * @var array<string, array<string, string>>
+     */
+    private array $domain_map = [];
 
-    /** @var array<string, string> lang => subdomain_host (reverse index) */
-    private array $lang_to_subdomain = [];
+    /**
+     * Reverse index: subdomain_host => { lang, default_lang, main_domains[] }.
+     *
+     * @var array<string, array{lang: string, default_lang: string, main_domains: string[]}>
+     */
+    private array $subdomain_info = [];
 
-    /** @var array<string, string> main_domain => default_lang */
-    private array $main_defaults = [];
+    /** @var array<string, true> Flat set of known subdomain hosts for O(1) detection. */
+    private array $subdomain_hosts = [];
 
     // -------------------------------------------------------------------------
     // Runtime state (set in detect(), O(1) reads thereafter)
@@ -124,17 +137,41 @@ class Frl_Subdomain_Adapter {
      * Runs once per request (guarded by singleton construction). Sets runtime
      * state properties for O(1) checks in filters.
      *
+     * Builds two internal structures from the main-domain-keyed config:
+     *  - $subdomain_info: reverse index subdomain_host => { lang, default_lang, main_domains[] }
+     *  - $subdomain_hosts: flat set for O(1) subdomain detection
+     *
      * @return void
      */
     private function detect(): void {
-        $this->subdomain_map  = defined('FRL_SUBDOMAIN_ADAPTER_MAP') ? (array) FRL_SUBDOMAIN_ADAPTER_MAP : [];
-        $this->main_defaults  = defined('FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS') ? (array) FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS : [];
+        // Load config.
+        $this->domain_map = defined('FRL_SUBDOMAIN_ADAPTER_MAP')
+            ? (array) FRL_SUBDOMAIN_ADAPTER_MAP : [];
 
-        // Build reverse index: lang => subdomain_host.
-        $this->lang_to_subdomain = [];
-        foreach ($this->subdomain_map as $host => $config) {
-            if (!empty($config['lang']) && !empty($config['main_domain'])) {
-                $this->lang_to_subdomain[$config['lang']] = $host;
+        // Build reverse index: subdomain_host => { lang, default_lang, main_domains[] }.
+        // Also build flat set of subdomain hosts for O(1) subdomain detection.
+        $this->subdomain_info  = [];
+        $this->subdomain_hosts = [];
+
+        foreach ($this->domain_map as $main_domain => $config) {
+            $default_lang = isset($config['default']) ? (string) $config['default'] : '';
+            foreach ($config as $lang => $subdomain) {
+                if ($lang === 'default') {
+                    continue;
+                }
+                $subdomain = (string) $subdomain;
+                if ($subdomain === '') {
+                    continue;
+                }
+                $this->subdomain_hosts[$subdomain] = true;
+                if (!isset($this->subdomain_info[$subdomain])) {
+                    $this->subdomain_info[$subdomain] = [
+                        'lang'         => $lang,
+                        'default_lang' => $default_lang,
+                        'main_domains' => [],
+                    ];
+                }
+                $this->subdomain_info[$subdomain]['main_domains'][] = $main_domain;
             }
         }
 
@@ -149,20 +186,16 @@ class Frl_Subdomain_Adapter {
 
         $this->current_host = $host;
 
-        // Check if we are on a mapped subdomain.
-        if (isset($this->subdomain_map[$host])) {
-            $this->current_subdomain_host   = $host;
-            $this->current_subdomain_lang   = $this->subdomain_map[$host]['lang'];
-            $this->is_on_main_domain        = false;
+        // Check if we are on a mapped subdomain — O(1) via flat set.
+        if (isset($this->subdomain_hosts[$host])) {
+            $this->current_subdomain_host = $host;
+            $this->current_subdomain_lang = $this->subdomain_info[$host]['lang'];
+            $this->is_on_main_domain      = false;
             return;
         }
 
-        // Check if we are on a recognized main domain.
-        $main_domains = [];
-        foreach ($this->subdomain_map as $config) {
-            $main_domains[$config['main_domain']] = true;
-        }
-        $this->is_on_main_domain = isset($main_domains[$host]);
+        // Check if we are on a recognized main domain — single O(1) lookup.
+        $this->is_on_main_domain = isset($this->domain_map[$host]);
     }
 
     // -------------------------------------------------------------------------
@@ -170,12 +203,12 @@ class Frl_Subdomain_Adapter {
     // -------------------------------------------------------------------------
 
     /**
-     * Whether the subdomain map is non-empty (module is configured).
+     * Whether the domain map is non-empty (module is configured).
      *
      * @return bool
      */
     public function is_configured(): bool {
-        return !empty($this->subdomain_map);
+        return !empty($this->domain_map);
     }
 
     /**
@@ -185,6 +218,15 @@ class Frl_Subdomain_Adapter {
      */
     public function is_on_subdomain(): bool {
         return $this->current_subdomain_host !== null;
+    }
+
+    /**
+     * Whether the current request is on a recognized main domain.
+     *
+     * @return bool
+     */
+    public function is_on_main_domain(): bool {
+        return $this->is_on_main_domain;
     }
 
     // -------------------------------------------------------------------------
@@ -229,6 +271,10 @@ class Frl_Subdomain_Adapter {
         // Priority 20: returns correct home URL for mapped languages.
         add_filter('pll_get_home_url', [$this, 'filter_pll_get_home_url'], 20, 2);
 
+        // --- WordPress home_url override on subdomains ---
+        // Priority 20: makes home_url() return the correct subdomain URL.
+        add_filter('home_url', [$this, 'filter_home_url'], 20, 4);
+
         // --- URL transformation filters (priority 20 — after rewriter at p10) ---
         add_filter('post_link',             [$this, 'filter_post_link'],        20, 2);
         add_filter('post_type_link',        [$this, 'filter_post_type_link'],   20, 2);
@@ -255,14 +301,14 @@ class Frl_Subdomain_Adapter {
      *
      * This makes target-language URLs **zero-cost** on the subdomain.
      *
-     * @param  string $lang The current Polylang default language slug.
+     * @param  string|false $lang The current Polylang default language slug.
      * @return string
      */
-    public function filter_pll_default_language($lang): string {
+    public function filter_pll_default_language($lang) {
         if ($this->is_on_subdomain()) {
             return $this->current_subdomain_lang;
         }
-        return $lang;
+        return is_string($lang) ? $lang : '';
     }
 
     // -------------------------------------------------------------------------
@@ -276,14 +322,14 @@ class Frl_Subdomain_Adapter {
      * always matches the subdomain's language. Prevents edge cases where
      * Polylang might detect a different language (e.g., from URL or browser).
      *
-     * @param  string $lang The current Polylang language slug.
+     * @param  string|false $lang The current Polylang language slug.
      * @return string
      */
-    public function filter_pll_current_language($lang): string {
+    public function filter_pll_current_language($lang) {
         if ($this->is_on_subdomain()) {
             return $this->current_subdomain_lang;
         }
-        return $lang;
+        return is_string($lang) ? $lang : '';
     }
 
     // -------------------------------------------------------------------------
@@ -304,25 +350,63 @@ class Frl_Subdomain_Adapter {
      * @return string
      */
     public function filter_pll_get_home_url($url, $lang): string {
-        // If this language has a mapped subdomain → return subdomain URL.
-        if (isset($this->lang_to_subdomain[$lang])) {
-            return 'https://' . $this->lang_to_subdomain[$lang] . '/';
-        }
-
-        // On a subdomain, for non-target languages → return main domain URL.
-        if ($this->is_on_subdomain() && $lang !== $this->current_subdomain_lang) {
-            $main_domain = $this->subdomain_map[$this->current_subdomain_host]['main_domain'];
-            $main_default = $this->main_defaults[$main_domain] ?? null;
-
-            if ($lang === $main_default) {
-                // Default language on main → no prefix.
-                return 'https://' . $main_domain . '/';
+        // Determine which main domain to use for resolution.
+        if ($this->is_on_subdomain()) {
+            if (!isset($this->subdomain_info[$this->current_subdomain_host])) {
+                return $url;
             }
-            // Non-default language on main → has prefix.
-            return 'https://' . $main_domain . '/' . $lang . '/';
+            $resolve_domain = $this->subdomain_info[$this->current_subdomain_host]['main_domains'][0];
+        } elseif ($this->is_on_main_domain) {
+            $resolve_domain = $this->current_host;
+        } else {
+            return $url;
         }
 
-        return $url;
+        $scheme = $this->get_scheme();
+
+        // If this language has a mapped subdomain → return subdomain URL.
+        if (isset($this->domain_map[$resolve_domain][$lang])
+            && $lang !== 'default'
+            && $this->domain_map[$resolve_domain][$lang] !== ''
+        ) {
+            return "{$scheme}://" . $this->domain_map[$resolve_domain][$lang] . '/';
+        }
+
+        // Return main domain URL, with or without prefix.
+        $main_default = $this->domain_map[$resolve_domain]['default'] ?? '';
+        if ((string) $lang === $main_default) {
+            return "{$scheme}://{$resolve_domain}/";
+        }
+        return "{$scheme}://{$resolve_domain}/{$lang}/";
+    }
+
+    /**
+     * Get the current request scheme.
+     *
+     * @return string 'https' or 'http'.
+     */
+    private function get_scheme(): string {
+        return is_ssl() ? 'https' : 'http';
+    }
+
+    /**
+     * Override home_url on mapped subdomains.
+     *
+     * Makes WordPress core functions (home_url, get_home_url) return
+     * the correct subdomain URL instead of the main domain.
+     *
+     * @param  string      $url         The complete home URL.
+     * @param  string      $path        Path relative to the home URL.
+     * @param  string|null $orig_scheme Scheme for the home URL.
+     * @param  int|null    $blog_id     Blog ID.
+     * @return string
+     */
+    public function filter_home_url($url, $path, $orig_scheme, $blog_id): string {
+        if (!$this->is_on_subdomain()) {
+            return $url;
+        }
+        $scheme = $this->get_scheme();
+        return "{$scheme}://{$this->current_subdomain_host}/" . ltrim($path, '/');
     }
 
     // -------------------------------------------------------------------------
@@ -443,20 +527,20 @@ class Frl_Subdomain_Adapter {
     /**
      * Filter: wpseo_canonical
      *
-     * @param  string $url The canonical URL.
+     * @param  string|false $url The canonical URL.
      * @return string
      */
-    public function filter_canonical_url($url): string {
+    public function filter_canonical_url($url) {
         if (!$this->should_transform()) {
-            return $url;
+            return is_string($url) ? $url : '';
         }
 
         $content_lang = frl_get_language();
         if (empty($content_lang)) {
-            return $url;
+            return is_string($url) ? $url : '';
         }
 
-        return $this->transform_url($url, $content_lang);
+        return $this->transform_url((string) $url, $content_lang);
     }
 
     // -------------------------------------------------------------------------
@@ -473,6 +557,8 @@ class Frl_Subdomain_Adapter {
      *
      * 2. **Main domain + mapped language** → Swap domain, strip prefix.
      *    `pbservices.ge/ru/post/` → `ru.pbservices.ge/post/`
+     *    Uses $this->current_host as source — works for any recognized main domain
+     *    (production, staging, etc.) without hard-coding.
      *
      * 3. **Subdomain + target language** → No-op.
      *    `pll_default_language` filter makes Polylang generate clean URLs.
@@ -480,73 +566,81 @@ class Frl_Subdomain_Adapter {
      * 4. **Subdomain + cross language** → Strip prefix, swap domain, add prefix if needed.
      *    `ru.pbservices.ge/en/post/` → `pbservices.ge/post/` (EN default, no prefix)
      *    `ru.pbservices.ge/it/post/` → `pbservices.ge/it/post/` (IT has prefix)
+     *    Uses the primary main domain (first registered) as the target.
      *
      * @param  string $url          The full URL to transform.
      * @param  string $content_lang The language slug of the content.
      * @return string
      */
     private function transform_url(string $url, string $content_lang): string {
-        $target_subdomain = $this->lang_to_subdomain[$content_lang] ?? null;
+        // Determine target subdomain and default language.
+        if ($this->is_on_subdomain()) {
+            if (!isset($this->subdomain_info[$this->current_subdomain_host])) {
+                return $url;
+            }
+            $info              = $this->subdomain_info[$this->current_subdomain_host];
+            $target_subdomain  = $info['lang'] === $content_lang
+                ? $this->current_subdomain_host : null;
+            $main_default      = $info['default_lang'];
+            $primary_main      = $info['main_domains'][0];
 
-        // No subdomain mapped for this language → unchanged.
-        if ($target_subdomain === null) {
+            // Case 3: Content matches subdomain's language → no-op (done early
+            // before URL parsing to avoid unnecessary work).
+            if ($content_lang === $this->current_subdomain_lang) {
+                return $url;
+            }
+        } else {
+            $lang_map          = $this->domain_map[$this->current_host] ?? [];
+            $target_subdomain  = ($content_lang !== 'default' && isset($lang_map[$content_lang]))
+                ? $lang_map[$content_lang] : null;
+            $main_default      = $lang_map['default'] ?? '';
+
+            // On main domain, only transform if language has a mapped subdomain.
+            // Cross-language content on subdomains (Case 4) is handled below
+            // and does NOT require a mapped subdomain.
+            if ($target_subdomain === null) {
+                return $url;
+            }
+        }
+
+        $parsed = wp_parse_url($url);
+        if (empty($parsed['host'])) {
             return $url;
         }
 
-        $main_domain  = $this->subdomain_map[$target_subdomain]['main_domain'];
-        $main_default = $this->main_defaults[$main_domain] ?? null;
+        $scheme   = $parsed['scheme'] ?? 'https';
+        $path     = $parsed['path'] ?? '/';
+        $query    = isset($parsed['query']) ? '?' . $parsed['query'] : '';
+        $fragment = isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '';
 
         // --- Case 1 & 2: ON MAIN DOMAIN ---
         if (!$this->is_on_subdomain()) {
-            // Case 1: Default language on main → stays on main (no prefix).
+            // Case 1: Default language on main → no-op.
             if ($content_lang === $main_default) {
                 return $url;
             }
-
             // Case 2: Mapped language on main → swap domain, strip prefix.
-            return str_replace(
-                "https://{$main_domain}/{$content_lang}/",
-                "https://{$target_subdomain}/",
-                $url
-            );
+            $prefix = '/' . $content_lang . '/';
+            if (str_starts_with($path, $prefix)) {
+                $path = '/' . substr($path, strlen($prefix));
+            }
+            return "{$scheme}://{$target_subdomain}{$path}{$query}{$fragment}";
         }
 
         // --- ON SUBDOMAIN ---
-        // Case 3: Content matches subdomain's language.
-        // pll_default_language filter makes Polylang generate clean URLs
-        // (no prefix) for this language → NO transformation needed.
-        if ($content_lang === $this->current_subdomain_lang) {
-            return $url;
+        // Case 4: Cross-language content on subdomain → swap to primary main domain.
+        // Languages without a mapped subdomain (e.g., IT, AR) are also handled:
+        // their prefix is stripped and they're placed on the primary main domain.
+        $prefix = '/' . $content_lang . '/';
+        if (str_starts_with($path, $prefix)) {
+            $path = '/' . substr($path, strlen($prefix));
         }
 
-        // --- Case 4: Cross-language content on subdomain → swap to main domain ---
-
-        // Step 1: Strip the language prefix from the subdomain URL.
-        // The URL already has /{lang}/ prefix because Polylang added it for
-        // the non-default language on the subdomain.
-        $url = str_replace(
-            "https://{$this->current_subdomain_host}/{$content_lang}/",
-            "https://{$this->current_subdomain_host}/",
-            $url
-        );
-
-        // Step 2: Swap subdomain host to main domain.
-        $url = str_replace(
-            "https://{$this->current_subdomain_host}/",
-            "https://{$main_domain}/",
-            $url
-        );
-
-        // Step 3: Add language prefix back if this language is NOT default on main.
         if ($content_lang !== $main_default) {
-            $url = str_replace(
-                "https://{$main_domain}/",
-                "https://{$main_domain}/{$content_lang}/",
-                $url
-            );
+            $path = '/' . $content_lang . $path;
         }
 
-        return $url;
+        return "{$scheme}://{$primary_main}{$path}{$query}{$fragment}";
     }
 
     // -------------------------------------------------------------------------
@@ -554,9 +648,11 @@ class Frl_Subdomain_Adapter {
     // -------------------------------------------------------------------------
 
     /**
-     * On subdomain, 301-redirect non-target-language content to the main domain.
+     * On subdomain, 301-redirect non-target-language content to the primary main domain.
      *
-     * Also handles 404 pages on the subdomain → redirect to main domain home.
+     * Handles WP_Post, WP_Term, and queries with no queried object (author archives,
+     * date archives, post type archives). 404 errors are left to render natively
+     * on the subdomain — they are not redirected.
      *
      * @return void
      */
@@ -568,7 +664,9 @@ class Frl_Subdomain_Adapter {
             return;
         }
 
-        $main_domain = $this->subdomain_map[$this->current_subdomain_host]['main_domain'];
+        if (!isset($this->subdomain_info[$this->current_subdomain_host])) {
+            return;
+        }
 
         $obj = get_queried_object();
 
@@ -579,14 +677,36 @@ class Frl_Subdomain_Adapter {
                     home_url($_SERVER['REQUEST_URI']),
                     $post_lang
                 );
+                add_filter('x_redirect_by', fn() => 'Frl_Subdomain_Adapter', 999);
                 wp_redirect($redirect_url, 301);
                 exit;
             }
         }
 
-        // 404 on subdomain → redirect to main domain home.
-        if (is_404()) {
-            wp_redirect('https://' . $main_domain . '/', 301);
+        if ($obj instanceof \WP_Term) {
+            $term_lang = frl_get_language($obj->term_id, 'term');
+            if ($term_lang && $term_lang !== $this->current_subdomain_lang) {
+                $redirect_url = $this->transform_url(
+                    home_url($_SERVER['REQUEST_URI']),
+                    $term_lang
+                );
+                add_filter('x_redirect_by', fn() => 'Frl_Subdomain_Adapter', 999);
+                wp_redirect($redirect_url, 301);
+                exit;
+            }
+        }
+
+        // Handle queries with no queried object (author archives, date archives,
+        // post type archives) where the current request language doesn't match
+        // the subdomain.
+        $current_lang = frl_get_language();
+        if ($current_lang && $current_lang !== $this->current_subdomain_lang) {
+            $redirect_url = $this->transform_url(
+                home_url($_SERVER['REQUEST_URI']),
+                $current_lang
+            );
+            add_filter('x_redirect_by', fn() => 'Frl_Subdomain_Adapter', 999);
+            wp_redirect($redirect_url, 301);
             exit;
         }
     }

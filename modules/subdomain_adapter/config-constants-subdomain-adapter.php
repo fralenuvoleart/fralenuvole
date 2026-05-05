@@ -12,35 +12,33 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Subdomain → { lang, main_domain } mapping.
+ * Main domain → language-to-subdomain mapping.
  *
- * Key = full subdomain host (e.g., 'ru.pbservices.ge').
- * 'lang'        = Polylang language slug for this subdomain's content.
- * 'main_domain' = the primary domain this subdomain is a mirror of.
+ * Top-level keys are recognized main domains (production, staging, etc.).
+ * Inner keys are Polylang language slugs mapped to their subdomain hosts.
+ * 'default' key specifies the default language for that main domain
+ * (the one with no URL prefix in Polylang).
  *
- * Add entries here for new language subdomains, including cross-environment ones.
+ * @example
+ *   On pbservices.ge, RU content → ru.pbservices.ge, AR → ar.pbservices.ge.
+ *   On staging.pbservices.ge, only RU is mapped (to same production subdomain).
+ *   EN is the default on both (no prefix on main domain).
  *
- * @see FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS
+ * @see Frl_Subdomain_Adapter::detect()
  */
 define('FRL_SUBDOMAIN_ADAPTER_MAP', [
-    'ru.pbservices.ge' => [
-        'lang'        => 'ru',
-        'main_domain' => 'pbservices.ge',
+    'pbservices.ge' => [
+        'ru'      => 'ru.pbservices.ge',
+        // Future: 'ar' => 'ar.pbservices.ge',
+        'default' => 'en',
     ],
-    // Future same-env: 'ar.pbservices.ge' => ['lang' => 'ar', 'main_domain' => 'pbservices.ge'],
-    // Future cross-env: 'ru.pbproperty.ge' => ['lang' => 'ru', 'main_domain' => 'pbproperty.ge'],
-]);
-
-/**
- * Main domain → default language slug (the one with NO URL prefix in Polylang).
- *
- * On the main domain, this language has "hide URL language information" enabled in
- * Polylang settings, so its URLs have no /lang/ prefix.
- *
- * Used by transform_url() to determine whether a language prefix needs to be added
- * when building cross-domain URLs.
- */
-define('FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS', [
-    'pbservices.ge'  => 'en',
-    'pbproperty.ge'  => 'en',
+    'staging.pbservices.ge' => [
+        'ru'      => 'ru.pbservices.ge',
+        'default' => 'en',
+    ],
+    // Future cross-env example:
+    // 'pbproperty.ge' => [
+    //     'ru'      => 'ru.pbproperty.ge',
+    //     'default' => 'en',
+    // ],
 ]);

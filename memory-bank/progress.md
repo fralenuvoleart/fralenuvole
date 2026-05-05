@@ -1,6 +1,20 @@
 # Project Progress
 
-## Recent Updates (v5.4.0)
+## Recent Updates (v5.7.0 — 2026-05-05)
+
+### Subdomain Adapter Module — Implemented & Documented
+- **New module** [`modules/subdomain_adapter/`](modules/subdomain_adapter/) for bidirectional URL transformation between main domains and language-specific subdomains
+- **Documentation:** [`docs/SUBDOMAIN-ADAPTER.md`](docs/SUBDOMAIN-ADAPTER.md)
+- **Config:** Main-domain-keyed `FRL_SUBDOMAIN_ADAPTER_MAP` with `'default'` key merged in; `FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS` eliminated
+- **Key mechanism:** `pll_default_language` filter (p1) makes Polylang treat subdomain's language as default — zero-cost clean URLs
+- **URL transformation:** `transform_url()` uses `wp_parse_url()` for robust component manipulation (handles query strings, fragments, mixed case, any scheme)
+- **Redirects:** `template_redirect` (p5) handles `WP_Post`, `WP_Term`, and archive queries; 404s served locally
+- **Staging support:** Add staging domain as top-level key in config — zero code changes needed
+- **`home_url` filter:** WordPress core `home_url()` returns correct subdomain URL
+- **Public API:** `is_on_main_domain()`, `is_on_subdomain()`, `is_configured()`
+- **TypeError fixes:** Polylang/Yoast filter callbacks handle `false` gracefully
+
+## Previous Updates (v5.4.0)
 - Plugin Exclusion Feature: MU-based loader to prevent specified plugins from loading without deactivating them
   - **Frontend exclusion**: applies to all users in frontend context
   - **Backend exclusion**: applies to all users in admin context, filtered by admin screen via `plugin-path|admin-screen` format
