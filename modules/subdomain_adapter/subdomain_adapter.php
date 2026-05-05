@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 // Load configuration constants.
 require_once __DIR__ . '/config-constants-subdomain-adapter.php';
 
-// Defensive: bail if constants were not defined (e.g., config file issue).
+// Defensive: bail if constants were not defined.
 if (!defined('FRL_SUBDOMAIN_ADAPTER_MAP') || !defined('FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS')) {
     return;
 }
