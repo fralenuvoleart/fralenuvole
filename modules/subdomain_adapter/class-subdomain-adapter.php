@@ -43,6 +43,18 @@ if (!defined('ABSPATH')) {
 class Frl_Subdomain_Adapter {
 
     // -------------------------------------------------------------------------
+    // Constants
+    // -------------------------------------------------------------------------
+
+    /**
+     * Fallback language slug used when a main domain entry is missing the
+     * required 'default_lang' key in FRL_SUBDOMAIN_ADAPTER_MAP.
+     *
+     * @var string
+     */
+    private const FALLBACK_LANG = 'en';
+
+    // -------------------------------------------------------------------------
     // Singleton
     // -------------------------------------------------------------------------
 
@@ -175,7 +187,7 @@ class Frl_Subdomain_Adapter {
         $this->subdomain_hosts = [];
 
         foreach ($this->domain_map as $main_domain => $config) {
-            $default_lang = isset($config['default_lang']) ? (string) $config['default_lang'] : '';
+            $default_lang = isset($config['default_lang']) ? (string) $config['default_lang'] : self::FALLBACK_LANG;
             foreach ($config as $lang => $subdomain) {
                 if ($lang === 'default_lang') {
                     continue;
@@ -411,7 +423,7 @@ class Frl_Subdomain_Adapter {
         }
 
         // Return main domain URL, with or without prefix.
-        $main_default = $this->domain_map[$resolve_domain]['default_lang'] ?? '';
+        $main_default = $this->domain_map[$resolve_domain]['default_lang'] ?? self::FALLBACK_LANG;
         if ((string) $lang === $main_default) {
             return "{$scheme}://{$resolve_domain}/";
         }
@@ -660,7 +672,7 @@ class Frl_Subdomain_Adapter {
             $lang_map          = $this->domain_map[$this->current_host] ?? [];
             $target_subdomain  = isset($lang_map[$content_lang])
                 ? $lang_map[$content_lang] : null;
-            $main_default      = $lang_map['default_lang'] ?? '';
+            $main_default      = $lang_map['default_lang'] ?? self::FALLBACK_LANG;
 
             // On main domain, only transform if language has a mapped subdomain.
             // Cross-language content on subdomains (Case 4) is handled below
