@@ -421,9 +421,12 @@ class Frl_Subdomain_Adapter {
      * Makes WordPress core functions (home_url, get_home_url) return
      * the correct subdomain URL instead of the main domain.
      *
+     * $orig_scheme is intentionally ignored — is_ssl() is used instead
+     * for dynamic protocol detection rather than trusting the passed value.
+     *
      * @param  string      $url         The complete home URL.
      * @param  string      $path        Path relative to the home URL.
-     * @param  string|null $orig_scheme Scheme for the home URL.
+     * @param  string|null $orig_scheme Scheme for the home URL (unused, see above).
      * @param  int|null    $blog_id     Blog ID.
      * @return string
      */
@@ -445,7 +448,7 @@ class Frl_Subdomain_Adapter {
      * @return bool True if URL transformation should proceed.
      */
     private function should_transform(): bool {
-        if (frl_is_admin() || frl_is_rest_api_request() || is_preview()) {
+        if (frl_is_admin() || frl_is_rest_api_request() || is_preview() || frl_is_cron_job_request()) {
             return false;
         }
         if (!$this->is_configured()) {
@@ -591,10 +594,6 @@ class Frl_Subdomain_Adapter {
      * @return string
      */
     private function transform_url(string $url, string $content_lang): string {
-        // Declared at function scope so it is always defined regardless of
-        // which branch of the if/else below executes.
-        $target_subdomain = null;
-
         // Determine target subdomain and default language.
         if ($this->is_on_subdomain()) {
             // Case 3: Content matches subdomain's language → no-op (done early
@@ -628,7 +627,15 @@ class Frl_Subdomain_Adapter {
             }
         }
 
-        $parsed = wp_parse_url($url);
+        // Static cache: avoid re-parsing the same URL when transform_url()
+        // is called multiple times for the same content in one request
+        // (e.g., post_link + wpseo_canonical for the same post).
+        static $parsed_cache = [];
+        if (!isset($parsed_cache[$url])) {
+            $parsed_cache[$url] = wp_parse_url($url);
+        }
+        $parsed = $parsed_cache[$url];
+
         if (empty($parsed['host'])) {
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 frl_log('Subdomain Adapter: Failed to parse URL {url}', [
