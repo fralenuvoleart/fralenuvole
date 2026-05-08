@@ -179,7 +179,8 @@ The staging domain will be detected as a main domain. Russian content URLs on st
 | Aspect | Detail |
 |--------|--------|
 | Target-language URLs on subdomain | Zero cost — Polylang generates clean URLs natively |
-| Cross-language URLs | One `wp_parse_url()` + string operations per URL |
+| Cross-language URLs (first call) | One `wp_parse_url()` + string operations per URL |
+| Cross-language URLs (subsequent calls) | Zero cost — full result cached per-request via static `$transform_cache` |
 | Main domain detection | Single `isset($domain_map[$host])` — O(1) |
 | Subdomain detection | Single `isset($subdomain_hosts[$host])` — O(1) |
 | Reverse index build | One-time O(n×m) where n=main domains (≤5), m=languages (≤5) |
@@ -214,11 +215,14 @@ Key technical observations for future maintainers.
 
 - O(1) domain detection via flat `isset()` on pre-built hash maps.
 - Hook registration skipped entirely on unrecognized domains.
-- `wp_parse_url()` results cached per-request via static variable ([line 633](modules/subdomain_adapter/class-subdomain-adapter.php:633)) — avoids re-parsing when multiple filters fire for the same URL (e.g., `post_link` + `wpseo_canonical`).
+- `wp_parse_url()` results cached per-request via static variable — avoids re-parsing when multiple filters fire for the same URL.
+- **Full transformation results cached per-request** via static `$transform_cache` keyed by `"$url|$content_lang"` — when `post_link` and `wpseo_canonical` fire for the same post, the second call is a single `isset()` lookup.
 
 ### Defensive Patterns
 
-- [`should_transform()`](modules/subdomain_adapter/class-subdomain-adapter.php:450) gates all URL filters behind `is_admin()`, REST API, preview, cron, and translator-availability checks.
+- [`should_transform()`](modules/subdomain_adapter/class-subdomain-adapter.php:485) gates all URL filters behind `is_admin()`, REST API, preview, cron, and translator-availability checks. Intentionally does NOT exclude `is_robots()` or `is_feed()` — each subdomain should have its own robots.txt and sitemap (industry best practice), and feed URLs should point to canonical domains.
+- [`filter_pll_get_home_url()`](modules/subdomain_adapter/class-subdomain-adapter.php:398) validates `$lang` against `frl_get_active_languages()` — unrecognized language slugs return the original URL unchanged instead of generating 404-prone URLs.
+- Case-insensitive language prefix stripping in [`transform_url()`](modules/subdomain_adapter/class-subdomain-adapter.php:735) — uses `strtolower()` before `str_starts_with()` to handle mixed-case path segments from external links.
 - `filter_home_url` intentionally ignores WordPress' `$orig_scheme` parameter — uses `is_ssl()` for dynamic protocol detection ([line 424](modules/subdomain_adapter/class-subdomain-adapter.php:424)).
 - Polylang/Yoast callbacks omit `: string` return types because those plugins may pass `false`.
 

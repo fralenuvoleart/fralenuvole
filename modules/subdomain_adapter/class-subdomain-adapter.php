@@ -396,6 +396,11 @@ class Frl_Subdomain_Adapter {
      * @return string
      */
     public function filter_pll_get_home_url($url, $lang): string {
+        // Validate: if the language is not recognized, return the original URL unchanged.
+        if (!in_array($lang, frl_get_active_languages(), true)) {
+            return is_string($url) ? $url : '';
+        }
+
         // Determine which main domain to use for resolution.
         if ($this->is_on_subdomain()) {
             if (!isset($this->subdomain_info[$this->current_subdomain_host])) {
@@ -468,6 +473,12 @@ class Frl_Subdomain_Adapter {
 
     /**
      * Guard pattern used by all URL filters.
+     *
+     * Intentionally does NOT exclude is_robots() or is_feed():
+     * - robots.txt: each subdomain should have its own robots.txt pointing to its
+     *   own sitemap (industry best practice for subdomain-based multilingual sites).
+     * - Feeds: post URLs in feeds should point to the correct canonical domain,
+     *   consistent with the plugin's goal of serving content on the right domain.
      *
      * @return bool True if URL transformation should proceed.
      */
@@ -682,6 +693,15 @@ class Frl_Subdomain_Adapter {
             }
         }
 
+        // Static result cache: avoid re-computing the full transformation when
+        // transform_url() is called multiple times for the same content in one
+        // request (e.g., post_link + wpseo_canonical for the same post).
+        static $transform_cache = [];
+        $cache_key = $url . '|' . $content_lang;
+        if (isset($transform_cache[$cache_key])) {
+            return $transform_cache[$cache_key];
+        }
+
         // Static cache: avoid re-parsing the same URL when transform_url()
         // is called multiple times for the same content in one request
         // (e.g., post_link + wpseo_canonical for the same post).
@@ -697,7 +717,7 @@ class Frl_Subdomain_Adapter {
                     'url' => $url,
                 ]);
             }
-            return $url;
+            return $transform_cache[$cache_key] = $url;
         }
 
         $scheme   = $parsed['scheme'] ?? 'https';
@@ -709,22 +729,28 @@ class Frl_Subdomain_Adapter {
         if (!$this->is_on_subdomain()) {
             // Case 1: Default language on main → no-op.
             if ($content_lang === $main_default) {
-                return $url;
+                return $transform_cache[$cache_key] = $url;
             }
             // Case 2: Mapped language on main → swap domain, strip prefix.
-            $prefix = '/' . $content_lang . '/';
-            if (str_starts_with($path, $prefix)) {
+            // Use case-insensitive comparison: external links may have mixed-case
+            // path segments (e.g., /RU/post-slug/).
+            $path_lower = strtolower($path);
+            $prefix     = '/' . strtolower($content_lang) . '/';
+            if (str_starts_with($path_lower, $prefix)) {
                 $path = '/' . substr($path, strlen($prefix));
             }
-            return "{$scheme}://{$target_subdomain}{$path}{$query}{$fragment}";
+            return $transform_cache[$cache_key] = "{$scheme}://{$target_subdomain}{$path}{$query}{$fragment}";
         }
 
         // --- ON SUBDOMAIN ---
         // Case 4: Cross-language content on subdomain → swap to primary main domain.
         // Languages without a mapped subdomain (e.g., IT, AR) are also handled:
         // their prefix is stripped and they're placed on the primary main domain.
-        $prefix = '/' . $content_lang . '/';
-        if (str_starts_with($path, $prefix)) {
+        // Use case-insensitive comparison: external links may have mixed-case
+        // path segments (e.g., /RU/post-slug/).
+        $path_lower = strtolower($path);
+        $prefix     = '/' . strtolower($content_lang) . '/';
+        if (str_starts_with($path_lower, $prefix)) {
             $path = '/' . substr($path, strlen($prefix));
         }
 
@@ -732,7 +758,7 @@ class Frl_Subdomain_Adapter {
             $path = '/' . $content_lang . $path;
         }
 
-        return "{$scheme}://{$primary_main}{$path}{$query}{$fragment}";
+        return $transform_cache[$cache_key] = "{$scheme}://{$primary_main}{$path}{$query}{$fragment}";
     }
 
     // -------------------------------------------------------------------------
