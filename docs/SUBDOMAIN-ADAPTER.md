@@ -108,6 +108,7 @@ All hooks registered in [`register_hooks()`](modules/subdomain_adapter/class-sub
 | `page_link` | 20 | Transform page permalinks |
 | `term_link` | 20 | Transform term archive links |
 | `wpseo_canonical` | 20 | Transform Yoast SEO canonical URLs |
+| `the_seo_framework_meta_render_data` | 20 | Transform The SEO Framework canonical URLs (v5.0+) |
 | `template_redirect` | 5 | 301-redirect non-target content on subdomain |
 
 Priority 20 for URL filters ensures they run after the Rewriter (priority 10).
@@ -195,3 +196,41 @@ The staging domain will be detected as a main domain. Russian content URLs on st
 - **Re-entrancy**: `frl_is_already_running()` prevents double hook registration.
 - **404 behavior**: 404s are intentionally not redirected. If you need custom 404 handling on subdomains, use WordPress template hierarchy.
 - **Cross-environment**: For multi-site setups where different main domains map to different subdomains (e.g., `pbproperty.ge` → `ru.pbproperty.ge`), add separate top-level entries. Each main domain has its own independent language map.
+
+---
+
+## Code Review Notes (2026-05-08)
+
+Key technical observations for future maintainers.
+
+### Design Strengths
+
+- **`pll_default_language` trick** ([`filter_pll_default_language`](modules/subdomain_adapter/class-subdomain-adapter.php:328), p1): Makes Polylang treat the subdomain's language as default, generating clean URLs natively — zero `str_replace` cost. This is the module's core insight.
+- **Four-case URL model** ([`transform_url()`](modules/subdomain_adapter/class-subdomain-adapter.php:596)): Complete coverage of main↔subdomain transformations. No edge-case gaps.
+- **Main-domain-keyed config** ([`FRL_SUBDOMAIN_ADAPTER_MAP`](modules/subdomain_adapter/config-constants-subdomain-adapter.php:29)): Staging is a first-class top-level entry. Cross-language redirects use `main_domains[0]` (primary/production), not staging.
+- **Zero DB queries**: Module never touches the database. All state derived from constants and `$_SERVER`.
+
+### Performance
+
+- O(1) domain detection via flat `isset()` on pre-built hash maps.
+- Hook registration skipped entirely on unrecognized domains.
+- `wp_parse_url()` results cached per-request via static variable ([line 633](modules/subdomain_adapter/class-subdomain-adapter.php:633)) — avoids re-parsing when multiple filters fire for the same URL (e.g., `post_link` + `wpseo_canonical`).
+
+### Defensive Patterns
+
+- [`should_transform()`](modules/subdomain_adapter/class-subdomain-adapter.php:450) gates all URL filters behind `is_admin()`, REST API, preview, cron, and translator-availability checks.
+- `filter_home_url` intentionally ignores WordPress' `$orig_scheme` parameter — uses `is_ssl()` for dynamic protocol detection ([line 424](modules/subdomain_adapter/class-subdomain-adapter.php:424)).
+- Polylang/Yoast callbacks omit `: string` return types because those plugins may pass `false`.
+
+### PHP Version
+
+Requires PHP 8.0+ (`str_starts_with()`, typed properties with union types). Ensure `composer.json` declares `"php": ">=8.0"`.
+
+### SEO Plugin Integration
+
+Two SEO plugins are explicitly supported:
+- **Yoast SEO**: [`filter_canonical_url()`](modules/subdomain_adapter/class-subdomain-adapter.php:554) hooks into `wpseo_canonical` (p20).
+- **The SEO Framework**: [`filter_tsf_canonical_url()`](modules/subdomain_adapter/class-subdomain-adapter.php:577) hooks into `the_seo_framework_meta_render_data` (p20). TSF v5.0+ stopped using WordPress core's `get_canonical_url` filter; this is the official replacement. The callback transforms `$render_data['canonical']['attributes']['href']` in-place.
+
+For singular posts and terms, `post_link`/`term_link` filters (also p20) already cover most SEO plugins since they derive canonical URLs from `get_permalink()`/`get_term_link()`. The dedicated SEO filters handle edge cases: homepage, post type archives, author archives.
+

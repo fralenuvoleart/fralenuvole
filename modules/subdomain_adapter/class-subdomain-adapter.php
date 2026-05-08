@@ -303,6 +303,7 @@ class Frl_Subdomain_Adapter {
         add_filter('page_link',             [$this, 'filter_page_link'],        20, 2);
         add_filter('term_link',             [$this, 'filter_term_link'],        20, 3);
         add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    20, 1);
+        add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], 20, 1);
 
         // --- Template redirect: 301 non-target content on subdomain ---
         add_action('template_redirect',     [$this, 'redirect_non_target_content'], 5);
@@ -562,6 +563,37 @@ class Frl_Subdomain_Adapter {
         }
 
         return $this->transform_url((string) $url, $content_lang);
+    }
+
+    /**
+     * Filter: the_seo_framework_meta_render_data
+     *
+     * Transforms the canonical URL in The SEO Framework's render data array.
+     * TSF v5.0+ uses this filter instead of WordPress core's get_canonical_url.
+     *
+     * @param  array $render_data TSF meta tag render data keyed by tag type.
+     * @return array
+     */
+    public function filter_tsf_canonical_url(array $render_data): array {
+        if (!$this->should_transform()) {
+            return $render_data;
+        }
+
+        if (!isset($render_data['canonical']['attributes']['href'])) {
+            return $render_data;
+        }
+
+        $content_lang = frl_get_language();
+        if (empty($content_lang)) {
+            return $render_data;
+        }
+
+        $render_data['canonical']['attributes']['href'] = $this->transform_url(
+            $render_data['canonical']['attributes']['href'],
+            $content_lang
+        );
+
+        return $render_data;
     }
 
     // -------------------------------------------------------------------------
