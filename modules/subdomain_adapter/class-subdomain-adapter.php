@@ -141,6 +141,15 @@ class Frl_Subdomain_Adapter {
      * @return void
      */
     private function detect(): void {
+        // Static cache: reverse indices are built once per request from the
+        // constant. For small maps (≤5 domains × ≤5 languages) the cost is
+        // negligible, but the guard avoids even that trivial work on repeated
+        // singleton access within the same request.
+        static $built = false;
+        if ($built) {
+            return;
+        }
+
         // Load config.
         $this->domain_map = defined('FRL_SUBDOMAIN_ADAPTER_MAP')
             ? (array) FRL_SUBDOMAIN_ADAPTER_MAP : [];
@@ -171,10 +180,22 @@ class Frl_Subdomain_Adapter {
                         'default_lang' => $default_lang,
                         'main_domains' => [],
                     ];
+                } elseif ($this->subdomain_info[$subdomain]['default_lang'] !== $default_lang) {
+                    // Collision: same subdomain registered with different default_lang
+                    // values from different main domains. The first registration wins.
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        frl_log('Subdomain Adapter: default_lang collision for subdomain {subdomain} — using {first}, ignoring {second}', [
+                            'subdomain' => $subdomain,
+                            'first'     => $this->subdomain_info[$subdomain]['default_lang'],
+                            'second'    => $default_lang,
+                        ]);
+                    }
                 }
                 $this->subdomain_info[$subdomain]['main_domains'][] = $main_domain;
             }
         }
+
+        $built = true;
 
         // Read current host.
         $host = $_SERVER['HTTP_HOST'] ?? '';
@@ -303,6 +324,7 @@ class Frl_Subdomain_Adapter {
      * @param  string|false $lang The current Polylang default language slug.
      * @return string
      */
+    // No return type declaration: Polylang may pass false instead of a string.
     public function filter_pll_default_language($lang) {
         if ($this->is_on_subdomain()) {
             return $this->current_subdomain_lang;
@@ -324,6 +346,7 @@ class Frl_Subdomain_Adapter {
      * @param  string|false $lang The current Polylang language slug.
      * @return string
      */
+    // No return type declaration: Polylang may pass false instead of a string.
     public function filter_pll_current_language($lang) {
         if ($this->is_on_subdomain()) {
             return $this->current_subdomain_lang;
@@ -422,7 +445,7 @@ class Frl_Subdomain_Adapter {
      * @return bool True if URL transformation should proceed.
      */
     private function should_transform(): bool {
-        if (is_admin() || frl_is_rest_api_request() || is_preview()) {
+        if (frl_is_admin() || frl_is_rest_api_request() || is_preview()) {
             return false;
         }
         if (!$this->is_configured()) {
@@ -524,6 +547,7 @@ class Frl_Subdomain_Adapter {
      * @param  string|false $url The canonical URL.
      * @return string
      */
+    // No return type declaration: Yoast SEO may pass false instead of a string.
     public function filter_canonical_url($url) {
         if (!$this->should_transform()) {
             return is_string($url) ? $url : '';
@@ -567,6 +591,10 @@ class Frl_Subdomain_Adapter {
      * @return string
      */
     private function transform_url(string $url, string $content_lang): string {
+        // Declared at function scope so it is always defined regardless of
+        // which branch of the if/else below executes.
+        $target_subdomain = null;
+
         // Determine target subdomain and default language.
         if ($this->is_on_subdomain()) {
             // Case 3: Content matches subdomain's language → no-op (done early
