@@ -158,6 +158,17 @@ class Frl_Subdomain_Adapter {
             frl_log('Subdomain Adapter: FRL_SUBDOMAIN_ADAPTER_MAP not defined or empty');
         }
 
+        // Validate configuration: ensure every main domain entry has a default_lang key.
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            foreach ($this->domain_map as $main_domain => $config) {
+                if (!isset($config['default_lang'])) {
+                    frl_log('Subdomain Adapter: Configuration error — main domain {domain} is missing the required "default_lang" key', [
+                        'domain' => $main_domain,
+                    ]);
+                }
+            }
+        }
+
         // Build reverse index: subdomain_host => { lang, default_lang, main_domains[] }.
         // Also build flat set of subdomain hosts for O(1) subdomain detection.
         $this->subdomain_info  = [];
