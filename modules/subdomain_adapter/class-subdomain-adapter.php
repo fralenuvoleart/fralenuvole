@@ -148,15 +148,19 @@ class Frl_Subdomain_Adapter {
         $this->domain_map = defined('FRL_SUBDOMAIN_ADAPTER_MAP')
             ? (array) FRL_SUBDOMAIN_ADAPTER_MAP : [];
 
+        if (empty($this->domain_map) && defined('WP_DEBUG') && WP_DEBUG) {
+            frl_log('Subdomain Adapter: FRL_SUBDOMAIN_ADAPTER_MAP not defined or empty');
+        }
+
         // Build reverse index: subdomain_host => { lang, default_lang, main_domains[] }.
         // Also build flat set of subdomain hosts for O(1) subdomain detection.
         $this->subdomain_info  = [];
         $this->subdomain_hosts = [];
 
         foreach ($this->domain_map as $main_domain => $config) {
-            $default_lang = isset($config['default']) ? (string) $config['default'] : '';
+            $default_lang = isset($config['default_lang']) ? (string) $config['default_lang'] : '';
             foreach ($config as $lang => $subdomain) {
-                if ($lang === 'default') {
+                if ($lang === 'default_lang') {
                     continue;
                 }
                 $subdomain = (string) $subdomain;
@@ -353,13 +357,18 @@ class Frl_Subdomain_Adapter {
         // Determine which main domain to use for resolution.
         if ($this->is_on_subdomain()) {
             if (!isset($this->subdomain_info[$this->current_subdomain_host])) {
-                return $url;
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    frl_log('Subdomain Adapter: Missing subdomain info in home_url filter for host {host}', [
+                        'host' => $this->current_subdomain_host,
+                    ]);
+                }
+                return is_string($url) ? $url : '';
             }
             $resolve_domain = $this->subdomain_info[$this->current_subdomain_host]['main_domains'][0];
         } elseif ($this->is_on_main_domain) {
             $resolve_domain = $this->current_host;
         } else {
-            return $url;
+            return is_string($url) ? $url : '';
         }
 
         $scheme = $this->get_scheme();
@@ -373,7 +382,7 @@ class Frl_Subdomain_Adapter {
         }
 
         // Return main domain URL, with or without prefix.
-        $main_default = $this->domain_map[$resolve_domain]['default'] ?? '';
+        $main_default = $this->domain_map[$resolve_domain]['default_lang'] ?? '';
         if ((string) $lang === $main_default) {
             return "{$scheme}://{$resolve_domain}/";
         }
@@ -432,72 +441,63 @@ class Frl_Subdomain_Adapter {
     }
 
     /**
-     * Filter: post_link
+     * Shared logic for post_link, post_type_link, and page_link filters.
      *
-     * @param  string  $link The post permalink.
+     * @param  string   $link The permalink.
      * @param  \WP_Post $post The post object.
      * @return string
      */
-    public function filter_post_link(string $link, $post): string {
+    private function filter_post_link_internal(string $link, \WP_Post $post): string {
         if (!$this->should_transform()) {
             return $link;
         }
-        if (!$post instanceof \WP_Post) {
-            return $link;
-        }
-
         $content_lang = frl_get_language($post->ID);
         if (empty($content_lang)) {
             return $link;
         }
-
         return $this->transform_url($link, $content_lang);
+    }
+
+    /**
+     * Filter: post_link
+     *
+     * @param  string   $link The post permalink.
+     * @param  \WP_Post $post The post object.
+     * @return string
+     */
+    public function filter_post_link(string $link, $post): string {
+        if (!$post instanceof \WP_Post) {
+            return $link;
+        }
+        return $this->filter_post_link_internal($link, $post);
     }
 
     /**
      * Filter: post_type_link
      *
-     * @param  string  $link The CPT permalink.
+     * @param  string   $link The CPT permalink.
      * @param  \WP_Post $post The post object.
      * @return string
      */
     public function filter_post_type_link(string $link, $post): string {
-        if (!$this->should_transform()) {
-            return $link;
-        }
         if (!$post instanceof \WP_Post) {
             return $link;
         }
-
-        $content_lang = frl_get_language($post->ID);
-        if (empty($content_lang)) {
-            return $link;
-        }
-
-        return $this->transform_url($link, $content_lang);
+        return $this->filter_post_link_internal($link, $post);
     }
 
     /**
      * Filter: page_link
      *
-     * @param  string  $link The page permalink.
+     * @param  string   $link The page permalink.
      * @param  \WP_Post $post The page object.
      * @return string
      */
     public function filter_page_link(string $link, $post): string {
-        if (!$this->should_transform()) {
-            return $link;
-        }
         if (!$post instanceof \WP_Post) {
             return $link;
         }
-
-        $content_lang = frl_get_language($post->ID);
-        if (empty($content_lang)) {
-            return $link;
-        }
-
-        return $this->transform_url($link, $content_lang);
+        return $this->filter_post_link_internal($link, $post);
     }
 
     /**
@@ -576,6 +576,11 @@ class Frl_Subdomain_Adapter {
         // Determine target subdomain and default language.
         if ($this->is_on_subdomain()) {
             if (!isset($this->subdomain_info[$this->current_subdomain_host])) {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    frl_log('Subdomain Adapter: Missing subdomain info for host {host}', [
+                        'host' => $this->current_subdomain_host,
+                    ]);
+                }
                 return $url;
             }
             $info              = $this->subdomain_info[$this->current_subdomain_host];
@@ -591,9 +596,9 @@ class Frl_Subdomain_Adapter {
             }
         } else {
             $lang_map          = $this->domain_map[$this->current_host] ?? [];
-            $target_subdomain  = ($content_lang !== 'default' && isset($lang_map[$content_lang]))
+            $target_subdomain  = isset($lang_map[$content_lang])
                 ? $lang_map[$content_lang] : null;
-            $main_default      = $lang_map['default'] ?? '';
+            $main_default      = $lang_map['default_lang'] ?? '';
 
             // On main domain, only transform if language has a mapped subdomain.
             // Cross-language content on subdomains (Case 4) is handled below
@@ -605,6 +610,11 @@ class Frl_Subdomain_Adapter {
 
         $parsed = wp_parse_url($url);
         if (empty($parsed['host'])) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                frl_log('Subdomain Adapter: Failed to parse URL {url}', [
+                    'url' => $url,
+                ]);
+            }
             return $url;
         }
 
@@ -660,11 +670,19 @@ class Frl_Subdomain_Adapter {
         if (!$this->is_on_subdomain()) {
             return;
         }
+        if (is_404()) {
+            return; // 404s render locally on the subdomain.
+        }
         if (!frl_translator_is_enabled()) {
             return;
         }
 
         if (!isset($this->subdomain_info[$this->current_subdomain_host])) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                frl_log('Subdomain Adapter: Missing subdomain info in redirect for host {host}', [
+                    'host' => $this->current_subdomain_host,
+                ]);
+            }
             return;
         }
 
@@ -674,10 +692,10 @@ class Frl_Subdomain_Adapter {
             $post_lang = frl_get_language($obj->ID);
             if ($post_lang && $post_lang !== $this->current_subdomain_lang) {
                 $redirect_url = $this->transform_url(
-                    home_url($_SERVER['REQUEST_URI']),
+                    home_url($this->get_request_uri()),
                     $post_lang
                 );
-                add_filter('x_redirect_by', fn() => 'Frl_Subdomain_Adapter', 999);
+                add_filter('x_redirect_by', [self::class, 'get_redirect_by'], 999);
                 wp_redirect($redirect_url, 301);
                 exit;
             }
@@ -687,27 +705,32 @@ class Frl_Subdomain_Adapter {
             $term_lang = frl_get_language($obj->term_id, 'term');
             if ($term_lang && $term_lang !== $this->current_subdomain_lang) {
                 $redirect_url = $this->transform_url(
-                    home_url($_SERVER['REQUEST_URI']),
+                    home_url($this->get_request_uri()),
                     $term_lang
                 );
-                add_filter('x_redirect_by', fn() => 'Frl_Subdomain_Adapter', 999);
+                add_filter('x_redirect_by', [self::class, 'get_redirect_by'], 999);
                 wp_redirect($redirect_url, 301);
                 exit;
             }
         }
+    }
 
-        // Handle queries with no queried object (author archives, date archives,
-        // post type archives) where the current request language doesn't match
-        // the subdomain.
-        $current_lang = frl_get_language();
-        if ($current_lang && $current_lang !== $this->current_subdomain_lang) {
-            $redirect_url = $this->transform_url(
-                home_url($_SERVER['REQUEST_URI']),
-                $current_lang
-            );
-            add_filter('x_redirect_by', fn() => 'Frl_Subdomain_Adapter', 999);
-            wp_redirect($redirect_url, 301);
-            exit;
-        }
+    /**
+     * Safely get the current request URI, stripped of null bytes and control characters.
+     *
+     * @return string
+     */
+    private function get_request_uri(): string {
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        return preg_replace('/[\x00-\x1F\x7F]/', '', $uri);
+    }
+
+    /**
+     * Returns the redirect-by header value for wp_redirect().
+     *
+     * @return string
+     */
+    private static function get_redirect_by(): string {
+        return 'Frl_Subdomain_Adapter';
     }
 }

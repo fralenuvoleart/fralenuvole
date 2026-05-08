@@ -40,19 +40,19 @@ Defined in [`config-constants-subdomain-adapter.php`](modules/subdomain_adapter/
 define('FRL_SUBDOMAIN_ADAPTER_MAP', [
     'pbservices.ge' => [
         'ru'      => 'ru.pbservices.ge',   // lang => subdomain host
-        'default' => 'en',                  // default language (no URL prefix)
+        'default_lang' => 'en',             // default language (no URL prefix)
     ],
     'staging.pbservices.ge' => [
         'ru'      => 'ru.pbservices.ge',   // same production subdomain
-        'default' => 'en',
+        'default_lang' => 'en',
     ],
 ]);
 ```
 
 **Rules:**
 - Top-level keys are recognized main domains
-- Inner keys (except `'default'`) are Polylang language slugs mapped to their subdomain hosts
-- `'default'` specifies the language with no URL prefix on that main domain
+- Inner keys (except `'default_lang'`) are Polylang language slugs mapped to their subdomain hosts
+- `'default_lang'` specifies the language with no URL prefix on that main domain
 - Multiple main domains can map to the same subdomain (e.g., staging and production both map `ru` → `ru.pbservices.ge`)
 - The subdomain's own language is implicit — it's the inner key (`'ru'` in `'ru' => 'ru.pbservices.ge'`)
 
@@ -118,9 +118,10 @@ Priority 20 for URL filters ensures they run after the Rewriter (priority 10).
 
 - **`WP_Post` objects** whose language doesn't match the subdomain
 - **`WP_Term` objects** (term archives) whose language doesn't match
-- **Queries with no object** (author archives, date archives, post type archives) where the current request language doesn't match
 
-**404 errors are NOT redirected** — they render locally on the subdomain in the subdomain's language. This is intentional: a 404 means "no content exists," not "content belongs elsewhere."
+**Queries with no object** (author archives, date archives, post type archives) render locally with language-filtered content via Polylang's query filtering. They are not redirected.
+
+**404 errors are NOT redirected** — guarded by an explicit `is_404()` check. They render locally on the subdomain in the subdomain's language. This is intentional: a 404 means "no content exists," not "content belongs elsewhere."
 
 ---
 
@@ -142,12 +143,12 @@ Priority 20 for URL filters ensures they run after the Rewriter (priority 10).
    'pbservices.ge' => [
        'ru'      => 'ru.pbservices.ge',
        'ar'      => 'ar.pbservices.ge',  // NEW
-       'default' => 'en',
+       'default_lang' => 'en',
    ],
    'staging.pbservices.ge' => [
        'ru'      => 'ru.pbservices.ge',
        'ar'      => 'ar.pbservices.ge',  // NEW
-       'default' => 'en',
+       'default_lang' => 'en',
    ],
    ```
 
@@ -164,7 +165,7 @@ Add the staging domain as a top-level key with the same language mappings:
 ```php
 'staging.pbservices.ge' => [
     'ru'      => 'ru.pbservices.ge',
-    'default' => 'en',
+    'default_lang' => 'en',
 ],
 ```
 

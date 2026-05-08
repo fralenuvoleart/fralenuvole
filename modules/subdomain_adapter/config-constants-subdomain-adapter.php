@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
  *
  * Top-level keys are recognized main domains (production, staging, etc.).
  * Inner keys are Polylang language slugs mapped to their subdomain hosts.
- * 'default' key specifies the default language for that main domain
+ * 'default_lang' key specifies the default language for that main domain
  * (the one with no URL prefix in Polylang).
  *
  * @example
@@ -30,15 +30,15 @@ define('FRL_SUBDOMAIN_ADAPTER_MAP', [
     'pbservices.ge' => [
         'ru'      => 'ru.pbservices.ge',
         // Future: 'ar' => 'ar.pbservices.ge',
-        'default' => 'en',
+        'default_lang' => 'en',
     ],
     'staging.pbservices.ge' => [
         'ru'      => 'ru.pbservices.ge',
-        'default' => 'en',
+        'default_lang' => 'en',
     ],
     // Future cross-env example:
     // 'pbproperty.ge' => [
     //     'ru'      => 'ru.pbproperty.ge',
-    //     'default' => 'en',
+    //     'default_lang' => 'en',
     // ],
 ]);

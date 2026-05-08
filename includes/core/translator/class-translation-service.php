@@ -14,6 +14,23 @@ if (!defined('ABSPATH')) {
  *
  * For backward compatibility, this file also provides global helper functions
  * that wrap the class methods, ensuring that existing code continues to work flawlessly.
+ *
+ * ## Caching Strategy
+ *
+ * Two categories, two mechanisms:
+ *
+ * - **Request-immutable values** (language, default language, active languages,
+ *   object language, multilingual checks): stored in declared instance properties
+ *   (e.g., `private ?string $language_cache`). These never change during a request;
+ *   persistent caching would add serialization overhead for zero benefit.
+ *
+ * - **Persistent values** (translations, permalinks, block translations, post/term
+ *   translation maps): stored via `frl_cache_remember()` with appropriate groups
+ *   (`translations`, `blocks`, `permalinks`, `postdata`). These involve expensive
+ *   operations (DB queries, Polylang API calls) and are stable until content changes.
+ *
+ * Helper functions in `functions-translation-helpers.php` are thin wrappers with
+ * NO caching of their own — all caching lives here in the service.
  */
 
 final class Frl_Translation_Service
@@ -34,6 +51,9 @@ final class Frl_Translation_Service
     private ?string $language_cache = null;
     private ?string $default_language_cache = null;
     private ?array $active_languages_cache = null;
+    private array $object_language_cache = [];
+    private array $batch_strings_cache = [];
+    private array $batch_permalinks_cache = [];
     private array $string_registration_queue = [];
     private bool $shutdown_hook_added = false;
 
@@ -344,9 +364,6 @@ final class Frl_Translation_Service
      */
     public function get_translation_batch_strings(array $strings): array
     {
-        // Static request-level cache to avoid redundant processing within the same request
-        static $request_cache = [];
-
         if (empty($strings)) {
             return [];
         }
@@ -364,8 +381,8 @@ final class Frl_Translation_Service
         $batch_key = $language . '|' . implode('|', $sorted_strings);
 
         // Check if we already processed this exact batch in this request
-        if (isset($request_cache[$batch_key])) {
-            return $request_cache[$batch_key];
+        if (isset($this->batch_strings_cache[$batch_key])) {
+            return $this->batch_strings_cache[$batch_key];
         }
 
         // Process each string using the shared core function
@@ -381,7 +398,7 @@ final class Frl_Translation_Service
         }
 
         // Store in request cache
-        $request_cache[$batch_key] = $translations;
+        $this->batch_strings_cache[$batch_key] = $translations;
 
         return $translations;
     }
@@ -395,9 +412,6 @@ final class Frl_Translation_Service
      */
     public function get_translation_batch_permalinks(array $slugs, ?string $language = null): array
     {
-        // Static request-level cache to avoid redundant processing within the same request
-        static $request_cache = [];
-
         if (empty($slugs)) {
             return [];
         }
@@ -405,8 +419,8 @@ final class Frl_Translation_Service
         $language = $language ?: $this->get_language();
         $batch_key = $language . '|' . implode('|', $slugs);
 
-        if (isset($request_cache[$batch_key])) {
-            return $request_cache[$batch_key];
+        if (isset($this->batch_permalinks_cache[$batch_key])) {
+            return $this->batch_permalinks_cache[$batch_key];
         }
 
         $permalinks = [];
@@ -504,7 +518,7 @@ final class Frl_Translation_Service
             $permalinks[$original_slug] = '#';
         }
 
-        $request_cache[$batch_key] = $permalinks;
+        $this->batch_permalinks_cache[$batch_key] = $permalinks;
 
         return $permalinks;
     }
@@ -630,10 +644,14 @@ final class Frl_Translation_Service
      */
     public function get_object_language(int $id, string $type = 'post'): string
     {
-        if ($type === 'term') {
-            return $this->detect_term_language($id);
+        $key = "{$type}:{$id}";
+        if (array_key_exists($key, $this->object_language_cache)) {
+            return $this->object_language_cache[$key];
         }
-        return $this->detect_post_language($id);
+        if ($type === 'term') {
+            return $this->object_language_cache[$key] = $this->detect_term_language($id);
+        }
+        return $this->object_language_cache[$key] = $this->detect_post_language($id);
     }
 
     /**
