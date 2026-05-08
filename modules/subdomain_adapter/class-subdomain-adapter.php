@@ -49,9 +49,6 @@ class Frl_Subdomain_Adapter {
     /** @var self|null */
     private static ?self $instance = null;
 
-    /** @var bool Whether hooks have been registered this request. */
-    private bool $hooks_registered = false;
-
     // -------------------------------------------------------------------------
     // Configuration (set once from constants in detect())
     // -------------------------------------------------------------------------
@@ -288,8 +285,6 @@ class Frl_Subdomain_Adapter {
 
         // --- Template redirect: 301 non-target content on subdomain ---
         add_action('template_redirect',     [$this, 'redirect_non_target_content'], 5);
-
-        $this->hooks_registered = true;
     }
 
     // -------------------------------------------------------------------------
@@ -375,7 +370,6 @@ class Frl_Subdomain_Adapter {
 
         // If this language has a mapped subdomain → return subdomain URL.
         if (isset($this->domain_map[$resolve_domain][$lang])
-            && $lang !== 'default'
             && $this->domain_map[$resolve_domain][$lang] !== ''
         ) {
             return "{$scheme}://" . $this->domain_map[$resolve_domain][$lang] . '/';
@@ -575,6 +569,12 @@ class Frl_Subdomain_Adapter {
     private function transform_url(string $url, string $content_lang): string {
         // Determine target subdomain and default language.
         if ($this->is_on_subdomain()) {
+            // Case 3: Content matches subdomain's language → no-op (done early
+            // before URL parsing and array lookups to avoid unnecessary work).
+            if ($content_lang === $this->current_subdomain_lang) {
+                return $url;
+            }
+
             if (!isset($this->subdomain_info[$this->current_subdomain_host])) {
                 if (defined('WP_DEBUG') && WP_DEBUG) {
                     frl_log('Subdomain Adapter: Missing subdomain info for host {host}', [
@@ -583,17 +583,9 @@ class Frl_Subdomain_Adapter {
                 }
                 return $url;
             }
-            $info              = $this->subdomain_info[$this->current_subdomain_host];
-            $target_subdomain  = $info['lang'] === $content_lang
-                ? $this->current_subdomain_host : null;
-            $main_default      = $info['default_lang'];
-            $primary_main      = $info['main_domains'][0];
-
-            // Case 3: Content matches subdomain's language → no-op (done early
-            // before URL parsing to avoid unnecessary work).
-            if ($content_lang === $this->current_subdomain_lang) {
-                return $url;
-            }
+            $info         = $this->subdomain_info[$this->current_subdomain_host];
+            $main_default = $info['default_lang'];
+            $primary_main = $info['main_domains'][0];
         } else {
             $lang_map          = $this->domain_map[$this->current_host] ?? [];
             $target_subdomain  = isset($lang_map[$content_lang])
@@ -730,7 +722,7 @@ class Frl_Subdomain_Adapter {
      *
      * @return string
      */
-    private static function get_redirect_by(): string {
+    public static function get_redirect_by(): string {
         return 'Frl_Subdomain_Adapter';
     }
 }
