@@ -326,13 +326,11 @@ function frl_handle_action_clear_cache_hard()
  */
 function frl_handle_action_flush_rewrite_rules()
 {
-    // Schedule the flush via the orchestrator to avoid redirect race conditions.
-    // The actual flush and cache clearing will happen on the next admin page load.
-    Frl_Cache_Operations::run('action_flush_rewrite_rules');
+    frl_flush_rewrite_rules();
 
     return [
         'success' => true,
-        'message_parts' => [__('Rewrite rules have been scheduled for flushing. They will be applied on the next page load.', FRL_PREFIX)],
+        'message_parts' => [__('Rewrite rules flushed successfully. All caches cleared and third-party cache plugins notified.', FRL_PREFIX)],
         'notice_type' => 'success'
     ];
 }

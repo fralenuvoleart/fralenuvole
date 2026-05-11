@@ -376,41 +376,17 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     }
 
     /**
-     * Flush routing-related caches and regenerate WP rewrite rules.
-     *
-     * This is the correct path for all flush operations where plugin settings
-     * have NOT changed: button press, cron flush, code update after plugin upgrade.
-     * It does not touch the 'options' cache group, which avoids the WP alloptions
-     * race condition that arises when concurrent frontend requests lose their
-     * options object-cache entry mid-write.
-     *
-     * @param bool $hard Pass true in admin context to also rewrite .htaccess,
-     *                   matching the behaviour of WP's own "Save Permalinks" button.
-     *                   Pass false (default) from cron or frontend contexts.
-     */
-    public static function flush_rules(bool $hard = false): void
-    {
-        frl_cache_clear('rewriter');
-        frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
-        flush_rewrite_rules($hard);
-
-        // Force WordPress to refetch rewrite_rules from DB on next request.
-        // flush_rewrite_rules() calls update_option() which writes to DB but does NOT
-        // clear the object cache for 'rewrite_rules', causing stale rules to be served
-        // until the object cache expires or is explicitly cleared.
-        wp_cache_delete('rewrite_rules', 'options');
-    }
-
-    /**
      * Clear all rewriter-related caches including plugin option caches, then flush rules.
      *
-     * Call this ONLY when plugin settings have actually changed (hooked to
-     * update_option_* actions). The 'options' clear is required here because
-     * feature config hashes are derived from frl_get_option() values: without
-     * clearing the option cache first, generate_rules() would produce a stale
-     * hash key and serve old cached rules even after the option was saved.
+     * Called when plugin settings have changed (hooked to update_option_* actions).
+     * The 'options' clear is required because feature config hashes are derived from
+     * frl_get_option() values: without clearing the option cache first, generate_rules()
+     * would produce a stale hash key and serve old cached rules even after the option
+     * was saved.
      *
-     * For all other flush needs use flush_rules() instead.
+     * For flush operations not triggered by a settings change (button press, cron,
+     * code update), use frl_flush_rewrite_rules() which fires the same WordPress
+     * core actions and achieves the same result through the hook chain.
      *
      * Re-entrancy guard: multiple update_option_* hooks can fire in one request
      * when a settings page saves several fields simultaneously. The guard ensures
@@ -448,7 +424,7 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
     {
         $coordinator = Frl_Rewriter_Coordinator::init();
         $coordinator->invalidate_config_hash();
-        self::flush_rules(true);
+        frl_flush_rewrite_rules();
     }
 
     /**
@@ -495,7 +471,7 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
             if (get_option('rewrite_rules') === false && !frl_get_transient('rewrite_flush_cooldown')) {
                 frl_set_transient('rewrite_flush_cooldown', true, 60);
                 frl_set_transient('rewrite_flush_retry_count', $retry_count + 1, HOUR_IN_SECONDS);
-                self::flush_rules(is_admin());
+                frl_flush_rewrite_rules();
             }
         }, 10, 0);
     }

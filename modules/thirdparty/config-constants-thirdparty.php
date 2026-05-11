@@ -76,7 +76,7 @@ const FRL_THIRDPARTY_INBOUND_QUERIES = [
  * 'check' – function/class that must exist (prevents fatals when plugin is inactive).
  * 'triggers' – internal flush events that should notify this plugin.
  * Supported values: 'hard', 'all', 'light', 'rewrite_flush'.
- * Dispatched automatically by frl_cache_clear() and frl_execute_rewrite_flush().
+ * Dispatched automatically by frl_cache_clear() and frl_flush_rewrite_rules().
  */
 const FRL_THIRDPARTY_OUTBOUND_HOOKS = [
     'litespeed' => [

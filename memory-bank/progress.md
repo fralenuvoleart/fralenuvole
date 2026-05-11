@@ -1,6 +1,23 @@
 # Project Progress
 
-## Recent Updates (v5.7.0 — 2026-05-05)
+## Recent Updates (v5.7.0 — 2026-05-11)
+
+### Flush Rewrite Rules Consolidation — Implemented (2026-05-11)
+- **Problem:** Page permalinks in secondary languages (e.g., `/ru/russian-page/`) return 404 over time. Fralenuvole "Flush Rewrite Rules" button didn't fix it. Manual fix: Save Permalinks 2 times + Purge Litespeed.
+- **Root cause:** Flush button path never fired `update_option_permalink_structure`, so Polylang's `clean_languages_cache()` (hooked at `polylang/src/model.php:119`) never ran before `flush_rewrite_rules()` regenerated rules.
+- **Fix:** Single function [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:172) replaces 6 deleted legacy functions. Mirrors `WP_Rewrite::set_permalink_structure()`: handles timing (before/during/after init), fires `update_option_permalink_structure` (→ `clear_rewriter_caches()` + Polylang cache clean) + `permalink_structure_changed`. Immediate execution.
+- **Deleted (6):** `frl_flush_force_rewrite_rules()`, `frl_flush_rewrite_rules_mirror_permalink_save()`, `Frl_Rewriter::flush_rules()`, `frl_execute_rewrite_flush()`, `frl_schedule_admin_rewrite_flush()`, `frl_execute_scheduled_admin_flush()`.
+- **Kept (2):** `frl_schedule_rewrite_flush()` (schedules cron for before-init calls), `Frl_Rewriter::clear_rewriter_caches()` (reaction hooked to `update_option_*` actions — distinct purpose from the trigger function).
+- **Files changed (7):**
+  - [`includes/plugin-lifecycle.php`](includes/plugin-lifecycle.php) — rewrote: added `frl_flush_rewrite_rules()`, deleted 3 functions, cron hook now points directly to `frl_flush_rewrite_rules`
+  - [`includes/helpers/functions-action-handlers.php:327`](includes/helpers/functions-action-handlers.php:327) — calls `frl_flush_rewrite_rules()`
+  - [`admin/helpers/functions-admin-action-handlers.php:500`](admin/helpers/functions-admin-action-handlers.php:500) — calls `frl_flush_rewrite_rules()`
+  - [`includes/core/rewriter/class-rewriter.php`](includes/core/rewriter/class-rewriter.php) — deleted `flush_rules()`, updated `force_rules_refresh()` and repair path
+  - [`includes/core/rewriter/class-rewriter-coordinator.php:277`](includes/core/rewriter/class-rewriter-coordinator.php:277) — `force_refresh()` calls `frl_flush_rewrite_rules()`
+  - [`config/config-cache-operations.php`](config/config-cache-operations.php) — `action_hard`, `action_flush_rewrite_rules`, `env_enforce_full` all call `frl_flush_rewrite_rules`
+  - [`modules/thirdparty/config-constants-thirdparty.php:79`](modules/thirdparty/config-constants-thirdparty.php:79) — updated stale comment
+- **Zero regression:** Cron event name preserved for backward compatibility, `clear_rewriter_caches()` untouched.
+- **Plan:** [`plans/fix-stale-rewrite-rules-litespeed.md`](plans/fix-stale-rewrite-rules-litespeed.md)
 
 ### Subdomain Adapter Module — Implemented & Documented
 - **New module** [`modules/subdomain_adapter/`](modules/subdomain_adapter/) for bidirectional URL transformation between main domains and language-specific subdomains
@@ -58,7 +75,7 @@
     - No `action_all`/`action_light` (redundant with `clear_all`/`clear_light` — action handlers call those directly).
   - **No critical flag:** Sequential execution only. All steps always run; caller inspects per-step results and decides how to report.
   - **`fn` supports callable arrays:** `[ 'Frl_Cache_Manager', 'hard_cache_reset' ]` for static method calls, validated by `is_callable()` (replaces `function_exists()`).
-  - **`note` fields** on each step document deferred chains inline (e.g., `frl_schedule_admin_rewrite_flush` → 60s transient → `admin_init:99` → `frl_execute_scheduled_admin_flush()` → `Frl_Rewriter::flush_rules()` + `frl_cache_clear('rewriter')`).
+  - **`note` fields** on each step document deferred chains inline. **Superseded 2026-05-11:** the deferred transient chain (`frl_schedule_admin_rewrite_flush` → `admin_init:99` → `frl_execute_scheduled_admin_flush()` → `Frl_Rewriter::flush_rules()`) has been replaced by direct calls to `frl_flush_rewrite_rules()`.
   - **Lifecycle hooks:** `before`/`after` hooks per operation (e.g., `frl_before_cache_operation_clear_hard`, `frl_after_cache_operation_clear_hard`).
   - **Re-entrancy guard** via `frl_is_already_running()` prevents duplicate execution.
   - **`get_operation_map()`** returns full operation registry for debugging and admin UI.

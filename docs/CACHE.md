@@ -370,9 +370,9 @@ Currently used by `purge_all()`.
 | | 2. `frl_thirdparty_maybe_notify('all')` | |
 | `clear_light` | 1. `Frl_Cache_Manager::purge_light()` | Light purge + third-party notification |
 | | 2. `frl_thirdparty_maybe_notify('light')` | |
-| `action_hard` | 1. `frl_cache_clear('hard')` → delegates to `clear_hard` | Admin: hard reset + deferred rewrite flush |
-| | 2. `frl_schedule_admin_rewrite_flush()` (deferred via 60s transient) | |
-| `action_flush_rewrite_rules` | 1. `frl_schedule_admin_rewrite_flush()` | Admin: flush rewrite rules only |
+| `action_hard` | 1. `frl_cache_clear('hard')` → delegates to `clear_hard` | Admin: hard reset + immediate rewrite flush |
+| | 2. `frl_flush_rewrite_rules()` (immediate, mirrors WP permalink save) | |
+| `action_flush_rewrite_rules` | 1. `frl_flush_rewrite_rules()` | Admin: flush rewrite rules immediately |
 | `action_clear_plugin_transients` | 1. `frl_cache_clear('plugin_transients')` | Admin: clear plugin transients + admin UI cache |
 | | 2. `frl_cache_clear('adminui')` | |
 | `action_clear_website_transients` | 1. `frl_cache_clear('website_transients')` | Admin: clear all website transients + admin UI cache |
@@ -518,10 +518,11 @@ frl_handle_action_clear_cache_hard()
               • clear_all_website_transients() (all _transient_ rows)
               • do_action(FRL_PREFIX . '_after_hard_cache_reset')
             - frl_thirdparty_maybe_notify('hard')
-     1b. frl_schedule_admin_rewrite_flush()
-         → Sets 60s transient → admin_init:99 → frl_execute_scheduled_admin_flush()
-         → Frl_Rewriter::flush_rules() (clears rewriter cache + flush_rewrite_rules())
-         → frl_cache_clear('rewriter') (defensive re-check)
+     1b. frl_flush_rewrite_rules()
+         → do_action('update_option_permalink_structure')
+         → clear_rewriter_caches() (clears options→rewriter→permalinks + flush_rewrite_rules(true) + notifies Litespeed)
+         → Polylang clean_languages_cache()
+         → do_action('permalink_structure_changed')
 ```
 
 ---

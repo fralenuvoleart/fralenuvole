@@ -140,9 +140,9 @@ const FRL_CACHE_OPERATIONS = [
 				'note' => '→ delegates to clear_hard operation: Frl_Cache_Manager::hard_cache_reset() + frl_thirdparty_maybe_notify("hard")',
 			],
 			[
-				'fn'   => 'frl_schedule_admin_rewrite_flush',
+				'fn'   => 'frl_flush_rewrite_rules',
 				'args' => [],
-				'note' => 'Sets 60s transient → admin_init:99 fires frl_execute_scheduled_admin_flush() → frl_flush_force_rewrite_rules() → Frl_Rewriter::flush_rules() (clears rewriter cache + flush_rewrite_rules()) + frl_cache_clear("rewriter") (defensive re-check of rewriter group)',
+				'note' => 'Mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ clear_rewriter_caches() clears options→rewriter→permalinks + deletes exclusion patterns transient + flush_rewrite_rules(true) + notifies Litespeed; → Polylang cleans language cache) + fires permalink_structure_changed',
 			],
 		],
 		'hooks'    => [
@@ -155,9 +155,9 @@ const FRL_CACHE_OPERATIONS = [
 		'label'    => 'Admin: Flush Rewrite Rules',
 		'steps'    => [
 			[
-				'fn'   => 'frl_schedule_admin_rewrite_flush',
+				'fn'   => 'frl_flush_rewrite_rules',
 				'args' => [],
-				'note' => 'Sets 60s transient → admin_init:99 fires frl_execute_scheduled_admin_flush() → frl_flush_force_rewrite_rules() → Frl_Rewriter::flush_rules() (clears rewriter cache + flush_rewrite_rules()) + frl_cache_clear("rewriter") (defensive re-check of rewriter group)',
+				'note' => 'Immediately mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ clear_rewriter_caches() clears options→rewriter→permalinks + deletes exclusion patterns transient + flush_rewrite_rules(true) + notifies Litespeed; → Polylang cleans language cache) + fires permalink_structure_changed',
 			],
 		],
 		'hooks'    => [
@@ -179,9 +179,9 @@ const FRL_CACHE_OPERATIONS = [
 				'note' => 'Full cache purge via clear_all operation — plugins/modules can register new post types, rewrite rules, shortcodes; force mode bypasses throttle',
 			],
 			[
-				'fn'   => 'frl_schedule_admin_rewrite_flush',
+				'fn'   => 'frl_flush_rewrite_rules',
 				'args' => [],
-				'note' => 'Schedule rewrite rules flush — module activation/deactivation can add/remove rewrite features via Frl_Rewriter_Coordinator::add_feature() at plugins_loaded/5',
+				'note' => 'Mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ clear_rewriter_caches() clears options→rewriter→permalinks + deletes exclusion patterns transient + flush_rewrite_rules(true) + notifies Litespeed; → Polylang cleans language cache) + fires permalink_structure_changed',
 			],
 		],
 		'hooks'    => [

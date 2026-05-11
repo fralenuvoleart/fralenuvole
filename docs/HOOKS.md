@@ -72,9 +72,9 @@ add_action('init', 'frl_themekit_remove_provider_block_patterns', 100, 0);
 
 ### init (Priority 200)
 ```php
-add_action('init', 'frl_execute_rewrite_flush', 200, 0);
+add_action('init', 'frl_flush_rewrite_rules', 200, 0);
 ```
-**Purpose:** Deferred rewrite rules flush.
+**Purpose:** Deferred rewrite rules flush (used when `frl_flush_rewrite_rules()` is called during `init`).
 
 **⚠️ CRITICAL:** This MUST be the last `init` hook. It flushes WordPress rewrite rules after all features have registered their rules.
 
@@ -140,7 +140,7 @@ If you're experiencing issues where:
 **Check:**
 1. Is your hook running at the correct priority?
 2. Is your hook running after `frl_environment_enforce_settings`?
-3. Is your hook running before `frl_execute_rewrite_flush`?
+3. Is your hook running before `frl_flush_rewrite_rules`?
 
 **Debug code:**
 ```php

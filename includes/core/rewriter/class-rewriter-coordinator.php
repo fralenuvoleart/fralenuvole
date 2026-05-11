@@ -263,25 +263,18 @@ class Frl_Rewriter_Coordinator
      *
      * Resets the in-memory config hash so the next validate_all_features() call
      * recomputes with current option values, then delegates to
-     * Frl_Rewriter::flush_rules(true) which clears the 'permalinks' and 'rewriter'
-     * cache groups, deletes the exclusion-patterns transient, and calls
-     * flush_rewrite_rules(true) to also rewrite .htaccess.
-     *
-     * Uses flush_rules() rather than clear_rewriter_caches() because this is not
-     * triggered by a settings change — option caches are still valid and must not
-     * be cleared (which would delete WP's alloptions from object cache and create
-     * a race window for concurrent requests). Kept public for external callers.
+     * frl_flush_rewrite_rules() which mirrors WP_Rewrite::set_permalink_structure():
+     * fires update_option_permalink_structure (→ clear_rewriter_caches() clears
+     * options→rewriter→permalinks + deletes exclusion patterns transient +
+     * flush_rewrite_rules(true) + notifies Litespeed; → Polylang cleans language
+     * cache) + fires permalink_structure_changed.
      *
      * @return void
      */
     public function force_refresh(): void
     {
         $this->config_hash = null;
-        if (class_exists('Frl_Rewriter')) {
-            Frl_Rewriter::flush_rules(true);
-        } else {
-            flush_rewrite_rules(true);
-        }
+        frl_flush_rewrite_rules();
     }
 
     /**

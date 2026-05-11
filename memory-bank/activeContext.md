@@ -7,6 +7,15 @@
 ## 🔄 Current Focus
 Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
 
+## ✅ Flush Rewrite Rules Consolidation (2026-05-11 — implemented)
+- **Problem:** Page permalinks in secondary languages 404 over time. Flush button didn't fix it; required "Save Permalinks 2x + Purge Litespeed" manually.
+- **Root cause:** Flush button path never fired `update_option_permalink_structure`, so Polylang's `clean_languages_cache()` (hooked at [`polylang/src/model.php:119`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/model.php:119)) never ran.
+- **Fix:** Single function [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:172) replaces 6 deleted legacy functions. Mirrors `WP_Rewrite::set_permalink_structure()`: handles timing (before/during/after init), fires `update_option_permalink_structure` (→ `clear_rewriter_caches()` + Polylang cache clean) + `permalink_structure_changed`. Immediate execution.
+- **Deleted (6):** `frl_flush_force_rewrite_rules()`, `frl_flush_rewrite_rules_mirror_permalink_save()`, `Frl_Rewriter::flush_rules()`, `frl_execute_rewrite_flush()`, `frl_schedule_admin_rewrite_flush()`, `frl_execute_scheduled_admin_flush()`.
+- **Kept (2):** `frl_schedule_rewrite_flush()` (schedules cron for before-init), `Frl_Rewriter::clear_rewriter_caches()` (reaction hooked to `update_option_*` actions — distinct purpose).
+- **Files:** 7 files modified — [`plugin-lifecycle.php`](includes/plugin-lifecycle.php), [`functions-action-handlers.php`](includes/helpers/functions-action-handlers.php:327), [`functions-admin-action-handlers.php`](admin/helpers/functions-admin-action-handlers.php:500), [`class-rewriter.php`](includes/core/rewriter/class-rewriter.php), [`class-rewriter-coordinator.php`](includes/core/rewriter/class-rewriter-coordinator.php:277), [`config-cache-operations.php`](config/config-cache-operations.php), [`config-constants-thirdparty.php`](modules/thirdparty/config-constants-thirdparty.php:79)
+- **Plan:** [`plans/fix-stale-rewrite-rules-litespeed.md`](plans/fix-stale-rewrite-rules-litespeed.md)
+
 ## ✅ Subdomain Adapter Module (2026-05-05 — fully implemented, documented)
 - **Documentation:** [`docs/SUBDOMAIN-ADAPTER.md`](docs/SUBDOMAIN-ADAPTER.md)
 - **Module:** [`modules/subdomain_adapter/`](modules/subdomain_adapter/)
@@ -32,7 +41,7 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
   - **`env_*` operations** (`env_enforce_full`, `env_enforce_url_change`, `env_enforce_options`): Environment Manager operations triggered by `enforce_environment_settings()`. Added 2026-04-29 — each maps to a specific decision path in the change-type classifier. The classifier now dispatches via `Frl_Cache_Operations::run($env_op)` (guarded: only runs when `$env_op` is non-empty) instead of calling `frl_cache_clear()` / `frl_schedule_admin_rewrite_flush()` directly. `env_enforce_none` was removed — when nothing changed, the orchestrator call is skipped entirely.
   - **No critical flag:** All steps execute sequentially regardless of failure; caller inspects per-step results.
   - **`fn` supports callable arrays:** `[ 'Frl_Cache_Manager', 'hard_cache_reset' ]` for static method calls, checked via `is_callable()`.
-  - **All existing helper functions preserved** (`frl_cache_clear`, `frl_schedule_admin_rewrite_flush` remain independently callable). `frl_cache_clear('hard'/'all'/'light'/'options'/'rewriter')` returns `$result['steps'][0]['result']` for backward compatibility with external callers.
+  - **All existing helper functions preserved** (`frl_cache_clear`, `frl_flush_rewrite_rules` remain independently callable). `frl_cache_clear('hard'/'all'/'light'/'options'/'rewriter')` returns `$result['steps'][0]['result']` for backward compatibility with external callers.
 
 ## ⚠️ Active Considerations
 - **Exception handler added (2026-04-30):** `set_exception_handler('frl_errors_handle_exception')` installed at all three registration points — [`frl_errors_init()`](includes/core/error-handler.php:27), `muplugins_loaded/PHP_INT_MAX` re-bind, and `plugins_loaded/PHP_INT_MAX` re-bind. Catches `TypeError`, `ValueError`, `DivisionByZeroError`, `ArgumentCountError` that previously bypassed `set_error_handler()`. Delegates to existing [`frl_errors_handle_error()`](includes/core/error-handler.php:105) so all suppression rules (textlist, `@` operator, `error_reporting_plugin`) apply consistently. Each handler has an independent recursion guard.

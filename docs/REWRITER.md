@@ -242,15 +242,32 @@ All of the above call `Frl_Rewriter::clear_rewriter_caches()`.
 
 ### Full cache flush (`clear_rewriter_caches`)
 
+Triggered automatically by `update_option_*` hooks (permalink structure, category base, tag base, rewriter options). Also called indirectly via `frl_flush_rewrite_rules()` which fires `update_option_permalink_structure`.
+
 ```php
 Frl_Rewriter::clear_rewriter_caches();
-// 1. frl_cache_clear('rewriter')
-// 2. frl_cache_clear('options')
-// 3. frl_delete_transient(EXCLUSION_PATTERNS_TRANSIENT)
-// 4. flush_rewrite_rules(false)
+// 1. frl_cache_clear('options')          // → cascades to rewriter → permalinks
+// 2. frl_delete_transient(EXCLUSION_PATTERNS_TRANSIENT)
+// 3. flush_rewrite_rules(true)           // hard flush, rewrites .htaccess
+// 4. frl_thirdparty_maybe_notify('rewrite_flush')  // notifies Litespeed, Breeze, WP Rocket
 ```
 
-`force_rules_refresh()` additionally calls `coordinator->invalidate_config_hash()` before delegating to `clear_rewriter_caches()`.
+Re-entrancy guard via `frl_is_already_running(__METHOD__)` ensures it runs once per request even if multiple `update_option_*` hooks fire.
+
+### Programmatic flush (`frl_flush_rewrite_rules`)
+
+For flush operations not triggered by a settings change (button press, admin reset, WP-CLI, repair). Mirrors `WP_Rewrite::set_permalink_structure()` by firing the same WordPress core actions:
+
+```php
+frl_flush_rewrite_rules();
+// 1. do_action('update_option_permalink_structure', $p, $p)
+//    → triggers clear_rewriter_caches() + Polylang clean_languages_cache()
+// 2. do_action('permalink_structure_changed', $p, $p)
+```
+
+Synchronous, no cron, no deferred execution. Callers must ensure this runs after `init` (post types registered). For before-init contexts (activation/deactivation), use `frl_schedule_rewrite_flush()` which schedules a 15-second cron.
+
+`force_rules_refresh()` additionally calls `coordinator->invalidate_config_hash()` before delegating to `frl_flush_rewrite_rules()`.
 
 ---
 

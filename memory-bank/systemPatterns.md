@@ -19,7 +19,7 @@
   - **`action_*` tier** (`action_hard`, `action_flush_rewrite_rules`, `action_clear_plugin_transients`, `action_clear_website_transients`, `action_clear_scripts_tags`): Admin-action-level operations called from action handlers.
   - **Sequential execution, no abort:** All steps run regardless of intermediate failures. Caller inspects per-step results.
   - **`fn` supports callable arrays:** `[ 'Frl_Cache_Manager', 'hard_cache_reset' ]` validated via `is_callable()`.
-  - **Preserved backwards compatibility:** All existing helper functions (`frl_cache_clear`, `frl_schedule_admin_rewrite_flush`) remain independently callable. The `FRL_CACHE_OPERATIONS` constant is the single source of truth for multi-step execution order.
+  - **Preserved backwards compatibility:** All existing helper functions (`frl_cache_clear`, `frl_flush_rewrite_rules`) remain independently callable. The `FRL_CACHE_OPERATIONS` constant is the single source of truth for multi-step execution order.
 - **Cache Group Selection:** Data originating from `wp_options`/`wp_sitemeta` uses the `options` cache group. Use custom TTL (`WEEK_IN_SECONDS`) for stable configuration data that changes on a different cadence than typical plugin options.
 
 ## 🛠️ Developer Working Method

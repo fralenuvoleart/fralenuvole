@@ -497,7 +497,7 @@ function frl_handle_action_reset_plugin()
     frl_cache_clear('all');
     frl_flush_db();
 
-    frl_flush_force_rewrite_rules();
+    frl_flush_rewrite_rules();
     // Format response
     $message_parts = [];
     $notice_type = 'success';
