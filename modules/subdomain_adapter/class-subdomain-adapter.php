@@ -508,6 +508,12 @@ class Frl_Subdomain_Adapter {
         }
         $content_lang = frl_get_language($post->ID);
         if (empty($content_lang)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                frl_log('Subdomain Adapter: Empty content language for post {id} (type: {type}) — skipping URL transformation', [
+                    'id'   => $post->ID,
+                    'type' => $post->post_type,
+                ]);
+            }
             return $link;
         }
         return $this->transform_url($link, $content_lang);
@@ -549,6 +555,11 @@ class Frl_Subdomain_Adapter {
      * @return string
      */
     public function filter_page_link(string $link, $post): string {
+        // WordPress page_link filter passes $post->ID (int), not the WP_Post object.
+        // Normalize to WP_Post so the shared internal method works correctly.
+        if (is_numeric($post)) {
+            $post = get_post((int) $post);
+        }
         if (!$post instanceof \WP_Post) {
             return $link;
         }

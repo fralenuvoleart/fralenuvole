@@ -374,3 +374,13 @@
 - **Performance:** No DB queries, no regex. Pure `str_replace` operations guarded by early-exit conditions.
 
 *Last Updated: 2026-05-04*
+
+### Subdomain Adapter — page_link Fix (2026-05-12)
+- **Problem:** Subdomain adapter transformed permalinks for posts but NOT for pages. CPT 'service' also not transforming (under investigation with debug logging).
+- **Root cause (pages):** WordPress `page_link` filter passes `$post->ID` (int) as the second argument, but [`filter_page_link()`](modules/subdomain_adapter/class-subdomain-adapter.php:557) expected a `WP_Post` object. The `instanceof` check failed silently, returning the link unchanged.
+- **Fix:** [`filter_page_link()`](modules/subdomain_adapter/class-subdomain-adapter.php:557) now normalizes integer `$post` to `WP_Post` via `get_post()` before the `instanceof` check.
+- **Debug logging added:** [`filter_post_link_internal()`](modules/subdomain_adapter/class-subdomain-adapter.php:505) now logs when `frl_get_language()` returns empty (WP_DEBUG-gated) to help diagnose CPT 'service' issue.
+- **Filter execution order verified correct:** Polylang registers at `plugins_loaded/1`, Subdomain Adapter at `plugins_loaded/5`. Both use priority 20 for `post_link`/`post_type_link`/`page_link`. Polylang runs FIRST → Subdomain Adapter runs SECOND. This is the intended order.
+- **File changed:** [`modules/subdomain_adapter/class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php)
+
+*Last Updated: 2026-05-12*

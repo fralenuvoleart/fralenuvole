@@ -180,3 +180,12 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Benefit:** ~46% of original admin.css is now conditionally loaded. Maintainability improved (separate file for Meow tweaks).
 
 *Last Updated: 2026-04-30*
+
+## 🔧 Subdomain Adapter — page_link Fix (2026-05-12)
+- **Bug:** Pages not getting URL transformation on subdomain adapter. Root cause: WordPress `page_link` filter passes `$post->ID` (int), but [`filter_page_link()`](modules/subdomain_adapter/class-subdomain-adapter.php:557) expected `WP_Post` object. `instanceof` check failed silently.
+- **Fix:** Added `is_numeric($post)` → `get_post((int) $post)` normalization before `instanceof` check.
+- **Debug logging:** [`filter_post_link_internal()`](modules/subdomain_adapter/class-subdomain-adapter.php:505) now logs empty language returns (WP_DEBUG-gated) to diagnose CPT 'service' issue.
+- **Filter order verified:** Polylang (`plugins_loaded/1`) → Subdomain Adapter (`plugins_loaded/5`), both at p20. Correct order confirmed.
+- **CPT 'service' pending:** `post_type_link` filter logic is identical to `post_link` — admin redirect symptom needs runtime debug log analysis.
+
+*Last Updated: 2026-05-12*
