@@ -16,6 +16,11 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Files:** 7 files modified — [`plugin-lifecycle.php`](includes/plugin-lifecycle.php), [`functions-action-handlers.php`](includes/helpers/functions-action-handlers.php:327), [`functions-admin-action-handlers.php`](admin/helpers/functions-admin-action-handlers.php:500), [`class-rewriter.php`](includes/core/rewriter/class-rewriter.php), [`class-rewriter-coordinator.php`](includes/core/rewriter/class-rewriter-coordinator.php:277), [`config-cache-operations.php`](config/config-cache-operations.php), [`config-constants-thirdparty.php`](modules/thirdparty/config-constants-thirdparty.php:79)
 - **Plan:** [`plans/fix-stale-rewrite-rules-litespeed.md`](plans/fix-stale-rewrite-rules-litespeed.md)
 
+## 🔧 Flush Rewrite Rules — Litespeed Notification Fix (2026-05-12)
+- **Timing Bug:** Button action runs at `init:10` (before `wp_loaded`), but [`register_cache_invalidation_hooks()`](includes/core/rewriter/class-rewriter.php:446) defers hook registration to `wp_loaded`. Result: `clear_rewriter_caches()` never fires, so `frl_thirdparty_maybe_notify('rewrite_flush')` never executes.
+- **Fix:** Added `did_action('wp_loaded')` fallback in [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:188) — runs `flush_rewrite_rules(true)` and `frl_thirdparty_maybe_notify('rewrite_flush')` directly when called before `wp_loaded`.
+- **Cleanup:** Moved 3 getter functions from [`config-constants-thirdparty.php`](modules/thirdparty/config-constants-thirdparty.php) to [`thirdparty.php`](modules/thirdparty/thirdparty.php:251,271,296) — removed redundant `function_exists` wrappers.
+
 ## ✅ Subdomain Adapter Module (2026-05-05 — fully implemented, documented)
 - **Documentation:** [`docs/SUBDOMAIN-ADAPTER.md`](docs/SUBDOMAIN-ADAPTER.md)
 - **Module:** [`modules/subdomain_adapter/`](modules/subdomain_adapter/)

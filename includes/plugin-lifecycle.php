@@ -168,6 +168,12 @@ function frl_uninstall_plugin(): void
  *          → ensures fresh language data during rule regeneration
  *   2. permalink_structure_changed → notifies any other plugins
  *
+ * NOTE: Frl_Rewriter::register_cache_invalidation_hooks() defers hook
+ * registration to wp_loaded, so when this function is called before
+ * wp_loaded (e.g. admin action button at init:10), the action chain
+ * silently does nothing. The did_action('wp_loaded') fallback below
+ * ensures essential operations execute regardless of hook timing.
+ *
  * @return void
  */
 function frl_flush_rewrite_rules(): void
@@ -175,6 +181,16 @@ function frl_flush_rewrite_rules(): void
     $permastruct = get_option('permalink_structure');
     do_action('update_option_permalink_structure', $permastruct, $permastruct);
     do_action('permalink_structure_changed', $permastruct, $permastruct);
+
+    // When called before wp_loaded, the rewriter's deferred cache invalidation
+    // hooks (registered in register_cache_invalidation_hooks()) are not yet set
+    // up. Run flush_rewrite_rules(true) and third-party notification directly.
+    if (!did_action('wp_loaded')) {
+        flush_rewrite_rules(true);
+        if (function_exists('frl_thirdparty_maybe_notify')) {
+            frl_thirdparty_maybe_notify('rewrite_flush');
+        }
+    }
 }
 
 /**

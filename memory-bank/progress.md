@@ -1,5 +1,18 @@
 # Project Progress
 
+## Hotfix — Flush Rewrite Rules Litespeed Notification (2026-05-12)
+
+### Timing Bug Fix — [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:179)
+- **Problem:** "Flush Rewrite Rules" button showed no Litespeed admin notification, while "Clear Caches (Hard)" did.
+- **Root cause:** [`register_cache_invalidation_hooks()`](includes/core/rewriter/class-rewriter.php:446) registers `update_option_permalink_structure` → `clear_rewriter_caches()` inside a `wp_loaded` callback. The button action handler runs at `init:10` (before `wp_loaded`), so the hook listener was never registered and `frl_thirdparty_maybe_notify('rewrite_flush')` never executed. `flush_rewrite_rules(true)` also silently failed.
+- **Why "Clear Caches (Hard)" worked:** Its operation has `frl_thirdparty_maybe_notify('hard')` as a **direct step**, not via the rewriter's deferred hook chain.
+- **Fix:** Added `did_action('wp_loaded')` fallback in [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:188) — if `wp_loaded` hasn't fired yet, `flush_rewrite_rules(true)` and `frl_thirdparty_maybe_notify('rewrite_flush')` run directly. After `wp_loaded`, hooks handle it as before (no double-fire).
+
+### Config-Constants Cleanup — [`thirdparty.php`](modules/thirdparty/thirdparty.php)
+- **Problem:** Three getter functions (`frl_thirdparty_get_inbound_hooks`, `frl_thirdparty_get_inbound_queries`, `frl_thirdparty_get_outbound_hooks`) were defined in [`config-constants-thirdparty.php`](modules/thirdparty/config-constants-thirdparty.php) wrapped in redundant `function_exists` guards.
+- **Fix:** Moved all three functions (without `function_exists` wrappers) to [`thirdparty.php`](modules/thirdparty/thirdparty.php:251,271,296), placed before `frl_thirdparty_maybe_notify()`. Config-constants file now only contains the `const` definitions.
+
+
 ## Recent Updates (v5.7.0 — 2026-05-11)
 
 ### Flush Rewrite Rules Consolidation — Implemented (2026-05-11)
