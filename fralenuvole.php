@@ -4,7 +4,7 @@
  * Plugin Name: Fralenuvole
  * Description: Multi-environment and performance management framework with comprehensive backend suite for admins and devs.
  * Version: 5.7.2
- * Requires at least: 7.0
+ * Requires at least: 6.9
  * Requires PHP: 8.3
  * Text Domain: fralenuvole
  * Author: Francesco Castronovo
@@ -48,10 +48,13 @@ add_action('plugins_loaded',
 
 
 // Security headers for all requests
-add_action('send_headers', function () {
-    header('X-Content-Type-Options: nosniff');
-    header('X-Frame-Options: SAMEORIGIN');
-    header('X-XSS-Protection: 1; mode=block');
+// Uses wp_headers filter instead of send_headers action to avoid
+// "headers already sent" warnings when theme functions.php outputs content.
+add_filter('wp_headers', function ($headers) {
+    $headers['X-Content-Type-Options'] = 'nosniff';
+    $headers['X-Frame-Options'] = 'SAMEORIGIN';
+    $headers['X-XSS-Protection'] = '1; mode=block';
+    return $headers;
 });
 
 /**
