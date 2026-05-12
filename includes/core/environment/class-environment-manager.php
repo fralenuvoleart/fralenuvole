@@ -421,6 +421,7 @@ class Frl_Environment_Manager
         // Get search engine indexing status
         $is_public = get_option('blog_public');
         $indexing_class = $is_public ? 'indexing-on' : 'indexing-off';
+        $domain_class = str_replace('.', '-', $current_domain);
         $type = $config['type'] ?? '';
         $title = 'production' == $type ? 'prod' : $type;
 
@@ -429,7 +430,7 @@ class Frl_Environment_Manager
             'title' => $title,
             'href'  => $env_link,
             'meta'  => [
-                'class' => FRL_PREFIX . '-server ' . $config['type'] . ' ' . $indexing_class,
+                'class' => FRL_PREFIX . '-server ' . $config['type'] . ' ' . $domain_class . ' ' . $indexing_class,
                 'title' => ucwords($type) . ' - Search Engines ' . ($is_public ? 'Allowed' : 'Blocked'),
             ],
         ]);

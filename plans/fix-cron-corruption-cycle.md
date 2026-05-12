@@ -32,7 +32,7 @@ The error comes from [`_set_cron_array()`](https://developer.wordpress.org/refer
 
 ### Previous Bug: Rebuilding the Array from Scratch
 
-The original [`frl_add_exclusion_filter_cron()`](includes/helpers/functions-mu-plugin.php:387) rebuilt the entire cron array from scratch using a `$filtered` accumulator. This required:
+The original [`frl_add_exclusion_filter_cron()`](includes/mu/functions-mu-plugin.php:387) rebuilt the entire cron array from scratch using a `$filtered` accumulator. This required:
 1. Iterating all top-level keys (including `'version' => 2`)
 2. Skipping `version` because it's not an array (`!is_array($hooks)`)
 3. **Explicitly re-adding** `$filtered['version']` after the loop
@@ -50,7 +50,7 @@ The root insight — **"what goes in, goes out"** — led to a simpler approach:
 
 ## What Changed
 
-### File: [`includes/helpers/functions-mu-plugin.php`](includes/helpers/functions-mu-plugin.php)
+### File: [`includes/mu/functions-mu-plugin.php`](includes/mu/functions-mu-plugin.php)
 
 **Before:** Rebuilt `$filtered` array from scratch, with conditional version preservation
 **After:** In-place modification of `$cron` with `!is_numeric($timestamp)` guard to skip metadata keys

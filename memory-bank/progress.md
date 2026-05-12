@@ -46,7 +46,7 @@
   - Admin screen after `|` is **required** (exclusion only activates on matching screen)
 - **Refactored MU plugin structure:**
   - `assets/mu/frl-mu-plugin.php` → thin bootstrap (constant + bootstrap require + hook registration)
-  - `includes/helpers/functions-mu-plugin.php` → all exclusion logic (moved from MU plugin)
+  - `includes/mu/functions-mu-plugin.php` → all exclusion logic (moved from MU plugin)
   - Loaded only by the MU plugin, not polluting the main plugin's helper load
   - Updated `docs/PLUGIN-EXCLUSIONS.md` with new file references
 - Translation Module Refactor:
@@ -65,7 +65,7 @@
     - Direct DB callback still used as the cache miss fallback to prevent recursion
   - Added cache invalidation in `cache-cleanup.php` via `activated_plugin`/`deactivated_plugin` hooks
   - Verified: no recursion risk (`frl_cache_remember` uses object cache/transients, never `get_option()` on the filtered options)
-  - **Cron query fix (confirmed applied):** The cron DB query in [`frl_get_exclusion_options()`](includes/helpers/functions-mu-plugin.php:30) is now guarded behind [`frl_is_cron_job_request()`](includes/helpers/functions-access-control.php:475). On non-cron requests, `$options['cron'] = []` without touching the DB. Cron data is intentionally NOT cached via `frl_cache_remember` — stale cron data would cause duplicate event execution during WP-Cron cycles. Request-level static cache in `frl_get_exclusion_options():32` handles per-request dedup.
+  - **Cron query fix (confirmed applied):** The cron DB query in [`frl_get_exclusion_options()`](includes/mu/functions-mu-plugin.php:30) is now guarded behind [`frl_is_cron_job_request()`](includes/helpers/functions-access-control.php:475). On non-cron requests, `$options['cron'] = []` without touching the DB. Cron data is intentionally NOT cached via `frl_cache_remember` — stale cron data would cause duplicate event execution during WP-Cron cycles. Request-level static cache in `frl_get_exclusion_options():32` handles per-request dedup.
 
 ### Cache Operation Orchestrator (v5.4.0)
 - **Added `Frl_Cache_Operations`** (`includes/core/cache/class-cache-operations.php`):
@@ -103,9 +103,9 @@
 - **Added import serialization validation** — Added `@unserialize(@serialize($item['translations']))` round-trip check in `frl_import_translation_strings()` before `update_term_meta()`. Prevents writing `_pll_strings_translations` data that would cause `unserialize()` errors when read back by Polylang.
 
 ### Refactored Early-Loading Access Check (2026-04-28)
-- **Moved `!did_action('plugins_loaded')` logic out of [`frl_has_access()`](includes/helpers/functions-access-control.php:95)** — the early-loading code path was only used by the MU plugin's capability-based exclusion. Now handled by dedicated [`frl_mu_check_access()`](includes/helpers/functions-mu-plugin.php:91) in the MU plugin helper file.
+- **Moved `!did_action('plugins_loaded')` logic out of [`frl_has_access()`](includes/helpers/functions-access-control.php:95)** — the early-loading code path was only used by the MU plugin's capability-based exclusion. Now handled by dedicated [`frl_mu_check_access()`](includes/mu/functions-mu-plugin.php:91) in the MU plugin helper file.
 - **Added cross-request caching to [`frl_get_auth_cookie_user_data()`](includes/helpers/functions-access-control.php:64)** — DB query wrapped in `frl_cache_remember('admin', 'auth_cookie_user_' . $username, ..., 300)`. Username-scoped key, 300s TTL aligned with `frl_has_access()` standard path.
-- **Updated [`frl_plugins_exclusion_filter()`](includes/helpers/functions-mu-plugin.php:190)** — call site now uses `frl_mu_check_access()` instead of `frl_has_access()`.
+- **Updated [`frl_plugins_exclusion_filter()`](includes/mu/functions-mu-plugin.php:190)** — call site now uses `frl_mu_check_access()` instead of `frl_has_access()`.
 - **Docblock updated** on `frl_has_access()` to reference `frl_mu_check_access()` for early-loading scenarios.
 - **Zero regressions:** All 39 non-MU-plugin callers of `frl_has_access()` are in standard post-`plugins_loaded` contexts.
 
@@ -318,7 +318,7 @@
 
 ### Changes Applied
 
-#### [`includes/helpers/functions-mu-plugin.php`](includes/helpers/functions-mu-plugin.php:387)
+#### [`includes/mu/functions-mu-plugin.php`](includes/mu/functions-mu-plugin.php:387)
 - **Changed `frl_add_exclusion_filter_cron()`** from accumulator pattern to in-place modification:
   - **Before:** `$filtered = []; foreach ($cron as $ts => $hooks) { if (!is_array($hooks)) continue; ... $filtered[$ts] = ... } if (isset($cron['version'])) { $filtered['version'] = $cron['version']; } return $filtered;`
   - **After:** `foreach ($cron as $ts => $hooks) { if (!is_array($hooks) || !is_numeric($ts)) continue; ... unset($cron[$ts][$hook][$hash]); ... } return $cron;`
@@ -328,7 +328,7 @@
 - **Removed:** The explicit `isset($cron['version'])` preservation block (lines 457-464 old) — no longer needed because version is never removed.
 
 ### Verification
-- ✅ PHP syntax valid (`php -l includes/helpers/functions-mu-plugin.php` — no errors)
+- ✅ PHP syntax valid (`php -l includes/mu/functions-mu-plugin.php` — no errors)
 - ✅ "What goes in, goes out" — filter returns the same array structure, only removing orphaned events and sanitizing null args
 - ✅ Version and any metadata keys pass through completely untouched — no conditional preservation logic to fail
 - ✅ Existing DB corruption still requires manual cleanup: `wp option delete cron`

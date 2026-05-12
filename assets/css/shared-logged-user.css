@@ -189,6 +189,14 @@
     background: #0f8a0f !important;
 }
 
+#wpadminbar #wp-admin-bar-frl-server.ru-pbservices-ge > .ab-item {
+    background: #0074b3 !important;
+}
+
+#wpadminbar #wp-admin-bar-frl-server.ru-pbservices-ge .ab-sub-wrapper {
+    background: #0074b3 !important;
+}
+
 #wpadminbar #wp-admin-bar-frl-server.production .ab-sub-wrapper .ab-item:hover {
     background: #00000022 !important;
 }
