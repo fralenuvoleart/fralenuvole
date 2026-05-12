@@ -30,14 +30,15 @@ if (!defined('ABSPATH')) {
  */
 function frl_maybe_throttle_user_agent(): void
 {
-    // Check if the User-Agent matches any throttled bot pattern
+    if (empty($_SERVER['HTTP_USER_AGENT'])) {
+        return;
+    }
+
     $is_throttled_bot = false;
-    if (!empty($_SERVER['HTTP_USER_AGENT'])) {
-        foreach (FRL_MU_THROTTLE_USER_AGENT as $ua_pattern) {
-            if (stripos($_SERVER['HTTP_USER_AGENT'], $ua_pattern) !== false) {
-                $is_throttled_bot = true;
-                break;
-            }
+    foreach (FRL_MU_THROTTLE_USER_AGENT as $ua_pattern) {
+        if (stripos($_SERVER['HTTP_USER_AGENT'], $ua_pattern) !== false) {
+            $is_throttled_bot = true;
+            break;
         }
     }
 
@@ -45,22 +46,25 @@ function frl_maybe_throttle_user_agent(): void
         return;
     }
 
-    // Get the bot's IP address, preferring X-Forwarded-For behind proxies (e.g., Cloudflare)
+    // Determine Real IP (Cloudflare Optimized)
     $ip = $_SERVER['REMOTE_ADDR'];
-    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        // Trim to remove leading/trailing whitespace from proxy IP lists like "1.2.3.4, 5.6.7.8"
+    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+        $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
         $ip = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
     }
 
-    $transient_key = 'chatgpt_throttle_' . md5($ip);
+    $transient_key = 'bot_throttle_' . md5($ip);
     $request_count = (int) frl_get_transient($transient_key);
 
     if ($request_count >= FRL_MU_THROTTLE_LIMIT) {
         http_response_code(FRL_MU_THROTTLE_STATUS_CODE);
-        header('Retry-After: ' . FRL_MU_THROTTLE_PERIOD);
+        header('Content-Type: text/plain');
+        header('Retry-After: ' . (string) FRL_MU_THROTTLE_PERIOD);
         exit('Rate limit exceeded for AI Assistant bots.');
     }
 
+    // Increment count and refresh the block window
     frl_set_transient($transient_key, $request_count + 1, FRL_MU_THROTTLE_PERIOD);
 }
 
