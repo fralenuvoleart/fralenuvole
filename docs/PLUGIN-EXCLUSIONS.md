@@ -6,7 +6,7 @@ Prevents specified plugins from loading without deactivating them. Uses MU plugi
 
 ## How It Works
 
-The MU loader (`assets/mu/frl-mu-plugin.php`) runs at `muplugins_loaded` hook and adds a `pre_option_active_plugins` filter to remove excluded plugins. All exclusion logic is defined in [`includes/mu/functions-mu-plugin.php`](includes/mu/functions-mu-plugin.php), required only by the MU plugin.
+The MU loader (`assets/mu/frl-mu-plugin.php`) runs at `muplugins_loaded` hook and adds a `pre_option_active_plugins` filter to remove excluded plugins. All exclusion logic is defined in [`includes/mu/functions-mu.php`](includes/mu/functions-mu.php), required only by the MU plugin.
 
 ## Exclusion Types
 
@@ -148,7 +148,7 @@ This covers all activation paths: admin UI, WP-CLI (`wp plugin activate`), progr
 
 ## Cron Event Cleanup
 
-When a plugin is excluded from loading, its custom cron schedules never get registered. WordPress would otherwise log `invalid_schedule` errors when trying to reschedule those events. The [`frl_add_exclusion_filter_cron()`](includes/mu/functions-mu-plugin.php:404) function adds an `option_cron` filter that:
+When a plugin is excluded from loading, its custom cron schedules never get registered. WordPress would otherwise log `invalid_schedule` errors when trying to reschedule those events. The [`frl_add_exclusion_filter_cron()`](includes/mu/functions-mu.php:404) function adds an `option_cron` filter that:
 
 1. Receives the cron data directly from WordPress (via the `option_cron` filter parameter).
 2. Gets all currently registered schedules via `wp_get_schedules()`.
@@ -164,10 +164,10 @@ Additionally, as a safety measure, the filter sanitizes `args` on every cron eve
 
 ## Early-Loading Access Check
 
-Capability-based exclusion runs during `muplugins_loaded` (before `plugins_loaded`), when WordPress user functions are not yet available. The dedicated [`frl_mu_check_access()`](includes/mu/functions-mu-plugin.php:91) function handles this:
+Capability-based exclusion runs during `muplugins_loaded` (before `plugins_loaded`), when WordPress user functions are not yet available. The dedicated [`frl_mu_check_access()`](includes/mu/functions-mu.php:91) function handles this:
 
 1. If `plugins_loaded` has fired → delegates to standard [`frl_has_access()`](includes/helpers/functions-access-control.php:95)
-2. If early loading → uses [`frl_get_auth_cookie_user_data()`](includes/mu/functions-mu-plugin.php:90) to read the auth cookie and query the DB directly
+2. If early loading → uses [`frl_get_auth_cookie_user_data()`](includes/mu/functions-mu.php:90) to read the auth cookie and query the DB directly
 
 The DB query in `frl_get_auth_cookie_user_data()` is cached cross-request via `frl_cache_remember` with a **300s TTL** (aligned with `frl_has_access()` standard path), keyed by username to prevent cross-user pollution.
 
@@ -176,7 +176,7 @@ The DB query in `frl_get_auth_cookie_user_data()` is cached cross-request via `f
 | File | Purpose |
 |------|---------|
 | `assets/mu/frl-mu-plugin.php` | MU loader bootstrap — defines `FRL_MU_NAME`, loads bootstrap + helpers, registers `muplugins_loaded` hook |
-| `includes/mu/functions-mu-plugin.php` | All exclusion logic — combined DB query, exclusion types, cron cleanup, `frl_get_auth_cookie_user_data()`, `frl_mu_check_access()` |
+| `includes/mu/functions-mu.php` | All exclusion logic — combined DB query, exclusion types, cron cleanup, `frl_get_auth_cookie_user_data()`, `frl_mu_check_access()` |
 | `includes/helpers/functions-access-control.php` | Contains `frl_has_access()`, `frl_is_admin_page()` |
 | `includes/core/cache/cache-cleanup.php` | Cache invalidation hooks for `activated_plugin`/`deactivated_plugin` |
 | `config/config-cache.php` | Cache group configuration — data stored in `options` group |

@@ -525,7 +525,7 @@ No critical issues found.
 - [`includes/helpers/functions.php`](includes/helpers/functions.php) — Core helpers
 - [`includes/helpers/functions-class-helpers.php`](includes/helpers/functions-class-helpers.php) — Class facade functions
 - [`includes/helpers/functions-access-control.php`](includes/helpers/functions-access-control.php) — Access control
-- [`includes/mu/functions-mu-plugin.php`](includes/mu/functions-mu-plugin.php) — MU plugin logic
+- [`includes/mu/functions-mu.php`](includes/mu/functions-mu.php) — MU plugin logic
 - [`includes/helpers/functions-action-handlers.php`](includes/helpers/functions-action-handlers.php) — Admin action handlers
 - [`includes/helpers/functions-error-log.php`](includes/helpers/functions-error-log.php) — Error logging
 - [`includes/helpers/functions-modules.php`](includes/helpers/functions-modules.php) — Module management

@@ -6,7 +6,7 @@
  * This file should be placed in the /wp-content/mu-plugins/ directory.
  * It loads before regular plugins and sets up early filters.
  *
- * All exclusion logic lives in includes/mu/functions-mu-plugin.php.
+ * All exclusion logic lives in includes/mu/functions-mu.php.
  *
  * @package Fralenuvole
  */
@@ -25,7 +25,7 @@ $plugin_dir = WP_PLUGIN_DIR . '/' . FRL_MU_NAME . '/';
 require_once $plugin_dir . 'includes/bootstrap.php';
 
 // Load  MU-plugin-specific helpers
-require_once FRL_DIR_PATH . 'includes/mu/mu-plugin.php';
+require_once FRL_DIR_PATH . 'includes/mu/mu.php';
 
 
 

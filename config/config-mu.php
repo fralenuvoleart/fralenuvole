@@ -7,7 +7,7 @@ if (!defined('ABSPATH')) {
 /**
  * MU plugin throttle constants.
  *
- * These must be defined before includes/mu/mu-plugin.php executes
+ * These must be defined before includes/mu/mu.php executes
  * (which happens at top-level, not inside a hook). The config/ directory
  * is loaded by config/config.php from bootstrap.php, which runs before
  * mu-plugin.php is required, so this is the correct location.

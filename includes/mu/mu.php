@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 
 // Load MU-plugin-specific helpers
 // @phpstan-ignore requireOnce.fileNotFound
-require_once FRL_DIR_PATH . 'includes/mu/functions-mu-plugin.php';
+require_once FRL_DIR_PATH . 'includes/mu/functions-mu.php';
 
 /**
  * Setup plugin exclusion filter before other plugins load.

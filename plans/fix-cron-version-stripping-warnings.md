@@ -4,7 +4,7 @@
 
 ### The Bug
 
-Both [`frl_add_cron_stability_filter()`](includes/mu/functions-mu-plugin.php:471) and [`frl_add_exclusion_filter_cron()`](includes/mu/functions-mu-plugin.php:387) register an `option_cron` filter that iterates the cron array with:
+Both [`frl_add_cron_stability_filter()`](includes/mu/functions-mu.php:471) and [`frl_add_exclusion_filter_cron()`](includes/mu/functions-mu.php:387) register an `option_cron` filter that iterates the cron array with:
 
 ```php
 foreach ($cron as $timestamp => $hooks) {
@@ -108,7 +108,7 @@ The MU plugin at [`assets/mu/frl-mu-plugin.php:33`](assets/mu/frl-mu-plugin.php:
 
 ### Issue 1: Preserve `version` key in `frl_add_cron_stability_filter()` — CRITICAL
 
-**File:** [`includes/mu/functions-mu-plugin.php`](includes/mu/functions-mu-plugin.php:490)
+**File:** [`includes/mu/functions-mu.php`](includes/mu/functions-mu.php:490)
 
 After the `foreach` loop (around line 521), before `$cache = $filtered;`, add:
 
@@ -125,7 +125,7 @@ if (isset($cron['version'])) {
 
 ### Issue 2: Preserve `version` key in `frl_add_exclusion_filter_cron()` — CRITICAL
 
-**File:** [`includes/mu/functions-mu-plugin.php`](includes/mu/functions-mu-plugin.php:414)
+**File:** [`includes/mu/functions-mu.php`](includes/mu/functions-mu.php:414)
 
 Same fix — after the `foreach` loop (around line 455), before `$cache = $filtered;`, add:
 
@@ -137,7 +137,7 @@ if (isset($cron['version'])) {
 
 ### Issue 3: Clean up already-corrupted cron data in the database — CRITICAL
 
-**✅ Applied** — Old `frl_add_cron_stability_filter()` function replaced with `frl_cleanup_corrupted_cron()` + `add_action('admin_init', ...)` hook in [`functions-mu-plugin.php`](../includes/mu/functions-mu-plugin.php).
+**✅ Applied** — Old `frl_add_cron_stability_filter()` function replaced with `frl_cleanup_corrupted_cron()` + `add_action('admin_init', ...)` hook in [`functions-mu.php`](../includes/mu/functions-mu.php).
 
 See the function below for the implementation.
 
@@ -146,7 +146,7 @@ The cron option in the DB already has layered `dcca4810...` wrappers. After the 
 **Approach A (Recommended — safest):** Add a one-time cleanup hook that runs on the first request after the fix:
 
 ```php
-// In functions-mu-plugin.php or a suitable location
+// In functions-mu.php or a suitable location
 add_action('admin_init', function () {
     $option_updated = get_option('frl_cron_cleanup_done', false);
     if ($option_updated) {
