@@ -181,12 +181,11 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
 
 *Last Updated: 2026-04-30*
 
-## 🔧 Subdomain Adapter — page_link Fix (2026-05-12)
-- **Bug:** Pages not getting URL transformation on subdomain adapter. Root cause: WordPress `page_link` filter passes `$post->ID` (int), but [`filter_page_link()`](modules/subdomain_adapter/class-subdomain-adapter.php:557) expected `WP_Post` object. `instanceof` check failed silently.
-- **Fix:** Added `is_numeric($post)` → `get_post((int) $post)` normalization before `instanceof` check.
-- **Debug logging:** [`filter_post_link_internal()`](modules/subdomain_adapter/class-subdomain-adapter.php:505) now logs empty language returns (WP_DEBUG-gated) to diagnose CPT 'service' issue.
-- **Filter order verified:** Polylang (`plugins_loaded/1`) → Subdomain Adapter (`plugins_loaded/5`), both at p20. Correct order confirmed.
-- **CPT 'service' pending:** `post_type_link` filter logic is identical to `post_link` — admin redirect symptom needs runtime debug log analysis.
+## 🔧 Subdomain Adapter — Homepage Language Switcher URL Fix (2026-05-12)
+- **Bug:** On `staging.pbservices.ge` EN homepage, Polylang language switcher generated `https://staging.pbservices.ge/ru/` instead of `https://ru.pbservices.ge/` for the RU link. Non-homepage links worked correctly.
+- **Root cause:** Priority ordering conflict on the `page_link` filter. Both Subdomain Adapter's [`filter_page_link()`](modules/subdomain_adapter/class-subdomain-adapter.php:557) and Polylang's [`PLL_Static_Pages::page_link()`](https://github.com/polylang/polylang/blob/master/src/static-pages.php:121) were at priority **20**. Since Subdomain Adapter registers at `plugins_loaded/5` and Polylang at `plugins_loaded/10`, Subdomain Adapter ran first (correctly transforming the URL), then Polylang's static pages filter detected the front page and **overrode** the URL with `$lang->get_home_url()` = `https://staging.pbservices.ge/ru/`.
+- **Fix:** Changed `page_link` priority from **20 → 21** at [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:326) so Subdomain Adapter runs **after** `PLL_Static_Pages::page_link()` and re-transforms the overridden URL.
+- **Plan:** [`plans/fix-subdomain-adapter-homepage-link.md`](plans/fix-subdomain-adapter-homepage-link.md)
 
 ## 🔧 Security Headers — send_headers → wp_headers (2026-05-12)
 - **Bug:** `send_headers` callback at [`fralenuvole.php:51`](fralenuvole.php:51) called `header()` directly. On `ru.pbservices.ge` (different server), `greenshift/functions.php:263` outputs content before `send_headers` fires, causing "Cannot modify header information" warning.

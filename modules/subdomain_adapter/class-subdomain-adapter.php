@@ -323,7 +323,7 @@ class Frl_Subdomain_Adapter {
         // --- URL transformation filters (priority 20 — after rewriter at p10) ---
         add_filter('post_link',             [$this, 'filter_post_link'],        20, 2);
         add_filter('post_type_link',        [$this, 'filter_post_type_link'],   20, 2);
-        add_filter('page_link',             [$this, 'filter_page_link'],        20, 2);
+        add_filter('page_link',             [$this, 'filter_page_link'],        21, 2);
         add_filter('term_link',             [$this, 'filter_term_link'],        20, 3);
         add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    20, 1);
         add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], 20, 1);

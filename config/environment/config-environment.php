@@ -40,11 +40,17 @@ const FRL_ENV_PBS_PRODUCTION = [
 const FRL_ENV_PBS_RU_SUBDOMAIN = [
     'extends' => 'FRL_ENV_PBS_TEMPLATE',
     'prefix' => 'pbs_ru',
+    'modules' => [
+        'subdomain_adapter' => true,
+    ],
 ];
 
 const FRL_ENV_PBS_STAGING = [
     'extends' => 'FRL_ENV_PBS_TEMPLATE',
     'type' => 'staging',
+    'modules' => [
+        'subdomain_adapter' => true,
+    ],
 ];
 
 // --- PBP ---
