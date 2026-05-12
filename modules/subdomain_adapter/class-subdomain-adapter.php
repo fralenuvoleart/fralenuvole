@@ -680,18 +680,13 @@ class Frl_Subdomain_Adapter {
             }
 
             if (!isset($this->subdomain_info[$this->current_subdomain_host])) {
-                if (defined('WP_DEBUG') && WP_DEBUG) {
-                    frl_log('Subdomain Adapter: Missing subdomain info for host {host}', [
-                        'host' => $this->current_subdomain_host,
-                    ]);
-                }
                 return $url;
             }
-            $info         = $this->subdomain_info[$this->current_subdomain_host];
+            $info = $this->subdomain_info[$this->current_subdomain_host];
             $main_default = $info['default_lang'];
             $primary_main = $info['main_domains'][0];
         } else {
-            $lang_map          = $this->domain_map[$this->current_host] ?? [];
+            $lang_map = $this->domain_map[$this->current_host] ?? [];
             $target_subdomain  = isset($lang_map[$content_lang])
                 ? $lang_map[$content_lang] : null;
             $main_default      = $lang_map['default_lang'] ?? self::FALLBACK_LANG;
