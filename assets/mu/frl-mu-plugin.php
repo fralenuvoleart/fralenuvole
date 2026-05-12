@@ -25,7 +25,7 @@ $plugin_dir = WP_PLUGIN_DIR . '/' . FRL_MU_NAME . '/';
 require_once $plugin_dir . 'includes/bootstrap.php';
 
 // Load  MU-plugin-specific helpers
-require_once $plugin_dir . 'includes/mu/mu-plugin.php';
+require_once FRL_DIR_PATH . 'includes/mu/mu-plugin.php';
 
 
 

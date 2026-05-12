@@ -3,7 +3,7 @@
 
 
  /*
-  * Contains all exclusion logic for the MU plugin loader.
+  * Contains all exclusion logic and throttle functions for the MU plugin loader.
   * Required only by assets/mu/frl-mu-plugin.php after bootstrap is loaded,
   * so all core helpers (frl_get_option, frl_is_admin, frl_textlist_to_array, etc.)
   * are available when these functions are called.
@@ -14,6 +14,54 @@
 // Exit if accessed directly.
 if (!defined('ABSPATH')) {
     exit;
+}
+
+/**
+ * Checks User-Agent against throttled bot patterns and drops the connection
+ * with a configured HTTP status code (default 429) if the rate limit is exceeded.
+ *
+ * Must be called at top-level during MU plugin loading — before any WordPress
+ * output begins — to ensure header() calls succeed.
+ *
+ * Uses frl_get_transient / frl_set_transient which add static caching and
+ * consistent prefixing (frl_) on top of WordPress transients.
+ *
+ * @return void
+ */
+function frl_maybe_throttle_user_agent(): void
+{
+    // Check if the User-Agent matches any throttled bot pattern
+    $is_throttled_bot = false;
+    if (!empty($_SERVER['HTTP_USER_AGENT'])) {
+        foreach (FRL_MU_THROTTLE_USER_AGENT as $ua_pattern) {
+            if (stripos($_SERVER['HTTP_USER_AGENT'], $ua_pattern) !== false) {
+                $is_throttled_bot = true;
+                break;
+            }
+        }
+    }
+
+    if (!$is_throttled_bot) {
+        return;
+    }
+
+    // Get the bot's IP address, preferring X-Forwarded-For behind proxies (e.g., Cloudflare)
+    $ip = $_SERVER['REMOTE_ADDR'];
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        // Trim to remove leading/trailing whitespace from proxy IP lists like "1.2.3.4, 5.6.7.8"
+        $ip = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
+    }
+
+    $transient_key = 'chatgpt_throttle_' . md5($ip);
+    $request_count = (int) frl_get_transient($transient_key);
+
+    if ($request_count >= FRL_MU_THROTTLE_LIMIT) {
+        http_response_code(FRL_MU_THROTTLE_STATUS_CODE);
+        header('Retry-After: ' . FRL_MU_THROTTLE_PERIOD);
+        exit('Rate limit exceeded for AI Assistant bots.');
+    }
+
+    frl_set_transient($transient_key, $request_count + 1, FRL_MU_THROTTLE_PERIOD);
 }
 
 /**
