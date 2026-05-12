@@ -429,7 +429,6 @@ function frl_add_exclusion_filter_network_active_plugins(array $excluded): void
  * If the exclusion is later removed, the plugin will load, register its
  * schedules, and its cron events will work again.
  *
- * @param string[] $excluded List of plugin paths to exclude (unused directly, kept for consistency).
  * @return void
  */
 function frl_add_exclusion_filter_cron(): void
