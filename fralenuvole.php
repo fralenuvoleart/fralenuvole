@@ -48,8 +48,7 @@ add_action('plugins_loaded',
 
 
 // Security headers for all requests
-// Uses wp_headers filter instead of send_headers action to avoid
-// "headers already sent" warnings when theme functions.php outputs content.
+// Uses wp_headers filter instead of send_headers actiont.
 add_filter('wp_headers', function ($headers) {
     $headers['X-Content-Type-Options'] = 'nosniff';
     $headers['X-Frame-Options'] = 'SAMEORIGIN';
