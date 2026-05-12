@@ -331,18 +331,17 @@ class Frl_Subdomain_Adapter {
         // Priority 20: makes home_url() return the correct subdomain URL.
         add_filter('home_url', [$this, 'filter_home_url'], 20, 4);
 
-        // --- URL transformation filters (priority 21 — after Polylang at p20) ---
+        // --- URL transformation filters (priority PHP_INT_MAX — always last) ---
         // Polylang registers post_link, post_type_link, page_link, term_link, etc.
-        // at priority 20. Since Subdomain Adapter loads at plugins_loaded/5 (before
-        // Polylang's plugins_loaded/10), same-priority hooks would execute in the
-        // wrong order — Subdomain Adapter first, Polylang second. Priority 21 ensures
-        // Subdomain Adapter always transforms the final URL after Polylang.
-        add_filter('post_link',             [$this, 'filter_post_link'],        21, 2);
-        add_filter('post_type_link',        [$this, 'filter_post_type_link'],   21, 2);
-        add_filter('page_link',             [$this, 'filter_page_link'],        21, 2);
-        add_filter('term_link',             [$this, 'filter_term_link'],        21, 3);
-        add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    21, 1);
-        add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], 21, 1);
+        // at priority 20. Since the Subdomain Adapter is the final authority on URL
+        // structure for SEO, PHP_INT_MAX guarantees no other plugin can override the
+        // subdomain transformation, regardless of plugin load order.
+        add_filter('post_link',             [$this, 'filter_post_link'],        PHP_INT_MAX, 2);
+        add_filter('post_type_link',        [$this, 'filter_post_type_link'],   PHP_INT_MAX, 2);
+        add_filter('page_link',             [$this, 'filter_page_link'],        PHP_INT_MAX, 2);
+        add_filter('term_link',             [$this, 'filter_term_link'],        PHP_INT_MAX, 3);
+        add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    PHP_INT_MAX, 1);
+        add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], PHP_INT_MAX, 1);
 
         // --- Template redirect: 301 non-target content on subdomain ---
         add_action('template_redirect',     [$this, 'redirect_non_target_content'], 5);

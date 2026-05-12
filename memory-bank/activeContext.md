@@ -188,7 +188,7 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
   2. **All URL hooks at same priority (20) as Polylang** — Subdomain Adapter's `post_link`, `post_type_link`, `page_link`, `term_link`, `wpseo_canonical`, `the_seo_framework_meta_render_data` all ran *before* Polylang's handlers due to earlier plugin load order (`plugins_loaded/5` vs `plugins_loaded/10`). Polylang's `PLL_Static_Pages::page_link()` then overrode the already-transformed URL with `$lang->get_home_url()` = main-domain URL.
 - **Fix (two-part):**
   - **Part A:** Replaced dead `pll_get_home_url` hook with [`pll_additional_language_data`](modules/subdomain_adapter/class-subdomain-adapter.php:328) (p20 — after Polylang's p10) to set correct subdomain URL directly in language object's cached `home_url`. Also added [`pll_language_home_url`](modules/subdomain_adapter/class-subdomain-adapter.php:319) (p20) for non-cached path.
-  - **Part B:** Changed all URL hooks from p20 to **p21** at [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:340-345): `post_link`, `post_type_link`, `page_link`, `term_link`, `wpseo_canonical`, `the_seo_framework_meta_render_data`.
+  - **Part B:** Changed all URL hooks from p20 to **`PHP_INT_MAX`** at [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:340-345): `post_link`, `post_type_link`, `page_link`, `term_link`, `wpseo_canonical`, `the_seo_framework_meta_render_data`.
 - **Plan:** [`plans/fix-subdomain-adapter-homepage-link.md`](plans/fix-subdomain-adapter-homepage-link.md)
 - **Status:** Applied. Awaiting staging verification.
 

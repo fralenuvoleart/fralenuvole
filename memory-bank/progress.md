@@ -399,7 +399,7 @@
   2. **All URL hooks at p20** — same priority as Polylang's handlers. Since Subdomain Adapter loads first (`plugins_loaded/5` vs `plugins_loaded/10`), same-priority hooks executed in wrong order. Polylang's `PLL_Static_Pages::page_link()` overrode already-transformed URLs.
 - **Fix (two-part):**
   - **Part A:** Replaced `pll_get_home_url` with [`pll_additional_language_data`](modules/subdomain_adapter/class-subdomain-adapter.php:328) (p20) to set correct subdomain URL in language object's cached `home_url`. Also added [`pll_language_home_url`](modules/subdomain_adapter/class-subdomain-adapter.php:319) (p20) for non-cached path. Added methods [`filter_pll_additional_language_data()`](modules/subdomain_adapter/class-subdomain-adapter.php:482) and [`filter_pll_language_home_url()`](modules/subdomain_adapter/class-subdomain-adapter.php:417). Removed dead `filter_pll_get_home_url()`.
-  - **Part B:** Changed all URL hooks from p20 to **p21** at [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:340-345): `post_link`, `post_type_link`, `page_link`, `term_link`, `wpseo_canonical`, `the_seo_framework_meta_render_data`.
+  - **Part B:** Changed all URL hooks from p20 to **`PHP_INT_MAX`** at [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:340-345): `post_link`, `post_type_link`, `page_link`, `term_link`, `wpseo_canonical`, `the_seo_framework_meta_render_data`.
 - **File:** [`modules/subdomain_adapter/class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php)
 - **Plan:** [`plans/fix-subdomain-adapter-homepage-link.md`](plans/fix-subdomain-adapter-homepage-link.md)
 - **Status:** Applied. Awaiting staging verification.

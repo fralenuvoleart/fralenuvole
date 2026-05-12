@@ -55,24 +55,24 @@ add_filter('pll_language_home_url', [$this, 'filter_pll_language_home_url'], 20,
 
 Replaces the old dead `pll_get_home_url` hook.
 
-### Part B: Move all URL transformation hooks to priority 21
+### Part B: Move all URL transformation hooks to `PHP_INT_MAX`
 
-Ensures Subdomain Adapter always runs **after** Polylang's URL filters:
+Ensures Subdomain Adapter always runs **last** — no plugin can ever override the subdomain transformation:
 
 ```php
-add_filter('post_link',             [$this, 'filter_post_link'],        21, 2);
-add_filter('post_type_link',        [$this, 'filter_post_type_link'],   21, 2);
-add_filter('page_link',             [$this, 'filter_page_link'],        21, 2);
-add_filter('term_link',             [$this, 'filter_term_link'],        21, 3);
-add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    21, 1);
-add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], 21, 1);
+add_filter('post_link',             [$this, 'filter_post_link'],        PHP_INT_MAX, 2);
+add_filter('post_type_link',        [$this, 'filter_post_type_link'],   PHP_INT_MAX, 2);
+add_filter('page_link',             [$this, 'filter_page_link'],        PHP_INT_MAX, 2);
+add_filter('term_link',             [$this, 'filter_term_link'],        PHP_INT_MAX, 3);
+add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    PHP_INT_MAX, 1);
+add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], PHP_INT_MAX, 1);
 ```
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| [`modules/subdomain_adapter/class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php) | Replaced `pll_get_home_url` hook with `pll_additional_language_data` (p20) + `pll_language_home_url` (p20). Changed all URL hooks from p20 to p21. Added `filter_pll_additional_language_data()` and `filter_pll_language_home_url()` methods. Removed dead `filter_pll_get_home_url()`. |
+| [`modules/subdomain_adapter/class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php) | Replaced `pll_get_home_url` hook with `pll_additional_language_data` (p20) + `pll_language_home_url` (p20). Changed all URL hooks from p20 to `PHP_INT_MAX`. Added `filter_pll_additional_language_data()` and `filter_pll_language_home_url()` methods. Removed dead `filter_pll_get_home_url()`. |
 
 ## Detailed Code Changes
 
@@ -97,13 +97,13 @@ add_filter('pll_language_home_url', [$this, 'filter_pll_language_home_url'], 20,
 // Override home_url in language data (cached path — primary fix)
 add_filter('pll_additional_language_data', [$this, 'filter_pll_additional_language_data'], 20, 2);
 
-// URL transformation filters (priority 21 — after Polylang at p20)
-add_filter('post_link',             [$this, 'filter_post_link'],        21, 2);
-add_filter('post_type_link',        [$this, 'filter_post_type_link'],   21, 2);
-add_filter('page_link',             [$this, 'filter_page_link'],        21, 2);
-add_filter('term_link',             [$this, 'filter_term_link'],        21, 3);
-add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    21, 1);
-add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], 21, 1);
+// URL transformation filters (priority PHP_INT_MAX — always last)
+add_filter('post_link',             [$this, 'filter_post_link'],        PHP_INT_MAX, 2);
+add_filter('post_type_link',        [$this, 'filter_post_type_link'],   PHP_INT_MAX, 2);
+add_filter('page_link',             [$this, 'filter_page_link'],        PHP_INT_MAX, 2);
+add_filter('term_link',             [$this, 'filter_term_link'],        PHP_INT_MAX, 3);
+add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    PHP_INT_MAX, 1);
+add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], PHP_INT_MAX, 1);
 ```
 
 ### New: `filter_pll_additional_language_data()` (line 482)
