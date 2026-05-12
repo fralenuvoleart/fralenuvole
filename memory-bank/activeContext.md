@@ -183,9 +183,14 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
 
 ## 🔧 Subdomain Adapter — Homepage Language Switcher URL Fix (2026-05-12)
 - **Bug:** On `staging.pbservices.ge` EN homepage, Polylang language switcher generated `https://staging.pbservices.ge/ru/` instead of `https://ru.pbservices.ge/` for the RU link. Non-homepage links worked correctly.
-- **Root cause:** Priority ordering conflict on the `page_link` filter. Both Subdomain Adapter's [`filter_page_link()`](modules/subdomain_adapter/class-subdomain-adapter.php:557) and Polylang's [`PLL_Static_Pages::page_link()`](https://github.com/polylang/polylang/blob/master/src/static-pages.php:121) were at priority **20**. Since Subdomain Adapter registers at `plugins_loaded/5` and Polylang at `plugins_loaded/10`, Subdomain Adapter ran first (correctly transforming the URL), then Polylang's static pages filter detected the front page and **overrode** the URL with `$lang->get_home_url()` = `https://staging.pbservices.ge/ru/`.
-- **Fix:** Changed `page_link` priority from **20 → 21** at [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:326) so Subdomain Adapter runs **after** `PLL_Static_Pages::page_link()` and re-transforms the overridden URL.
+- **Root cause (two-part):**
+  1. **`pll_get_home_url` filter doesn't exist** in Polylang 3.7+. The home URL is set via `pll_additional_language_data` during language object creation, cached in `PLL_Language::$home_url`, and returned directly by `get_home_url()` without firing any filter when caching is enabled (default).
+  2. **All URL hooks at same priority (20) as Polylang** — Subdomain Adapter's `post_link`, `post_type_link`, `page_link`, `term_link`, `wpseo_canonical`, `the_seo_framework_meta_render_data` all ran *before* Polylang's handlers due to earlier plugin load order (`plugins_loaded/5` vs `plugins_loaded/10`). Polylang's `PLL_Static_Pages::page_link()` then overrode the already-transformed URL with `$lang->get_home_url()` = main-domain URL.
+- **Fix (two-part):**
+  - **Part A:** Replaced dead `pll_get_home_url` hook with [`pll_additional_language_data`](modules/subdomain_adapter/class-subdomain-adapter.php:328) (p20 — after Polylang's p10) to set correct subdomain URL directly in language object's cached `home_url`. Also added [`pll_language_home_url`](modules/subdomain_adapter/class-subdomain-adapter.php:319) (p20) for non-cached path.
+  - **Part B:** Changed all URL hooks from p20 to **p21** at [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:340-345): `post_link`, `post_type_link`, `page_link`, `term_link`, `wpseo_canonical`, `the_seo_framework_meta_render_data`.
 - **Plan:** [`plans/fix-subdomain-adapter-homepage-link.md`](plans/fix-subdomain-adapter-homepage-link.md)
+- **Status:** Applied. Awaiting staging verification.
 
 ## 🔧 Security Headers — send_headers → wp_headers (2026-05-12)
 - **Bug:** `send_headers` callback at [`fralenuvole.php:51`](fralenuvole.php:51) called `header()` directly. On `ru.pbservices.ge` (different server), `greenshift/functions.php:263` outputs content before `send_headers` fires, causing "Cannot modify header information" warning.

@@ -392,4 +392,16 @@
   - `mu-plugin.php` reduced from 60 lines to 24 lines — purely orchestrator (require + hook + function call)
 - **Files:** [`config/config-mu.php`](config/config-mu.php), [`includes/mu/functions-mu.php`](includes/mu/functions-mu.php), [`includes/mu/mu.php`](includes/mu/mu.php)
 
+### Subdomain Adapter — Homepage Language Switcher URL Fix (2026-05-12)
+- **Bug:** On `staging.pbservices.ge` EN homepage, Polylang language switcher generated `https://staging.pbservices.ge/ru/` instead of `https://ru.pbservices.ge/` for the RU link.
+- **Root cause (two-part):**
+  1. **Dead `pll_get_home_url` hook** — this filter doesn't exist in Polylang 3.7+. The real mechanism is `pll_additional_language_data` (sets `PLL_Language::$home_url` at creation time) and `pll_language_home_url` (only when caching disabled).
+  2. **All URL hooks at p20** — same priority as Polylang's handlers. Since Subdomain Adapter loads first (`plugins_loaded/5` vs `plugins_loaded/10`), same-priority hooks executed in wrong order. Polylang's `PLL_Static_Pages::page_link()` overrode already-transformed URLs.
+- **Fix (two-part):**
+  - **Part A:** Replaced `pll_get_home_url` with [`pll_additional_language_data`](modules/subdomain_adapter/class-subdomain-adapter.php:328) (p20) to set correct subdomain URL in language object's cached `home_url`. Also added [`pll_language_home_url`](modules/subdomain_adapter/class-subdomain-adapter.php:319) (p20) for non-cached path. Added methods [`filter_pll_additional_language_data()`](modules/subdomain_adapter/class-subdomain-adapter.php:482) and [`filter_pll_language_home_url()`](modules/subdomain_adapter/class-subdomain-adapter.php:417). Removed dead `filter_pll_get_home_url()`.
+  - **Part B:** Changed all URL hooks from p20 to **p21** at [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:340-345): `post_link`, `post_type_link`, `page_link`, `term_link`, `wpseo_canonical`, `the_seo_framework_meta_render_data`.
+- **File:** [`modules/subdomain_adapter/class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php)
+- **Plan:** [`plans/fix-subdomain-adapter-homepage-link.md`](plans/fix-subdomain-adapter-homepage-link.md)
+- **Status:** Applied. Awaiting staging verification.
+
 *Last Updated: 2026-05-12*

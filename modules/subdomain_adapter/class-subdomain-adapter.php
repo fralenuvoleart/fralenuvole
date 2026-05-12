@@ -312,21 +312,37 @@ class Frl_Subdomain_Adapter {
         // Priority 2: ensures Polylang's current language matches the subdomain.
         add_filter('pll_current_language', [$this, 'filter_pll_current_language'], 2, 1);
 
-        // --- Home URL filter ---
-        // Priority 20: returns correct home URL for mapped languages.
-        add_filter('pll_get_home_url', [$this, 'filter_pll_get_home_url'], 20, 2);
+        // --- Language home URL filter (for when PLL_CACHE_HOME_URL is false) ---
+        // Priority 20: returns correct home URL for mapped languages when Polylang's
+        // home_url cache is disabled. The same logic handles pll_additional_language_data
+        // (p20) for the cached path.
+        add_filter('pll_language_home_url', [$this, 'filter_pll_language_home_url'], 20, 2);
+
+        // --- Override home_url in language data (cached path) ---
+        // Priority 20: runs after Polylang's own handler at p10 to set the correct
+        // subdomain URL directly in the language object's cached home_url property.
+        // This is the primary fix for the homepage language switcher: when
+        // PLL_CACHE_LANGUAGES and PLL_CACHE_HOME_URL are both true (default),
+        // PLL_Language::get_home_url() returns the stored $this->home_url without
+        // firing any filter, so we must set it correctly at creation time.
+        add_filter('pll_additional_language_data', [$this, 'filter_pll_additional_language_data'], 20, 2);
 
         // --- WordPress home_url override on subdomains ---
         // Priority 20: makes home_url() return the correct subdomain URL.
         add_filter('home_url', [$this, 'filter_home_url'], 20, 4);
 
-        // --- URL transformation filters (priority 20 — after rewriter at p10) ---
-        add_filter('post_link',             [$this, 'filter_post_link'],        20, 2);
-        add_filter('post_type_link',        [$this, 'filter_post_type_link'],   20, 2);
+        // --- URL transformation filters (priority 21 — after Polylang at p20) ---
+        // Polylang registers post_link, post_type_link, page_link, term_link, etc.
+        // at priority 20. Since Subdomain Adapter loads at plugins_loaded/5 (before
+        // Polylang's plugins_loaded/10), same-priority hooks would execute in the
+        // wrong order — Subdomain Adapter first, Polylang second. Priority 21 ensures
+        // Subdomain Adapter always transforms the final URL after Polylang.
+        add_filter('post_link',             [$this, 'filter_post_link'],        21, 2);
+        add_filter('post_type_link',        [$this, 'filter_post_type_link'],   21, 2);
         add_filter('page_link',             [$this, 'filter_page_link'],        21, 2);
-        add_filter('term_link',             [$this, 'filter_term_link'],        20, 3);
-        add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    20, 1);
-        add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], 20, 1);
+        add_filter('term_link',             [$this, 'filter_term_link'],        21, 3);
+        add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    21, 1);
+        add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], 21, 1);
 
         // --- Template redirect: 301 non-target content on subdomain ---
         add_action('template_redirect',     [$this, 'redirect_non_target_content'], 5);
@@ -379,11 +395,14 @@ class Frl_Subdomain_Adapter {
     }
 
     // -------------------------------------------------------------------------
-    // Filter: pll_get_home_url
+    // Filter: pll_language_home_url (dynamic, non-cached path)
     // -------------------------------------------------------------------------
 
     /**
      * Return the correct home URL for mapped languages.
+     *
+     * Hooked to `pll_language_home_url` (fired by PLL_Language::get_home_url()
+     * when PLL_CACHE_LANGUAGES or PLL_CACHE_HOME_URL is false).
      *
      * Handles hreflang tags and language switcher URLs in both directions:
      * - On main domain: `pll_home_url('ru')` → `https://ru.pbservices.ge/`
@@ -391,13 +410,15 @@ class Frl_Subdomain_Adapter {
      * - On subdomain: `pll_home_url('en')` → `https://pbservices.ge/` (default, no prefix)
      * - On subdomain: `pll_home_url('it')` → `https://pbservices.ge/it/` (has prefix)
      *
-     * @param  string $url  The home URL Polylang computed.
-     * @param  string $lang The language slug.
+     * @param  string $url      The home URL Polylang computed.
+     * @param  array  $language Array of PLL_Language properties (from to_array('db')).
      * @return string
      */
-    public function filter_pll_get_home_url($url, $lang): string {
+    public function filter_pll_language_home_url($url, $language): string {
+        $lang = $language['slug'] ?? '';
+
         // Validate: if the language is not recognized, return the original URL unchanged.
-        if (!in_array($lang, frl_get_active_languages(), true)) {
+        if (empty($lang) || !in_array($lang, frl_get_active_languages(), true)) {
             return is_string($url) ? $url : '';
         }
 
@@ -433,6 +454,69 @@ class Frl_Subdomain_Adapter {
             return "{$scheme}://{$resolve_domain}/";
         }
         return "{$scheme}://{$resolve_domain}/{$lang}/";
+    }
+
+    // -------------------------------------------------------------------------
+    // Filter: pll_additional_language_data (cached path — primary fix)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Override home_url in language data for mapped languages.
+     *
+     * Hooked to `pll_additional_language_data` at p20, after Polylang's own
+     * handler at p10 (PLL_Links_Model::set_language_home_urls). This sets the
+     * correct subdomain URL directly in the language object's cached home_url
+     * property, which is what PLL_Language::get_home_url() returns when
+     * PLL_CACHE_LANGUAGES and PLL_CACHE_HOME_URL are both true (default).
+     *
+     * This is the primary fix for the homepage language switcher: when Polylang's
+     * language switcher requests the RU translation URL on the EN front page,
+     * PLL_Frontend_Static_Pages::pll_pre_translation_url() calls
+     * $language->get_home_url(), which returns this property without firing
+     * any filter. Setting it correctly at creation time covers all cases.
+     *
+     * @param  array $additional_data Additional language data (home_url, search_url, etc.).
+     * @param  array $language        Language properties array.
+     * @return array
+     */
+    public function filter_pll_additional_language_data(array $additional_data, array $language): array {
+        $lang = $language['slug'] ?? '';
+
+        if (empty($lang)) {
+            return $additional_data;
+        }
+
+        // Determine which main domain to use for resolution.
+        if ($this->is_on_subdomain()) {
+            if (!isset($this->subdomain_info[$this->current_subdomain_host])) {
+                return $additional_data;
+            }
+            $resolve_domain = $this->subdomain_info[$this->current_subdomain_host]['main_domains'][0];
+        } elseif ($this->is_on_main_domain) {
+            $resolve_domain = $this->current_host;
+        } else {
+            return $additional_data;
+        }
+
+        $scheme = $this->get_scheme();
+
+        // If this language has a mapped subdomain → set home_url to subdomain URL.
+        if (isset($this->domain_map[$resolve_domain][$lang])
+            && $this->domain_map[$resolve_domain][$lang] !== ''
+        ) {
+            $additional_data['home_url'] = "{$scheme}://" . $this->domain_map[$resolve_domain][$lang] . '/';
+            return $additional_data;
+        }
+
+        // Set home_url to main domain URL (with or without prefix).
+        $main_default = $this->domain_map[$resolve_domain]['default_lang'] ?? self::FALLBACK_LANG;
+        if ((string) $lang === $main_default) {
+            $additional_data['home_url'] = "{$scheme}://{$resolve_domain}/";
+        } else {
+            $additional_data['home_url'] = "{$scheme}://{$resolve_domain}/{$lang}/";
+        }
+
+        return $additional_data;
     }
 
     /**
