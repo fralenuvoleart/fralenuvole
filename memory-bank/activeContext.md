@@ -213,4 +213,29 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Files:** [`config/config-mu.php`](config/config-mu.php), [`includes/mu/functions-mu.php`](includes/mu/functions-mu.php), [`includes/mu/mu.php`](includes/mu/mu.php)
 - **Require chain kept as-is:** `frl-mu-plugin.php` loads bootstrap + mu-plugin, `mu-plugin.php` loads its own functions file (self-contained module)
 
-*Last Updated: 2026-05-12*
+*Last Updated: 2026-05-14*
+
+## ✅ Subdomain Adapter — Legacy URL Handling (2026-05-14)
+
+### Implemented
+- **New class** [`Frl_Subdomain_Adapter_Legacy`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php) handles hardcoded legacy URLs in post content, block content, and navigation menus via runtime transformation.
+- **4 hooks registered:**
+  - `template_redirect` (p6) — 301-redirects legacy URLs with language prefixes to canonical domain
+  - `the_content` (PHP_INT_MAX) — transforms hardcoded site URLs in post content HTML
+  - `render_block` (PHP_INT_MAX) — transforms URLs in block HTML with `str_contains` fast-fail + static block cache
+  - `wp_nav_menu_objects` (PHP_INT_MAX) — transforms menu item URLs using object language or path extraction
+- **Public accessors added** to [`Frl_Subdomain_Adapter`](modules/subdomain_adapter/class-subdomain-adapter.php): `get_domain_map()`, `get_subdomain_info()`, `get_current_host()`, `get_subdomain_lang()`
+- **`transform_url()` visibility changed** from `private` to `public` — enables menu item transformation via object language
+- **Feature toggle:** Gated behind `frl_get_option('subdomain_adapter_legacy_links')` in [`subdomain_adapter.php`](modules/subdomain_adapter/subdomain_adapter.php:31) — option defined in [`config-options-subdomain_adapter.php`](modules/subdomain_adapter/config-options-subdomain_adapter.php:18) with default `1` (enabled), `restricted => true`
+- **Plan:** [`plans/subdomain-adapter-legacy-url-handling.md`](plans/subdomain-adapter-legacy-url-handling.md)
+
+### Architecture
+- Legacy class delegates to existing `transform_url()` for object-linked menu items
+- Falls back to path-based language extraction for custom links
+- All hooks gate on `should_transform()` (admin/REST/preview/cron guard)
+- Static caching per request: `$block_cache` (render_block), `$hosts` (get_recognized_hosts)
+- Regex only matches `href` and `action` attributes — `src` excluded (site is fully mirrored, assets resolve identically on both domains)
+- Relative URLs untouched — regex only matches absolute `https?://` URLs with recognized hosts
+
+### Code Review Fix (2026-05-14)
+- **Bug found & fixed:** `transform_urls_in_html()` hardcoded `href=` in replacement string, corrupting `src=` and `action=` attributes. Fixed by capturing attribute name and using it in output. Then `src` removed entirely from pattern per user confirmation that mirrored assets don't need cross-domain URLs.

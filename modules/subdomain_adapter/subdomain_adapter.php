@@ -26,3 +26,9 @@ require_once __DIR__ . '/class-subdomain-adapter.php';
 // Initialize the singleton. detect() runs once; hooks register only when
 // on a configured domain (main_domain or mapped subdomain).
 Frl_Subdomain_Adapter::init();
+
+// Load and initialize the legacy URL handler (content, navigation, redirects).
+if (frl_get_option('subdomain_adapter_legacy_links')) {
+    require_once __DIR__ . '/class-subdomain-adapter-legacy.php';
+    Frl_Subdomain_Adapter_Legacy::init();
+}

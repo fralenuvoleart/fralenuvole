@@ -274,6 +274,42 @@ class Frl_Subdomain_Adapter {
         return $this->is_on_main_domain;
     }
 
+    /**
+     * Get the domain map (main → { lang → subdomain, default_lang → lang }).
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function get_domain_map(): array {
+        return $this->domain_map;
+    }
+
+    /**
+     * Get the subdomain reverse index.
+     *
+     * @return array<string, array{lang: string, default_lang: string, main_domains: string[]}>
+     */
+    public function get_subdomain_info(): array {
+        return $this->subdomain_info;
+    }
+
+    /**
+     * Get the current HTTP_HOST.
+     *
+     * @return string
+     */
+    public function get_current_host(): string {
+        return $this->current_host;
+    }
+
+    /**
+     * Get the current subdomain's language, or null if not on a subdomain.
+     *
+     * @return string|null
+     */
+    public function get_subdomain_lang(): ?string {
+        return $this->current_subdomain_lang;
+    }
+
     // -------------------------------------------------------------------------
     // Hook Registration (lazy — only when on a configured domain)
     // -------------------------------------------------------------------------
@@ -753,7 +789,7 @@ class Frl_Subdomain_Adapter {
      * @param  string $content_lang The language slug of the content.
      * @return string
      */
-    private function transform_url(string $url, string $content_lang): string {
+    public function transform_url(string $url, string $content_lang): string {
         // Determine target subdomain and default language.
         if ($this->is_on_subdomain()) {
             // Case 3: Content matches subdomain's language → no-op (done early

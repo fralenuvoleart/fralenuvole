@@ -417,4 +417,53 @@
 - **Plan:** [`plans/fix-subdomain-adapter-homepage-link.md`](plans/fix-subdomain-adapter-homepage-link.md)
 - **Status:** Applied. Awaiting staging verification.
 
-*Last Updated: 2026-05-12*
+*Last Updated: 2026-05-14*
+
+## Subdomain Adapter — Legacy URL Handling (2026-05-14)
+
+### Problem
+Hardcoded legacy URLs (e.g., `pbservices.ge/ru/services/`) exist in post content, block content, and navigation menus. These need runtime transformation to match the current domain context (main domain or subdomain) without DB search-replace operations.
+
+### Changes Applied
+
+#### [`modules/subdomain_adapter/class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php)
+1. **`transform_url()` visibility** (line 792): `private` → `public` — enables the legacy class to transform menu item URLs using the object's language.
+2. **4 public accessor methods** added after `is_on_main_domain()` (lines 277-311):
+   - `get_domain_map(): array` — returns the `$domain_map` property
+   - `get_subdomain_info(): array` — returns the `$subdomain_info` property
+   - `get_current_host(): string` — returns the `$current_host` property
+   - `get_subdomain_lang(): ?string` — returns the `$current_subdomain_lang` property
+
+#### [`modules/subdomain_adapter/class-subdomain-adapter-legacy.php`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php) (NEW, ~350 lines)
+- **Class:** `Frl_Subdomain_Adapter_Legacy`
+- **Singleton** with `init()`, private `__construct()`, `register_hooks()`
+- **4 hooks registered:**
+  - `template_redirect` (p6) → `redirect_legacy_incoming_url()` — 301-redirects legacy URLs with language prefix to canonical domain
+  - `the_content` (PHP_INT_MAX) → `filter_the_content()` — transforms hardcoded URLs in post HTML
+  - `render_block` (PHP_INT_MAX) → `filter_render_block()` — transforms block URLs with fast-fail + cache
+  - `wp_nav_menu_objects` (PHP_INT_MAX) → `filter_nav_menu_objects()` — transforms menu item URLs
+- **Supporting methods:** `should_transform()`, `get_target_host_for_language()`, `build_redirect_target()`, `transform_urls_in_html()`, `transform_single_content_url()`, `resolve_target_host()`, `get_recognized_hosts()`
+- **Defensive gates:** `is_admin`, `frl_is_rest_api_request`, `is_preview`, `frl_is_cron_job_request`, `frl_is_already_running`
+- **Static caches:** `$block_cache` (render_block dedup), `$hosts` (get_recognized_hosts, computed once per request)
+- **Fast-fail strategies:** `str_contains('pbservices.ge')` guard in render_block, `$likely_has_urls` block name pre-check
+
+#### [`modules/subdomain_adapter/subdomain_adapter.php`](modules/subdomain_adapter/subdomain_adapter.php)
+- Added require + init for the legacy class after `Frl_Subdomain_Adapter::init()` (lines 30-32)
+
+### Regression Prevention
+- Zero existing hooks modified — all legacy hooks run at PHP_INT_MAX after existing filters
+- `transform_url()` made public but signature unchanged — existing private callers unaffected
+- All new hooks have the same defensive gates as the parent class
+- Redirect loop prevention via URL comparison before `wp_redirect()`
+- Relative URLs untouched (regex only matches absolute URLs with recognized hosts)
+- Regex only matches `href` and `action` attributes — `src` excluded (matched assets resolve identically on both domains)
+
+### Feature Toggle (2026-05-14)
+- Legacy handler gated behind `frl_get_option('subdomain_adapter_legacy_links')` in [`subdomain_adapter.php:31`](modules/subdomain_adapter/subdomain_adapter.php:31)
+- Option defined in [`config-options-subdomain_adapter.php:18`](modules/subdomain_adapter/config-options-subdomain_adapter.php:18): default `1` (enabled), `restricted => true`
+
+### Code Review Bug Fix (2026-05-14)
+- **Bug:** `transform_urls_in_html()` hardcoded `href=` in the `preg_replace_callback` replacement, corrupting `src=` and `action=` attributes.
+- **Fix:** Attribute name now captured (`(href|action)`) and used in the replacement string. `src` removed from pattern entirely per user direction (mirrored assets don't need cross-domain URLs).
+
+- Plan: [`plans/subdomain-adapter-legacy-url-handling.md`](plans/subdomain-adapter-legacy-url-handling.md)
