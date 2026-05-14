@@ -189,6 +189,26 @@ The staging domain will be detected as a main domain. Russian content URLs on st
 
 ---
 
+## Legacy Link Handling
+
+The [`Frl_Subdomain_Adapter_Legacy`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:93) class handles links that aren't covered by the core adapter's permalink/canonical transforms. It addresses three categories:
+
+| Category | Hook | Purpose |
+|---|---|---|
+| Hardcoded links in `post_content` | [`the_content`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:136) at `PHP_INT_MAX` | Scans rendered HTML via regex for absolute URLs to recognized hosts; transforms `href`, `src`, and `action` attributes |
+| Navigation menu items | [`wp_nav_menu_objects`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:142) at `PHP_INT_MAX` | Transforms menu item URLs using the linked post/term language (via `transform_url()`) with path-based fallback |
+| Legacy incoming URLs | [`template_redirect`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:133) at priority 6 | 301-redirects URLs with a language prefix on the wrong domain (e.g., `pbservices.ge/ru/post/` → `ru.pbservices.ge/post/`) |
+
+**Design notes:**
+
+- All three hooks register only when the adapter is configured and on a recognized domain.
+- Content URL transformation is purely runtime (regex on rendered HTML) — no database writes.
+- `render_block` at `PHP_INT_MAX` provides per-block transformation with a `str_contains` fast-fail guard and per-request static block cache.
+- Legacy incoming redirects respect `is_404()` and `is_admin()` guards; redirect loop prevention compares target vs current URL before redirecting.
+- See [`plans/subdomain-adapter-legacy-url-handling.md`](plans/subdomain-adapter-legacy-url-handling.md) for full implementation plan and testing checklist.
+
+---
+
 ## Maintenance Notes
 
 - **Config changes**: Adding/removing domains or languages only requires editing `FRL_SUBDOMAIN_ADAPTER_MAP`. The reverse index is rebuilt on every request from the constant.
