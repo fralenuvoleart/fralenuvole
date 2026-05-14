@@ -2,7 +2,7 @@
 
 /**
  * Module Name: Subdomain Adapter
- * Description: Maps subdomains to Polylang languages and bidirectionally transforms URLs between main domain and its language-specific subdomain mirrors.
+ * Description: Maps subdomains to Polylang languages and bidirectionally transforms URLs between main domain and subdomain mirrors.
  *
  * @package Fralenuvole
  */
