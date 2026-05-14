@@ -237,5 +237,13 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
 - Regex only matches `href` and `action` attributes — `src` excluded (site is fully mirrored, assets resolve identically on both domains)
 - Relative URLs untouched — regex only matches absolute `https?://` URLs with recognized hosts
 
-### Code Review Fix (2026-05-14)
+### Code Review Bug Fix (2026-05-14)
 - **Bug found & fixed:** `transform_urls_in_html()` hardcoded `href=` in replacement string, corrupting `src=` and `action=` attributes. Fixed by capturing attribute name and using it in output. Then `src` removed entirely from pattern per user confirmation that mirrored assets don't need cross-domain URLs.
+- **Cross-environment fix (2026-05-14):** `filter_render_block()` hardcoded `'pbservices.ge'` in fast-fail `str_contains` check. Replaced with dynamic loop over `$this->get_recognized_hosts()` — works across all configured environments (production, staging, cross-domain setups).
+- **Block list extracted to constant (2026-05-14):** `$likely_has_urls` inline array moved to `FRL_SUBDOMAIN_ADAPTER_LEGACY_URL_BLOCKS` in [`config-constants-subdomain-adapter.php`](modules/subdomain_adapter/config-constants-subdomain-adapter.php:47). Extensible by editing the constant — no code changes needed to add third-party block types.
+
+### Code Review Hardening (2026-05-14)
+- **R1 — is_feed() consideration:** Added explicit comment to [`should_transform()`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:95) explaining why `is_feed()` and `is_robots()` are intentionally not excluded, consistent with the parent class design.
+- **R2 — Case-insensitive domain keys:** [`detect()`](modules/subdomain_adapter/class-subdomain-adapter.php:189) now lowercases all `FRL_SUBDOMAIN_ADAPTER_MAP` top-level keys and subdomain values before building reverse indices. HTTP_HOST is already lowercased; this prevents silent detection failures if constant keys have mixed case.
+- **R3 — Comment artifact:** Removed stray `8,192` from comment in [`class-subdomain-adapter-legacy.php:109`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:109).
+- **R4 — WP_DEBUG logging:** Added `WP_DEBUG`-gated `frl_log()` calls in [`transform_single_content_url()`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:361) for unparseable URLs, unrecognized hosts, and unresolvable languages — aids production debugging without runtime cost.

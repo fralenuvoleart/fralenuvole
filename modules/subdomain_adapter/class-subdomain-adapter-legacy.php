@@ -96,6 +96,12 @@ class Frl_Subdomain_Adapter_Legacy {
         if (frl_is_admin() || frl_is_rest_api_request() || is_preview() || frl_is_cron_job_request()) {
             return false;
         }
+
+        // Intentionally does NOT exclude is_feed() — RSS feeds for legacy content
+        // URLs should point to the correct canonical domain, consistent with the
+        // parent class should_transform() design (see class-subdomain-adapter.php).
+        // is_robots() is also not excluded: each domain/subdomain serves its own
+        // robots.txt naturally via WordPress's default behavior.
         return frl_translator_is_enabled();
     }
 
@@ -277,18 +283,27 @@ class Frl_Subdomain_Adapter_Legacy {
         }
 
         // Fast-fail: skip blocks unlikely to contain URLs.
+        // The block type list is defined in FRL_SUBDOMAIN_ADAPTER_LEGACY_URL_BLOCKS
+        // so it can be extended without editing this class file.
         $block_name = $block['blockName'] ?? '';
-        $likely_has_urls = in_array($block_name, [
-            'core/navigation',
-            'core/navigation-link',
-            'core/navigation-submenu',
-            'core/button',
-            'core/image',
-            'core/custom-html',
-        ], true) || $block_name === '' || str_starts_with($block_name, 'acf/');
+        $likely_has_urls = in_array($block_name, FRL_SUBDOMAIN_ADAPTER_LEGACY_URL_BLOCKS, true)
+            || $block_name === ''
+            || str_starts_with($block_name, 'acf/');
 
-        if (!$likely_has_urls && !str_contains($block_content, 'pbservices.ge')) {
-            return $block_content;
+        if (!$likely_has_urls) {
+            // Check if block HTML contains any recognized host from the domain map.
+            // This avoids hardcoding a domain name and works across all configured
+            // environments (production, staging, cross-domain setups).
+            $has_recognized_host = false;
+            foreach ($this->get_recognized_hosts() as $host) {
+                if (str_contains($block_content, $host)) {
+                    $has_recognized_host = true;
+                    break;
+                }
+            }
+            if (!$has_recognized_host) {
+                return $block_content;
+            }
         }
 
         // Static per-request block cache: avoid re-processing identical block HTML.
@@ -352,6 +367,11 @@ class Frl_Subdomain_Adapter_Legacy {
     private function transform_single_content_url(Frl_Subdomain_Adapter $adapter, string $url): string {
         $parsed = wp_parse_url($url);
         if (empty($parsed['host']) || empty($parsed['path'])) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                frl_log('Subdomain Adapter Legacy: Failed to parse URL {url}', [
+                    'url' => $url,
+                ]);
+            }
             return $url;
         }
 
@@ -365,6 +385,9 @@ class Frl_Subdomain_Adapter_Legacy {
         $is_main_domain = isset($map[$host]);
         $is_subdomain   = isset($subdomain_info[$host]);
 
+        // Defensive guard: the regex in transform_urls_in_html() already filters to
+        // recognized hosts only, so this branch should never be reached. If it does,
+        // the host wasn't in the domain map — return unchanged.
         if (!$is_main_domain && !$is_subdomain) {
             return $url; // Not a recognized domain.
         }
@@ -385,6 +408,12 @@ class Frl_Subdomain_Adapter_Legacy {
         }
 
         if ($lang === null) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                frl_log('Subdomain Adapter Legacy: Cannot determine language for URL {url} (host: {host})', [
+                    'url'  => $url,
+                    'host' => $host,
+                ]);
+            }
             return $url; // Cannot determine language.
         }
 

@@ -466,4 +466,13 @@ Hardcoded legacy URLs (e.g., `pbservices.ge/ru/services/`) exist in post content
 - **Bug:** `transform_urls_in_html()` hardcoded `href=` in the `preg_replace_callback` replacement, corrupting `src=` and `action=` attributes.
 - **Fix:** Attribute name now captured (`(href|action)`) and used in the replacement string. `src` removed from pattern entirely per user direction (mirrored assets don't need cross-domain URLs).
 
+### Cross-Environment Fix — Hardcoded Domain (2026-05-14)
+- **Problem:** `filter_render_block()` in [`class-subdomain-adapter-legacy.php:290`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:290) hardcoded `'pbservices.ge'` in `str_contains` fast-fail guard. Broke cross-environment portability (staging, future `pbproperty.ge`).
+- **Fix:** Replaced with dynamic loop over `$this->get_recognized_hosts()` — O(h) where h ≤ 10, still faster than the regex alternative. Works across all configured environments without code changes.
+
+### Block List Extracted to Constant (2026-05-14)
+- **Change:** `$likely_has_urls` inline array in `filter_render_block()` moved to `FRL_SUBDOMAIN_ADAPTER_LEGACY_URL_BLOCKS` in [`config-constants-subdomain-adapter.php`](modules/subdomain_adapter/config-constants-subdomain-adapter.php:47).
+- **Rationale:** A constant is immediately extensible — add block names to the array, done. No `add_filter()` calls, no module code, no hook registration. Third-party block types (Kadence, GenerateBlocks, etc.) can be added by editing one file.
+- **Backward-compatible:** Same default values, same behavior. The constant is loaded before the class file by [`subdomain_adapter.php`](modules/subdomain_adapter/subdomain_adapter.php:16).
+
 - Plan: [`plans/subdomain-adapter-legacy-url-handling.md`](plans/subdomain-adapter-legacy-url-handling.md)

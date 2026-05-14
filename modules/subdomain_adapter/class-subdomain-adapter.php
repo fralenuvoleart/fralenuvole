@@ -186,6 +186,19 @@ class Frl_Subdomain_Adapter {
         $this->subdomain_info  = [];
         $this->subdomain_hosts = [];
 
+        // Lowercase all map keys and subdomain values for case-insensitive domain
+        // matching, since HTTP_HOST is always lowercased by detect().
+        $normalized_map = [];
+        foreach ($this->domain_map as $main_domain => $config) {
+            $md = strtolower($main_domain);
+            $normalized_map[$md] = [];
+            foreach ($config as $key => $value) {
+                $nv = is_string($value) ? strtolower($value) : $value;
+                $normalized_map[$md][$key] = $nv;
+            }
+        }
+        $this->domain_map = $normalized_map;
+
         foreach ($this->domain_map as $main_domain => $config) {
             $default_lang = isset($config['default_lang']) ? (string) $config['default_lang'] : self::FALLBACK_LANG;
             foreach ($config as $lang => $subdomain) {
