@@ -366,7 +366,7 @@ class Frl_Subdomain_Adapter_Legacy {
      */
     private function transform_single_content_url(Frl_Subdomain_Adapter $adapter, string $url): string {
         $parsed = wp_parse_url($url);
-        if (empty($parsed['host']) || empty($parsed['path'])) {
+        if (empty($parsed['host'])) {
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 frl_log('Subdomain Adapter Legacy: Failed to parse URL {url}', [
                     'url' => $url,
@@ -376,7 +376,7 @@ class Frl_Subdomain_Adapter_Legacy {
         }
 
         $host   = strtolower($parsed['host']);
-        $path   = $parsed['path'];
+        $path   = $parsed['path'] ?? '/';
         $scheme = $parsed['scheme'] ?? 'https';
 
         // Determine if this host is a main domain or subdomain.
