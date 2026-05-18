@@ -78,12 +78,6 @@ function frl_get_active_languages(): array
     if (!frl_translator_is_enabled()) {
         return ['en'];
     }
-    // Safety net: use class_exists with autoload=false because Frl_Translation_Service
-    // is loaded via require_once (not PSR-4 autoload). Passing false prevents the
-    // autoloader from being triggered (which would fail and return false incorrectly).
-    if (!class_exists('Frl_Translation_Service', false)) {
-        return ['en'];
-    }
     return Frl_Translation_Service::get_instance()->get_active_languages();
 }
 

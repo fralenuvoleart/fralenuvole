@@ -113,6 +113,12 @@ function frl_clear_option_cache($option_name)
         return; // Not our option – leave caches intact
     }
 
+    // If the translator system was not loaded, there are no translated option
+    // caches to clear — return early to avoid calling into an unloaded class.
+    if (!class_exists('Frl_Translation_Service')) {
+        return;
+    }
+
     // This function must clear the cache for all possible languages.
     /** @disregard P1010 Undefined type */
     $active_languages = frl_get_active_languages();
