@@ -19,16 +19,7 @@ if (!defined('ABSPATH')) {
  */
 function frl_translator_is_enabled(): bool
 {
-    if (!frl_is_multilingual_active()) {
-        return false;
-    }
-    if (frl_get_option('disable_translator')) {
-        return false;
-    }
-    if (!class_exists('Frl_Translation_Service')) {
-        return false;
-    }
-    return true;
+    return frl_is_multilingual_active() && !frl_get_option('disable_translator');
 }
 
 /**
@@ -85,6 +76,9 @@ function frl_get_default_language(): string
 function frl_get_active_languages(): array
 {
     if (!frl_translator_is_enabled()) {
+        return ['en'];
+    }
+    if (!class_exists('Frl_Translation_Service')) {
         return ['en'];
     }
     return Frl_Translation_Service::get_instance()->get_active_languages();
