@@ -80,9 +80,15 @@ function frl_get_current_user()
         return $current_user = new WP_User(0);
     }
 
-    // Use auth cookie for cache key
+    // Use auth cookie for cache key.
+    // Include a short hash of the full cookie value (token portion) to bind the
+    // cache entry to the specific session, preventing cross-session cache hits.
+    // Otherwise, stale WP_User objects from the persistent 'admin' cache group
+    // (1-hour TTL) could be served to a different user's session.
     $auth_cookie = isset($_COOKIE[LOGGED_IN_COOKIE]) ? $_COOKIE[LOGGED_IN_COOKIE] : 'anonymous';
-    $cache_key = 'user_' . strtok($auth_cookie, '|');
+    $cookie_username = strtok($auth_cookie, '|');
+    $cookie_token   = substr(md5($auth_cookie), 0, 8);
+    $cache_key      = 'user_' . $cookie_username . '_' . $cookie_token;
 
     // Cache user lookup
     $current_user = frl_cache_remember('admin', $cache_key, function () {
@@ -98,6 +104,14 @@ function frl_get_current_user()
 
     // 2. Ensure the cached value is actually a WP_User object
     if (!($current_user instanceof WP_User)) {
+        $current_user = new WP_User(0);
+    }
+
+    // 3. Cross-session safety: verify the cached user's login matches the
+    //    current request's cookie username. If the persistent cache returned a
+    //    stale WP_User for a different user, invalidate and re-fetch.
+    if ($current_user->ID > 0 && $current_user->user_login !== $cookie_username) {
+        frl_cache_delete('admin', $cache_key);
         $current_user = new WP_User(0);
     }
     

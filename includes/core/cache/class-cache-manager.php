@@ -829,7 +829,15 @@ class Frl_Cache_Manager
      */
     private static function with_auth_preservation(callable $fn)
     {
-        $current_user_id = frl_get_current_user()->ID;
+        // Use wp_get_current_user() directly (uncached) to snapshot the authentic
+        // user from WordPress' own session, NOT frl_get_current_user() which pulls
+        // from the plugin's persistent 'admin' cache group. Using the cached user
+        // can cause cross-user session hijack: if the persistent cache returns a
+        // stale WP_User object for the wrong user ID, wp_set_auth_cookie() below
+        // would re-issue an auth cookie for that wrong user, permanently logging
+        // User B in as User A (UID 1).
+        $current_user = wp_get_current_user();
+        $current_user_id = $current_user->ID;
         $auth_cookie = wp_parse_auth_cookie('', 'logged_in');
 
         $result = $fn();
