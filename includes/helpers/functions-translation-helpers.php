@@ -19,7 +19,16 @@ if (!defined('ABSPATH')) {
  */
 function frl_translator_is_enabled(): bool
 {
-    return frl_is_multilingual_active() && !frl_get_option('disable_translator');
+    if (!frl_is_multilingual_active()) {
+        return false;
+    }
+    if (frl_get_option('disable_translator')) {
+        return false;
+    }
+    if (!class_exists('Frl_Translation_Service')) {
+        return false;
+    }
+    return true;
 }
 
 /**

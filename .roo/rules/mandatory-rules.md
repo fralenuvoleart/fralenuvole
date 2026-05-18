@@ -13,7 +13,6 @@
 
 ## 🛠️ DEVELOPMENT & QUALITY
 - **Zero Regression Policy:** This is production code. Check `systemPatterns.md` before every file write to ensure zero violations of established architecture.
-- **Validation Loop:** Verify work a second time before presenting it. Re-verify specifically for side effects after every patch.
 - **Design Principles:** Prioritize KISS, Modularity, Performance, and SEO.
 
 ## 🛑 ABSOLUTE CONSTRAINTS (ANTI-HALLUCINATION)
