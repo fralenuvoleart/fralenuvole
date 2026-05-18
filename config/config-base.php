@@ -40,8 +40,6 @@ if (!defined('FRL_MODULES_DIR_PATH')) {
 const FRL_PLUGIN_SUPERADMIN_ID = 1;
 const FRL_PLUGIN_ACCESS = 'delete_plugins';
 
-
-
 // Schema types
 const FRL_SCHEMA_TYPES = [
 	'person',
