@@ -941,7 +941,9 @@ class Frl_Subdomain_Adapter {
                     home_url($this->get_request_uri()),
                     $post_lang
                 );
-                add_filter('x_redirect_by', [self::class, 'get_redirect_by'], 999);
+                add_filter('x_redirect_by', function () {
+                    return 'Frl_Subdomain_Adapter::redirect_non_target_content(post)';
+                }, 999);
                 wp_redirect($redirect_url, 301);
                 exit;
             }
@@ -954,7 +956,9 @@ class Frl_Subdomain_Adapter {
                     home_url($this->get_request_uri()),
                     $term_lang
                 );
-                add_filter('x_redirect_by', [self::class, 'get_redirect_by'], 999);
+                add_filter('x_redirect_by', function () {
+                    return 'Frl_Subdomain_Adapter::redirect_non_target_content(term)';
+                }, 999);
                 wp_redirect($redirect_url, 301);
                 exit;
             }

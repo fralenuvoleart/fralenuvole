@@ -161,7 +161,9 @@ class Frl_Subdomain_Adapter_Legacy {
             $target_url = add_query_arg($_GET, $target_url);
         }
 
-        add_filter('x_redirect_by', [Frl_Subdomain_Adapter::class, 'get_redirect_by'], 999);
+        add_filter('x_redirect_by', function () {
+            return 'Frl_Subdomain_Adapter::redirect_legacy_incoming_url';
+        }, 999);
         wp_redirect($target_url, 301);
         exit;
     }
