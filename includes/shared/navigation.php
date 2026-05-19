@@ -41,12 +41,11 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
         return $settings;
     }
 
-    // Retrieve current and default language codes
+    // Retrieve current language code
     $current_lang = frl_get_language();
-    $default_lang = frl_get_default_language();
 
     // Define a custom render callback to resolve translated navigation IDs
-    $settings['render_callback'] = function ($attributes, $content, $block) use ($current_lang, $default_lang) {
+    $settings['render_callback'] = function ($attributes, $content, $block) use ($current_lang) {
         // Render normally if no reference ID is provided
         if (!isset($attributes['ref'])) {
             return render_block_core_navigation($attributes, $content, $block);
@@ -55,8 +54,11 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
         $nav_id = absint($attributes['ref']);
         $final_nav_id = $nav_id; // Default to original ID
 
-        // Resolve translated navigation ID for non-default languages
-        if (!empty($current_lang) && $current_lang !== $default_lang) {
+        // Resolve translated navigation ID — always attempt translation regardless of
+        // default language. pll_get_post() returns the original ID when no translation
+        // exists, so the guard would be redundant and broke subdomain adapter setups
+        // where default_lang is overridden at runtime to match current_lang.
+        if (!empty($current_lang)) {
             $cache_key = "wp_navigation_{$nav_id}";
 
             $translated_id = frl_cache_remember('permalinks', $cache_key, function () use ($nav_id, $current_lang) {
