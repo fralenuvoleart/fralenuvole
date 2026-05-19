@@ -376,6 +376,14 @@ class Frl_Subdomain_Adapter {
         // firing any filter, so we must set it correctly at creation time.
         add_filter('pll_additional_language_data', [$this, 'filter_pll_additional_language_data'], 20, 2);
 
+        // --- Polylang canonical redirect suppression on subdomains ---
+        // Priority 10: prevents Polylang's check_canonical_url() at template_redirect
+        // P4 from issuing redirects on subdomains when the content language matches the
+        // subdomain language. Polylang operates in directory mode (force_lang=1) and
+        // would add /ru/ prefix to clean URLs on ru.pbservices.ge, creating a redirect
+        // loop with the legacy adapter at P6 which strips that prefix.
+        add_filter('pll_check_canonical_url', [$this, 'filter_pll_check_canonical_url'], 10, 2);
+
         // --- WordPress home_url override on subdomains ---
         // Priority 20: makes home_url() return the correct subdomain URL.
         add_filter('home_url', [$this, 'filter_home_url'], 20, 4);
@@ -448,6 +456,50 @@ class Frl_Subdomain_Adapter {
             return $this->current_subdomain_lang;
         }
         return is_string($lang) ? $lang : '';
+    }
+
+    // -------------------------------------------------------------------------
+    // Filter: pll_check_canonical_url (Redirect loop prevention)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Prevent Polylang from issuing canonical redirects on mapped subdomains
+     * when the content language matches the subdomain's language.
+     *
+     * On a subdomain like `ru.pbservices.ge`, Polylang operates in directory
+     * mode (`force_lang=1`) and treats `/novosti/` as the EN version. When it
+     * detects the content is RU, it adds the `/ru/` prefix via
+     * `switch_language_in_link()` and issues a 301 redirect to
+     * `ru.pbservices.ge/ru/novosti/`. This conflicts with the legacy adapter
+     * at `template_redirect` P6 which strips the `/ru/` prefix, creating an
+     * infinite redirect loop.
+     *
+     * By returning `false`, we cancel Polylang's redirect when the content
+     * matches the subdomain's language, because clean URLs are already
+     * canonical on the subdomain. Cross-language content (e.g., EN posts on
+     * `ru.pbservices.ge`) still gets redirected by Polylang as intended.
+     *
+     * Hooked to `pll_check_canonical_url` at priority 10 (registered in
+     * register_hooks()). This filter fires inside
+     * {@see PLL_Canonical::check_canonical_url()} at line 138 of
+     * `src/frontend/canonical.php` (Polylang plugin).
+     *
+     * @see https://github.com/wp-plugins/polylang/blob/master/frontend/canonical.php
+     *
+     * @param  string|false $redirect_url The redirect URL proposed by Polylang.
+     * @param  PLL_Language $language     The detected content language object.
+     * @return string|false               Return false to cancel the redirect.
+     */
+    public function filter_pll_check_canonical_url($redirect_url, $language) {
+        if (!$this->is_on_subdomain()) {
+            return $redirect_url;
+        }
+
+        if ($language->slug === $this->current_subdomain_lang) {
+            return false;
+        }
+
+        return $redirect_url;
     }
 
     // -------------------------------------------------------------------------
