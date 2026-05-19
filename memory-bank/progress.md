@@ -476,3 +476,10 @@ Hardcoded legacy URLs (e.g., `pbservices.ge/ru/services/`) exist in post content
 - **Backward-compatible:** Same default values, same behavior. The constant is loaded before the class file by [`subdomain_adapter.php`](modules/subdomain_adapter/subdomain_adapter.php:16).
 
 - Plan: [`plans/subdomain-adapter-legacy-url-handling.md`](plans/subdomain-adapter-legacy-url-handling.md)
+
+### Redirect Loop Fix — `pll_check_canonical_url` Filter (2026-05-19)
+- **Problem:** `ru.pbservices.ge/ru/novosti/` ↔ `ru.pbservices.ge/novosti/` cross-request redirect loop between Polylang P4 (adds `/ru/`) and legacy adapter P6 (strips `/ru/`).
+- **Fix:** Added `add_filter('pll_check_canonical_url', ...)` to [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:385) and [`filter_pll_check_canonical_url()`](modules/subdomain_adapter/class-subdomain-adapter.php:493) callback.
+- **Why not `remove_action()`:** The `pll_check_canonical_url` filter is Polylang's own API for conditionally canceling canonical redirects (same pattern used internally by `PLL_Frontend_Static_Pages` for static front pages).
+- **Scope:** Only cancels redirects when on a subdomain AND content language matches subdomain language. Zero impact on main domain.
+- **Plan:** [`plans/fix-redirect-loop-pll-check-canonical-url.md`](plans/fix-redirect-loop-pll-check-canonical-url.md)

@@ -247,3 +247,30 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
 - **R2 — Case-insensitive domain keys:** [`detect()`](modules/subdomain_adapter/class-subdomain-adapter.php:189) now lowercases all `FRL_SUBDOMAIN_ADAPTER_MAP` top-level keys and subdomain values before building reverse indices. HTTP_HOST is already lowercased; this prevents silent detection failures if constant keys have mixed case.
 - **R3 — Comment artifact:** Removed stray `8,192` from comment in [`class-subdomain-adapter-legacy.php:109`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:109).
 - **R4 — WP_DEBUG logging:** Added `WP_DEBUG`-gated `frl_log()` calls in [`transform_single_content_url()`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:361) for unparseable URLs, unrecognized hosts, and unresolvable languages — aids production debugging without runtime cost.
+
+## 🔧 Redirect Loop Fix — `pll_check_canonical_url` Filter (2026-05-19)
+
+### Context
+The `ru.pbservices.ge/ru/novosti/` ↔ `ru.pbservices.ge/novosti/` redirect loop was caused by a cross-request conflict between:
+- **P4** — Polylang `check_canonical_url()` adds `/ru/` prefix (sees EN URL, detects RU content)
+- **P6** — Legacy adapter `redirect_legacy_incoming_url()` strips `/ru/` prefix (redundant on subdomain)
+
+### Solution Implemented
+Used Polylang's internal `pll_check_canonical_url` filter (line 138 of `src/frontend/canonical.php`) instead of `remove_action()`.
+
+### Files Modified
+- [`class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php:379) — Added `add_filter('pll_check_canonical_url', ...)` in `register_hooks()` at priority 10
+- [`class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php:493) — Added `filter_pll_check_canonical_url()` callback method
+
+### Filter Logic
+- **Main domain**: pass through (zero impact)
+- **Subdomain + content matches subdomain language**: return `false` (cancel redirect — clean URL is already canonical)
+- **Subdomain + cross-language content**: pass through (Polylang's redirect is legitimate)
+
+### Design Validation
+- Polylang itself uses this same filter in `PLL_Frontend_Static_Pages::pll_check_canonical_url()` for static front pages
+- The filter is applied inside `check_canonical_url()` at `template_redirect` P4; our registration at `plugins_loaded` P5 (via `register_hooks()`) is in place by then
+- Zero side effects on main domain, admin, REST API, previews
+
+### Plan
+- [`plans/fix-redirect-loop-pll-check-canonical-url.md`](plans/fix-redirect-loop-pll-check-canonical-url.md)
