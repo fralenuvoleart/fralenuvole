@@ -40,6 +40,9 @@ const FRL_ENV_PBS_PRODUCTION = [
 const FRL_ENV_PBS_RU_SUBDOMAIN = [
     'extends' => 'FRL_ENV_PBS_TEMPLATE',
     'prefix' => 'pbs_ru',
+    'wp_options' => [
+        'blog_public' => 0,
+    ],
     'modules' => [
         'subdomain_adapter' => true,
     ],

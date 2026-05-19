@@ -485,6 +485,9 @@ final class Frl_Rewriter_Path_Utils
             if (!empty($_GET)) {
                 $canonical = add_query_arg($_GET, $canonical);
             }
+            add_filter('x_redirect_by', function () {
+                return 'Frl_Rewriter_Path_Utils';
+            }, 999);
             wp_safe_redirect($canonical, 301);
             exit;
         }

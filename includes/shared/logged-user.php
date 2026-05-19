@@ -161,13 +161,23 @@ function frl_admin_bar_add_menu_primary($data)
         ],
     ];
 
-    // PageSpeed link
     global $wp;
-    $pagespeed_link = trailingslashit(frl_is_admin() ? home_url() : home_url($wp->request));
+    $current_url = trailingslashit(frl_is_admin() ? home_url() : home_url($wp->request));
+    
+    // PageSpeed link
     $data['menu_primary']['pagespeed'] = [
         'id' => FRL_PREFIX . '-menu-child-pagespeed',
         'title' => __('PageSpeed'),
-        'href' => 'https://pagespeed.web.dev/report?url=' . $pagespeed_link,
+        'href' => 'https://pagespeed.web.dev/report?url=' . $current_url,
+        'parent' => $parent_id,
+        'meta' => ['target' => '_blank'],
+    ];
+
+    // Rich snippets link
+    $data['menu_primary']['snippets'] = [
+        'id' => FRL_PREFIX . '-menu-child-snippets',
+        'title' => __('Rich Snippets'),
+        'href' => 'https://search.google.com/test/rich-results?url=' . $current_url,
         'parent' => $parent_id,
         'meta' => ['target' => '_blank'],
     ];
