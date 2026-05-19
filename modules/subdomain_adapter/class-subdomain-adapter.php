@@ -392,6 +392,14 @@ class Frl_Subdomain_Adapter {
         add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    PHP_INT_MAX, 1);
         add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], PHP_INT_MAX, 1);
 
+        // --- Subdomain front page resolution ---
+        // On a subdomain (e.g. ru.pbservices.ge), the DB option page_on_front
+        // holds the main domain's front page ID (EN). Override it to return the
+        // subdomain language's translation so the root URL resolves to the
+        // correct language content instead of triggering redirect_non_target_content().
+        add_filter('option_page_on_front',  [$this, 'filter_option_page_on_front'], 20, 1);
+        add_filter('option_page_for_posts', [$this, 'filter_option_page_for_posts'], 20, 1);
+
         // --- Template redirect: 301 non-target content on subdomain ---
         add_action('template_redirect',     [$this, 'redirect_non_target_content'], 5);
     }
@@ -973,6 +981,46 @@ class Frl_Subdomain_Adapter {
     private function get_request_uri(): string {
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
         return preg_replace('/[\x00-\x1F\x7F]/', '', $uri);
+    }
+
+    // -------------------------------------------------------------------------
+    // Filters: option_page_on_front / option_page_for_posts
+    // -------------------------------------------------------------------------
+
+    /**
+     * On mapped subdomains, translate page_on_front to the subdomain's language.
+     *
+     * The DB stores the main domain's front page ID (e.g. EN). When on a
+     * subdomain like ru.pbservices.ge, this filter returns the RU translation
+     * so the root URL resolves to the correct language content. Without this,
+     * get_queried_object() on '/' returns the EN page, and
+     * redirect_non_target_content() would 301-redirect to the main domain.
+     *
+     * @param  mixed $page_id The DB-stored front page ID (string|int).
+     * @return int Translated page ID in the subdomain's language, or the original.
+     */
+    public function filter_option_page_on_front($page_id): int {
+        if (!$this->is_on_subdomain()) {
+            return (int) $page_id;
+        }
+        $translation = pll_get_post((int) $page_id, $this->current_subdomain_lang);
+        return $translation ? (int) $translation : (int) $page_id;
+    }
+
+    /**
+     * On mapped subdomains, translate page_for_posts to the subdomain's language.
+     *
+     * Same principle as filter_option_page_on_front() but for the posts page.
+     *
+     * @param  mixed $page_id The DB-stored posts page ID (string|int).
+     * @return int Translated page ID in the subdomain's language, or the original.
+     */
+    public function filter_option_page_for_posts($page_id): int {
+        if (!$this->is_on_subdomain()) {
+            return (int) $page_id;
+        }
+        $translation = pll_get_post((int) $page_id, $this->current_subdomain_lang);
+        return $translation ? (int) $translation : (int) $page_id;
     }
 
     /**
