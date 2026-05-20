@@ -36,6 +36,11 @@ Follow these steps for each interaction:
 
 ## 🚫 OVERTHINKING GUARDRAIL (FAILURE RECORD)
 - **Root cause of failure:** Over-analyzed problems instead of simply asking "where is this filter registered" and "is it gated behind a condition". Kept looping on user's simple instructions instead of executing them immediately.
-- **🔴 CRITICAL RULE: When user gives a direct instruction with clear intent — DO IT.** Do not over-analyze, do not loop on their words, do not ask for clarification. Execute the instruction as-is.
-- **🔴 CRITICAL RULE: Do not re-loop same topic over and over again.** If you already have the context, use it. Excessive file I/O wastes time and frustrates the user.
-- **🔴 CRITICAL RULE: If a fix causes a regression, revert immediately and report. Do not design "v2" without explicit user approval.** Let the user decide the next step.
+- **CRITICAL RULE: When user gives a direct instruction with clear intent — DO IT.** Do not over-analyze, do not loop on their words, do not ask for clarification. Execute the instruction as-is.
+- **CRITICAL RULE: Do not re-loop same topic over and over again.** If you already have the context, use it. Excessive file I/O wastes time and frustrates the user.
+- **CRITICAL RULE: If a fix causes a regression, revert immediately and report. Do not design "v2" without explicit user approval.** Let the user decide the next step.
+
+## 🚫 LOOP PREVENTION (ENFORCED LIMITS)
+- **switch_mode LIMIT: 1 per task.** Call `switch_mode` exactly once — at the natural conclusion of planning, after the user has approved the plan. Never call it as a fallback when the user is frustrated, never call it to "keep going," and never call it a second time.
+- **File read LIMIT: max 5 unique files per investigation.** Do not re-read files you've already read in the same session. Before reading a new file, check: "do I already have this information from a previous read?"
+- **CRITICAL SELF-TERMINATION: If the user says STOP, indicates frustration, or asks "how do I stop this" — deliver your answer immediately with NO tool calls and `attempt_completion`. Do not call `switch_mode`, do not call `ask_followup_question`, do not read more files.**
