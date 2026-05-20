@@ -284,7 +284,7 @@ final class Frl_Translation_Service
             $default_language = $this->get_default_language();
 
             // If no multilingual plugin or we want the default language, get direct permalink.
-            if (!$this->has_multilingual_plugin() || $lang === $default_language) {
+            if (!$this->has_multilingual_plugin() || $lang === 'en') {
                 return get_permalink($id) ?: '#';
             }
 
@@ -318,7 +318,7 @@ final class Frl_Translation_Service
             $cache_key,
             function () use ($slug, $language, $taxonomy) {
                 // For default language, try direct term lookup
-                if ($language === $this->get_default_language()) {
+                if ($language === 'en') {
                     $term = get_term_by('slug', $slug, $taxonomy);
                     if (!$term || is_wp_error($term)) {
                         return '#';
