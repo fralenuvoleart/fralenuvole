@@ -9,6 +9,10 @@ if (!defined('ABSPATH')) exit;
  */
 // Defines constants for the Fralenuvole Translator module.
 
+// Source language — the language in which string tokens and block content
+// The source language remains 'en' even if Polylang's default changes on subdomains for clean URLs.
+const FRL_TRANSLATOR_SOURCE_LANG = 'en';
+
 // Taxonomies to auto-translate (supports % wildcard). Empty = translate none.
 const FRL_TRANSLATOR_TAXONOMIES = [
     'flag-category',

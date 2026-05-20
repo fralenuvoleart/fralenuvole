@@ -50,6 +50,7 @@ final class Frl_Translation_Service
     private array $is_multilingual_cache = [];
     private ?string $language_cache = null;
     private ?string $default_language_cache = null;
+    private ?string $source_language_cache = null;
     private ?array $active_languages_cache = null;
     private array $object_language_cache = [];
     private array $batch_strings_cache = [];
@@ -167,6 +168,29 @@ final class Frl_Translation_Service
     }
 
     /**
+     * Get the source language — the language in which strings are authored.
+     *
+     * This is an architectural constant (FRL_TRANSLATOR_SOURCE_LANG, default 'en'),
+     * NOT derived from Polylang's default language. On the main domain they happen
+     * to match, but on subdomains Polylang's default is overridden (e.g. to 'ru')
+     * while content is still authored in English.
+     *
+     * The performance guard in get_translation_batch_strings() skips translation
+     * when current language equals source language. Keeping source language as
+     * a fixed constant ensures translation always runs on non-English subdomains
+     * regardless of Polylang's internal default.
+     *
+     * @return string
+     */
+    public function get_source_language(): string
+    {
+        if ($this->source_language_cache === null) {
+            $this->source_language_cache = FRL_TRANSLATOR_SOURCE_LANG;
+        }
+        return $this->source_language_cache;
+    }
+
+    /**
      * Get active site languages.
      *
      * @return array
@@ -281,10 +305,10 @@ final class Frl_Translation_Service
         $cache_key = "post_{$id}_{$lang}";
 
         return frl_cache_remember('permalinks', $cache_key, function () use ($id, $lang) {
-            $default_language = $this->get_default_language();
+            $source_language = $this->get_source_language();
 
-            // If no multilingual plugin or we want the default language, get direct permalink.
-            if (!$this->has_multilingual_plugin() || $lang === 'en') {
+            // If no multilingual plugin or we want the source language, get direct permalink.
+            if (!$this->has_multilingual_plugin() || $lang === $source_language) {
                 return get_permalink($id) ?: '#';
             }
 
@@ -317,8 +341,10 @@ final class Frl_Translation_Service
             'permalinks',
             $cache_key,
             function () use ($slug, $language, $taxonomy) {
-                // For default language, try direct term lookup
-                if ($language === 'en') {
+                $source_language = $this->get_source_language();
+
+                // For source language, try direct term lookup
+                if ($language === $source_language) {
                     $term = get_term_by('slug', $slug, $taxonomy);
                     if (!$term || is_wp_error($term)) {
                         return '#';
@@ -370,9 +396,11 @@ final class Frl_Translation_Service
 
         $language = $this->get_language();
 
-        // Early return if current language is English — block text tokens are
-        // always authored in English, so no translation is needed.
-        if ($language === 'en') {
+        // Early return if current language is the source language — block text
+        // tokens are always authored in the source language, so no translation
+        // is needed. The source language is filterable via frl_source_language
+        // (Subdomain Adapter pins it to 'en' on RU subdomains).
+        if ($language === $this->get_source_language()) {
             return array_combine($strings, $strings);
         }
 
