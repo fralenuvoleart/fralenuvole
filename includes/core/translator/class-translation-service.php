@@ -570,9 +570,9 @@ final class Frl_Translation_Service
         if (empty($current_language)) {
             return;
         }
-        $default_language = $this->get_default_language();
+        $source_language = $this->get_source_language();
 
-        if ($current_language !== $default_language) {
+        if ($current_language !== $source_language) {
             $translation = $this->adapter->translate_string($string, $current_language);
             if ($translation !== null) {
                 return;
@@ -625,9 +625,23 @@ final class Frl_Translation_Service
     public function process_string_registration_queue(): void
     {
         if (empty($this->string_registration_queue)) return;
+        $source_lang = $this->get_source_language();
+        $original_lang = $this->get_language();
+
+        // Polylang registers strings in the current language.
+        // We must force the source language context to ensure strings are registered as originals.
+        if (function_exists('pll_set_current_language')) {
+            pll_set_current_language($source_lang);
+        }
+
         foreach (array_keys($this->string_registration_queue) as $string) {
             $this->register_translation($string);
         }
+
+        if (function_exists('pll_set_current_language')) {
+            pll_set_current_language($original_lang);
+        }
+
         $this->string_registration_queue = [];
     }
 
