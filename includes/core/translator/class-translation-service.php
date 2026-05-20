@@ -370,8 +370,9 @@ final class Frl_Translation_Service
 
         $language = $this->get_language();
 
-        // Early return if current language is default language
-        if ($language === $this->get_default_language()) {
+        // Early return if current language is English — block text tokens are
+        // always authored in English, so no translation is needed.
+        if ($language === 'en') {
             return array_combine($strings, $strings);
         }
 
