@@ -136,11 +136,19 @@ final class Frl_Translation_Service
     public function get_language(): string
     {
         if ($this->language_cache === null) {
+            // First, get the language from the adapter (which calls Polylang's
+            // pll_current_language()). On subdomains this correctly returns 'ru'.
             $language = $this->adapter->get_current_language();
-            
-            global $wp_query;
-            if (isset($wp_query->query['lang']) && is_string($wp_query->query['lang']) && strlen($wp_query->query['lang']) === 2) {
-                $language = $wp_query->query['lang'];
+
+            // Fallback: if the adapter returned nothing (e.g. Polylang not ready
+            // on early AJAX requests), try to derive language from the query var.
+            // IMPORTANT: this must NOT overwrite a valid adapter result, otherwise
+            // the subdomain adapter's language override is silently discarded.
+            if (empty($language)) {
+                global $wp_query;
+                if (isset($wp_query->query['lang']) && is_string($wp_query->query['lang']) && strlen($wp_query->query['lang']) === 2) {
+                    $language = $wp_query->query['lang'];
+                }
             }
 
             $this->language_cache = $language;

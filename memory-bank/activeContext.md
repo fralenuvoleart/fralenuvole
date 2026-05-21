@@ -274,3 +274,26 @@ Used Polylang's internal `pll_check_canonical_url` filter (line 138 of `src/fron
 
 ### Plan
 - [`plans/fix-redirect-loop-pll-check-canonical-url.md`](plans/fix-redirect-loop-pll-check-canonical-url.md)
+
+## 🔧 Shortcode Translation Fix — Subdomain Adapter Compatibility (2026-05-21)
+
+### Problem
+On `ru.pbservices.ge`, `[frl]english_string[/frl]` shortcodes return English untranslated. Block translations with `{{...}}` tokens appeared correct, but only because they contain post-level translations (separate DB posts). Both share the same code path and both suffer the same bug.
+
+### Root Cause
+Two bugs interacting:
+
+1. **[`Frl_Polylang_Adapter::translate_string()`](includes/core/translator/adapters/polylang.php:32) — Primary:** `pll_translate_string()` short-circuits when `$language === pll_default_language()`. Since the Subdomain Adapter filters `pll_default_language` to `'ru'` on `ru.pbservices.ge`, calling `pll_translate_string($string, 'ru')` returns the input unchanged. The `($translation !== $string)` check then returns `null`.
+
+2. **[`Frl_Translation_Service::get_language()`](includes/core/translator/class-translation-service.php:136) — Secondary:** `$wp_query->query['lang']` unconditionally overwrites the adapter's result. Even if the adapter correctly returns `'ru'`, the query var overwrites it — silently discarding the subdomain adapter's language override.
+
+### Fix Applied
+- **Part 1:** [`Frl_Polylang_Adapter::translate_string()`](includes/core/translator/adapters/polylang.php:32) — When `pll_translate_string()` returns the string unchanged AND the target language differs from `FRL_TRANSLATOR_SOURCE_LANG`, falls back to direct `pll_strings` option lookup.
+- **Part 2:** [`Frl_Translation_Service::get_language()`](includes/core/translator/class-translation-service.php:136) — Changed `$wp_query->query['lang']` from unconditional overwrite to `if (empty($language))` fallback only.
+
+### Files Modified
+- [`includes/core/translator/adapters/polylang.php`](includes/core/translator/adapters/polylang.php:32)
+- [`includes/core/translator/class-translation-service.php`](includes/core/translator/class-translation-service.php:136)
+
+### Plan
+- [`plans/shortcode-translation-root-cause-analysis.md`](plans/shortcode-translation-root-cause-analysis.md)

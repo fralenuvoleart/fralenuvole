@@ -31,11 +31,44 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
 
     public function translate_string(string $string, string $language): ?string
     {
-        if (function_exists('pll_translate_string')) {
-            $translation = pll_translate_string($string, $language);
-            return ($translation !== $string) ? $translation : null;
+        if (!function_exists('pll_translate_string')) {
+            return null;
         }
-        return null;
+
+        $translation = pll_translate_string($string, $language);
+
+        // Polylang short-circuits pll_translate_string() when $language equals
+        // pll_default_language(), returning the input unchanged. On subdomains
+        // where the adapter overrides the default to 'ru', calling with
+        // $language='ru' returns the English string untranslated.
+        //
+        // Detect this case: if the string came back unchanged AND the target
+        // language differs from the source language, fall back to a direct
+        // lookup in the pll_strings option.
+        if ($translation === $string) {
+            $source_lang = defined('FRL_TRANSLATOR_SOURCE_LANG')
+                ? FRL_TRANSLATOR_SOURCE_LANG
+                : 'en';
+
+            if ($language !== $source_lang) {
+                $pll_strings = get_option('pll_strings', []);
+                if (is_array($pll_strings) && !empty($pll_strings)) {
+                    foreach ($pll_strings as $key => $translations) {
+                        if (!is_array($translations)) {
+                            continue;
+                        }
+                        if (isset($translations[$source_lang]) && $translations[$source_lang] === $string) {
+                            if (isset($translations[$language]) && $translations[$language] !== '') {
+                                return $translations[$language];
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        return $translation;
     }
 
     public function register_string(string $domain, string $identifier, string $string): void

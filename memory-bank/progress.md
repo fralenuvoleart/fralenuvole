@@ -1,5 +1,25 @@
 # Project Progress
 
+## Shortcode Translation Fix — Subdomain Adapter Compatibility (2026-05-21)
+
+### Root Cause: `pll_translate_string()` short-circuits when target == `pll_default_language()`
+- **Bug:** On `ru.pbservices.ge`, the Subdomain Adapter filters `pll_default_language` to return `'ru'` at priority 1. When [`Frl_Polylang_Adapter::translate_string()`](includes/core/translator/adapters/polylang.php:32) calls `pll_translate_string($string, 'ru')`, Polylang detects that `'ru'` === its default, returns the English string untranslated. The `($translation !== $string)` check then sees no difference and returns `null`.
+- **Why blocks appeared correct:** Post-level translations (separate DB posts per language, each with their own content) work independently — they are not string translations. Any `{{...}}` tokens within blocks suffer the same bug.
+- **Polylang admin UI consistency:** On the subdomain, Polylang shows only `id="en-***"` textareas because `pll_default_language()` returns `'ru'`, so Polylang treats RU as the active language and only shows textareas for other languages.
+
+### Fix — Part 1: [`Frl_Polylang_Adapter::translate_string()`](includes/core/translator/adapters/polylang.php:32)
+- **Strategy:** When `pll_translate_string()` returns the string unchanged AND the target language differs from `FRL_TRANSLATOR_SOURCE_LANG`, fall back to direct lookup in the `pll_strings` WordPress option.
+- **How it works:** Iterates `pll_strings` array, finds the entry where `$translations['en'] === $string`, returns `$translations[$language]` if non-empty.
+- **No regression on main domain:** The fallback only activates when `$translation === $string` AND `$language !== $source_lang`. On main domain where `pll_default_language()` = `'en'`, calling `pll_translate_string($string, 'ru')` works correctly (RU !== EN), so the fallback never runs.
+
+### Fix — Part 2: [`Frl_Translation_Service::get_language()`](includes/core/translator/class-translation-service.php:136)
+- **Strategy:** Changed `$wp_query->query['lang']` from unconditional overwrite to fallback-only.
+- **Before:** `$language = $adapter->get_current_language()` → `$language = $wp_query->query['lang']` (always overwrites).
+- **After:** `$language = $adapter->get_current_language()` → `if (empty($language)) { $language = $wp_query->query['lang']; }` (fallback only).
+- **Impact:** Subdomain adapter's language override via `pll_current_language` filter is now preserved. The query var still works as a fallback when Polylang isn't ready (e.g., early AJAX).
+
+### Plan: [`plans/shortcode-translation-root-cause-analysis.md`](plans/shortcode-translation-root-cause-analysis.md)
+
 ## Hotfix — Flush Rewrite Rules Litespeed Notification (2026-05-12)
 
 ### Timing Bug Fix — [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:179)
