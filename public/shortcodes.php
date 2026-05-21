@@ -106,8 +106,7 @@ function frl_shortcode_translation($atts, $content = null)
     if (empty($content)) {
         return '';
     }
-    $processed_content = wp_strip_all_tags(htmlspecialchars_decode($content, ENT_QUOTES));
-    return frl_get_translation($processed_content);
+    return frl_get_translation($content);
 }
 
 /**
