@@ -23,7 +23,6 @@ const WSFORM_ALL_WEBHOOKS_CONFIG = [
     'pbs' => [
         [
             'form_id'          => 12, // Must match the WS Form ID exactly. 
-            'use_cron'   => false,
             'url'              => 'https://webhooks.integrately.com/a/webhooks/d3db87eb88ee48eeac177a49fc159070',
             'spam_filter' => [
                 'block_if_all_filled' => [],
