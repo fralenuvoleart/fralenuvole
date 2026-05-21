@@ -352,14 +352,12 @@ class Frl_Subdomain_Adapter {
             return;
         }
 
-        // --- Polylang default language switch (Key mechanism) ---
-        // Priority 1: runs before Polylang's internal setup so the subdomain's
-        // language is treated as default from the start.
-        add_filter('pll_default_language', [$this, 'filter_pll_default_language'], 1, 1);
-
-        // --- Polylang current language safety net ---
-        // Priority 2: ensures Polylang's current language matches the subdomain.
-        add_filter('pll_current_language', [$this, 'filter_pll_current_language'], 2, 1);
+        // --- Polylang current language override on subdomains ---
+        // Hooks into the real Polylang filter `pll_get_current_language` at
+        // choose-lang.php:103 (inside PLL_Choose_Lang::set_language()). This is
+        // the ONLY filter in Polylang 3.7+ that controls PLL()->curlang during
+        // language resolution. The callback must return a PLL_Language object.
+        add_filter('pll_get_current_language', [$this, 'filter_pll_get_current_language'], 10, 1);
 
         // --- Language home URL filter (for when PLL_CACHE_HOME_URL is false) ---
         // Priority 20: returns correct home URL for mapped languages when Polylang's
@@ -413,49 +411,39 @@ class Frl_Subdomain_Adapter {
     }
 
     // -------------------------------------------------------------------------
-    // Filter: pll_default_language (Key Mechanism)
+    // Filter: pll_get_current_language (Key Mechanism)
     // -------------------------------------------------------------------------
 
     /**
-     * Override Polylang's default language on mapped subdomains.
+     * Override Polylang's current language on mapped subdomains.
      *
-     * When on `ru.pbservices.ge`, tells Polylang that RU is the default language.
-     * Polylang then naturally hides the language prefix for RU, generating clean
-     * URLs like `ru.pbservices.ge/post-slug/` without any str_replace.
+     * THE REAL FILTER — unlike `pll_default_language` and `pll_current_language`
+     * which are FUNCTION NAMES in Polylang 3.7+ (not `apply_filters` hooks),
+     * `pll_get_current_language` at choose-lang.php:103 IS a real filter inside
+     * `PLL_Choose_Lang::set_language()`. It receives a `PLL_Language` object (or
+     * false) and fires BEFORE the default-language fallback.
      *
-     * This makes target-language URLs **zero-cost** on the subdomain.
+     * When on `ru.pbservices.ge`, returns the `PLL_Language` object for RU.
+     * Polylang then sets `PLL()->curlang = RU`, which makes:
+     *   - `pll_current_language()` → 'ru'
+     *   - `pll_translate_string('string', 'ru')` → short-circuits to `pll__()`
+     *   - `pll__()` → reads from the RU MO (`$GLOBALS['l10n']['pll_string']`)
      *
-     * @param  string|false $lang The current Polylang default language slug.
-     * @return string
+     * This is functionally equivalent to changing the DB default to RU, but
+     * without touching the database.
+     *
+     * @param  PLL_Language|false $curlang The PLL_Language object resolved so far,
+     *                                     or false if no language was detected.
+     * @return PLL_Language|false
      */
-    // No return type declaration: Polylang may pass false instead of a string.
-    public function filter_pll_default_language($lang) {
+    public function filter_pll_get_current_language($curlang) {
         if ($this->is_on_subdomain()) {
-            return $this->current_subdomain_lang;
+            $subdomain_lang = PLL()->model->get_language($this->current_subdomain_lang);
+            if ($subdomain_lang instanceof \PLL_Language) {
+                return $subdomain_lang;
+            }
         }
-        return is_string($lang) ? $lang : '';
-    }
-
-    // -------------------------------------------------------------------------
-    // Filter: pll_current_language (Safety Net)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Force Polylang's current language on mapped subdomains.
-     *
-     * Safety net: ensures that on the subdomain, Polylang's current language
-     * always matches the subdomain's language. Prevents edge cases where
-     * Polylang might detect a different language (e.g., from URL or browser).
-     *
-     * @param  string|false $lang The current Polylang language slug.
-     * @return string
-     */
-    // No return type declaration: Polylang may pass false instead of a string.
-    public function filter_pll_current_language($lang) {
-        if ($this->is_on_subdomain()) {
-            return $this->current_subdomain_lang;
-        }
-        return is_string($lang) ? $lang : '';
+        return $curlang;
     }
 
     // -------------------------------------------------------------------------

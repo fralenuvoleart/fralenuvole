@@ -2,204 +2,203 @@
 
 ## Problem Statement
 
-On `ru.pbservices.ge` (subdomain with default language RU, homepage in RU), the `[frl]english_string[/frl]` shortcode returns the **English string untranslated**. Block translations (`.frl-translate` blocks with `{{...}}` tokens) reportedly work correctly.
+On `ru.pbservices.ge` (subdomain with default language RU, homepage in RU), the `[frl]english_string[/frl]` shortcode returns the **English string untranslated**. Block translations (`.frl-translate` blocks with `{{...}}` tokens) were also reported as affected.
 
 ## Key Architectural Facts
 
-1. **Main domain default language**: `en` (Polylang's configured default)
+1. **Main domain default language**: `en` (Polylang's DB-configured default, `pll_default_language()` returns `'en'`)
 2. **Source language**: `en` (constant `FRL_TRANSLATOR_SOURCE_LANG`, never changes)
-3. **Subdomain adapter**: Overrides `pll_default_language` to `'ru'` on `ru.pbservices.ge` for clean URL generation
-4. **Polylang adapter hardcodes `'en'`**: [`Frl_Polylang_Adapter::get_current_language()`](includes/core/translator/adapters/polylang.php:16) falls back to `'en'` when `pll_current_language()` is unavailable — this is correct as a safety net but conflates "default" with "source"
-5. **`get_language()` bug**: [`Frl_Translation_Service::get_language()`](includes/core/translator/class-translation-service.php:136-155) unconditionally overwrites `$language` with `$wp_query->query['lang']` when present, instead of using it as a fallback only when the adapter returns empty
+3. **Polylang `force_lang=1`**: Configured in **directory mode**, not subdomain mode — so URL parsing looks for `/ru/` prefixes
+4. **Subdomain adapter**: Previously attempted to override `pll_default_language` and `pll_current_language` via `add_filter` — but these are **function names in Polylang 3.7+**, not `apply_filters` hooks
 
-## Architecture Summary
+## The Mechanics of String Translation
 
-```
-[frl] shortcode
-  → frl_shortcode_translation() [shortcodes.php:104]
-  → frl_get_translation($content) [functions-translation-helpers.php:91]
-  → Frl_Translation_Service::get_translation($string, $lang=null) [class-translation-service.php:213]
-  → $language = $lang ?: $this->get_language()  → 'ru'
-  → $this->adapter->translate_string($string, 'ru') [class-translation-service.php:224]
-  → Frl_Polylang_Adapter::translate_string() [adapters/polylang.php:32]
-  → pll_translate_string($string, 'ru')
-```
-
-## Root Cause: Two Bugs
-
-### Bug 1: `pll_translate_string()` Short-Circuit
-
-**Polylang's `pll_translate_string()` returns the input string unchanged when the target language equals `pll_default_language()`.**
-
-The Subdomain Adapter hooks [`pll_default_language`](modules/subdomain_adapter/class-subdomain-adapter.php:432) at priority 1 to return `'ru'` on `ru.pbservices.ge`. This is the module's core mechanism for generating clean URLs (no `/ru/` prefix) on the Russian subdomain.
-
-However, this has a side effect on string translation:
+### `pll_translate_string()` in Polylang 3.7+ ([`api.php:288-307`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/api.php:288))
 
 ```php
-// Frl_Polylang_Adapter::translate_string() [adapters/polylang.php:32-38]
-public function translate_string(string $string, string $language): ?string {
-    if (function_exists('pll_translate_string')) {
-        $translation = pll_translate_string($string, $language);
-        return ($translation !== $string) ? $translation : null;  // ← returns null
+function pll_translate_string( $string, $lang ) {
+    // SHORT-CIRCUIT: if current language == target language, use MO
+    if ( PLL() instanceof PLL_Frontend && pll_current_language() === $lang ) {
+        return pll__( $string );
     }
-    return null;
+    // Otherwise: load the target language's MO from DB
+    $lang = PLL()->model->get_language( $lang );
+    $mo = new PLL_MO();
+    $mo->import_from_db( $lang );
+    return $mo->translate( $string );
 }
 ```
 
-When `pll_translate_string('english_string', 'ru')` is called:
-1. Polylang internally checks: `is $language === pll_default_language()`?
-2. `pll_default_language()` returns `'ru'` (subdomain adapter's filter)
-3. Target language `'ru'` === default language `'ru'` → **Polylang returns the original string unchanged** (no DB lookup)
-4. `$translation === $string` → adapter returns `null`
-5. [`get_translation()`](includes/core/translator/class-translation-service.php:224) falls through to `return $string` — the **original English string**
+**Critical insight**: The short-circuit checks `pll_current_language() === $lang` (not `pll_default_language()`). It compares the **current** language against the target.
 
-### Bug 2: `get_language()` Unconditional Overwrite
+When the short-circuit fires:
+- Returns `pll__($string)` = `__($string, 'pll_string')` — reads from `$GLOBALS['l10n']['pll_string']`
+- This MO is loaded by [`load_strings_translations()`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/base.php:137) which fires on `pll_language_defined`
+- The MO is loaded FOR `pll_current_language()` — so if current = 'en', it loads EN MO
+
+### The Real Flow
+
+```
+[frl]shortcode[/frl] on ru.pbservices.ge
+  → frl_get_language()
+     → Frl_Polylang_Adapter::get_current_language() → pll_current_language()
+        → PLL()->curlang->slug → 'en' (because PLL()->curlang was set to EN!)
+  → $language = 'en'
+  → frl_get_translation($string, 'en')
+     → since language = source ('en'), returns English string unchanged ← WRONG!
+```
+
+## The Real Root Cause: Dead Hooks
+
+### What the Subdomain Adapter Was Trying To Do
+
+The Subdomain Adapter registered two hooks:
 
 ```php
-// Frl_Translation_Service::get_language() [class-translation-service.php:136-155]
-public function get_language(): string {
-    if ($this->language_cache === null) {
-        $language = $this->adapter->get_current_language();  // 'ru' from pll_current_language()
+// Line 358 in original code — hooks into NON-EXISTENT filter
+add_filter('pll_default_language', [$this, 'filter_pll_default_language'], 1, 1);
 
-        global $wp_query;
-        if (isset($wp_query->query['lang']) && is_string($wp_query->query['lang']) && strlen($wp_query->query['lang']) === 2) {
-            $language = $wp_query->query['lang'];  // ← UNCONDITIONALLY overwrites, even if adapter returned valid value
+// Line 362 in original code — hooks into NON-EXISTENT filter
+add_filter('pll_current_language', [$this, 'filter_pll_current_language'], 2, 1);
+```
+
+### Why These Hooks Never Fire
+
+In Polylang 3.7+, [`pll_default_language()`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/api.php:93) and [`pll_current_language()`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/api.php:62) are **function names**, not filter names:
+
+```php
+// api.php:93 — NO apply_filters call
+function pll_default_language( $field = 'slug' ) {
+    $lang = PLL()->model->get_default_language();
+    return $lang ? $lang->$field : false;
+}
+
+// api.php:62 — NO apply_filters call
+function pll_current_language( $field = 'slug' ) {
+    $lang = PLL()->curlang;
+    return $lang ? $lang->$field : false;
+}
+```
+
+Both read directly from Polylang's internal state without any `apply_filters()` call. The `add_filter()` calls in the Subdomain Adapter registered callbacks on filters that **never fire**.
+
+### How Language Resolution Actually Happens
+
+Polylang's [`PLL_Choose_Lang::set_language()`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/frontend/choose-lang.php:81) is where `PLL()->curlang` is set:
+
+```php
+protected function set_language( $curlang = false ): void {
+    if ( isset( $this->curlang ) ) { return; }  // ← Already set!
+
+    if ( ! $curlang instanceof PLL_Language ) {
+        $curlang = $this->get_current_language();
+    }
+    // THE REAL FILTER — this is the ONLY hook point
+    $curlang = apply_filters( 'pll_get_current_language', $curlang ?? false );
+
+    if ( ! $curlang instanceof PLL_Language ) {
+        $curlang = $this->model->get_default_language();  // ← falls back to 'en'
+    }
+    $this->curlang = $curlang;
+}
+```
+
+In directory mode (`force_lang=1`), [`PLL_Choose_Lang_Url::get_current_language()`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/frontend/choose-lang-url.php:48) detects the language from the URL. On `ru.pbservices.ge`, with `hide_default` enabled:
+- No `/ru/` prefix in the URL (because subdomain adapter strips it)
+- No recognizable language slug
+- Returns `null` or default language → `$this->model->get_default_language()` = `'en'`
+
+Then without the `pll_get_current_language` filter firing correctly, `PLL()->curlang` stays as `'en'` on the subdomain.
+
+### Why Changing DB Default to RU Fixes Everything
+
+When `pll_default_language` is changed to `'ru'` in the database:
+1. `PLL()->model->get_default_language()` returns the RU `PLL_Language` object
+2. `set_language()` falls back to default → `PLL()->curlang = RU`
+3. `pll_current_language()` → `'ru'`
+4. `load_strings_translations()` fires on `pll_language_defined` → loads RU MO into `$GLOBALS['l10n']['pll_string']`
+5. `pll_translate_string('string', 'ru')` → short-circuit fires → `pll__()` reads from RU MO → returns Russian translation
+
+### Why `$wp_query->query['lang']` Was the Accidental Bandage
+
+[`PLL_Choose_Lang_Url::request()`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/frontend/choose-lang-url.php:102):
+
+```php
+public function request( $qv ) {
+    if ( isset( $this->curlang ) && empty( $qv['lang'] ) ) {
+        $qv['lang'] = $this->curlang->slug;  // ← sets 'en' on subdomain
+    }
+    return $qv;
+}
+```
+
+The original `get_language()` unconditionally overwrite:
+
+```php
+$language = $wp_query->query['lang'];  // ← 'en'
+```
+
+This was overwriting `$this->adapter->get_current_language()` (which also returned 'en' because of the dead hooks) — so it was never the real fix either. Both the adapter and `$wp_query->query['lang']` returned `'en'` on the subdomain.
+
+## The Correct Fix
+
+### Fix: Hook Into the REAL Polylang Filter
+
+The Subdomain Adapter must hook into [`pll_get_current_language`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/frontend/choose-lang.php:103) with a callback that returns a **`PLL_Language` object** (not a string):
+
+```php
+add_filter('pll_get_current_language', [$this, 'filter_pll_get_current_language'], 10, 1);
+
+public function filter_pll_get_current_language($curlang) {
+    if ($this->is_on_subdomain()) {
+        $subdomain_lang = PLL()->model->get_language($this->current_subdomain_lang);
+        if ($subdomain_lang instanceof \PLL_Language) {
+            return $subdomain_lang;  // ← PLL_Language object for 'ru'
         }
-
-        $this->language_cache = $language;
     }
-    // ...
+    return $curlang;
 }
 ```
 
-The `$wp_query->query['lang']` check was likely intended as a **fallback** when the adapter returns empty/invalid, but it unconditionally overwrites a valid adapter result. On the main domain this is harmless (both return `'en'`), but on subdomains it can cause unexpected behavior if `lang` query var is set by Polylang's URL parsing to a different value than `pll_current_language()`.
+This filter fires inside `set_language()` **before** the default-language fallback. Returning a valid `PLL_Language` object for 'ru' causes:
+1. `PLL()->curlang = RU` (the 'ru' `PLL_Language` object)
+2. `pll_current_language()` → `'ru'`
+3. `load_strings_translations()` loads RU MO → `$GLOBALS['l10n']['pll_string']` has Russian translations
+4. `pll_translate_string('string', 'ru')` → short-circuit fires → `pll__()` reads from RU MO → returns Russian translation ✓
 
-## Why Block Translations "Work" (But Actually Don't)
+**Remove the two dead hooks** (`pll_default_language` and `pll_current_language` — non-existent filters).
 
-Block translations go through the **same code path** (`get_translation()` → `translate_string()` → `pll_translate_string()`). If blocks appear to work, it is because:
+### Why `get_language()` Conditional Fallback Is Correct
 
-1. **WordPress post translations**: The block content is stored as separate translated posts in the database (one per language). Polylang serves the correct post based on the current language. This is **post-level translation**, not **string-level translation** — completely unaffected by `pll_translate_string()`.
-
-2. **`{{...}}` token blocks**: These DO go through `translate_string()` and suffer the **same bug**. If the user perceives them as "working," it's likely because:
-   - The block content is primarily post-level translations (separate translated posts per language)
-   - The `{{...}}` tokens within blocks happen to be in English on both domains (no translation registered)
-   - Or the cache was primed on the main domain before the subdomain adapter was active
-
-## Why It Works on Main Domain (Subdomain Adapter Disabled)
-
-On `pbservices.ge` (main domain, no subdomain adapter):
-- `pll_default_language()` returns `'en'` (Polylang's real default)
-- `pll_translate_string('english_string', 'en')` → Polylang sees target === default → returns `'english_string'` unchanged
-- **But this is correct behavior**: the source language IS `'en'`, so the English string IS the translation
-- The [`get_translation_batch_strings()`](includes/core/translator/class-translation-service.php:403) guard: `if ($language === $this->get_source_language())` returns `$strings` as-is, skipping translation entirely
-
-On `ru.pbservices.ge` (subdomain adapter active):
-- `pll_default_language()` returns `'ru'` (subdomain adapter's filter)
-- `pll_translate_string('english_string', 'ru')` → Polylang sees target === default → returns `'english_string'` unchanged
-- **This is WRONG**: the source language is `'en'`, the target is `'ru'`, a translation should be looked up
-
-## The Fix: Two-Part Solution
-
-### Part 1: Fix `Frl_Polylang_Adapter::translate_string()` (Primary Fix)
-
-The adapter must detect when Polylang's short-circuit occurs and fall back to a direct lookup in the `pll_strings` option. This makes the translator service **self-contained and robust** — it works correctly regardless of whether the subdomain adapter is active.
-
-**File**: `includes/core/translator/adapters/polylang.php`
+With the real filter now working, `Frl_Polylang_Adapter::get_current_language()` returns `'ru'` on the subdomain. The [`get_language()`](includes/core/translator/class-translation-service.php:136) method's conditional fallback:
 
 ```php
-public function translate_string(string $string, string $language): ?string {
-    if (!function_exists('pll_translate_string')) {
-        return null;
+$language = $this->adapter->get_current_language();  // ← 'ru' (now works!)
+if (empty($language)) {
+    global $wp_query;
+    if (isset($wp_query->query['lang']) && ...) {
+        $language = $wp_query->query['lang'];  // ← only used as fallback now
     }
-
-    $translation = pll_translate_string($string, $language);
-
-    // Polylang returns the input unchanged when $language === pll_default_language().
-    // On subdomains, pll_default_language() is overridden (e.g., 'ru'), but strings
-    // are authored in FRL_TRANSLATOR_SOURCE_LANG ('en'). When the short-circuit
-    // is detected, query the pll_strings option directly.
-    if ($translation === $string) {
-        $source_lang = defined('FRL_TRANSLATOR_SOURCE_LANG')
-            ? FRL_TRANSLATOR_SOURCE_LANG
-            : 'en';
-
-        // Only attempt fallback when translating FROM source language TO a
-        // different language that happens to match Polylang's (possibly filtered)
-        // default language. If we're truly in the source language, no translation
-        // is needed — return null to let the caller use the original string.
-        if ($language !== $source_lang) {
-            $pll_strings = get_option('pll_strings', []);
-            if (is_array($pll_strings) && !empty($pll_strings)) {
-                foreach ($pll_strings as $key => $translations) {
-                    if (!is_array($translations)) {
-                        continue;
-                    }
-                    // Check if this entry's source language value matches our input
-                    if (isset($translations[$source_lang]) && $translations[$source_lang] === $string) {
-                        // Found the string — return the target language translation
-                        if (isset($translations[$language]) && $translations[$language] !== '') {
-                            return $translations[$language];
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    return $translation;
 }
 ```
 
-### Part 2: Fix `Frl_Translation_Service::get_language()` (Secondary Fix)
+This is exactly right. The adapter returns the correct language, and `$wp_query->query['lang']` is only a safety net for AJAX/edge cases.
 
-The `$wp_query->query['lang']` check should be a **fallback**, not an unconditional overwrite:
+## Files Modified
 
-**File**: `includes/core/translator/class-translation-service.php`
-
-```php
-public function get_language(): string {
-    if ($this->language_cache === null) {
-        $language = $this->adapter->get_current_language();
-
-        // Only use $wp_query->query['lang'] as a fallback when the adapter
-        // returns an empty or invalid language code.
-        global $wp_query;
-        if (empty($language) && isset($wp_query->query['lang']) && is_string($wp_query->query['lang']) && strlen($wp_query->query['lang']) === 2) {
-            $language = $wp_query->query['lang'];
-        }
-
-        $this->language_cache = $language;
-    }
-
-    // Ensure we never return an empty string (e.g. from Polylang on AJAX)
-    if (empty($this->language_cache)) {
-        $this->language_cache = 'en';
-    }
-
-    return $this->language_cache;
-}
-```
-
-## Design Principles
-
-1. **Translator service independence**: The fix lives entirely in the Polylang adapter. The translator service does not need to know about the subdomain adapter. It works correctly in all scenarios:
-   - Main domain (EN default, EN source) → no translation needed, returns original
-   - Main domain with `/ru/` prefix (EN default, EN source, target RU) → Polylang translates normally
-   - Subdomain (RU default via filter, EN source, target RU) → fallback lookup finds translation
-
-2. **No filter manipulation**: The fix does not `remove_filter`/`add_filter` around Polylang calls, avoiding re-entrancy risks and race conditions.
-
-3. **Defensive fallback**: The `pll_strings` option lookup only activates when the short-circuit is detected (`$translation === $string`) AND the target language differs from the source language.
-
-4. **`get_language()` correctness**: The `$wp_query->query['lang']` check is now a true fallback, preserving the adapter's result when valid.
+| File | Change |
+|------|--------|
+| [`modules/subdomain_adapter/class-subdomain-adapter.php:355`](modules/subdomain_adapter/class-subdomain-adapter.php:355) | Replaced `add_filter('pll_default_language', ...)` + `add_filter('pll_current_language', ...)` with `add_filter('pll_get_current_language', ...)` |
+| [`modules/subdomain_adapter/class-subdomain-adapter.php:439`](modules/subdomain_adapter/class-subdomain-adapter.php:439) | New method `filter_pll_get_current_language()` returning `PLL_Language` object |
+| [`includes/core/translator/class-translation-service.php:147`](includes/core/translator/class-translation-service.php:147) | `get_language()` uses `$wp_query->query['lang']` as **conditional fallback** only |
 
 ## Testing Checklist
 
 - [ ] On `ru.pbservices.ge`, `[frl]Contact Us[/frl]` returns Russian translation "Свяжитесь с нами"
 - [ ] On `pbservices.ge` (EN main domain), `[frl]Contact Us[/frl]` returns "Contact Us" (source language, no translation needed)
-- [ ] On `pbservices.ge/ru/`, `[frl]Contact Us[/frl]` returns Russian translation
+- [ ] On `pbservices.ge/ru/`, `[frl]Contact Us[/frl]` returns Russian translation (standard Polylang directory mode)
 - [ ] Block translations with `{{Contact Us}}` tokens work on all domains
-- [ ] No performance regression (fallback only fires on cache miss + short-circuit detection)
-- [ ] `$wp_query->query['lang']` fallback works when adapter returns empty (edge case)
-- [ ] Subdomain adapter's `pll_default_language` filter continues to work for URL generation
+- [ ] Navigation menus display in RU on `ru.pbservices.ge` and EN on `pbservices.ge`
+- [ ] No canonical redirect loops on subdomains (`pll_check_canonical_url` still in place)
+- [ ] Homepage URL generation remains correct on subdomains
+- [ ] `pll_get_current_language` filter passes through unchanged on main domain (not on subdomain)

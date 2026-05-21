@@ -275,25 +275,38 @@ Used Polylang's internal `pll_check_canonical_url` filter (line 138 of `src/fron
 ### Plan
 - [`plans/fix-redirect-loop-pll-check-canonical-url.md`](plans/fix-redirect-loop-pll-check-canonical-url.md)
 
-## 🔧 Shortcode Translation Fix — Subdomain Adapter Compatibility (2026-05-21)
+## 🔧 Shortcode Translation Fix — Subdomain Adapter Compatibility (2026-05-21 — CORRECTED)
 
 ### Problem
-On `ru.pbservices.ge`, `[frl]english_string[/frl]` shortcodes return English untranslated. Block translations with `{{...}}` tokens appeared correct, but only because they contain post-level translations (separate DB posts). Both share the same code path and both suffer the same bug.
+On `ru.pbservices.ge`, `[frl]english_string[/frl]` shortcodes return English untranslated. Block translations and navigation menus also show English.
 
-### Root Cause
-Two bugs interacting:
+### Original (Incorrect) Fix Attempt
+The first fix attempted a two-part approach:
+- **Part 1:** Added a `pll_strings` WordPress option fallback in [`Frl_Polylang_Adapter::translate_string()`](includes/core/translator/adapters/polylang.php:32)
+- **Part 2:** Changed `$wp_query->query['lang']` from unconditional overwrite to conditional fallback in [`get_language()`](includes/core/translator/class-translation-service.php:136)
 
-1. **[`Frl_Polylang_Adapter::translate_string()`](includes/core/translator/adapters/polylang.php:32) — Primary:** `pll_translate_string()` short-circuits when `$language === pll_default_language()`. Since the Subdomain Adapter filters `pll_default_language` to `'ru'` on `ru.pbservices.ge`, calling `pll_translate_string($string, 'ru')` returns the input unchanged. The `($translation !== $string)` check then returns `null`.
+Both were reverted when testing showed the fix didn't work.
 
-2. **[`Frl_Translation_Service::get_language()`](includes/core/translator/class-translation-service.php:136) — Secondary:** `$wp_query->query['lang']` unconditionally overwrites the adapter's result. Even if the adapter correctly returns `'ru'`, the query var overwrites it — silently discarding the subdomain adapter's language override.
+### CORRECTED Root Cause
+The Subdomain Adapter registered callbacks on **non-existent Polylang filters**:
 
-### Fix Applied
-- **Part 1:** [`Frl_Polylang_Adapter::translate_string()`](includes/core/translator/adapters/polylang.php:32) — When `pll_translate_string()` returns the string unchanged AND the target language differs from `FRL_TRANSLATOR_SOURCE_LANG`, falls back to direct `pll_strings` option lookup.
-- **Part 2:** [`Frl_Translation_Service::get_language()`](includes/core/translator/class-translation-service.php:136) — Changed `$wp_query->query['lang']` from unconditional overwrite to `if (empty($language))` fallback only.
+- `add_filter('pll_default_language', ...)` → In Polylang 3.7+, `pll_default_language()` is a **function name** at [`api.php:93`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/api.php:93) that calls `PLL()->model->get_default_language()` directly — no `apply_filters()` call.
+- `add_filter('pll_current_language', ...)` → Same issue at [`api.php:62`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/api.php:62) — reads from `PLL()->curlang` directly.
+
+The **only real filter** that controls `PLL()->curlang` is [`pll_get_current_language` at choose-lang.php:103](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/frontend/choose-lang.php:103), which fires inside `set_language()` and receives a `PLL_Language` object.
+
+With the dead hooks never firing, `PLL()->curlang` resolved to EN on the subdomain → `pll_current_language()` = `'en'` → `load_strings_translations()` loaded EN MO → `pll_translate_string('string', 'ru')` short-circuited to `pll__()` which read from the **English** MO → English returned.
+
+### CORRECTED Fix Applied
+- **Removed:** `add_filter('pll_default_language', ...)` and `add_filter('pll_current_language', ...)` — target non-existent filters.
+- **Added:** `add_filter('pll_get_current_language', ...)` at [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:360) — hooks into the REAL Polylang filter.
+- **New method [`filter_pll_get_current_language()`](modules/subdomain_adapter/class-subdomain-adapter.php:439):** Returns a `PLL_Language` object for the subdomain's language via `PLL()->model->get_language()`. This causes `PLL()->curlang = RU` on the subdomain, making all Polylang functions work correctly.
+- **`get_language()` conditional fallback kept:** Correct design — adapter now returns 'ru' properly via working filter.
+- **`translate_string()` reverted to original:** No workaround needed.
 
 ### Files Modified
-- [`includes/core/translator/adapters/polylang.php`](includes/core/translator/adapters/polylang.php:32)
-- [`includes/core/translator/class-translation-service.php`](includes/core/translator/class-translation-service.php:136)
+- [`modules/subdomain_adapter/class-subdomain-adapter.php:355`](modules/subdomain_adapter/class-subdomain-adapter.php:355) — Replaced dead hooks with real `pll_get_current_language` filter
+- [`modules/subdomain_adapter/class-subdomain-adapter.php:439`](modules/subdomain_adapter/class-subdomain-adapter.php:439) — New `filter_pll_get_current_language()` method
 
 ### Plan
 - [`plans/shortcode-translation-root-cause-analysis.md`](plans/shortcode-translation-root-cause-analysis.md)
