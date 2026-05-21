@@ -478,6 +478,23 @@ final class Frl_Rewriter_Path_Utils
             return;
         }
 
+        /**
+         * Filters whether to skip the rewriter's canonical redirect.
+         *
+         * Allows other modules (e.g., Subdomain Adapter) to cancel the redirect
+         * when they handle URL structure independently. Without this, the rewriter
+         * in directory mode (force_lang=1) would add /{lang}/ prefixes that conflict
+         * with subdomain clean URLs, creating redirect loops.
+         *
+         * @since 5.4.0
+         *
+         * @param bool   $skip      Whether to skip the redirect. Default false.
+         * @param string $canonical The canonical URL that would be redirected to.
+         */
+        if (apply_filters('frl_rewriter_skip_canonical_redirect', false, $canonical)) {
+            return;
+        }
+
         $current = self::get_current_request_url();
 
         if (rtrim($current, '/') !== rtrim($canonical, '/')) {

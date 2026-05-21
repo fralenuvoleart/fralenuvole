@@ -398,6 +398,13 @@ class Frl_Subdomain_Adapter {
         add_filter('wpseo_canonical',       [$this, 'filter_canonical_url'],    PHP_INT_MAX, 1);
         add_filter('the_seo_framework_meta_render_data', [$this, 'filter_tsf_canonical_url'], PHP_INT_MAX, 1);
 
+        // --- Rewriter canonical redirect suppression on subdomains ---
+        // The rewriter module operates in directory mode (force_lang=1) and would
+        // add /{lang}/ prefixes that conflict with the subdomain's clean URL structure.
+        // This filter cancels the rewriter's redirect on subdomains, preventing loops
+        // with the legacy adapter's strip logic.
+        add_filter('frl_rewriter_skip_canonical_redirect', [$this, 'filter_rewriter_skip_redirect'], 10, 2);
+
         // --- Subdomain front page resolution ---
         // On a subdomain (e.g. ru.pbservices.ge), the DB option page_on_front
         // holds the main domain's front page ID (EN). Override it to return the
@@ -444,6 +451,28 @@ class Frl_Subdomain_Adapter {
             }
         }
         return $curlang;
+    }
+
+    // -------------------------------------------------------------------------
+    // Filter: frl_rewriter_skip_canonical_redirect (Rewriter redirect suppression)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Cancel the rewriter module's canonical redirect on subdomains.
+     *
+     * The rewriter operates in directory mode (force_lang=1) and would add /{lang}/
+     * prefixes that conflict with the subdomain's clean URL structure. This filter
+     * prevents redirect loops with the legacy adapter's strip logic.
+     *
+     * @param bool   $skip      Whether to skip the redirect. Default false.
+     * @param string $canonical The canonical URL that would be redirected to.
+     * @return bool
+     */
+    public function filter_rewriter_skip_redirect(bool $skip, string $canonical): bool {
+        if ($this->is_on_subdomain()) {
+            return true;
+        }
+        return $skip;
     }
 
     // -------------------------------------------------------------------------
