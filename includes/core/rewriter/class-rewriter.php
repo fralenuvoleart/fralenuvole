@@ -212,71 +212,73 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
 
         // cache_key already generated above.
 
-        $result = frl_cache_remember('permalinks', $cache_key, function () use ($url, $object, $features) {
-            $transformed_url = $url;
+        try {
+            $result = frl_cache_remember('permalinks', $cache_key, function () use ($url, $object, $features) {
+                $transformed_url = $url;
 
-            // Dispatcher cache: map object signature -> applicable features (LRU pattern)
-            static $feature_match_cache = [];
-            static $cache_order = [];
-            // Build a signature that distinguishes post types and taxonomies but remains stable.
-            $signature = get_class($object);
-            if (isset($object->post_type)) {
-                $signature .= '_' . $object->post_type;
-            } elseif (isset($object->taxonomy)) {
-                $signature .= '_' . $object->taxonomy;
-            }
-
-            // LRU memory guard: evict oldest entries when cache exceeds 1024
-            if (count($feature_match_cache) >= 1024 && !isset($feature_match_cache[$signature])) {
-                // Remove oldest 10% of entries
-                $evict_count = (int) ceil(count($cache_order) * 0.1);
-                for ($i = 0; $i < $evict_count && !empty($cache_order); $i++) {
-                    $oldest = array_shift($cache_order);
-                    unset($feature_match_cache[$oldest]);
+                // Dispatcher cache: map object signature -> applicable features (LRU pattern)
+                static $feature_match_cache = [];
+                static $cache_order = [];
+                // Build a signature that distinguishes post types and taxonomies but remains stable.
+                $signature = get_class($object);
+                if (isset($object->post_type)) {
+                    $signature .= '_' . $object->post_type;
+                } elseif (isset($object->taxonomy)) {
+                    $signature .= '_' . $object->taxonomy;
                 }
-            }
 
-            if (isset($feature_match_cache[$signature])) {
-                $applicable = $feature_match_cache[$signature];
-                // Move to end of LRU order
-                $cache_order = array_diff($cache_order, [$signature]);
-                $cache_order[] = $signature;
-            } else {
-                $applicable = [];
-                foreach ($features as $feature) {
-                    if ($feature->is_enabled() && $feature->applies_to($object)) {
-                        $applicable[] = $feature;
+                // LRU memory guard: evict oldest entries when cache exceeds 1024
+                if (count($feature_match_cache) >= 1024 && !isset($feature_match_cache[$signature])) {
+                    // Remove oldest 10% of entries
+                    $evict_count = (int) ceil(count($cache_order) * 0.1);
+                    for ($i = 0; $i < $evict_count && !empty($cache_order); $i++) {
+                        $oldest = array_shift($cache_order);
+                        unset($feature_match_cache[$oldest]);
                     }
                 }
-                $feature_match_cache[$signature] = $applicable;
-                $cache_order[] = $signature;
-            }
 
-            // Early return if no features apply to this specific object
-            if (empty($applicable)) {
-                return $url;
-            }
-
-            // Apply transforms only from applicable list
-            foreach ($applicable as $feature) {
-                try {
-                    $next_url = $feature->transform($transformed_url, $object);
-
-                    if (is_string($next_url)) {
-                        $transformed_url = $next_url;
+                if (isset($feature_match_cache[$signature])) {
+                    $applicable = $feature_match_cache[$signature];
+                    // Move to end of LRU order
+                    $cache_order = array_diff($cache_order, [$signature]);
+                    $cache_order[] = $signature;
+                } else {
+                    $applicable = [];
+                    foreach ($features as $feature) {
+                        if ($feature->is_enabled() && $feature->applies_to($object)) {
+                            $applicable[] = $feature;
+                        }
                     }
-                } catch (Throwable $e) {
-                    frl_log('Rewriter feature {feature} failed during URL transformation: {error}', [
-                        'feature' => $feature->get_name(),
-                        'error'   => $e->getMessage(),
-                    ]);
+                    $feature_match_cache[$signature] = $applicable;
+                    $cache_order[] = $signature;
                 }
-            }
 
-            return $transformed_url;
-        });
+                // Early return if no features apply to this specific object
+                if (empty($applicable)) {
+                    return $url;
+                }
 
-        unset($processing_urls[$re_entrancy_key]);
+                // Apply transforms only from applicable list
+                foreach ($applicable as $feature) {
+                    try {
+                        $next_url = $feature->transform($transformed_url, $object);
+
+                        if (is_string($next_url)) {
+                            $transformed_url = $next_url;
+                        }
+                    } catch (Throwable $e) {
+                        frl_log('Rewriter feature {feature} failed during URL transformation: {error}', [
+                            'feature' => $feature->get_name(),
+                            'error'   => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                return $transformed_url;
+            });
+        } finally {
+            unset($processing_urls[$re_entrancy_key]);
+        }
         
         // Final safety check: Ensure we always return a string
         return is_string($result) ? $result : $url;
@@ -425,6 +427,8 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         $coordinator = Frl_Rewriter_Coordinator::init();
         $coordinator->invalidate_config_hash();
         frl_flush_rewrite_rules();
+        // Validate all features after flush to catch pattern conflicts and routing issues.
+        $coordinator->validate_all_features();
     }
 
     /**

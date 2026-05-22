@@ -113,11 +113,30 @@ final class Frl_Rewriter_Path_Utils
      */
     public static function collapse_slashes(string $url): string
     {
-        // Keep the double slash after a scheme (e.g. "https://") but collapse
-        // any other redundant slashes in the remainder of the URL.
-        $result = preg_replace('#(?<!:)/{2,}#', '/', $url);
+        // Protect the scheme's :// from collapse by splitting on it first.
+        // This handles malformed URLs like https:///path without corrupting them.
+        static $logged = false;
+        $parts = explode('://', $url, 2);
+        if (count($parts) === 2) {
+            $collapsed = preg_replace('#/{2,}#', '/', $parts[1]);
+            if ($collapsed === null) {
+                if (!$logged) {
+                    $errorCode = preg_last_error();
+                    $errorMsg  = function_exists('preg_last_error_msg') ? preg_last_error_msg() : 'unknown';
+                    frl_log('Rewriter: Regex error in collapse_slashes. URL: {url} Error: {error} ({code})', [
+                        'url'   => $url,
+                        'error' => $errorMsg,
+                        'code'  => $errorCode,
+                    ]);
+                    $logged = true;
+                }
+                return $url;
+            }
+            return implode('://', [$parts[0], $collapsed]);
+        }
+        // No scheme: collapse all redundant slashes.
+        $result = preg_replace('#/{2,}#', '/', $url);
         if ($result === null) {
-            static $logged = false;
             if (!$logged) {
                 $errorCode = preg_last_error();
                 $errorMsg  = function_exists('preg_last_error_msg') ? preg_last_error_msg() : 'unknown';
