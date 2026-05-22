@@ -19,10 +19,7 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
                 return $lang;
             }
         }
-        // Fallback: use default language from Polylang options
-        // This handles CLI/cron/early AJAX when Polylang hasn't resolved the current language yet
-        $pll_options = get_option('polylang');
-        return !empty($pll_options['default_lang']) ? $pll_options['default_lang'] : 'en';
+        return frl_get_default_language_fallback();
     }
 
     public function get_default_language(): string
@@ -33,9 +30,7 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
                 return $lang;
             }
         }
-        // Fallback: read from Polylang options (always available in DB)
-        $pll_options = get_option('polylang');
-        return !empty($pll_options['default_lang']) ? $pll_options['default_lang'] : 'en';
+        return frl_get_default_language_fallback();
     }
 
     public function get_active_languages(): array
@@ -46,8 +41,7 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
                 return $langs;
             }
         }
-        // Fallback: use the translation service's database query method
-        return Frl_Translation_Service::get_instance()->get_active_languages_fallback();
+        return frl_get_active_languages_fallback();
     }
 
     public function translate_string(string $string, string $language): ?string

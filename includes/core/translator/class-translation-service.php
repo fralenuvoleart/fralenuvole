@@ -156,7 +156,7 @@ final class Frl_Translation_Service
 
         // Ensure we never return an empty string (e.g. from Polylang on AJAX)
         if (empty($this->language_cache)) {
-            $this->language_cache = 'en';
+            $this->language_cache = frl_get_default_language_fallback();
         }
 
         return $this->language_cache;
@@ -211,20 +211,6 @@ final class Frl_Translation_Service
         return apply_filters('frl_active_languages', $this->active_languages_cache);
     }
 
-    /**
-     * Get active languages by querying the database directly.
-     * Used as fallback when Polylang's pll_languages_list() returns empty
-     * (e.g., during CLI/cron/early AJAX requests when Polylang isn't fully initialized).
-     *
-     * @return array Array of 2-letter language codes (e.g., ['en', 'ru', 'ar', 'zh'])
-     */
-    public function get_active_languages_fallback(): array
-    {
-        global $wpdb;
-        // Query language terms directly, filtering by 2-character slugs to exclude pll_en style terms
-        $langs = $wpdb->get_col("SELECT t.slug FROM {$wpdb->terms} t INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id WHERE tt.taxonomy = 'language' AND CHAR_LENGTH(t.slug) = 2");
-        return !empty($langs) ? $langs : ['en'];
-    }
 
     /**
      * Get a string's translation.

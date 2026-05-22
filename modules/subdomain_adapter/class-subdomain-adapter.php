@@ -50,9 +50,12 @@ class Frl_Subdomain_Adapter {
      * Fallback language slug used when a main domain entry is missing the
      * required 'default_lang' key in FRL_SUBDOMAIN_ADAPTER_MAP.
      *
-     * @var string
+     * @return string 2-letter language code
      */
-    private const FALLBACK_LANG = 'en';
+    private function get_fallback_lang(): string
+    {
+        return frl_get_default_language_fallback();
+    }
 
     // -------------------------------------------------------------------------
     // Singleton
@@ -200,7 +203,7 @@ class Frl_Subdomain_Adapter {
         $this->domain_map = $normalized_map;
 
         foreach ($this->domain_map as $main_domain => $config) {
-            $default_lang = isset($config['default_lang']) ? (string) $config['default_lang'] : self::FALLBACK_LANG;
+            $default_lang = isset($config['default_lang']) ? (string) $config['default_lang'] : $this->get_fallback_lang();
             foreach ($config as $lang => $subdomain) {
                 if ($lang === 'default_lang') {
                     continue;
@@ -574,7 +577,7 @@ class Frl_Subdomain_Adapter {
         }
 
         // Return main domain URL, with or without prefix.
-        $main_default = $this->domain_map[$resolve_domain]['default_lang'] ?? self::FALLBACK_LANG;
+        $main_default = $this->domain_map[$resolve_domain]['default_lang'] ?? $this->get_fallback_lang();
         if ((string) $lang === $main_default) {
             return "{$scheme}://{$resolve_domain}/";
         }
@@ -634,7 +637,7 @@ class Frl_Subdomain_Adapter {
         }
 
         // Set home_url to main domain URL (with or without prefix).
-        $main_default = $this->domain_map[$resolve_domain]['default_lang'] ?? self::FALLBACK_LANG;
+        $main_default = $this->domain_map[$resolve_domain]['default_lang'] ?? $this->get_fallback_lang();
         if ((string) $lang === $main_default) {
             $additional_data['home_url'] = "{$scheme}://{$resolve_domain}/";
         } else {
@@ -898,7 +901,7 @@ class Frl_Subdomain_Adapter {
             $lang_map = $this->domain_map[$this->current_host] ?? [];
             $target_subdomain  = isset($lang_map[$content_lang])
                 ? $lang_map[$content_lang] : null;
-            $main_default      = $lang_map['default_lang'] ?? self::FALLBACK_LANG;
+            $main_default      = $lang_map['default_lang'] ?? $this->get_fallback_lang();
 
             // On main domain, only transform if language has a mapped subdomain.
             // Cross-language content on subdomains (Case 4) is handled below

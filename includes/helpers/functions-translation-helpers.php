@@ -46,11 +46,11 @@ function frl_is_multilingual(?string $function_name = null): bool
 function frl_get_language(?int $id = null, string $type = 'post'): string
 {
     if (!frl_translator_is_enabled()) {
-        return 'en';
+        return frl_get_default_language_fallback();
     }
     if ($id === null) {
         $language = Frl_Translation_Service::get_instance()->get_language();
-        return !empty($language) ? $language : 'en';
+        return !empty($language) ? $language : frl_get_default_language_fallback();
     }
     return Frl_Translation_Service::get_instance()->get_object_language($id, $type);
 }
@@ -63,7 +63,7 @@ function frl_get_language(?int $id = null, string $type = 'post'): string
 function frl_get_default_language(): string
 {
     if (!frl_translator_is_enabled()) {
-        return 'en';
+        return frl_get_default_language_fallback();
     }
     return Frl_Translation_Service::get_instance()->get_default_language();
 }
@@ -76,7 +76,7 @@ function frl_get_default_language(): string
 function frl_get_active_languages(): array
 {
     if (!frl_translator_is_enabled()) {
-        return ['en'];
+        return frl_get_active_languages_fallback();
     }
     return Frl_Translation_Service::get_instance()->get_active_languages();
 }
@@ -219,7 +219,38 @@ function frl_get_post_translations(int $post_id): array
 function frl_get_term_translations(int $term_id): array
 {
     if (!frl_translator_is_enabled()) {
-        return ['en' => $term_id];
+        $default_lang = frl_get_default_language_fallback();
+        return [$default_lang => $term_id];
     }
     return Frl_Translation_Service::get_instance()->get_term_translations($term_id);
+}
+
+/**
+ * Get default language by reading from the database directly.
+ * Used as fallback when Polylang isn't fully initialized
+ * (e.g., during CLI/cron/early AJAX requests).
+ *
+ * @return string 2-letter language code (e.g., 'en', 'ru')
+ */
+function frl_get_default_language_fallback(): string
+{
+    $pll_options = get_option('polylang');
+    
+    return !empty($pll_options['default_lang']) ? $pll_options['default_lang'] : 'en';
+}
+
+/**
+ * Get active languages by querying the database directly.
+ * Used as fallback when Polylang's pll_languages_list() returns empty
+ * (e.g., during CLI/cron/early AJAX requests when Polylang isn't fully initialized).
+ *
+ * @return array Array of 2-letter language codes (e.g., ['en', 'ru', 'ar', 'zh'])
+ */
+function frl_get_active_languages_fallback(): array
+{
+    global $wpdb;
+    // Query language terms directly, filtering by 2-character slugs to exclude pll_en style terms
+    $langs = $wpdb->get_col("SELECT t.slug FROM {$wpdb->terms} t INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id WHERE tt.taxonomy = 'language' AND CHAR_LENGTH(t.slug) = 2");
+
+    return !empty($langs) ? $langs : [frl_get_default_language_fallback()];
 }
