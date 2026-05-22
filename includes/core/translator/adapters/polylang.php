@@ -13,20 +13,41 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
 {
     public function get_current_language(): string
     {
-        return function_exists('pll_current_language') ? pll_current_language() : 'en';
+        if (function_exists('pll_current_language')) {
+            $lang = pll_current_language();
+            if (!empty($lang)) {
+                return $lang;
+            }
+        }
+        // Fallback: use default language from Polylang options
+        // This handles CLI/cron/early AJAX when Polylang hasn't resolved the current language yet
+        $pll_options = get_option('polylang');
+        return !empty($pll_options['default_lang']) ? $pll_options['default_lang'] : 'en';
     }
 
     public function get_default_language(): string
     {
-        return function_exists('pll_default_language') ? pll_default_language() : 'en';
+        if (function_exists('pll_default_language')) {
+            $lang = pll_default_language();
+            if (!empty($lang)) {
+                return $lang;
+            }
+        }
+        // Fallback: read from Polylang options (always available in DB)
+        $pll_options = get_option('polylang');
+        return !empty($pll_options['default_lang']) ? $pll_options['default_lang'] : 'en';
     }
 
     public function get_active_languages(): array
     {
         if (function_exists('pll_languages_list')) {
-            return pll_languages_list(['fields' => 'slug']);
+            $langs = pll_languages_list(['fields' => 'slug']);
+            if (!empty($langs)) {
+                return $langs;
+            }
         }
-        return [$this->get_default_language()];
+        // Fallback: use the translation service's database query method
+        return Frl_Translation_Service::get_instance()->get_active_languages_fallback();
     }
 
     public function translate_string(string $string, string $language): ?string
