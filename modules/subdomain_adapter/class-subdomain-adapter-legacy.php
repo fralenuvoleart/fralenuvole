@@ -203,7 +203,7 @@ class Frl_Subdomain_Adapter_Legacy {
         }
 
         // If language is the default → target is main domain (no prefix).
-        $default_lang = $config['default_lang'] ?? 'en';
+        $default_lang = $config['default_lang'] ?? frl_get_default_language_fallback();
         if ($lang === $default_lang) {
             return $resolve_domain;
         }
@@ -240,7 +240,7 @@ class Frl_Subdomain_Adapter_Legacy {
         $target_is_main = isset($map[$target_host]);
         if ($target_is_main) {
             $config = $map[$target_host] ?? [];
-            $default_lang = $config['default_lang'] ?? 'en';
+            $default_lang = $config['default_lang'] ?? frl_get_default_language_fallback();
             // If language is not the default for this main domain AND not mapped to a subdomain,
             // add the language prefix.
             if ($lang !== $default_lang && !isset($config[$lang])) {
@@ -439,7 +439,7 @@ class Frl_Subdomain_Adapter_Legacy {
 
         // Add language prefix if needed.
         if ($target_is_main) {
-            $default_lang = $map[$target_host]['default_lang'] ?? 'en';
+            $default_lang = $map[$target_host]['default_lang'] ?? frl_get_default_language_fallback();
             if ($lang !== $default_lang && !isset($map[$target_host][$lang])) {
                 $path = '/' . $lang . $path;
             }

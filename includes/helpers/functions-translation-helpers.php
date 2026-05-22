@@ -205,7 +205,8 @@ function frl_process_permalink_patterns(string $content): string
 function frl_get_post_translations(int $post_id): array
 {
     if (!frl_translator_is_enabled()) {
-        return ['en' => $post_id];
+        $default_lang = frl_get_default_language_fallback();
+        return [$default_lang => $post_id];
     }
     return Frl_Translation_Service::get_instance()->get_post_translations($post_id);
 }
@@ -248,9 +249,10 @@ function frl_get_default_language_fallback(): string
  */
 function frl_get_active_languages_fallback(): array
 {
-    global $wpdb;
-    // Query language terms directly, filtering by 2-character slugs to exclude pll_en style terms
-    $langs = $wpdb->get_col("SELECT t.slug FROM {$wpdb->terms} t INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id WHERE tt.taxonomy = 'language' AND CHAR_LENGTH(t.slug) = 2");
-
-    return !empty($langs) ? $langs : [frl_get_default_language_fallback()];
+    return frl_cache_remember('translations', 'active_languages_fallback', function () {
+        global $wpdb;
+        // Query language terms directly, filtering by 2-character slugs to exclude pll_en style terms
+        $langs = $wpdb->get_col("SELECT t.slug FROM {$wpdb->terms} t INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id WHERE tt.taxonomy = 'language' AND CHAR_LENGTH(t.slug) = 2");
+        return !empty($langs) ? $langs : [frl_get_default_language_fallback()];
+    });
 }
