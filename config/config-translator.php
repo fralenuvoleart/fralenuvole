@@ -5,9 +5,12 @@
 if (!defined('ABSPATH')) exit;
 
 /**
- * Constants
+ * Constants for the Fralenuvole Translator module
  */
-// Defines constants for the Fralenuvole Translator module.
+
+// Default language fallback — used when no multilingual plugin is active
+// or when Polylang's configuration cannot be read.
+const FRL_TRANSLATOR_DEFAULT_LANG = 'en';
 
 // Source language — the language in which string tokens and block content
 // The source language remains 'en' even if Polylang's default changes on subdomains for clean URLs.

@@ -18,9 +18,24 @@ The system solves the following problems:
 ### Key Components
 - **`Frl_Translation_Service`**: The central hub. Manages caching, batching, and the translation lifecycle.
 - **`Frl_Translation_Adapter_Interface`**: Defines the contract for translation plugins.
-- **`Frl_Polylang_Adapter`**: The current implementation for Polylang.
+- **`Frl_Polylang_Adapter`**: The current implementation for Polylang. Fallback logic is self-contained — the adapter knows its own plugin's database schema and provides fallbacks independently of global helper functions.
 - **`field-translator.php`**: The hook-based layer that intercepts WordPress metadata calls to provide transparent translations.
 - **`functions-translation-helpers.php`**: The public API for developers.
+- **`translator.php`**: Module entry point. Loads adapter interface and implementation early so the adapter class is always available after the module loads, regardless of whether the service singleton is instantiated.
+
+### Fallback Architecture
+
+When the Translator service is not enabled or Polylang isn't fully initialized (e.g., CLI, cron, early AJAX), the system uses adapter-encapsulated fallbacks:
+
+1. **Global helpers** (`frl_get_default_language_fallback()`, `frl_get_active_languages_fallback()`) check if `Frl_Polylang_Adapter` class exists
+2. If available, they instantiate the adapter directly and call its public methods
+3. The adapter tries Polylang's API functions first (`pll_default_language()`, `pll_languages_list()`)
+4. If the API returns empty, the adapter uses its **private internal fallback methods** which read Polylang's database options directly
+5. If no adapter class exists (Polylang not installed), the system falls back to `FRL_TRANSLATOR_DEFAULT_LANG` constant
+
+**Configuration Constants:**
+- `FRL_TRANSLATOR_DEFAULT_LANG` — Default language fallback when no multilingual plugin is active (default: `'en'`)
+- `FRL_TRANSLATOR_SOURCE_LANG` — The language in which content is authored (default: `'en'`). This is semantically different from the default language and remains constant even when Polylang's default changes on subdomains.
 
 ## 🚀 Key Features
 

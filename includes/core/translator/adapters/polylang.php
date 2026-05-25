@@ -3,11 +3,12 @@
  * Polylang Translation Adapter
  *
  * Implements the Frl_Translation_Adapter_Interface for Polylang.
+ * All fallback logic is self-contained — the adapter knows its own
+ * plugin's database schema and can provide fallbacks independently
+ * of the global helper functions.
  */
 
 if (!defined('ABSPATH')) exit;
-
-require_once FRL_DIR_PATH . 'includes/core/translator/adapters/interface.php';
 
 class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
 {
@@ -19,7 +20,7 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
                 return $lang;
             }
         }
-        return frl_get_default_language_fallback();
+        return $this->get_default_language_internal();
     }
 
     public function get_default_language(): string
@@ -30,7 +31,7 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
                 return $lang;
             }
         }
-        return frl_get_default_language_fallback();
+        return $this->get_default_language_internal();
     }
 
     public function get_active_languages(): array
@@ -41,7 +42,7 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
                 return $langs;
             }
         }
-        return frl_get_active_languages_fallback();
+        return $this->get_active_languages_internal();
     }
 
     public function translate_string(string $string, string $language): ?string
@@ -99,11 +100,44 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
 
     public function get_object_id(int $id, string $taxonomy, bool $fallback, string $language): int
     {
-        // Polylang doesn't have a generic object_id like WPML, 
+        // Polylang doesn't have a generic object_id like WPML,
         // so we rely on the specific translation functions.
         if (function_exists('icl_object_id')) {
             return icl_object_id($id, $taxonomy, $fallback, $language);
         }
         return $id;
+    }
+
+    // ------------------------------------------------------------------
+    // Internal Fallback Methods
+    // ------------------------------------------------------------------
+
+    /**
+     * Internal fallback: read default language from Polylang options.
+     * Used when Polylang API is not yet initialized (early AJAX, CLI, cron).
+     *
+     * @return string 2-letter language code
+     */
+    private function get_default_language_internal(): string
+    {
+        $pll_options = get_option('polylang');
+        return !empty($pll_options['default_lang']) ? $pll_options['default_lang'] : FRL_TRANSLATOR_DEFAULT_LANG;
+    }
+
+    /**
+     * Internal fallback: query active languages from DB directly.
+     * Used when Polylang's pll_languages_list() returns empty
+     * (e.g., during CLI/cron/early AJAX requests when Polylang isn't fully initialized).
+     *
+     * @return array Array of 2-letter language codes
+     */
+    private function get_active_languages_internal(): array
+    {
+        return frl_cache_remember('translations', 'active_languages_fallback', function () {
+            global $wpdb;
+            // Query language terms directly, filtering by 2-character slugs to exclude pll_en style terms
+            $langs = $wpdb->get_col("SELECT t.slug FROM {$wpdb->terms} t INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id WHERE tt.taxonomy = 'language' AND CHAR_LENGTH(t.slug) = 2");
+            return !empty($langs) ? $langs : [$this->get_default_language_internal()];
+        });
     }
 }

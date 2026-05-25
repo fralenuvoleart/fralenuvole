@@ -227,32 +227,43 @@ function frl_get_term_translations(int $term_id): array
 }
 
 /**
- * Get default language by reading from the database directly.
- * Used as fallback when Polylang isn't fully initialized
- * (e.g., during CLI/cron/early AJAX requests).
+ * Get default language via the adapter's fallback mechanism.
+ *
+ * Delegates to Frl_Polylang_Adapter when available (which encapsulates
+ * the Polylang-specific DB read). Falls back to the module constant
+ * when no adapter class exists (e.g., Polylang not installed).
+ *
+ * Used as fallback when the Translator service isn't enabled or
+ * Polylang isn't fully initialized (e.g., during CLI/cron/early AJAX).
  *
  * @return string 2-letter language code (e.g., 'en', 'ru')
  */
 function frl_get_default_language_fallback(): string
 {
-    $pll_options = get_option('polylang');
-    
-    return !empty($pll_options['default_lang']) ? $pll_options['default_lang'] : 'en';
+    if (class_exists('Frl_Polylang_Adapter')) {
+        $adapter = new Frl_Polylang_Adapter();
+        return $adapter->get_default_language();
+    }
+    return FRL_TRANSLATOR_DEFAULT_LANG;
 }
 
 /**
- * Get active languages by querying the database directly.
- * Used as fallback when Polylang's pll_languages_list() returns empty
- * (e.g., during CLI/cron/early AJAX requests when Polylang isn't fully initialized).
+ * Get active languages via the adapter's fallback mechanism.
+ *
+ * Delegates to Frl_Polylang_Adapter when available (which encapsulates
+ * the Polylang-specific DB query). Falls back to the module constant
+ * when no adapter class exists (e.g., Polylang not installed).
+ *
+ * Used as fallback when the Translator service isn't enabled or
+ * Polylang's pll_languages_list() returns empty.
  *
  * @return array Array of 2-letter language codes (e.g., ['en', 'ru', 'ar', 'zh'])
  */
 function frl_get_active_languages_fallback(): array
 {
-    return frl_cache_remember('translations', 'active_languages_fallback', function () {
-        global $wpdb;
-        // Query language terms directly, filtering by 2-character slugs to exclude pll_en style terms
-        $langs = $wpdb->get_col("SELECT t.slug FROM {$wpdb->terms} t INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id WHERE tt.taxonomy = 'language' AND CHAR_LENGTH(t.slug) = 2");
-        return !empty($langs) ? $langs : [frl_get_default_language_fallback()];
-    });
+    if (class_exists('Frl_Polylang_Adapter')) {
+        $adapter = new Frl_Polylang_Adapter();
+        return $adapter->get_active_languages();
+    }
+    return [FRL_TRANSLATOR_DEFAULT_LANG];
 }

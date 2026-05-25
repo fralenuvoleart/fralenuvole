@@ -1,7 +1,7 @@
-# System Patterns (Fralenuvole 5.4.0)
+# System Patterns (Fralenuvole 5.8.0)
 
 ## 🏗️ Core Architecture & Init Sequence
-- **P5 (plugins_loaded):** Translation Interception + Core components (rewriter coordinator created, built-in features instantiated).
+- **P5 (plugins_loaded):** Translation Interception + Core components (rewriter coordinator created, built-in features instantiated). Adapter interface and Polylang adapter loaded early in `translator.php` — available regardless of service singleton instantiation.
 - **P5 (plugins_loaded):** `frl_modules_init()` — Module entry points execute (can call `$coordinator->add_feature()`).
 - **P7 (plugins_loaded):** `do_action('frl_rewriter_register_features')` + `usort()` — Module-loaded features included in priority sort.
 - **P10 (init):** Environment Enforcement (Domain-based).
@@ -20,7 +20,14 @@
   - **Sequential execution, no abort:** All steps run regardless of intermediate failures. Caller inspects per-step results.
   - **`fn` supports callable arrays:** `[ 'Frl_Cache_Manager', 'hard_cache_reset' ]` validated via `is_callable()`.
   - **Preserved backwards compatibility:** All existing helper functions (`frl_cache_clear`, `frl_flush_rewrite_rules`) remain independently callable. The `FRL_CACHE_OPERATIONS` constant is the single source of truth for multi-step execution order.
-- **Cache Group Selection:** Data originating from `wp_options`/`wp_sitemeta` uses the `options` cache group. Use custom TTL (`WEEK_IN_SECONDS`) for stable configuration data that changes on a different cadence than typical plugin options.
+  - **Cache Group Selection:** Data originating from `wp_options`/`wp_sitemeta` uses the `options` cache group. Use custom TTL (`WEEK_IN_SECONDS`) for stable configuration data that changes on a different cadence than typical plugin options.
+  
+  ## 🌐 Translation Fallback Architecture
+  - **Adapter self-contained fallbacks:** `Frl_Polylang_Adapter` encapsulates its own fallback logic — private methods `get_default_language_internal()` and `get_active_languages_internal()` read Polylang's DB options directly when Polylang's API is unavailable.
+  - **Global helpers delegate to adapter:** `frl_get_default_language_fallback()` and `frl_get_active_languages_fallback()` check `class_exists('Frl_Polylang_Adapter')` and instantiate the adapter directly if available.
+  - **Constant fallback:** `FRL_TRANSLATOR_DEFAULT_LANG` (default: `'en'`) is the ultimate fallback when no adapter class exists (Polylang not installed).
+  - **Source language is separate:** `FRL_TRANSLATOR_SOURCE_LANG` (default: `'en'`) is the language content is authored in — semantically different from the default language and remains constant even when Polylang's default changes on subdomains.
+  - **Adapter loading:** Adapter interface and implementation loaded early in `translator.php` (module entry point), ensuring `class_exists` checks work regardless of whether `Frl_Translation_Service` singleton is instantiated.
 
 ## 🛠️ Developer Working Method
 - **Standard:** Modular, Elegant, SEO-performant.
@@ -32,4 +39,4 @@
 The mandatory-rules.md in `memory-bank/` is the source of truth.
 
 ---
-*Last Updated: 2026-04-26*
+*Last Updated: 2026-05-25*

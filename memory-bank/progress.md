@@ -53,8 +53,8 @@
 ### Subdomain Adapter Module — Implemented & Documented
 - **New module** [`modules/subdomain_adapter/`](modules/subdomain_adapter/) for bidirectional URL transformation between main domains and language-specific subdomains
 - **Documentation:** [`docs/SUBDOMAIN-ADAPTER.md`](docs/SUBDOMAIN-ADAPTER.md)
-- **Config:** Main-domain-keyed `FRL_SUBDOMAIN_ADAPTER_MAP` with `'default'` key merged in; `FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS` eliminated
-- **Key mechanism:** `pll_default_language` filter (p1) makes Polylang treat subdomain's language as default — zero-cost clean URLs
+- **Config:** Main-domain-keyed `FRL_SUBDOMAIN_ADAPTER_MAP` with `'default_lang'` key; `FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS` eliminated
+- **Key mechanism:** `pll_get_current_language` filter (p10) — the ONLY real filter in Polylang 3.7+ that controls `PLL()->curlang`. Returns `PLL_Language` object, making Polylang treat subdomain's language as default — zero-cost clean URLs
 - **URL transformation:** `transform_url()` uses `wp_parse_url()` for robust component manipulation (handles query strings, fragments, mixed case, any scheme)
 - **Redirects:** `template_redirect` (p5) handles `WP_Post`, `WP_Term`, and archive queries; 404s served locally
 - **Staging support:** Add staging domain as top-level key in config — zero code changes needed
@@ -373,21 +373,22 @@
 
 ### Architecture Decision
 - **Not** registered as a rewriter feature — rewriter's path utils hardcode `home_url()` for domain base, have no concept of domain swapping.
-- **Composition** at priority 20 (after rewriter's p10) — receives already-path-transformed URLs and applies domain-level transformation.
-- **`pll_default_language` filter** at p1 on subdomain makes Polylang treat the target language as default, generating clean URLs with zero `str_replace` cost.
+- **Composition** at `PHP_INT_MAX` (after rewriter's p10 and Polylang's p20) — receives already-path-transformed URLs and applies domain-level transformation.
+- **`pll_get_current_language` filter** at p10 on subdomain — the ONLY real filter in Polylang 3.7+ that controls `PLL()->curlang` during language resolution. Returns `PLL_Language` object, making Polylang treat subdomain's language as default, generating clean URLs with zero `str_replace` cost.
 - Uses plugin's own `frl_get_language()` and `frl_translator_is_enabled()` helpers instead of raw Polylang calls.
 
 ### Files Created
-1. **`modules/subdomain_adapter/config-constants-subdomain-adapter.php`** — `FRL_SUBDOMAIN_ADAPTER_MAP` (subdomain → lang + main_domain) and `FRL_SUBDOMAIN_ADAPTER_MAIN_DEFAULTS` (main_domain → default_lang)
+1. **`modules/subdomain_adapter/config-constants-subdomain-adapter.php`** — `FRL_SUBDOMAIN_ADAPTER_MAP` (main_domain → {lang → subdomain, default_lang → lang})
 2. **`modules/subdomain_adapter/class-subdomain-adapter.php`** — `Frl_Subdomain_Adapter` singleton with:
    - `detect()` — reads HTTP_HOST, O(1) map lookups, sets instance properties
    - `is_configured()`, `is_on_subdomain()` — public query methods
    - `register_hooks()` — lazy, only when on a configured domain; `frl_is_already_running()` guard
-   - `filter_pll_default_language()` — key mechanism, switches default language on subdomain
-   - `filter_pll_current_language()` — safety net
-   - `filter_pll_get_home_url()` — correct home URLs for hreflang/switcher in both directions
-   - `filter_post_link()`, `filter_post_type_link()`, `filter_page_link()`, `filter_term_link()`, `filter_canonical_url()` — URL transformation at p20
-   - `transform_url()` — 4 cases: main+default (no-op), main+mapped (swap domain), subdomain+target (no-op via pll_default_language), subdomain+cross (swap to main + add prefix)
+   - `filter_pll_get_current_language()` — key mechanism, returns `PLL_Language` object for subdomain's language
+   - `filter_pll_language_home_url()` — correct home URLs for hreflang/switcher (non-cached path)
+   - `filter_pll_additional_language_data()` — correct home URLs in language object's cached `home_url`
+   - `filter_pll_check_canonical_url()` — prevents Polylang canonical redirects on subdomains
+   - `filter_post_link()`, `filter_post_type_link()`, `filter_page_link()`, `filter_term_link()`, `filter_canonical_url()`, `filter_tsf_canonical_url()` — URL transformation at PHP_INT_MAX
+   - `transform_url()` — 4 cases: main+default (no-op), main+mapped (swap domain), subdomain+target (no-op), subdomain+cross (swap to main + add prefix)
    - `redirect_non_target_content()` — 301 redirect on subdomain for non-target content
    - Guard pattern on all filters: `is_admin()`, `frl_is_rest_api_request()`, `is_preview()`, `!frl_translator_enabled()`, `!frl_get_language()`
 3. **`modules/subdomain_adapter/subdomain_adapter.php`** — Module entry point with header metadata, defensive constant check, singleton init
@@ -397,12 +398,12 @@
 5. **`config/environment/config-environment.php`** — Added `'subdomain_adapter' => true` to `FRL_ENV_PBS_TEMPLATE['modules']` (inherited by PBS production, RU subdomain, and staging)
 
 ### Key Design Properties
-- **Zero-cost target URLs:** On subdomain, `pll_default_language` filter makes Polylang generate clean URLs natively — no `str_replace` needed for the most common case.
+- **Zero-cost target URLs:** On subdomain, `pll_get_current_language` filter makes Polylang generate clean URLs natively — no `str_replace` needed for the most common case.
 - **Early exits:** Hooks only register when on a configured domain. Each filter bails on admin/REST/preview.
 - **Re-entrancy:** `frl_is_already_running()` guard in `register_hooks()`.
 - **Extensibility:** Add entries to `FRL_SUBDOMAIN_ADAPTER_MAP` + env config for new subdomains. Zero class changes.
 - **Cross-environment support:** Per-entry `main_domain` enables `ru.pbproperty.ge` → `pbproperty.ge` mappings.
-- **Performance:** No DB queries, no regex. Pure `str_replace` operations guarded by early-exit conditions.
+- **Performance:** No DB queries, no regex. Pure `wp_parse_url()` + string operations with per-request static transform cache.
 
 *Last Updated: 2026-05-04*
 
@@ -501,3 +502,24 @@ Hardcoded legacy URLs (e.g., `pbservices.ge/ru/services/`) exist in post content
 - **Why not `remove_action()`:** The `pll_check_canonical_url` filter is Polylang's own API for conditionally canceling canonical redirects (same pattern used internally by `PLL_Frontend_Static_Pages` for static front pages).
 - **Scope:** Only cancels redirects when on a subdomain AND content language matches subdomain language. Zero impact on main domain.
 - **Plan:** [`plans/fix-redirect-loop-pll-check-canonical-url.md`](plans/fix-redirect-loop-pll-check-canonical-url.md)
+
+## Translation Fallback Refactoring (2026-05-25)
+
+### Problem
+`frl_get_default_language_fallback()` and `frl_get_active_languages_fallback()` were hardcoded to Polylang's internal DB schema, violating the adapter pattern's plugin-independence goal.
+
+### Solution — Adapter Self-Contained Fallbacks
+- **Added `FRL_TRANSLATOR_DEFAULT_LANG`** constant in [`config/config-translator.php:18`](config/config-translator.php:18)
+- **Moved adapter `require_once`** to [`translator.php:14`](includes/core/translator/translator.php:14) — adapter always available after module loads
+- **Added private internal fallbacks** to [`Frl_Polylang_Adapter`](includes/core/translator/adapters/polylang.php:111): `get_default_language_internal()`, `get_active_languages_internal()`
+- **Updated global helpers** in [`functions-translation-helpers.php:241`](includes/helpers/functions-translation-helpers.php:241) to delegate to adapter via `class_exists` check
+- **Removed duplicate `require_once`** from [`class-translation-service.php:62`](includes/core/translator/class-translation-service.php:62)
+- **Zero regression:** All 10 call sites traced, 8 edge cases verified, subdomain adapter behavior unchanged
+
+### Documentation Updated
+- [`docs/TRANSLATOR.md`](docs/TRANSLATOR.md) — Added fallback architecture, constants
+- [`docs/SUBDOMAIN-ADAPTER.md`](docs/SUBDOMAIN-ADAPTER.md) — Fixed incorrect filter names
+- [`memory-bank/`](memory-bank/) — All 4 files updated
+
+### Plans Directory Cleaned
+- Deleted entire `plans/` directory (10 obsolete files)

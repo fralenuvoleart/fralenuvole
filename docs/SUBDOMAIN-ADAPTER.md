@@ -14,7 +14,7 @@ The module provides **bidirectional URL transformation** between a main domain a
 
 ### 1. Work With Polylang, Not Against It
 
-The key insight: instead of post-processing URLs with string replacements, the module tells Polylang what the "default" language is on each subdomain via the [`pll_default_language`](modules/subdomain_adapter/class-subdomain-adapter.php:307) filter at priority 1. Polylang then naturally generates clean URLs (no language prefix) for that language. This makes target-language URLs **zero-cost** on subdomains.
+The key insight: instead of post-processing URLs with string replacements, the module tells Polylang what the "default" language is on each subdomain via the [`pll_get_current_language`](modules/subdomain_adapter/class-subdomain-adapter.php:363) filter at priority 10. This is the ONLY filter in Polylang 3.7+ that controls `PLL()->curlang` during language resolution (inside `PLL_Choose_Lang::set_language()`). Polylang then naturally generates clean URLs (no language prefix) for that language. This makes target-language URLs **zero-cost** on subdomains.
 
 ### 2. Data-Driven Configuration
 
@@ -95,20 +95,24 @@ Module activation is controlled via the environment system:
 
 ### Hook Architecture
 
-All hooks registered in [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:246):
+All hooks registered in [`register_hooks()`](modules/subdomain_adapter/class-subdomain-adapter.php:343):
 
 | Hook | Priority | Purpose |
 |------|----------|---------|
-| `pll_default_language` | 1 | Switch default language on subdomain (before Polylang setup) |
-| `pll_current_language` | 2 | Safety net — force current language to match subdomain |
-| `pll_get_home_url` | 20 | Correct home URLs for hreflang tags and language switcher |
+| `pll_get_current_language` | 10 | Override Polylang's current language on subdomain (returns `PLL_Language` object) |
+| `pll_language_home_url` | 20 | Correct home URLs for hreflang tags and language switcher (non-cached path) |
+| `pll_additional_language_data` | 20 | Override home_url in language data (cached path — primary fix) |
+| `pll_check_canonical_url` | 10 | Prevent Polylang canonical redirects on subdomains |
 | `home_url` | 20 | WordPress core home_url override on subdomains |
-| `post_link` | 20 | Transform post permalinks |
-| `post_type_link` | 20 | Transform CPT permalinks |
-| `page_link` | 20 | Transform page permalinks |
-| `term_link` | 20 | Transform term archive links |
-| `wpseo_canonical` | 20 | Transform Yoast SEO canonical URLs |
-| `the_seo_framework_meta_render_data` | 20 | Transform The SEO Framework canonical URLs (v5.0+) |
+| `post_link` | `PHP_INT_MAX` | Transform post permalinks |
+| `post_type_link` | `PHP_INT_MAX` | Transform CPT permalinks |
+| `page_link` | `PHP_INT_MAX` | Transform page permalinks |
+| `term_link` | `PHP_INT_MAX` | Transform term archive links |
+| `wpseo_canonical` | `PHP_INT_MAX` | Transform Yoast SEO canonical URLs |
+| `the_seo_framework_meta_render_data` | `PHP_INT_MAX` | Transform The SEO Framework canonical URLs (v5.0+) |
+| `frl_rewriter_skip_canonical_redirect` | 10 | Cancel rewriter's canonical redirect on subdomains |
+| `option_page_on_front` | 20 | Translate front page ID on subdomain |
+| `option_page_for_posts` | 20 | Translate posts page ID on subdomain |
 | `template_redirect` | 5 | 301-redirect non-target content on subdomain |
 
 Priority 20 for URL filters ensures they run after the Rewriter (priority 10).
@@ -226,7 +230,7 @@ Key technical observations for future maintainers.
 
 ### Design Strengths
 
-- **`pll_default_language` trick** ([`filter_pll_default_language`](modules/subdomain_adapter/class-subdomain-adapter.php:328), p1): Makes Polylang treat the subdomain's language as default, generating clean URLs natively — zero `str_replace` cost. This is the module's core insight.
+- **`pll_get_current_language` override** ([`filter_pll_get_current_language`](modules/subdomain_adapter/class-subdomain-adapter.php:449), p10): This is the ONLY real filter in Polylang 3.7+ that controls `PLL()->curlang` during language resolution (inside `PLL_Choose_Lang::set_language()` at `choose-lang.php:103`). Unlike `pll_default_language` and `pll_current_language` which are function names (not `apply_filters` hooks), `pll_get_current_language` IS a real filter. It receives a `PLL_Language` object and fires BEFORE the default-language fallback. Returning the subdomain's language object makes Polylang treat it as the current language, generating clean URLs natively — zero `str_replace` cost. This is the module's core insight.
 - **Four-case URL model** ([`transform_url()`](modules/subdomain_adapter/class-subdomain-adapter.php:596)): Complete coverage of main↔subdomain transformations. No edge-case gaps.
 - **Main-domain-keyed config** ([`FRL_SUBDOMAIN_ADAPTER_MAP`](modules/subdomain_adapter/config-constants-subdomain-adapter.php:29)): Staging is a first-class top-level entry. Cross-language redirects use `main_domains[0]` (primary/production), not staging.
 - **Zero DB queries**: Module never touches the database. All state derived from constants and `$_SERVER`.

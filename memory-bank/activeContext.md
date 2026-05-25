@@ -5,7 +5,7 @@
 - Design principles stored in memory-mcp entity: UserDesignPrinciples
 
 ## 🔄 Current Focus
-Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
+Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
 
 ## ✅ Flush Rewrite Rules Consolidation (2026-05-11 — implemented)
 - **Problem:** Page permalinks in secondary languages 404 over time. Flush button didn't fix it; required "Save Permalinks 2x + Purge Litespeed" manually.
@@ -25,9 +25,9 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Documentation:** [`docs/SUBDOMAIN-ADAPTER.md`](docs/SUBDOMAIN-ADAPTER.md)
 - **Module:** [`modules/subdomain_adapter/`](modules/subdomain_adapter/)
 - **Purpose:** Bidirectional URL transformation between main domain and language-specific subdomain mirrors
-- **Key mechanism:** `pll_default_language` filter (p1) makes Polylang treat subdomain's language as default — zero-cost clean URLs
-- **Config:** Main-domain-keyed `FRL_SUBDOMAIN_ADAPTER_MAP` — top-level keys are main domains, inner keys map lang → subdomain, `'default'` key specifies default language
-- **Hooks:** `pll_default_language` (p1), `pll_current_language` (p2), `pll_get_home_url` (p20), `home_url` (p20), `post_link`/`post_type_link`/`page_link`/`term_link`/`wpseo_canonical` (p20), `template_redirect` (p5)
+- **Key mechanism:** `pll_get_current_language` filter (p10) — the ONLY real filter in Polylang 3.7+ that controls `PLL()->curlang` during language resolution. Returns `PLL_Language` object, making Polylang treat subdomain's language as default — zero-cost clean URLs
+- **Config:** Main-domain-keyed `FRL_SUBDOMAIN_ADAPTER_MAP` — top-level keys are main domains, inner keys map lang → subdomain, `'default_lang'` key specifies default language
+- **Hooks:** `pll_get_current_language` (p10), `pll_language_home_url` (p20), `pll_additional_language_data` (p20), `pll_check_canonical_url` (p10), `home_url` (p20), `post_link`/`post_type_link`/`page_link`/`term_link`/`wpseo_canonical`/`the_seo_framework_meta_render_data` (PHP_INT_MAX), `template_redirect` (p5)
 - **Staging:** Add staging domain as top-level key — zero code changes needed
 
 ## 🏗️ Architecture Overview
@@ -213,7 +213,7 @@ Fralenuvole v5.7.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Files:** [`config/config-mu.php`](config/config-mu.php), [`includes/mu/functions-mu.php`](includes/mu/functions-mu.php), [`includes/mu/mu.php`](includes/mu/mu.php)
 - **Require chain kept as-is:** `frl-mu-plugin.php` loads bootstrap + mu-plugin, `mu-plugin.php` loads its own functions file (self-contained module)
 
-*Last Updated: 2026-05-14*
+*Last Updated: 2026-05-25*
 
 ## ✅ Subdomain Adapter — Legacy URL Handling (2026-05-14)
 
@@ -310,3 +310,24 @@ With the dead hooks never firing, `PLL()->curlang` resolved to EN on the subdoma
 
 ### Plan
 - [`plans/shortcode-translation-root-cause-analysis.md`](plans/shortcode-translation-root-cause-analysis.md)
+
+## ✅ Translation Fallback Refactoring (2026-05-25)
+
+### Problem
+`frl_get_default_language_fallback()` and `frl_get_active_languages_fallback()` were hardcoded to Polylang's internal DB schema, violating the adapter pattern's plugin-independence goal.
+
+### Fix — Adapter Self-Contained Fallbacks (Option B)
+- **Added `FRL_TRANSLATOR_DEFAULT_LANG`** constant in [`config/config-translator.php:18`](config/config-translator.php:18) — single source of truth for default language fallback (default: `'en'`)
+- **Moved adapter `require_once`** to [`translator.php:14`](includes/core/translator/translator.php:14) — adapter class always available after module loads, regardless of service singleton instantiation
+- **Added private internal fallback methods** to [`Frl_Polylang_Adapter`](includes/core/translator/adapters/polylang.php:111): `get_default_language_internal()` and `get_active_languages_internal()`
+- **Updated global helpers** in [`functions-translation-helpers.php:241`](includes/helpers/functions-translation-helpers.php:241) to delegate to adapter via `class_exists` check
+- **Removed duplicate `require_once`** from [`class-translation-service.php:62`](includes/core/translator/class-translation-service.php:62)
+- **Zero regression:** All 10 call sites traced, 8 edge cases verified, subdomain adapter behavior unchanged
+
+### Documentation Updated
+- [`docs/TRANSLATOR.md`](docs/TRANSLATOR.md) — Added fallback architecture description, constant documentation
+- [`docs/SUBDOMAIN-ADAPTER.md`](docs/SUBDOMAIN-ADAPTER.md) — Fixed incorrect filter names (`pll_default_language` → `pll_get_current_language`, `pll_get_home_url` → `pll_language_home_url`)
+- [`memory-bank/`](memory-bank/) — All 4 files updated with current architecture
+
+### Plans Directory Cleaned
+- Deleted entire `plans/` directory (10 obsolete plan files)

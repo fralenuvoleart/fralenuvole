@@ -61,8 +61,8 @@ final class Frl_Translation_Service
     // Private constructor to enforce the singleton pattern.
     private function __construct()
     {
-        require_once FRL_DIR_PATH . 'includes/core/translator/adapters/interface.php';
-        require_once FRL_DIR_PATH . 'includes/core/translator/adapters/polylang.php';
+        // Adapter files are loaded early in translator.php so the class
+        // is always available regardless of whether the service is instantiated.
 
         // Initialize configuration properties from constants.
         $this->prefix              = FRL_PREFIX;
