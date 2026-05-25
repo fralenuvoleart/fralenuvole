@@ -64,7 +64,12 @@ function frl_auto_backup_on_upgrade(): void
 
     $stored_version = frl_get_option('plugin_version') ?: '0.0.0';
 
-    if (version_compare($stored_version, FRL_VERSION, '>=')) {
+    // Compare only the first 3 segments (major.minor.patch).
+    // A 4th segment (hotfix) should not trigger upgrade routines.
+    $stored_core = implode('.', array_slice(explode('.', $stored_version), 0, 3));
+    $current_core = implode('.', array_slice(explode('.', FRL_VERSION), 0, 3));
+
+    if (version_compare($stored_core, $current_core, '>=')) {
         return;
     }
 

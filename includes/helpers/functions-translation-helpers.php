@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
  */
 function frl_translator_is_enabled(): bool
 {
-    return frl_is_multilingual_active() && !frl_get_option('disable_translator');
+    return frl_is_multilingual_plugin_active() && !frl_get_option('disable_translator');
 }
 
 /**
@@ -114,7 +114,7 @@ function frl_get_translation_block(string $block_content, array $block): string
     if ( frl_get_option('disable_translator') ) {
         return $block_content;
     }
-    elseif ( !frl_is_multilingual_active() ) {
+    elseif ( !frl_is_multilingual_plugin_active() ) {
 
         // Safe Mode: Lightweight processing to remove delimiters without booting the full service.
         $t_start = FRL_TRANSLATOR_DELIMITER_TEXT['start'];

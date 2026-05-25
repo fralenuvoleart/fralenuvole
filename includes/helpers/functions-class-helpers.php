@@ -340,7 +340,7 @@ function frl_environment_reset_ignored(): array
  *
  * @return bool True if a multilingual plugin is active, false otherwise.
  */
-function frl_is_multilingual_active(): bool
+function frl_is_multilingual_plugin_active(): bool
 {
     static $is_active = null;
 
