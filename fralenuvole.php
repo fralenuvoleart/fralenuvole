@@ -4,7 +4,7 @@
  * Plugin Name: Fralenuvole
  * Description: Multi-environment and performance management framework with comprehensive backend suite for admins and devs.
  * Version: 5.7.2.2
- * Requires at least: 6.9
+ * Requires at least: 7.0
  * Requires PHP: 8.3
  * Text Domain: fralenuvole
  * Author: Francesco Castronovo
