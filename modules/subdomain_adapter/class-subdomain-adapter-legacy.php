@@ -367,6 +367,13 @@ class Frl_Subdomain_Adapter_Legacy {
      * @return string The transformed URL.
      */
     private function transform_single_content_url(Frl_Subdomain_Adapter $adapter, string $url): string {
+        // Static per-request result cache: avoid re-computing when the same URL
+        // appears multiple times in the same HTML (e.g., nav links in header + footer).
+        static $url_cache = [];
+        if (isset($url_cache[$url])) {
+            return $url_cache[$url];
+        }
+
         $parsed = wp_parse_url($url);
         if (empty($parsed['host'])) {
             if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -374,7 +381,7 @@ class Frl_Subdomain_Adapter_Legacy {
                     'url' => $url,
                 ]);
             }
-            return $url;
+            return $url_cache[$url] = $url;
         }
 
         $host   = strtolower($parsed['host']);
@@ -391,7 +398,7 @@ class Frl_Subdomain_Adapter_Legacy {
         // recognized hosts only, so this branch should never be reached. If it does,
         // the host wasn't in the domain map — return unchanged.
         if (!$is_main_domain && !$is_subdomain) {
-            return $url; // Not a recognized domain.
+            return $url_cache[$url] = $url; // Not a recognized domain.
         }
 
         // Extract language from path prefix.
@@ -416,13 +423,13 @@ class Frl_Subdomain_Adapter_Legacy {
                     'host' => $host,
                 ]);
             }
-            return $url; // Cannot determine language.
+            return $url_cache[$url] = $url; // Cannot determine language.
         }
 
         // Look up where this language's content should live.
         $target_host = $this->resolve_target_host($map, $subdomain_info, $host, $lang);
         if ($target_host === null) {
-            return $url;
+            return $url_cache[$url] = $url;
         }
 
         // Strip the language prefix from the path (if present).
@@ -452,10 +459,10 @@ class Frl_Subdomain_Adapter_Legacy {
 
         // Avoid re-processing: if same as input, return as-is.
         if ($result === $url) {
-            return $url;
+            return $url_cache[$url] = $url;
         }
 
-        return $result;
+        return $url_cache[$url] = $result;
     }
 
     /**
