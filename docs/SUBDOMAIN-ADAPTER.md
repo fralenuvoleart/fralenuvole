@@ -16,6 +16,19 @@ The module provides **bidirectional URL transformation** between a main domain a
 
 The key insight: instead of post-processing URLs with string replacements, the module tells Polylang what the "default" language is on each subdomain via the [`pll_get_current_language`](modules/subdomain_adapter/class-subdomain-adapter.php:363) filter at priority 10. This is the ONLY filter in Polylang 3.7+ that controls `PLL()->curlang` during language resolution (inside `PLL_Choose_Lang::set_language()`). Polylang then naturally generates clean URLs (no language prefix) for that language. This makes target-language URLs **zero-cost** on subdomains.
 
+### 1.1 Automatic Default Language Sync
+
+On first visit to a mapped subdomain, the adapter automatically sets the translation adapter's default language in the database to match the subdomain's language. This eliminates the manual step of changing Polylang's default language on the subdomain replica. The sync runs during the Environment Manager's `init/10` enforcement phase via the [`frl_environment_before_wp_options`](includes/core/environment/class-environment-applier.php:93) action. It delegates to the translation adapter ([`Frl_Translation_Adapter_Interface::set_default_language()`](includes/core/translator/adapters/interface.php:108)) for DB updates, then flushes rewrite rules via `frl_flush_rewrite_rules()`. This single call triggers:
+1. `update_option_permalink_structure` → `clear_rewriter_caches()` (options→rewriter→permalinks)
+2. Polylang's `clean_languages_cache()` via hook at [polylang/src/model.php:119](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/model.php:119)
+3. `flush_rewrite_rules(true)` + Litespeed notification
+
+No separate cache clear call needed. A generic `cache_cleared` flag suppresses redundant cache operations from the EM's change-type classifier. The sync logs via `frl_log()` and displays an admin notice on next admin page load.
+
+### 1.2 State Change Trigger via Filter
+
+The adapter also hooks the [`frl_environment_state_changed`](includes/core/environment/class-environment-state.php:90) filter to trigger EM enforcement when `polylang['default_lang']` doesn't match the subdomain's language. This ensures the sync runs on every subdomain visit where a mismatch exists, not just on host changes. The EM remains agnostic — the filter is generic and any module can use it.
+
 ### 2. Data-Driven Configuration
 
 All domain/language mappings live in a single constant — [`FRL_SUBDOMAIN_ADAPTER_MAP`](modules/subdomain_adapter/config-constants-subdomain-adapter.php:29). Adding a new language subdomain or staging domain requires zero class code changes.
@@ -114,6 +127,8 @@ All hooks registered in [`register_hooks()`](modules/subdomain_adapter/class-sub
 | `option_page_on_front` | 20 | Translate front page ID on subdomain |
 | `option_page_for_posts` | 20 | Translate posts page ID on subdomain |
 | `template_redirect` | 5 | 301-redirect non-target content on subdomain |
+| `frl_environment_before_wp_options` | 10 | Sync translation adapter's default language in DB on first subdomain visit |
+| `frl_environment_state_changed` | 10 | Trigger EM enforcement when `polylang['default_lang']` mismatches subdomain language |
 
 Priority 20 for URL filters ensures they run after the Rewriter (priority 10).
 

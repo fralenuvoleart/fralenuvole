@@ -76,14 +76,23 @@ class Frl_Environment_State
 
         $state_changed = !$stored_state || self::environment_host_changed($stored_state);
 
+        // Load config once for all subsequent checks.
+        $config = Frl_Environment_Config::get_domain_config();
+
         if (!$state_changed) {
-            $config = Frl_Environment_Config::get_domain_config();
             if ($config && isset($config['type']) && $config['type'] === 'staging') {
                 $current_blog_public = get_option('blog_public');
                 if ($current_blog_public != 0) {
                     $state_changed = true;
                 }
             }
+        }
+
+        // Allow modules to trigger enforcement via additional state checks.
+        // This is how the subdomain adapter triggers enforcement when
+        // polylang['default_lang'] doesn't match the subdomain's language.
+        if (!$state_changed) {
+            $state_changed = (bool) apply_filters('frl_environment_state_changed', false, $config ?? []);
         }
 
         if ($state_changed) {

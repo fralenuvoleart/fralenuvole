@@ -418,6 +418,17 @@ class Frl_Subdomain_Adapter {
 
         // --- Template redirect: 301 non-target content on subdomain ---
         add_action('template_redirect',     [$this, 'redirect_non_target_content'], 5);
+
+        // --- Environment Manager hook: sync default language on subdomain ---
+        // Hooked to `frl_environment_before_wp_options` at init/10. Delegates to
+        // the translation adapter to set the DB default, flushes caches, and
+        // clears all fralenuvole caches.
+        add_action('frl_environment_before_wp_options', [$this, 'sync_default_lang'], 10, 2);
+
+        // --- Environment Manager state change filter ---
+        // Hooked to `frl_environment_state_changed` to trigger enforcement when
+        // polylang['default_lang'] doesn't match the subdomain's language.
+        add_filter('frl_environment_state_changed', [$this, 'check_default_lang_mismatch'], 10, 2);
     }
 
     // -------------------------------------------------------------------------
@@ -1102,5 +1113,139 @@ class Frl_Subdomain_Adapter {
      */
     public static function get_redirect_by(): string {
         return 'Frl_Subdomain_Adapter';
+    }
+
+    // -------------------------------------------------------------------------
+    // Action: frl_environment_before_wp_options (default language sync)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Sync the translation adapter's default language to the subdomain's language.
+     *
+     * Hooked to `frl_environment_before_wp_options` at init/10.
+     * Delegates to the translation adapter to update the DB default,
+     * then clears all fralenuvole caches and flushes rewrite rules.
+     * Sets the generic `cache_cleared` flag to suppress redundant EM cache clearing.
+     *
+     * @param array $config  The environment configuration array.
+     * @param array &$results Reference to results array for reporting changes.
+     * @return void
+     */
+    public function sync_default_lang(array $config, array &$results): void {
+        // Only run on mapped subdomains.
+        if (!$this->is_on_subdomain() || empty($this->current_subdomain_lang)) {
+            return;
+        }
+
+        // Delegate to the translation adapter (Polylang-specific logic lives there).
+        $adapter = $this->get_translation_adapter();
+        if ($adapter === null) {
+            return; // No translation adapter available.
+        }
+
+        $updated = $adapter->set_default_language($this->current_subdomain_lang);
+        if (!$updated) {
+            return; // Already correct.
+        }
+
+        // Report the change so the classifier knows something changed.
+        $results['wp_options']['updated'][] = 'polylang';
+
+        // Flush rewrite rules. This triggers:
+        // 1. update_option_permalink_structure → clear_rewriter_caches() (options→rewriter→permalinks)
+        // 2. Polylang's clean_languages_cache() via hook at polylang/src/model.php:119
+        // 3. flush_rewrite_rules(true) + Litespeed notification
+        // No separate cache clear needed — language-dependent cache groups (translations,
+        // postdata, metafields) are keyed by language and will naturally fetch fresh data.
+        frl_flush_rewrite_rules();
+
+        // Set generic flag to suppress redundant cache clearing by EM's classifier.
+        // Any hooked callback can set this to signal that cache operations are complete.
+        $results['cache_cleared'] = true;
+
+        // Log the change (always, not just in debug mode).
+        frl_log('Subdomain Adapter: Set default_lang to {lang} for subdomain {host}', [
+            'lang' => $this->current_subdomain_lang,
+            'host' => $this->current_host,
+        ]);
+
+        // Schedule admin notice for next admin page load.
+        add_action('admin_notices', [$this, 'show_default_lang_sync_notice']);
+    }
+
+    /**
+     * Check if Polylang's default_lang mismatches the subdomain's language.
+     *
+     * Hooked to `frl_environment_state_changed` to trigger EM enforcement
+     * when the DB default doesn't match the subdomain's configured language.
+     *
+     * @param bool  $state_changed Whether state has already changed.
+     * @param array $config        The environment configuration array.
+     * @return bool True if default_lang mismatches the subdomain language.
+     */
+    public function check_default_lang_mismatch(bool $state_changed, array $config): bool {
+        if ($state_changed) {
+            return true; // Already changed — no need to check.
+        }
+
+        if (!$this->is_on_subdomain() || empty($this->current_subdomain_lang)) {
+            return false;
+        }
+
+        // Static cache: polylang option is autoloaded but we still avoid
+        // repeated get_option calls within the same request.
+        static $mismatch = null;
+        if ($mismatch !== null) {
+            return $mismatch;
+        }
+
+        $pll_options = get_option('polylang', []);
+        if (!is_array($pll_options)) {
+            return $mismatch = false;
+        }
+
+        $current_default = $pll_options['default_lang'] ?? '';
+        return $mismatch = ($current_default !== $this->current_subdomain_lang);
+    }
+
+    /**
+     * Display admin notice after default language sync.
+     *
+     * @return void
+     */
+    public function show_default_lang_sync_notice(): void {
+        $lang = strtoupper($this->current_subdomain_lang);
+        $host = esc_html($this->current_host);
+        ?>
+        <div class="notice notice-success is-dismissible">
+            <p>
+                <strong><?php esc_html_e('Fralenuvole', 'fralenuvole'); ?>:</strong>
+                <?php printf(
+                    esc_html__('Polylang default language synced to %1$s on %2$s. Caches cleared.', 'fralenuvole'),
+                    '<code>' . $lang . '</code>',
+                    '<code>' . $host . '</code>'
+                ); ?>
+            </p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Get the translation adapter instance.
+     *
+     * @return Frl_Translation_Adapter_Interface|null
+     */
+    private function get_translation_adapter(): ?Frl_Translation_Adapter_Interface {
+        static $adapter = null;
+        static $resolved = false;
+
+        if (!$resolved) {
+            $resolved = true;
+            if (class_exists('Frl_Polylang_Adapter')) {
+                $adapter = new Frl_Polylang_Adapter();
+            }
+        }
+
+        return $adapter;
     }
 }

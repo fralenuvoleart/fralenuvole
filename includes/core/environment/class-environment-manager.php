@@ -238,28 +238,35 @@ class Frl_Environment_Manager
             // for centralized visibility in get_operation_map().
             $env_op = '';
 
-            if ($force) {
-                $env_op = 'env_enforce_full';
-            } else {
-                $changed_wp_opts        = !empty($results['wp_options']['updated']);
-                $changed_plugin_opts    = !empty($results['plugin_options']['updated'])
-                                       || !empty($results['plugin_options']['file_loaded']);
-                $changed_plugins        = !empty($results['plugins']['activated'])
-                                       || !empty($results['plugins']['deactivated']);
-                $changed_modules        = !empty($results['modules']['activated'])
-                                       || !empty($results['modules']['deactivated']);
+            // Check if a hooked callback already handled cache clearing during
+            // frl_environment_before_wp_options. This prevents redundant cache operations
+            // when a module (e.g., subdomain adapter) already performed a full clear.
+            $cache_already_cleared = !empty($results['cache_cleared']);
 
-                if ($changed_plugins || $changed_modules) {
+            if (!$cache_already_cleared) {
+                if ($force) {
                     $env_op = 'env_enforce_full';
-                } elseif ($changed_wp_opts
-                    && (in_array('siteurl', $results['wp_options']['updated'])
-                        || in_array('home', $results['wp_options']['updated']))
-                ) {
-                    $env_op = 'env_enforce_url_change';
-                } elseif ($changed_plugin_opts || $changed_wp_opts) {
-                    $env_op = 'env_enforce_options';
+                } else {
+                    $changed_wp_opts        = !empty($results['wp_options']['updated']);
+                    $changed_plugin_opts    = !empty($results['plugin_options']['updated'])
+                                           || !empty($results['plugin_options']['file_loaded']);
+                    $changed_plugins        = !empty($results['plugins']['activated'])
+                                           || !empty($results['plugins']['deactivated']);
+                    $changed_modules        = !empty($results['modules']['activated'])
+                                           || !empty($results['modules']['deactivated']);
+
+                    if ($changed_plugins || $changed_modules) {
+                        $env_op = 'env_enforce_full';
+                    } elseif ($changed_wp_opts
+                        && (in_array('siteurl', $results['wp_options']['updated'])
+                            || in_array('home', $results['wp_options']['updated']))
+                    ) {
+                        $env_op = 'env_enforce_url_change';
+                    } elseif ($changed_plugin_opts || $changed_wp_opts) {
+                        $env_op = 'env_enforce_options';
+                    }
+                    // Nothing changed → $env_op stays empty, orchestrator call is skipped.
                 }
-                // Nothing changed → $env_op stays empty, orchestrator call is skipped.
             }
 
             // Execute selected operation through orchestrator for centralized visibility.

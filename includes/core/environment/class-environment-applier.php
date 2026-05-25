@@ -89,6 +89,10 @@ class Frl_Environment_Applier
             }
         }
 
+        // Allow modules to inject custom wp_options handling before the generic loop.
+        // $results is passed by reference so callbacks can report changes for the classifier.
+        do_action('frl_environment_before_wp_options', $config, $results);
+
         if (empty($config['wp_options'])) {
             return;
         }

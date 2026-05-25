@@ -100,4 +100,28 @@ interface Frl_Translation_Adapter_Interface
      * @return int
      */
     public function get_object_id(int $id, string $taxonomy, bool $fallback, string $language): int;
+
+    /**
+     * Set the default language in the database.
+     *
+     * Used by the subdomain adapter to sync the DB default to the
+     * subdomain's language on first visit.
+     *
+     * @param string $lang 2-letter language code.
+     * @return bool True if the default language was updated, false otherwise.
+     */
+    public function set_default_language(string $lang): bool;
+
+    /**
+     * Flush the translation plugin's internal language cache.
+     *
+     * Note: When `frl_flush_rewrite_rules()` is called after `set_default_language()`,
+     * this method is typically not needed because Polylang hooks `update_option_permalink_structure`
+     * to call `clean_languages_cache()` automatically (see polylang/src/model.php:119).
+     * This method is provided for callers that update the default language without
+     * triggering a rewrite rules flush.
+     *
+     * @return void
+     */
+    public function flush_cache(): void;
 }

@@ -140,4 +140,58 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
             return !empty($langs) ? $langs : [$this->get_default_language_internal()];
         });
     }
+
+    /**
+     * Set the default language in the database.
+     *
+     * Reads the polylang option, merges default_lang, and writes back
+     * only if changed.
+     *
+     * @param string $lang 2-letter language code.
+     * @return bool True if the default language was updated, false otherwise.
+     */
+    public function set_default_language(string $lang): bool
+    {
+        $pll_options = get_option('polylang', []);
+        if (!is_array($pll_options)) {
+            return false;
+        }
+
+        $current_default = $pll_options['default_lang'] ?? '';
+        if ($current_default === $lang) {
+            return false; // Already correct.
+        }
+
+        $pll_options['default_lang'] = $lang;
+        update_option('polylang', $pll_options);
+        return true;
+    }
+
+    /**
+     * Flush Polylang's internal language cache.
+     *
+     * @return void
+     */
+    public function flush_cache(): void
+    {
+        if (!function_exists('PLL')) {
+            return;
+        }
+
+        $pll = PLL();
+        if (!$pll || !isset($pll->model)) {
+            return;
+        }
+
+        if (method_exists($pll->model, 'clean_languages_cache')) {
+            $pll->model->clean_languages_cache();
+        } else {
+            // Fallback: delete all PLL-related transients.
+            global $wpdb;
+            $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_pll_%'");
+            if (is_multisite()) {
+                $wpdb->query("DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE '_site_transient_pll_%'");
+            }
+        }
+    }
 }
