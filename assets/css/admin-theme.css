@@ -64,7 +64,7 @@ body a {
 .wp-core-ui .button-primary:active,
 .wp-core-ui .button-primary:focus,
 .wp-core-ui .button-primary:hover,
-#adminmenu .update-plugins {
+body #adminmenu .update-plugins {
     background: var(--admin-accent-hover-color);
     border-color: var(--admin-accent-hover-color);
 }
