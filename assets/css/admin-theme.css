@@ -97,7 +97,8 @@
 .components-button.is-primary[aria-disabled=true],
 .components-button.is-primary[aria-disabled=true]:active:enabled,
 .components-button.is-primary[aria-disabled=true]:enabled,
-.block-editor-list-view-leaf.is-selected td {
+.block-editor-list-view-leaf.is-selected td,
+#wp-admin-bar-languages.pll-filtered-languages {
     background: var(--admin-accent-color) !important;
     border-color: var(--admin-accent-color) !important;
 }
