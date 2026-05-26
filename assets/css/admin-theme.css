@@ -105,8 +105,7 @@
 #adminmenu li>a.menu-top:focus,
 #adminmenu .wp-submenu a:focus,
 #adminmenu .wp-submenu a:hover,
-#adminmenu a:hover,
-#adminmenu li.menu-top>a:focus {
+#adminmenu a:hover {
     color: var(--admin-color);
 }
 
@@ -121,7 +120,7 @@
 #adminmenu .wp-menu-arrow,
 #adminmenu .wp-menu-arrow div,
 #adminmenu li.current a.menu-top,
-#adminmenu li.wp-has-current-submenu a.wp-has-current-submenu,
+
 #adminmenu .wp-menu-open .wp-submenu a,
 .block-editor-list-view-leaf.is-selected td svg path {
     fill: var(--admin-color) !important;
