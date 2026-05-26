@@ -240,6 +240,13 @@
     font-size: 18px;
     color: #333333;
 }
+.frl-section h3 {
+    font-size: 18px;
+    color: #333333;
+}
+.frl-section button .dashicons:before {
+    line-height: 1 !important;
+}
 
 /* ==================================================================
    Form Elements & Tables
