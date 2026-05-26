@@ -206,5 +206,5 @@ a {
 }
 
 .wp-core-ui .button-primary:focus {
-    box-shadow: 0 0 0 var(--wp-admin-border-width-focus, 1.5px) var(--admin-accent-color), inset 0 0 0 1px #fff;
+    box-shadow: 0 0 0 var(--wp-admin-border-width-focus, 1.5px) var(--admin-accent-color), inset 0 0 0 1px #fff !important;
 }
