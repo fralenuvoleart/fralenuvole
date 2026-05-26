@@ -178,7 +178,8 @@ a {
 .block-editor-list-view-leaf.is-selected td,
 #adminmenu a:hover,
 #adminmenu li.opensub>a:hover,
-#adminmenu li>a.menu-top:focus {
+#adminmenu li>a.menu-top:focus,
+#adminmenu .wp-submenu a:hover {
     background: var(--admin-accent-color) !important;
     border-color: var(--admin-accent-color) !important;
     color: white !important;
