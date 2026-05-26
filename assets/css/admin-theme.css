@@ -4,9 +4,12 @@
  */
 
  :root{
-    --wp-admin-theme-color: #3858e9;
+    --wp-admin-theme-color: var(--admin-bg-color);
 }
 
+a {
+    color: var(--admin-bg-color);
+}
 
  #wpcontent, #wpfooter {
     margin-left: 170px;
@@ -98,9 +101,14 @@
 .components-button.is-primary[aria-disabled=true]:active:enabled,
 .components-button.is-primary[aria-disabled=true]:enabled,
 .block-editor-list-view-leaf.is-selected td,
-#wp-admin-bar-languages.pll-filtered-languages {
+#adminmenu a:hover {
     background: var(--admin-accent-color) !important;
     border-color: var(--admin-accent-color) !important;
+}
+
+#wp-admin-bar-languages.pll-filtered-languages,
+#adminmenu a:hover {
+    background: var(--admin-bg-color) !important;
 }
 
 .wp-responsive-open #wpadminbar #wp-admin-bar-menu-toggle .ab-icon:before,
