@@ -107,8 +107,19 @@ a {
 }
 
 #wp-admin-bar-languages.pll-filtered-languages,
-#adminmenu a:hover {
+#adminmenu a:hover,
+.wp-core-ui .button-secondary {
+    background: 0 0;
+    border: 1px solid var(--wp-admin-theme-color);
+    border-radius: 2px;
+    color: var(--wp-admin-theme-color);
+
     background: var(--admin-bg-color) !important;
+}
+
+.wp-core-ui .button.button-secondary {
+    border-color: var(--admin-bg-color);
+    color: var(--admin-bg-color);
 }
 
 .wp-responsive-open #wpadminbar #wp-admin-bar-menu-toggle .ab-icon:before,
