@@ -7,7 +7,7 @@
     --wp-admin-theme-color: var(--admin-bg-color);
 }
 
-a {
+body a {
     color: var(--admin-bg-color);
 }
 
