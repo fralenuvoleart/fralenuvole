@@ -77,7 +77,6 @@ a {
 #wpadminbar .shortlink-input,
 #adminmenu li.menu-top:hover,
 #adminmenu li.opensub>a.menu-top,
-#adminmenu li>a.menu-top:focus,
 .wp-responsive-open #wpadminbar #wp-admin-bar-menu-toggle a,
 #adminmenu li.wp-has-current-submenu a.wp-has-current-submenu,
 .folded #adminmenu li.current.menu-top {
@@ -86,34 +85,6 @@ a {
 
 #adminmenu .wp-menu-open .wp-submenu {
     background: #ffffff1a !important;
-}
-
-#adminmenu .wp-has-current-submenu .wp-submenu .wp-submenu-head,
-#adminmenu .wp-menu-arrow,
-#adminmenu .wp-menu-arrow div,
-#adminmenu li.current a.menu-top,
-#adminmenu li.wp-has-current-submenu a.wp-has-current-submenu,
-.edit-site-sidebar-navigation-item.components-item[aria-current],
-.wp-core-ui .button-primary,
-.components-button.is-primary,
-.components-button.is-primary:hover:not(:disabled),
-.components-button.is-primary[aria-disabled=true],
-.components-button.is-primary[aria-disabled=true]:active:enabled,
-.components-button.is-primary[aria-disabled=true]:enabled,
-.block-editor-list-view-leaf.is-selected td {
-    background: var(--admin-accent-color) !important;
-    border-color: var(--admin-accent-color) !important;
-    color: white !important;
-}
-
-#wp-admin-bar-languages.pll-filtered-languages,
-#adminmenu a:hover {
-    background: var(--admin-bg-color) !important;
-}
-
-.wp-core-ui .button.button-secondary {
-    border-color: var(--admin-bg-color);
-    color: var(--admin-bg-color);
 }
 
 .wp-responsive-open #wpadminbar #wp-admin-bar-menu-toggle .ab-icon:before,
@@ -138,7 +109,6 @@ a {
 #adminmenu .wp-menu-arrow,
 #adminmenu .wp-menu-arrow div,
 #adminmenu li.current a.menu-top,
-
 #adminmenu .wp-menu-open .wp-submenu a,
 .block-editor-list-view-leaf.is-selected td svg path {
     fill: var(--admin-color) !important;
@@ -191,4 +161,34 @@ a {
 
 .edit-site-sidebar-navigation-item.components-item {
     color: var(--admin-color);
+}
+
+#adminmenu .wp-has-current-submenu .wp-submenu .wp-submenu-head,
+#adminmenu .wp-menu-arrow,
+#adminmenu .wp-menu-arrow div,
+#adminmenu li.current a.menu-top,
+#adminmenu li.wp-has-current-submenu a.wp-has-current-submenu,
+.edit-site-sidebar-navigation-item.components-item[aria-current],
+.wp-core-ui .button-primary,
+.components-button.is-primary,
+.components-button.is-primary:hover:not(:disabled),
+.components-button.is-primary[aria-disabled=true],
+.components-button.is-primary[aria-disabled=true]:active:enabled,
+.components-button.is-primary[aria-disabled=true]:enabled,
+.block-editor-list-view-leaf.is-selected td,
+#adminmenu a:hover,
+#adminmenu li.opensub>a:hover,
+#adminmenu li>a.menu-top:focus {
+    background: var(--admin-accent-color) !important;
+    border-color: var(--admin-accent-color) !important;
+    color: white !important;
+}
+
+#wp-admin-bar-languages.pll-filtered-languages {
+    background: var(--admin-bg-color) !important;
+}
+
+.wp-core-ui .button.button-secondary {
+    border-color: var(--admin-bg-color);
+    color: var(--admin-bg-color);
 }
