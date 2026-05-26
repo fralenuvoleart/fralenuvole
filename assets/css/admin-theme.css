@@ -104,6 +104,7 @@ a {
 #adminmenu a:hover {
     background: var(--admin-accent-color) !important;
     border-color: var(--admin-accent-color) !important;
+    color: white !important;
 }
 
 #wp-admin-bar-languages.pll-filtered-languages,
