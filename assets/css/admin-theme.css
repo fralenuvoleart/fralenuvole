@@ -193,3 +193,15 @@ a {
     border-color: var(--admin-bg-color);
     color: var(--admin-bg-color);
 }
+
+.wp-core-ui .button:focus {
+    border-color: var(--wp-admin-bg-color);
+    color: var(--wp-admin-bg-color);
+    box-shadow: 0 0 0 var(--admin-bg-color, 1.5px) var(--admin-bg-color);
+}
+
+.wp-core-ui .button-primary:focus {
+    background: var(--wp-admin-accent-color);
+    color: #fff;
+    box-shadow: 0 0 0 var(--wp-admin-accent-color, 1.5px) var(--wp-admin-accent-color), inset 0 0 0 1px #fff;
+}
