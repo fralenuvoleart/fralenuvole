@@ -100,8 +100,7 @@ a {
 .components-button.is-primary[aria-disabled=true],
 .components-button.is-primary[aria-disabled=true]:active:enabled,
 .components-button.is-primary[aria-disabled=true]:enabled,
-.block-editor-list-view-leaf.is-selected td,
-#adminmenu a:hover {
+.block-editor-list-view-leaf.is-selected td {
     background: var(--admin-accent-color) !important;
     border-color: var(--admin-accent-color) !important;
     color: white !important;
