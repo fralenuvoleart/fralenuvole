@@ -29,7 +29,7 @@
 
 #widget-admin-actions .widget-admin-actions .frl-widget-content{
     display: flex;
-    gap: 20px 15px;
+    gap: 15px 10px;
     flex-wrap: wrap;
 }
 
@@ -244,7 +244,7 @@
     font-size: 18px;
     color: #333333;
 }
-.frl-section button .dashicons:before {
+.frl-section button .dashicons {
     line-height: 1 !important;
 }
 

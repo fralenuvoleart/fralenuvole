@@ -88,7 +88,9 @@
 #adminmenu li.menu-top:hover,
 #adminmenu li.opensub>a.menu-top,
 #adminmenu li>a.menu-top:focus,
-.wp-responsive-open #wpadminbar #wp-admin-bar-menu-toggle a {
+.wp-responsive-open #wpadminbar #wp-admin-bar-menu-toggle a,
+#adminmenu li.wp-has-current-submenu a.wp-has-current-submenu,
+#wp-admin-bar-languages.pll-filtered-languages {
     background: var(--admin-menu-color) !important;
 }
 
@@ -161,7 +163,6 @@
 #wpadminbar:not(.mobile) .ab-top-menu>li>.ab-item:focus,
 #adminmenu .wp-submenu a:focus,
 #adminmenu .wp-submenu a:hover,
-#adminmenu a:not(.wp-menu-open):hover,
 #adminmenu li.opensub div.wp-menu-image:before,
 #adminmenu li:not(.wp-menu-open):hover div.wp-menu-image:before,
 #adminmenu li.menu-top:hover,
