@@ -64,7 +64,8 @@ body a {
 .wp-core-ui .button-primary:active,
 .wp-core-ui .button-primary:focus,
 .wp-core-ui .button-primary:hover,
-body #adminmenu .update-plugins {
+body #adminmenu .update-plugins,
+.wsf-submit-unread>span {
     background: var(--admin-accent-hover-color);
     border-color: var(--admin-accent-hover-color);
 }
