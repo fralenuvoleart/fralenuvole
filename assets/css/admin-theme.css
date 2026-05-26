@@ -89,8 +89,8 @@
 #adminmenu li.opensub>a.menu-top,
 #adminmenu li>a.menu-top:focus,
 .wp-responsive-open #wpadminbar #wp-admin-bar-menu-toggle a,
-#adminmenu li.wp-has-current-submenu a.wp-has-current-submenu,
-#wp-admin-bar-languages.pll-filtered-languages {
+#adminmenu li.wp-has-current-submenu a.wp-has-current-submenu, 
+.folded #adminmenu li.current.menu-top {
     background: var(--admin-menu-color) !important;
 }
 
