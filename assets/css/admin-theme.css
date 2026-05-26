@@ -107,13 +107,7 @@ a {
 }
 
 #wp-admin-bar-languages.pll-filtered-languages,
-#adminmenu a:hover,
-.wp-core-ui .button-secondary {
-    background: 0 0;
-    border: 1px solid var(--wp-admin-theme-color);
-    border-radius: 2px;
-    color: var(--wp-admin-theme-color);
-
+#adminmenu a:hover {
     background: var(--admin-bg-color) !important;
 }
 
