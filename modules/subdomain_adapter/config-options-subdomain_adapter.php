@@ -23,4 +23,12 @@ $frl_subdomain_adapter_default_fields = array(
         'sanitize_callback' => 'absint',
         'restricted'        => true,
     ),
+    'subdomain_adapter_robots_sitemap' => array(
+        'label'             => 'List Slave Subdomain Sitemap in robots.txt',
+        'description'       => 'When disabled, the slave subdomain sitemap URL (ie. https://ru.pbservices.ge/sitemap.xml) is removed from the main domain\'s robots.txt.',
+        'type'              => 'checkbox',
+        'default'           => 0,
+        'sanitize_callback' => 'absint',
+        'restricted'        => true,
+    ),
 );

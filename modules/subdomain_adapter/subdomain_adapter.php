@@ -32,3 +32,9 @@ if (frl_get_option('subdomain_adapter_legacy_links')) {
     require_once __DIR__ . '/class-subdomain-adapter-legacy.php';
     Frl_Subdomain_Adapter_Legacy::init();
 }
+
+// Load and initialize the TSF robots.txt & sitemap compatibility handler.
+if (class_exists('The_SEO_Framework\Load')) {
+    require_once __DIR__ . '/class-subdomain-adapter-robots.php';
+    Frl_Subdomain_Adapter_Robots::init();
+}
