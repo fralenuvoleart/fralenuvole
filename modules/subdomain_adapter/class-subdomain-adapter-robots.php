@@ -8,9 +8,8 @@
  * specific to the main domain and its slave subdomains.
  *
  * Current integrations:
- * - The SEO Framework: transforms slave subdomain sitemap URLs on the main domain
- *   (e.g., pbservices.ge/ru/sitemap.xml → ru.pbservices.ge/sitemap.xml) and
- *   strips extra language sitemaps on subdomains.
+ * - The SEO Framework: optionally removes slave subdomain sitemap URLs from the
+ *   main domain's robots.txt and strips extra language sitemaps on subdomains.
  *
  * @package Fralenuvole
  */
@@ -91,8 +90,11 @@ class Frl_Subdomain_Adapter_Robots {
     // -------------------------------------------------------------------------
 
     /**
-     * Transform slave subdomain sitemap endpoint URLs on main domain;
-     * strip extra endpoints on subdomain.
+     * Strip extra Polylang sitemap endpoints on subdomain.
+     *
+     * On main domain, the endpoint list is left untouched — TSF generates
+     * directory-style URLs (e.g., /ru/sitemap.xml) which are handled by
+     * existing 301 redirects.
      *
      * @param  array[] $list Sitemap endpoints keyed by ID.
      * @return array[]
@@ -103,45 +105,9 @@ class Frl_Subdomain_Adapter_Robots {
             return $list;
         }
 
+        // On subdomain: strip all Polylang directory-style endpoints, keep only base.
         if ($this->adapter->is_on_subdomain()) {
             return $this->strip_extra_endpoints_on_subdomain($list);
-        }
-
-        if ($this->adapter->is_on_main_domain()) {
-            return $this->transform_ru_endpoint_on_main_domain($list);
-        }
-
-        return $list;
-    }
-
-    /**
-     * On main domain: transform slave subdomain Polylang endpoints from
-     * directory-style to subdomain-style URLs.
-     *
-     * @param  array[] $list
-     * @return array[]
-     */
-    private function transform_ru_endpoint_on_main_domain(array $list): array {
-        $domain_map = $this->adapter->get_domain_map();
-        $current_host = $this->adapter->get_current_host();
-        $lang_map = $domain_map[$current_host] ?? [];
-
-        foreach ($lang_map as $lang => $subdomain_host) {
-            if ($lang === 'default_lang' || $subdomain_host === '') {
-                continue;
-            }
-
-            // Find the Polylang endpoint for this language and transform it.
-            $polylang_key = "_base_polylang_{$lang}";
-            if (isset($list[$polylang_key])) {
-                $scheme = is_ssl() ? 'https' : 'http';
-                $subdomain_url = "{$scheme}://{$subdomain_host}/sitemap.xml";
-
-                $list[$polylang_key]['endpoint'] = $subdomain_url;
-                // Escape dots for regex; match the full subdomain URL.
-                $escaped_host = str_replace('.', '\.', $subdomain_host);
-                $list[$polylang_key]['regex'] = "/^{$scheme}:\/\/{$escaped_host}\/sitemap\.xml/i";
-            }
         }
 
         return $list;
@@ -169,6 +135,13 @@ class Frl_Subdomain_Adapter_Robots {
     /**
      * Optionally remove slave subdomain sitemap URLs from robots.txt on main domain.
      *
+     * When the subdomain_adapter_robots_sitemap option is enabled, the legacy
+     * directory-style URLs (e.g., https://staging.pbservices.ge/ru/sitemap.xml)
+     * are kept as-is — existing 301 redirects handle forwarding to the correct
+     * subdomain URLs.
+     *
+     * When disabled (default), slave subdomain URLs are removed from robots.txt.
+     *
      * @param  array  $robots_sections The robots directives array.
      * @param  string $site_path       The site path prefix.
      * @return array
@@ -185,8 +158,13 @@ class Frl_Subdomain_Adapter_Robots {
             return $robots_sections;
         }
 
-        // Check the option: when disabled (default=0), remove slave subdomain URLs.
+        // When option is disabled (default), remove slave subdomain URLs.
+        // When enabled, leave URLs as-is — 301 redirects handle the rest.
         if (!frl_get_option('subdomain_adapter_robots_sitemap')) {
+            if (!isset($robots_sections['sitemaps']['sitemaps']) || empty($robots_sections['sitemaps']['sitemaps'])) {
+                return $robots_sections;
+            }
+
             $domain_map = $this->adapter->get_domain_map();
             $current_host = $this->adapter->get_current_host();
             $lang_map = $domain_map[$current_host] ?? [];
@@ -200,7 +178,7 @@ class Frl_Subdomain_Adapter_Robots {
                 $subdomain_hosts[] = $subdomain_host;
             }
 
-            if (!empty($subdomain_hosts) && isset($robots_sections['sitemaps']['sitemaps'])) {
+            if (!empty($subdomain_hosts)) {
                 $robots_sections['sitemaps']['sitemaps'] = array_values(array_filter(
                     $robots_sections['sitemaps']['sitemaps'],
                     function (string $url) use ($subdomain_hosts): bool {
