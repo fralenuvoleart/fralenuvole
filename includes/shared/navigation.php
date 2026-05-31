@@ -126,8 +126,10 @@ function frl_process_nav_menu_url_transforms($items, $args)
     foreach ($items as &$item) {
         $url = trim($item->url);
 
-        // Match #frl_url_{type}={value} pattern (value may contain |, :, -, digits, letters)
-        if (!preg_match('/^#frl_url_([a-z0-9_]+)=([^\s]+)$/', $url, $matches)) {
+        // Match #frl_url_{type}={value} pattern (# is optional, WordPress may strip it)
+        // Also handle URL-encoded | (%7C)
+        $url = str_replace('%7C', '|', $url);
+        if (!preg_match('/^#?frl_url_([a-z0-9_]+)=([^\s]+)$/', $url, $matches)) {
             continue;
         }
 
