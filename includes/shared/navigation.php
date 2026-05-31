@@ -129,13 +129,13 @@ function frl_process_nav_menu_url_transforms($block_content, $block)
     }
 
     // Extract URL from block attributes
-    $url = $block['attrs']['url'] ?? '';
-    if (empty($url)) {
+    $raw_url = $block['attrs']['url'] ?? '';
+    if (empty($raw_url)) {
         return $block_content;
     }
 
-    // Decode URL-encoded characters
-    $url = str_replace('%7C', '|', $url);
+    // Decode URL-encoded characters for pattern matching
+    $url = str_replace('%7C', '|', $raw_url);
 
     // Match #frl_url_{type}={value} pattern (# is optional)
     if (!preg_match('/^#?frl_url_([a-z0-9_]+)=(.+)$/', $url, $matches)) {
@@ -151,18 +151,11 @@ function frl_process_nav_menu_url_transforms($block_content, $block)
 
     $resolved = call_user_func($handlers[$type], $value);
     if ($resolved && is_string($resolved) && filter_var($resolved, FILTER_VALIDATE_URL)) {
-        // Replace href in rendered HTML
-        $block_content = str_replace(
-            'href="' . esc_url($url) . '"',
-            'href="' . esc_url($resolved) . '"',
-            $block_content
-        );
-        // Also replace data-url attribute if present
-        $block_content = str_replace(
-            'data-url="' . esc_attr($url) . '"',
-            'data-url="' . esc_attr($resolved) . '"',
-            $block_content
-        );
+        // Replace href in rendered HTML (search both raw and esc_url'd versions)
+        $search_raw = 'href="' . $raw_url . '"';
+        $search_esc = 'href="' . esc_url($raw_url) . '"';
+        $block_content = str_replace($search_raw, 'href="' . esc_url($resolved) . '"', $block_content);
+        $block_content = str_replace($search_esc, 'href="' . esc_url($resolved) . '"', $block_content);
     }
 
     return $block_content;
