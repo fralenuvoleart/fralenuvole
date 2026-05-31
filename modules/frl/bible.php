@@ -221,9 +221,9 @@ function frl_shortcode_bible_url($atts)
     }
 
     $base_url = home_url('/');
-    $url_base = defined('FRL_BIBLE_URL_BASE') ? FRL_BIBLE_URL_BASE : 'bible/';
-    $bibles = defined('FRL_BIBLE_URL_BIBLES') ? FRL_BIBLE_URL_BIBLES : 'net,cebbugna';
-    $add_query = defined('FRL_BIBLE_URL_QUERY_PARAM') ? FRL_BIBLE_URL_QUERY_PARAM : 1;
+    $url_base = defined('FRL_URL_BIBLE_BASE') ? FRL_URL_BIBLE_BASE : 'bible/';
+    $bibles = defined('FRL_URL_BIBLES') ? FRL_URL_BIBLES : 'net,cebbugna';
+    $add_query = defined('FRL_URL_BIBLE_QUERY_PARAM') ? FRL_URL_BIBLE_QUERY_PARAM : 1;
 
     // Build the path portion: /p/{bibles}/{verse}
     $hash_path = '/p/' . $bibles . '/' . $verse;
