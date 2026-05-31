@@ -87,6 +87,7 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
  *
  * Hooks into wp_nav_menu_objects to evaluate [frl_*] shortcodes
  * in menu item URLs and replace them with the resolved URL.
+ * Also bypasses admin URL validation for shortcode patterns.
  */
 function frl_nav_menu_shortcodes_init()
 {
@@ -94,9 +95,36 @@ function frl_nav_menu_shortcodes_init()
         return;
     }
 
+    // Restore shortcode URL from raw POST after WordPress sanitizes it
+    add_action('wp_update_nav_menu_item', 'frl_restore_nav_menu_shortcode_url', 10, 3);
+
+    // Process shortcodes on frontend
     add_filter('wp_nav_menu_objects', 'frl_process_nav_menu_shortcode_urls', 10, 2);
 }
 add_action('init', 'frl_nav_menu_shortcodes_init', 20);
+
+/**
+ * Restore [frl_*] shortcode URL after WordPress sanitizes it during save.
+ *
+ * esc_url_raw() strips [ and ] characters. This action hook restores
+ * the original shortcode pattern from the raw POST data.
+ *
+ * @param int $menu_id ID of the updated menu
+ * @param int $menu_item_db_id ID of the updated menu item
+ * @param string $args Arguments used to update the menu item
+ */
+function frl_restore_nav_menu_shortcode_url($menu_id, $menu_item_db_id, $args)
+{
+    $raw_url = $_POST['menu-item-url'][$menu_item_db_id] ?? '';
+    if (preg_match('/^\[frl_[^\]]+\]$/', trim($raw_url))) {
+        global $wpdb;
+        $wpdb->update(
+            $wpdb->postmeta,
+            ['meta_value' => trim($raw_url)],
+            ['post_id' => $menu_item_db_id, 'meta_key' => '_menu_item_url']
+        );
+    }
+}
 
 /**
  * Detect [frl_*] shortcodes in nav menu item URLs and replace them.
