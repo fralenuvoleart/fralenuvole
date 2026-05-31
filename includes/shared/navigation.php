@@ -85,8 +85,8 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
 /**
  * Initialize nav menu URL transform processing.
  *
- * Hooks into wp_nav_menu_objects to transform #frl_url_* fragment URLs
- * in menu item URLs into real URLs.
+ * Hooks into block rendering to transform #frl_url_* fragment URLs
+ * in navigation-link blocks into real URLs.
  */
 function frl_nav_menu_custom_urls_init()
 {
@@ -94,21 +94,26 @@ function frl_nav_menu_custom_urls_init()
         return;
     }
 
-    add_filter('wp_nav_menu_objects', 'frl_process_nav_menu_url_transforms', 10, 2);
+    add_filter('render_block', 'frl_process_nav_menu_url_transforms', 10, 2);
 }
 
 /**
- * Transform #frl_url_* fragment URLs in nav menu items.
+ * Transform #frl_url_* fragment URLs in navigation-link blocks.
  *
  * Pattern: #frl_url_{type}={value}
  * Collects handlers via 'frl_nav_menu_url_transforms' filter.
  *
- * @param array $items Array of menu item objects
- * @param stdClass $args Menu arguments
- * @return array Modified menu items
+ * @param string $block_content Rendered block HTML
+ * @param array  $block         Block data
+ * @return string Modified block HTML
  */
-function frl_process_nav_menu_url_transforms($items, $args)
+function frl_process_nav_menu_url_transforms($block_content, $block)
 {
+    // Only target navigation-link and navigation-submenu blocks
+    if (!in_array($block['blockName'], ['core/navigation-link', 'core/navigation-submenu'], true)) {
+        return $block_content;
+    }
+
     /**
      * Collect URL transform handlers.
      *
@@ -120,30 +125,45 @@ function frl_process_nav_menu_url_transforms($items, $args)
     $handlers = apply_filters('frl_nav_menu_url_transforms', []);
 
     if (empty($handlers)) {
-        return $items;
+        return $block_content;
     }
 
-    foreach ($items as &$item) {
-        $url = trim($item->url);
-
-        // Match #frl_url_{type}={value} pattern (# is optional, WordPress may strip it)
-        // Also handle URL-encoded | (%7C)
-        $url = str_replace('%7C', '|', $url);
-        if (!preg_match('/^#?frl_url_([a-z0-9_]+)=([^\s]+)$/', $url, $matches)) {
-            continue;
-        }
-
-        $type = $matches[1];
-        $value = $matches[2];
-
-        if (!isset($handlers[$type])) {
-            continue;
-        }
-
-        $resolved = call_user_func($handlers[$type], $value);
-        if ($resolved && is_string($resolved) && filter_var($resolved, FILTER_VALIDATE_URL)) {
-            $item->url = $resolved;
-        }
+    // Extract URL from block attributes
+    $url = $block['attrs']['url'] ?? '';
+    if (empty($url)) {
+        return $block_content;
     }
-    return $items;
+
+    // Decode URL-encoded characters
+    $url = str_replace('%7C', '|', $url);
+
+    // Match #frl_url_{type}={value} pattern (# is optional)
+    if (!preg_match('/^#?frl_url_([a-z0-9_]+)=(.+)$/', $url, $matches)) {
+        return $block_content;
+    }
+
+    $type = $matches[1];
+    $value = $matches[2];
+
+    if (!isset($handlers[$type])) {
+        return $block_content;
+    }
+
+    $resolved = call_user_func($handlers[$type], $value);
+    if ($resolved && is_string($resolved) && filter_var($resolved, FILTER_VALIDATE_URL)) {
+        // Replace href in rendered HTML
+        $block_content = str_replace(
+            'href="' . esc_url($url) . '"',
+            'href="' . esc_url($resolved) . '"',
+            $block_content
+        );
+        // Also replace data-url attribute if present
+        $block_content = str_replace(
+            'data-url="' . esc_attr($url) . '"',
+            'data-url="' . esc_attr($resolved) . '"',
+            $block_content
+        );
+    }
+
+    return $block_content;
 }
