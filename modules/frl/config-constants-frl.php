@@ -37,3 +37,16 @@ const FRL_MENU_SITEMAP_PARENT = 'The Bible';
 
 // The H1 title displayed at the top of the sitemap (empty = no title)
 const FRL_MENU_SITEMAP_TITLE = 'The Bible - Chapters';
+
+/**
+ * Bible URL Builder Settings
+ */
+
+// Subpath from root for bible URLs
+const FRL_BIBLE_URL_BASE = 'bible/';
+
+// Bibles to include in URL (comma-separated, e.g., 'net,cebbugna' or just 'net')
+const FRL_BIBLE_URL_BIBLES = 'net,cebbugna';
+
+// Whether to include the ?frlq= query parameter in the URL (1 = enabled, 0 = disabled)
+const FRL_BIBLE_URL_QUERY_PARAM = 1;

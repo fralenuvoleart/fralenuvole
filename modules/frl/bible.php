@@ -15,8 +15,9 @@ if (!defined('ABSPATH')) {
  */
 function frl_bible_init()
 {
-    // Register shortcode
+    // Register shortcodes
     add_shortcode('frl_bible_audio', 'frl_shortcode_bible_audio');
+    add_shortcode('frl_bible_url', 'frl_shortcode_bible_url');
 
     // Handle audio proxy via query parameter (no rewrite rules needed)
     add_action('template_redirect', 'frl_bible_handle_proxy', 1, 0);
@@ -160,6 +161,56 @@ function frl_shortcode_bible_audio($atts)
     // If still no passage, return empty (no audio player)
     if (empty($passage)) {
         return '';
+    }
+    
+    /**
+     * Shortcode: [frl_bible_url verse="Genesis/2:4-2:24"]
+     * Builds URL patterns for navigation menu items.
+     * /bible/?frlq=Genesis/2:4-2:24#/p/net,cebbugna/Genesis/2:4-2:24 
+     *
+     * Attributes:
+     *   - verse: Bible reference in format Book/Chapter:Verse or Book/Chapter:Verse-Chapter:Verse
+     *
+     * Examples:
+     *   [frl_bible_url verse="Genesis/2:4-2:24"]
+     *   [frl_bible_url verse="John/1"]
+     */
+    function frl_shortcode_bible_url($atts)
+    {
+        $a = shortcode_atts([
+            'verse' => ''
+        ], $atts, 'frl_bible_url');
+    
+        $verse = sanitize_text_field($a['verse']);
+    
+        if (empty($verse)) {
+            return '';
+        }
+    
+        // Static cache — URL building is pure string manipulation, no I/O needed
+        static $cache = [];
+        if (isset($cache[$verse])) {
+            return $cache[$verse];
+        }
+    
+        $base_url = home_url('/');
+        $url_base = defined('FRL_BIBLE_URL_BASE') ? FRL_BIBLE_URL_BASE : 'bible/';
+        $bibles = defined('FRL_BIBLE_URL_BIBLES') ? FRL_BIBLE_URL_BIBLES : 'net,cebbugna';
+        $add_query = defined('FRL_BIBLE_URL_QUERY_PARAM') ? FRL_BIBLE_URL_QUERY_PARAM : 1;
+    
+        // Build the path portion: /p/{bibles}/{verse}
+        $hash_path = '/p/' . $bibles . '/' . $verse;
+    
+        if ($add_query) {
+            // With query param: /bible/?frlq=Genesis/2:4-2:24#/p/net,cebbugna/Genesis/2:4-2:24
+            $url = add_query_arg('frlq', $verse, trailingslashit($base_url) . $url_base);
+            $url .= '#/p/' . $bibles . '/' . $verse;
+        } else {
+            // Without query param: /bible/#/p/net,cebbugna/Genesis/2:4-2:24
+            $url = trailingslashit($base_url) . $url_base . '#/' . $hash_path;
+        }
+    
+        return $cache[$verse] = esc_url($url);
     }
 
     $cache_key = 'bible_audio_' . md5($passage);
