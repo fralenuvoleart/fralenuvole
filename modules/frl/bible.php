@@ -207,13 +207,14 @@ function frl_shortcode_bible_audio($atts)
 /**
  * Build a Bible URL from a verse reference.
  *
- * Used by nav menu URL transforms (#frl_url_bible=*) to generate full Bible URLs.
+ * Used by nav menu URL transforms. When "Nav Menu URL Transforms" is enabled,
+ * menu item URLs matching #frl_url_bible={book|reference} are transformed at render time.
  *
  * Example:
- *   Input:  Genesis/2:4-2:24
- *   Output: https://fralenuvole.art/bible/?frlq=Genesis/2:4-2:24#/p/net,cebbugna/Genesis/2:4-2:24
+ *   Menu URL:    #frl_url_bible=Genesis|2:4-2:24
+ *   Transformed: https://fralenuvole.art/bible/?frlq=Genesis/2:4-2:24#/p/net,cebbugna/Genesis/2:4-2:24
  *
- * @param string $verse Verse reference (e.g., Genesis/2:4-2:24 or John/1)
+ * @param string $verse Verse reference with | separator (e.g., Genesis|2:4-2:24 or John|1)
  * @return string Full Bible URL
  */
 function frl_build_bible_url($verse)
@@ -222,16 +223,19 @@ function frl_build_bible_url($verse)
         return '';
     }
 
+    // Input uses | separator (e.g., Genesis|2:4-2:24), Bible URL uses / (e.g., Genesis/2:4-2:24)
+    $frlq = str_replace('|', '/', $verse);
+
     $base_url = home_url('/');
     $url_base = defined('FRL_URL_BIBLE_BASE') ? FRL_URL_BIBLE_BASE : 'bible/';
     $bibles = defined('FRL_URL_BIBLES') ? FRL_URL_BIBLES : 'net,cebbugna';
     $add_query = defined('FRL_URL_BIBLE_QUERY_PARAM') ? FRL_URL_BIBLE_QUERY_PARAM : 1;
 
     if ($add_query) {
-        $url = add_query_arg('frlq', $verse, trailingslashit($base_url) . $url_base);
-        $url .= '#/p/' . $bibles . '/' . $verse;
+        $url = add_query_arg('frlq', $frlq, trailingslashit($base_url) . $url_base);
+        $url .= '#/p/' . $bibles . '/' . $frlq;
     } else {
-        $url = trailingslashit($base_url) . $url_base . '#/p/' . $bibles . '/' . $verse;
+        $url = trailingslashit($base_url) . $url_base . '#/p/' . $bibles . '/' . $frlq;
     }
 
     return $url;

@@ -126,8 +126,8 @@ function frl_process_nav_menu_url_transforms($items, $args)
     foreach ($items as &$item) {
         $url = trim($item->url);
 
-        // Match #frl_url_{type}={value} pattern
-        if (!preg_match('/^#frl_url_([a-z0-9_]+)=(.+)$/', $url, $matches)) {
+        // Match #frl_url_{type}={value} pattern (value may contain |, :, -, digits, letters)
+        if (!preg_match('/^#frl_url_([a-z0-9_]+)=([^\s]+)$/', $url, $matches)) {
             continue;
         }
 
