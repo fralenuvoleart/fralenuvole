@@ -232,9 +232,9 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'nav_menu_shortcodes' => array(
-				'label' => 'Allow Shortcodes in Nav Menu',
-				'description' => 'Allow <code>[frl_*]</code> shortcodes in navigation menu URLs.',
+			'nav_menu_custom_urls' => array(
+				'label' => 'Nav Menu URL Transforms',
+				'description' => 'Transform <code>#frl_url_*</code> fragment URLs in navigation menus. Example: <code>#frl_url_bible=Genesis/2:4-2:24</code> becomes a full Bible URL.',
 				'type' => 'checkbox',
 				'default' => 0,
 				'sanitize_callback' => 'absint',

@@ -83,70 +83,65 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
 }
 
 /**
- * Initialize nav menu shortcode URL processing.
+ * Initialize nav menu URL transform processing.
  *
- * Hooks into wp_nav_menu_objects to evaluate [frl_*] shortcodes
- * in menu item URLs and replace them with the resolved URL.
- * Also bypasses admin URL validation for shortcode patterns.
+ * Hooks into wp_nav_menu_objects to transform #frl_url_* fragment URLs
+ * in menu item URLs into real URLs.
  */
-function frl_nav_menu_shortcodes_init()
+function frl_nav_menu_custom_urls_init()
 {
-    if (!frl_get_option('nav_menu_shortcodes')) {
+    if (!frl_get_option('nav_menu_custom_urls')) {
         return;
     }
 
-    // Restore shortcode URL from raw POST after WordPress sanitizes it
-    add_action('wp_update_nav_menu_item', 'frl_restore_nav_menu_shortcode_url', 10, 3);
-
-    // Process shortcodes on frontend
-    add_filter('wp_nav_menu_objects', 'frl_process_nav_menu_shortcode_urls', 10, 2);
+    add_filter('wp_nav_menu_objects', 'frl_process_nav_menu_url_transforms', 10, 2);
 }
-add_action('init', 'frl_nav_menu_shortcodes_init', 20);
+add_action('init', 'frl_nav_menu_custom_urls_init', 20);
 
 /**
- * Restore [frl_*] shortcode URL after WordPress sanitizes it during save.
+ * Transform #frl_url_* fragment URLs in nav menu items.
  *
- * esc_url_raw() strips [ and ] characters. This action hook restores
- * the original shortcode pattern from the raw POST data.
- *
- * @param int $menu_id ID of the updated menu
- * @param int $menu_item_db_id ID of the updated menu item
- * @param string $args Arguments used to update the menu item
- */
-function frl_restore_nav_menu_shortcode_url($menu_id, $menu_item_db_id, $args)
-{
-    $raw_url = $_POST['menu-item-url'][$menu_item_db_id] ?? '';
-    if (preg_match('/^\[frl_[^\]]+\]$/', trim($raw_url))) {
-        global $wpdb;
-        $wpdb->update(
-            $wpdb->postmeta,
-            ['meta_value' => trim($raw_url)],
-            ['post_id' => $menu_item_db_id, 'meta_key' => '_menu_item_url']
-        );
-    }
-}
-
-/**
- * Detect [frl_*] shortcodes in nav menu item URLs and replace them.
- *
- * Only processes shortcodes starting with 'frl_' prefix.
+ * Pattern: #frl_url_{type}={value}
+ * Collects handlers via 'frl_nav_menu_url_transforms' filter.
  *
  * @param array $items Array of menu item objects
  * @param stdClass $args Menu arguments
  * @return array Modified menu items
  */
-function frl_process_nav_menu_shortcode_urls($items, $args)
+function frl_process_nav_menu_url_transforms($items, $args)
 {
-    foreach ($items as &$item) {
-        // Check if the URL contains an frl_ shortcode pattern
-        if (preg_match('/^\[frl_([^\]]+)\]$/', trim($item->url), $matches)) {
-            $shortcode = $matches[0];
-            $url = do_shortcode($shortcode);
+    /**
+     * Collect URL transform handlers.
+     *
+     * Each handler adds a type => callback pair.
+     * Callback receives $value, returns URL string or false.
+     *
+     * @param array $handlers Empty array to populate.
+     */
+    $handlers = apply_filters('frl_nav_menu_url_transforms', []);
 
-            // Only replace if shortcode produced a valid URL different from the original
-            if ($url && is_string($url) && $url !== $shortcode && filter_var($url, FILTER_VALIDATE_URL)) {
-                $item->url = trim($url);
-            }
+    if (empty($handlers)) {
+        return $items;
+    }
+
+    foreach ($items as &$item) {
+        $url = trim($item->url);
+
+        // Match #frl_url_{type}={value} pattern
+        if (!preg_match('/^#frl_url_([a-z0-9_]+)=(.+)$/', $url, $matches)) {
+            continue;
+        }
+
+        $type = $matches[1];
+        $value = $matches[2];
+
+        if (!isset($handlers[$type])) {
+            continue;
+        }
+
+        $resolved = call_user_func($handlers[$type], $value);
+        if ($resolved && is_string($resolved) && filter_var($resolved, FILTER_VALIDATE_URL)) {
+            $item->url = $resolved;
         }
     }
     return $items;

@@ -17,10 +17,24 @@ function frl_bible_init()
 {
     // Register shortcodes
     add_shortcode('frl_bible_audio', 'frl_shortcode_bible_audio');
-    add_shortcode('frl_bible_url', 'frl_shortcode_bible_url');
 
     // Handle audio proxy via query parameter (no rewrite rules needed)
     add_action('template_redirect', 'frl_bible_handle_proxy', 1, 0);
+
+    // Register Bible URL transform for nav menus
+    add_filter('frl_nav_menu_url_transforms', 'frl_register_bible_url_transform');
+}
+
+/**
+ * Add Bible URL transform handler to nav menu transforms.
+ *
+ * @param array $handlers Existing transform handlers.
+ * @return array Modified handlers array.
+ */
+function frl_register_bible_url_transform($handlers)
+{
+    $handlers['bible'] = 'frl_build_bible_url';
+    return $handlers;
 }
 frl_bible_init();
 
@@ -191,33 +205,21 @@ function frl_shortcode_bible_audio($atts)
 }
 
 /**
- * Shortcode: [frl_bible_url verse="Genesis/2:4-2:24"]
- * Builds URL patterns for navigation menu items.
- * /bible/?frlq=Genesis/2:4-2:24#/p/net,cebbugna/Genesis/2:4-2:24
+ * Build a Bible URL from a verse reference.
  *
- * Attributes:
- *   - verse: Bible reference in format Book/Chapter:Verse or Book/Chapter:Verse-Chapter:Verse
+ * Used by nav menu URL transforms (#frl_url_bible=*) to generate full Bible URLs.
  *
- * Examples:
- *   [frl_bible_url verse="Genesis/2:4-2:24"]
- *   [frl_bible_url verse="John/1"]
+ * Example:
+ *   Input:  Genesis/2:4-2:24
+ *   Output: https://fralenuvole.art/bible/?frlq=Genesis/2:4-2:24#/p/net,cebbugna/Genesis/2:4-2:24
+ *
+ * @param string $verse Verse reference (e.g., Genesis/2:4-2:24 or John/1)
+ * @return string Full Bible URL
  */
-function frl_shortcode_bible_url($atts)
+function frl_build_bible_url($verse)
 {
-    $a = shortcode_atts([
-        'verse' => ''
-    ], $atts, 'frl_bible_url');
-
-    $verse = sanitize_text_field($a['verse']);
-
     if (empty($verse)) {
         return '';
-    }
-
-    // Static cache — URL building is pure string manipulation, no I/O needed
-    static $cache = [];
-    if (isset($cache[$verse])) {
-        return $cache[$verse];
     }
 
     $base_url = home_url('/');
@@ -225,17 +227,12 @@ function frl_shortcode_bible_url($atts)
     $bibles = defined('FRL_URL_BIBLES') ? FRL_URL_BIBLES : 'net,cebbugna';
     $add_query = defined('FRL_URL_BIBLE_QUERY_PARAM') ? FRL_URL_BIBLE_QUERY_PARAM : 1;
 
-    // Build the path portion: /p/{bibles}/{verse}
-    $hash_path = '/p/' . $bibles . '/' . $verse;
-
     if ($add_query) {
-        // With query param: /bible/?frlq=Genesis/2:4-2:24#/p/net,cebbugna/Genesis/2:4-2:24
         $url = add_query_arg('frlq', $verse, trailingslashit($base_url) . $url_base);
         $url .= '#/p/' . $bibles . '/' . $verse;
     } else {
-        // Without query param: /bible/#/p/net,cebbugna/Genesis/2:4-2:24
-        $url = trailingslashit($base_url) . $url_base . '#/' . $hash_path;
+        $url = trailingslashit($base_url) . $url_base . '#/p/' . $bibles . '/' . $verse;
     }
 
-    return $cache[$verse] = esc_url($url);
+    return $url;
 }
