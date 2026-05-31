@@ -234,7 +234,7 @@ const FRL_DEFAULT_FIELDS = array(
 			),
 			'nav_menu_custom_urls' => array(
 				'label' => 'Nav Menu URL Transforms',
-				'description' => 'Transform <code>#frl_url_*</code> fragment URLs in navigation menus. Example: <code>#frl_url_bible=Genesis/2:4-2:24</code> becomes a full Bible URL.',
+				'description' => 'Transform <code>#frl_url_*</code> fragments to URLs in navigation menus.',
 				'type' => 'checkbox',
 				'default' => 0,
 				'sanitize_callback' => 'absint',
