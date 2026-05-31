@@ -232,6 +232,13 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
+			'nav_menu_shortcodes' => array(
+				'label' => 'Allow Shortcodes in Nav Menu',
+				'description' => 'Allow <code>[frl_*]</code> shortcodes in navigation menu URLs.',
+				'type' => 'checkbox',
+				'default' => 0,
+				'sanitize_callback' => 'absint',
+			),
 		),
 	),
 	'html' => array(

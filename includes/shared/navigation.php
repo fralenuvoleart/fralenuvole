@@ -81,3 +81,45 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
 
     return $settings;
 }
+
+/**
+ * Initialize nav menu shortcode URL processing.
+ *
+ * Hooks into wp_nav_menu_objects to evaluate [frl_*] shortcodes
+ * in menu item URLs and replace them with the resolved URL.
+ */
+function frl_nav_menu_shortcodes_init()
+{
+    if (!frl_get_option('nav_menu_shortcodes')) {
+        return;
+    }
+
+    add_filter('wp_nav_menu_objects', 'frl_process_nav_menu_shortcode_urls', 10, 2);
+}
+add_action('init', 'frl_nav_menu_shortcodes_init', 20);
+
+/**
+ * Detect [frl_*] shortcodes in nav menu item URLs and replace them.
+ *
+ * Only processes shortcodes starting with 'frl_' prefix.
+ *
+ * @param array $items Array of menu item objects
+ * @param stdClass $args Menu arguments
+ * @return array Modified menu items
+ */
+function frl_process_nav_menu_shortcode_urls($items, $args)
+{
+    foreach ($items as &$item) {
+        // Check if the URL contains an frl_ shortcode pattern
+        if (preg_match('/^\[frl_([^\]]+)\]$/', trim($item->url), $matches)) {
+            $shortcode = $matches[0];
+            $url = do_shortcode($shortcode);
+
+            // Only replace if shortcode produced a valid URL different from the original
+            if ($url && is_string($url) && $url !== $shortcode && filter_var($url, FILTER_VALIDATE_URL)) {
+                $item->url = trim($url);
+            }
+        }
+    }
+    return $items;
+}
