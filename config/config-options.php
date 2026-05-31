@@ -221,6 +221,13 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'absint',
 				'autoload' => 'no',
 			),
+			'nav_menu_custom_urls' => array(
+				'label' => 'Nav Menu URL Transforms',
+				'description' => 'Transform <code>#frl_url_*</code> fragments to URLs in navigation menus.',
+				'type' => 'checkbox',
+				'default' => 0,
+				'sanitize_callback' => 'absint',
+			),
 			'custom_wp_query' => array(
 				'label' => 'Custom WP Query',
 				'description' => 'Optimize secondary queries and order post types by ascending menu_order. One post type per line.',
@@ -231,13 +238,6 @@ const FRL_DEFAULT_FIELDS = array(
 					jurisdiction
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
-			),
-			'nav_menu_custom_urls' => array(
-				'label' => 'Nav Menu URL Transforms',
-				'description' => 'Transform <code>#frl_url_*</code> fragments to URLs in navigation menus.',
-				'type' => 'checkbox',
-				'default' => 0,
-				'sanitize_callback' => 'absint',
 			),
 		),
 	),
