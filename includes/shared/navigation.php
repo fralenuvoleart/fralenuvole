@@ -96,7 +96,6 @@ function frl_nav_menu_custom_urls_init()
 
     add_filter('wp_nav_menu_objects', 'frl_process_nav_menu_url_transforms', 10, 2);
 }
-add_action('init', 'frl_nav_menu_custom_urls_init', 20);
 
 /**
  * Transform #frl_url_* fragment URLs in nav menu items.
