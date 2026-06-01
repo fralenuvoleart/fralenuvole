@@ -83,8 +83,11 @@ function frl_translator_apply(mixed $value): mixed
  * @param bool $single Whether a single value is being requested.
  * @return mixed The original or translated value.
  */
-function frl_translator_post_meta(mixed $value, int $post_id, string $meta_key, bool $single): mixed
+function frl_translator_post_meta(mixed $value, int $post_id, ?string $meta_key, bool $single): mixed
 {
+    if ($meta_key === null) {
+        return $value;
+    }
     return frl_translator_get_cached_meta('post', $value, $post_id, $meta_key, $single);
 }
 
@@ -97,8 +100,11 @@ function frl_translator_post_meta(mixed $value, int $post_id, string $meta_key, 
  * @param bool $single Whether a single value is being requested.
  * @return mixed The original or translated value.
  */
-function frl_translator_term_meta(mixed $value, int $term_id, string $meta_key, bool $single): mixed
+function frl_translator_term_meta(mixed $value, int $term_id, ?string $meta_key, bool $single): mixed
 {
+    if ($meta_key === null) {
+        return $value;
+    }
     return frl_translator_get_cached_meta('term', $value, $term_id, $meta_key, $single);
 }
 
@@ -111,8 +117,11 @@ function frl_translator_term_meta(mixed $value, int $term_id, string $meta_key, 
  * @param bool $single Whether a single value is being requested.
  * @return mixed The original or translated value.
  */
-function frl_translator_user_meta(mixed $value, int $user_id, string $meta_key, bool $single): mixed
+function frl_translator_user_meta(mixed $value, int $user_id, ?string $meta_key, bool $single): mixed
 {
+    if ($meta_key === null) {
+        return $value;
+    }
     return frl_translator_get_cached_meta('user', $value, $user_id, $meta_key, $single);
 }
 
