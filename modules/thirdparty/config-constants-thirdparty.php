@@ -130,6 +130,10 @@ const FRL_THIRDPARTY_SCHEMA_PROPERTIES = [
             '@type' => 'Organization',
             '@id' => 'https://pbservices.ge#Organization',
         ],
+        'reviewedBy' => [
+            '@type' => 'Organization',
+            '@id' => 'https://pbservices.ge#Organization',
+        ],
     ],
     'AboutPage' => [
         'publisher' => [
