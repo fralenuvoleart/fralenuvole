@@ -16,7 +16,7 @@ add_action('wp_enqueue_scripts',     'frl_thirdparty_public_scripts',    FRL_THE
 add_action('admin_enqueue_scripts',  'frl_thirdparty_admin_scripts',      0,   0);
 add_filter('emr/feature/background', '__return_false',                    10,  0);
 add_filter('saswp_modify_organization_output', 'frl_thirdparty_schema_organization_properties', 10, 1);
-add_filter('saswp_modify_schema_output', 'frl_thirdparty_deduplicate_schemas', 9999, 1);
+//add_filter('saswp_modify_schema_output', 'frl_thirdparty_deduplicate_schemas', 9999, 1);
 add_action('add_meta_boxes',         'frl_remove_litespeed_meta_boxes',   999, 0);
 add_filter('rest_endpoints',         'frl_greenshift_fix_rest_schemas',   10,  1);
 
@@ -156,6 +156,12 @@ function frl_thirdparty_schema_organization_properties(array $input): array
     }
     if (!$has_organization_keys) {
         return $input;
+    }
+
+    // Early exit: Organization schema has no address field — destroy the schema
+    // Only output Organization schemas that include an address structure
+    if (!isset($input['address']) || !is_array($input['address'])) {
+        return [];
     }
 
     foreach ($props as $key => $value) {
