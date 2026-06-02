@@ -113,4 +113,16 @@ const FRL_THIRDPARTY_SCHEMA_PROPERTIES = [
         ],
         'areaServed' => 'Worldwide',
     ],
+    'Service' => [
+        'publisher' => [
+            "@type" => "Organization",
+            "@id" => "https://pbservices.ge#Organization",
+        ]
+    ],
+    'Website' => [
+        'publisher' => [
+            "@type" => "Organization",
+            "@id" => "https://pbservices.ge#Organization",
+        ]
+    ],
 ];
