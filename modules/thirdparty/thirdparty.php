@@ -127,9 +127,9 @@ function frl_greenshift_fix_rest_schemas($endpoints)
  */
 function frl_thirdparty_schema_organization_properties(array $input): array
 {
-    // Reentrancy guard: execute only once per request
+    // Reentrancy guard: execute only once per request, suppress duplicates
     if (frl_is_already_running(__FUNCTION__)) {
-        return $input;
+        return [];
     }
 
     // Early exit: not an Organization schema
