@@ -121,26 +121,34 @@ const FRL_THIRDPARTY_SCHEMA_PROPERTIES = [
     ],
     'WebSite' => [
         'publisher' => [
-            "@type" => "Organization",
-            "@id" => "https://pbservices.ge#Organization",
-        ]
+            '@type' => 'Organization',
+            '@id' => 'https://pbservices.ge#Organization',
+        ],
     ],
     'WebPage' => [
         'publisher' => [
-            "@type" => "Organization",
-            "@id" => "https://pbservices.ge#Organization",
-        ]
+            '@type' => 'Organization',
+            '@id' => 'https://pbservices.ge#Organization',
+        ],
     ],
     'AboutPage' => [
         'publisher' => [
-            "@type" => "Organization",
-            "@id" => "https://pbservices.ge#Organization",
-        ]
+            '@type' => 'Organization',
+            '@id' => 'https://pbservices.ge#Organization',
+        ],
+        'mainEntity' => [
+            '@type' => 'Organization',
+            '@id' => 'https://pbservices.ge#Organization'
+        ],
     ],
     'ContactPage' => [
         'publisher' => [
-            "@type" => "Organization",
-            "@id" => "https://pbservices.ge#Organization",
-        ]
+            '@type' => 'Organization',
+            '@id' => 'https://pbservices.ge#Organization',
+        ],
+        'mainEntity' => [
+            '@type' => 'Organization',
+            '@id' => 'https://pbservices.ge#Organization'
+        ],
     ],
 ];
