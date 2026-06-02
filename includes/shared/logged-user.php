@@ -13,7 +13,7 @@ if (frl_is_administrator_action()) {
 }
 
 add_action('wp_loaded',     'frl_load_logged_user_scripts',    10,   0);
-add_action('admin_bar_menu', 'frl_admin_bar_custom_menu',      9999, 0);
+add_action('admin_bar_menu', 'frl_admin_bar_menu_render',      9999, 0);
 add_action('admin_notices', 'frl_display_all_admin_notices',   10,   0);
 add_action('wp_footer',     'frl_trace_logged_user_visits',    99,   0);
 add_action('admin_footer',  'frl_trace_logged_user_visits',    99,   0);
@@ -42,7 +42,7 @@ function frl_load_logged_user_scripts()
  *
  * @return void
  */
-function frl_admin_bar_custom_menu()
+function frl_admin_bar_menu_render()
 {
     if (!frl_get_option('custom_ab_menu') || !frl_has_access('install_plugins') ) {
         return;
@@ -57,9 +57,9 @@ function frl_admin_bar_custom_menu()
     $menu_data = frl_cache_remember('admin', $cache_key, function () {
         $data = [];
 
-        $data = frl_admin_bar_add_menu_secondary($data);
         $data = frl_admin_bar_add_menu_primary($data);
-
+        $data = frl_admin_bar_add_menu_secondary($data);
+        $data = frl_admin_bar_add_cpt_links($data);
         $data = frl_admin_bar_remove_menu($data);
 
         return $data;
@@ -67,38 +67,34 @@ function frl_admin_bar_custom_menu()
 
     global $wp_admin_bar;
 
-    // Add Custom Post Type (CPT) links under "New Content"
-    $cpt_list = FRL_AB_CPT_LIST;
-    $cpt_group_id = 'cpt-menu-group';
-    $wp_admin_bar->add_group([
-        'id' => $cpt_group_id,
-        'parent' => 'new-content',
-    ]);
+    // Add page-specific links (never cached, computed per-request)
+    frl_admin_bar_add_page_tools($wp_admin_bar);
 
-    foreach ($cpt_list as $key => $value) {
-        if (frl_has_access($value['access'])) {
-            $wp_admin_bar->add_node([
-                'id' => 'cpt-menu-' . $key,
-                'title' => $value['title'],
-                'parent' => $cpt_group_id,
-                'href' => $value['href'],
-            ]);
+    // Apply cached CPT group and links
+    if (!empty($menu_data['cpt_group'])) {
+        $wp_admin_bar->add_group([
+            'id' => $menu_data['cpt_group']['id'],
+            'parent' => $menu_data['cpt_group']['parent'],
+        ]);
+    }
+
+    // Apply custom menu items from options (already verified truthy at line 47)
+    if (!empty($menu_data['menu_secondary'])) {
+        foreach ($menu_data['menu_secondary'] as $item) {
+            $wp_admin_bar->add_menu($item);
         }
     }
 
-    // Apply custom menu items from options
-    $custom_menu = frl_get_option('custom_ab_menu');
-    if ($custom_menu !== '' && $custom_menu !== false && $custom_menu !== null) {
-        if (!empty($menu_data['menu_secondary'])) {
-            foreach ($menu_data['menu_secondary'] as $item) {
-                $wp_admin_bar->add_menu($item);
-            }
+    if (!empty($menu_data['menu_primary'])) {
+        foreach ($menu_data['menu_primary'] as $item) {
+            $wp_admin_bar->add_menu($item);
         }
+    }
 
-        if (!empty($menu_data['menu_primary'])) {
-            foreach ($menu_data['menu_primary'] as $item) {
-                $wp_admin_bar->add_menu($item);
-            }
+    // Apply cached CPT links (skip the group entry)
+    foreach ($menu_data as $key => $item) {
+        if (str_starts_with($key, 'cpt_') && $key !== 'cpt_group') {
+            $wp_admin_bar->add_node($item);
         }
     }
 
@@ -161,26 +157,6 @@ function frl_admin_bar_add_menu_primary($data)
         ],
     ];
 
-    global $wp;
-    $current_url = trailingslashit(frl_is_admin() ? home_url() : home_url($wp->request));
-    
-    // PageSpeed link
-    $data['menu_primary']['pagespeed'] = [
-        'id' => FRL_PREFIX . '-menu-child-pagespeed',
-        'title' => __('PageSpeed'),
-        'href' => 'https://pagespeed.web.dev/report?url=' . $current_url,
-        'parent' => $parent_id,
-        'meta' => ['target' => '_blank'],
-    ];
-
-    // Rich snippets link
-    $data['menu_primary']['schema'] = [
-        'id' => FRL_PREFIX . '-menu-child-schema',
-        'title' => __('Schema Validator'),
-        'href' => 'https://validator.schema.org/?hl=en-US#url=' . $current_url,
-        'parent' => $parent_id,
-        'meta' => ['target' => '_blank'],
-    ];
 
     // only for plugin admin
     if (frl_has_access()) {
@@ -304,6 +280,69 @@ function frl_admin_bar_add_menu_secondary($data)
                     'meta'   => ['target' => (str_contains($link[1], 'wp-admin') ? '_self' : '_blank')],
                 ];
             }
+        }
+    }
+
+    return $data;
+}
+
+/**
+ * Add PageSpeed and Schema Validator links to the admin bar.
+ *
+ * These links are page-specific and must be computed per-request (never cached).
+ *
+ * @param WP_Admin_Bar $wp_admin_bar The WordPress admin bar instance.
+ * @return void
+ */
+function frl_admin_bar_add_page_tools($wp_admin_bar)
+{
+    $request_path = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
+    $current_url = trailingslashit(frl_is_admin() ? home_url() : home_url($request_path));
+
+    $parent_id = FRL_PREFIX . '-menu-primary';
+    $wp_admin_bar->add_menu([
+        'id'     => FRL_PREFIX . '-menu-child-pagespeed',
+        'title'  => __('PageSpeed'),
+        'href'   => 'https://pagespeed.web.dev/report?url=' . $current_url,
+        'parent' => $parent_id,
+        'meta'   => ['target' => '_blank'],
+    ]);
+
+    $wp_admin_bar->add_menu([
+        'id'     => FRL_PREFIX . '-menu-child-schema',
+        'title'  => __('Schema Validator'),
+        'href'   => 'https://validator.schema.org/?hl=en-US#url=' . $current_url,
+        'parent' => $parent_id,
+        'meta'   => ['target' => '_blank'],
+    ]);
+}
+
+/**
+ * Add Custom Post Type (CPT) links to the cached menu data.
+ *
+ * CPT links are static (from FRL_AB_CPT_LIST constant) and safe to cache per-user.
+ *
+ * @param array $data The cached menu data array.
+ * @return array Updated data array containing CPT group and link entries.
+ */
+function frl_admin_bar_add_cpt_links($data)
+{
+    $cpt_list = FRL_AB_CPT_LIST;
+    $cpt_group_id = 'cpt-menu-group';
+
+    $data['cpt_group'] = [
+        'id' => $cpt_group_id,
+        'parent' => 'new-content',
+    ];
+
+    foreach ($cpt_list as $key => $value) {
+        if (frl_has_access($value['access'])) {
+            $data['cpt_' . $key] = [
+                'id' => 'cpt-menu-' . $key,
+                'title' => $value['title'],
+                'parent' => $cpt_group_id,
+                'href' => $value['href'],
+            ];
         }
     }
 
