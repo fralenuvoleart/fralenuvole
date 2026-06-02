@@ -158,12 +158,6 @@ function frl_thirdparty_schema_organization_properties(array $input): array
         return $input;
     }
 
-    // Early exit: Organization schema has no address field — destroy the schema
-    // Only output Organization schemas that include an address structure
-    if (!isset($input['address']) || !is_array($input['address'])) {
-        return [];
-    }
-
     foreach ($props as $key => $value) {
         // Scalar property: skip if already set
         if (!is_array($value)) {
