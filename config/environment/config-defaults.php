@@ -52,10 +52,6 @@ const FRL_ENV_DEFAULT = [
     ],
     'plugin_options' => [
         'wsform_webhook' => false,
-        'schema_organization' => true,
-        'schema_service' => true,
-        'schema_person' => false,
-        'schema_portfolio' => false,
         'header_html' => '',
         'header_html_php' => false,
         'footer_html' => 'file',

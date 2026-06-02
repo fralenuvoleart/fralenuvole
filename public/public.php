@@ -17,7 +17,6 @@ add_action('wp_loaded',             'frl_public_scripts',            10, 1);
 add_action('wp_default_scripts',    'frl_remove_jquery_migrate',     10, 1);
 add_filter('style_loader_tag',      'frl_defer_css',                 10, 4);
 add_action('login_enqueue_scripts', 'frl_login_page_branding',       10, 0);
-add_action('wp_footer',             'frl_add_schema',                10, 0);
 
 /**
  * Inject critical assets and custom HTML into the document head.

@@ -35,7 +35,7 @@ function frl_register_hooks_rewrite_flush(): void
 }
 
 /**
- * Clear all post-related caches (schema, permalinks, meta, icons, language switcher, featured image).
+ * Clear all post-related caches (permalinks, meta, icons, language switcher, featured image).
  *
  * @param int $post_id Post ID.
  * @return void
@@ -66,14 +66,6 @@ function frl_clear_post_cache($post_id)
             if (is_string($key) && str_starts_with($key, $prefix)) {
                 frl_cache_clear('icons', $key, false);
             }
-        }
-    }
-
-    // Clear specific schema transients for this post
-    if (defined('FRL_SCHEMA_TYPES') && frl_is_array_not_empty(FRL_SCHEMA_TYPES)) {
-        foreach (FRL_SCHEMA_TYPES as $schema_type) {
-            $cache_key = "schema_{$schema_type}_post_{$post_id}";
-            frl_cache_clear('postdata', $cache_key); // Clear specific key within the group
         }
     }
 

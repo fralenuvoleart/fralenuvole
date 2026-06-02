@@ -32,10 +32,6 @@ wp_options
 
 plugin_options
   wsform_webhook        off
-  schema_organization   on
-  schema_service        on
-  schema_person         off
-  schema_portfolio      off
   header_html           empty
   header_html_php       off
   footer_html           file

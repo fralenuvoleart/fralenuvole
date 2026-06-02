@@ -412,7 +412,7 @@ The before hook receives `(string $operation)`. The after hook receives `(string
 | `update_option` | 10 | 1 | [`frl_clear_option_transient()`](includes/core/cache/cache-cleanup.php:164) | Plugin transient matching option name |
 | `pll_save_strings_translations` | 10 | 0 | [`frl_clear_translation_cache()`](includes/core/cache/cache-cleanup.php:192) | Bumps `translation_version`, clears `translations` group (→ cascades to `metafields`) |
 | `edited_term` | 10 | 1 | [`frl_clear_term_permalink_cache()`](includes/core/cache/cache-cleanup.php:238) | `permalinks` group + tracked meta for term |
-| `save_post` | 10 | 1 | [`frl_clear_post_cache()`](includes/core/cache/cache-cleanup.php:43) | Postdata, permalinks, meta, icons, schema, langswitcher, featured images |
+| `save_post` | 10 | 1 | [`frl_clear_post_cache()`](includes/core/cache/cache-cleanup.php:43) | Postdata, permalinks, meta, icons, langswitcher, featured images |
 | `save_post_wp_navigation` | 10 | 1 | [`frl_clear_navigation_cache()`](includes/core/cache/cache-cleanup.php:208) | `wp_navigation_{$post_id}` key in `permalinks` group |
 | `wp_update_nav_menu` | 10 | 1 | [`frl_clear_menu_cache()`](includes/core/cache/cache-cleanup.php:225) | `wp_menu_{$menu_id}` key in `permalinks` group (separate namespace from navigation posts) |
 | `profile_update` | 10 | 1 | [`frl_clear_user_cache()`](includes/core/cache/cache-cleanup.php:182) | Tracked meta for user |
@@ -438,9 +438,8 @@ This prevents collisions between post IDs and term IDs that may use the same num
 2. **Permalinks:** `post_{$post_id}` key
 3. **Metafields:** All tracked translated meta keys for the post
 4. **Icons:** Post-scoped icon repeater caches (prefix `repeater_{$post_id}_`)
-5. **Schema:** All schema type transients for the post (`schema_{$type}_post_{$post_id}`)
-6. **Shortcodes:** Language switcher key (`langswitcher_{type}_post_{$post_id}`)
-7. **Postdata (featured image):** `featured_img_post_{$post_id}_{$size}` + all common sizes
+5. **Shortcodes:** Language switcher key (`langswitcher_{type}_post_{$post_id}`)
+6. **Postdata (featured image):** `featured_img_post_{$post_id}_{$size}` + all common sizes
 
 ---
 
@@ -580,7 +579,7 @@ Provider details are cached in a core transient (not through the cache manager's
 
 | Issue | Impact | Notes |
 |---|---|---|
-| `metadata` group not in `FRL_CACHE_PERSISTENT_GROUPS` | Schema data not persisted on transient-only sites (works with object cache) | Used by [`schema.php`](public/schema.php):55 — add to persistent groups if transient-only support is needed |
+| `metadata` group not in `FRL_CACHE_PERSISTENT_GROUPS`
 | All-static design (`Frl_Cache_Manager`) | Impossible to mock, test, or swap implementations | Common WordPress pattern; acceptable for production |
 | Constant-based configuration | Cannot be filtered at runtime using `apply_filters()` | Acceptable per current design; constants are audit-friendly |
 | Provider detection not extracted | 158-line method in the cache manager class | Refactoring candidate: extract to `Frl_Cache_Provider_Detector` |

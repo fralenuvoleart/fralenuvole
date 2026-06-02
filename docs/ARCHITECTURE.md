@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Fralenuvole is a comprehensive framework for administrators and developers, engineered for high performance and multi-layer caching. Frontend capabilities include speed optimizations, Schema/HTML/Script tweaks, advanced URL rewriting for category bases and custom post-types, and multilingual block translations with automatic multi-environment configuration. Backend utilities provide a robust log manager, custom error logging, permission-based navigation menus, and Media Library enhancements. The plugin is fully extensible, featuring third-party caching integration and context-aware plugin unloading based on environment and user permissions.. The codebase demonstrates strong architectural patterns.
+Fralenuvole is a comprehensive framework for administrators and developers, engineered for high performance and multi-layer caching. Frontend capabilities include speed optimizations, HTML/Script tweaks, advanced URL rewriting for category bases and custom post-types, and multilingual block translations with automatic multi-environment configuration. Backend utilities provide a robust log manager, custom error logging, permission-based navigation menus, and Media Library enhancements. The plugin is fully extensible, featuring third-party caching integration and context-aware plugin unloading based on environment and user permissions.. The codebase demonstrates strong architectural patterns.
 
 ---
 
@@ -39,7 +39,7 @@ init (20+)            → Feature-specific rules
 - **Integrated solution:** Combines admin optimization, URL rewriting, caching, and translation
 - **Multi-backend cache:** Supports 5 different caching systems
 - **Multilingual ready:** Polylang + WPML support
-- **SEO optimized:** Schema.org, hreflang, canonical URL handling
+- **SEO optimized:** hreflang, canonical URL handling
 - **Performance focused:** Preloading, critical CSS, font optimization
 
 ### Ecosystem Dependencies
