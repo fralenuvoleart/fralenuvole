@@ -83,7 +83,7 @@ function frl_translator_apply(mixed $value): mixed
  * @param bool $single Whether a single value is being requested.
  * @return mixed The original or translated value.
  */
-function frl_translator_post_meta(mixed $value, int $post_id, ?string $meta_key, bool $single): mixed
+function frl_translator_post_meta(mixed $value, int $post_id, ?string $meta_key, ?bool $single): mixed
 {
     if ($meta_key === null) {
         return $value;
@@ -100,7 +100,7 @@ function frl_translator_post_meta(mixed $value, int $post_id, ?string $meta_key,
  * @param bool $single Whether a single value is being requested.
  * @return mixed The original or translated value.
  */
-function frl_translator_term_meta(mixed $value, int $term_id, ?string $meta_key, bool $single): mixed
+function frl_translator_term_meta(mixed $value, int $term_id, ?string $meta_key, ?bool $single): mixed
 {
     if ($meta_key === null) {
         return $value;
@@ -117,7 +117,7 @@ function frl_translator_term_meta(mixed $value, int $term_id, ?string $meta_key,
  * @param bool $single Whether a single value is being requested.
  * @return mixed The original or translated value.
  */
-function frl_translator_user_meta(mixed $value, int $user_id, ?string $meta_key, bool $single): mixed
+function frl_translator_user_meta(mixed $value, int $user_id, ?string $meta_key, ?bool $single): mixed
 {
     if ($meta_key === null) {
         return $value;
@@ -550,7 +550,7 @@ function frl_translator_get_cache_callback(string $type, array $args, ?bool &$is
  * @param bool   $single      Whether a single value is requested.
  * @return mixed The original or translated value.
  */
-function frl_translator_get_cached_meta(string $meta_type, mixed $value, int $object_id, ?string $meta_key, bool $single): mixed
+function frl_translator_get_cached_meta(string $meta_type, mixed $value, int $object_id, ?string $meta_key, ?bool $single): mixed
 {
     // When meta_key is null or empty (e.g. get_post_meta without a key), we cannot
     // determine if the field is translatable – bail out early.
