@@ -143,19 +143,17 @@ function frl_thirdparty_schema_organization_properties(array $input): array
         return $input;
     }
 
-    // Early exit: input schema is empty or has no meaningful Organization props
-    // Only inject if SASWP has already populated real data
-    $has_existing_data = false;
+    // Early exit: input schema has no Organization keys beyond JSON-LD structural ones
+    // Only inject if SASWP has built an Organization schema structure (even with empty values)
+    $has_organization_keys = false;
     foreach ($input as $key => $value) {
         if ($key === '@context' || $key === '@type' || $key === '@id') {
             continue;
         }
-        if (!empty($value)) {
-            $has_existing_data = true;
-            break;
-        }
+        $has_organization_keys = true;
+        break;
     }
-    if (!$has_existing_data) {
+    if (!$has_organization_keys) {
         return $input;
     }
 
