@@ -189,30 +189,7 @@ function frl_thirdparty_deduplicate_schemas(array $schemas): array
             continue;
         }
 
-        // Duplicate found: prefer the one with 'address'
-        $kept_index = null;
-        foreach ($deduplicated as $i => $item) {
-            if (is_array($item) && ($item['@id'] ?? '') === $id) {
-                $kept_index = $i;
-                break;
-            }
-        }
-
-        if ($kept_index === null) {
-            $deduplicated[] = $schema;
-            continue;
-        }
-
-        $existing = $deduplicated[$kept_index];
-        $existing_has_address = isset($existing['address']) && is_array($existing['address']);
-        $new_has_address = isset($schema['address']) && is_array($schema['address']);
-
-        if ($new_has_address && !$existing_has_address) {
-            // New one has address, existing doesn't — replace
-            $schema = frl_thirdparty_inject_schema_properties($schema, $props);
-            $deduplicated[$kept_index] = $schema;
-        }
-        // Otherwise: keep existing (either it has address, or neither does)
+        // Duplicate found: discard, keep first occurrence
     }
 
     $done = true;
