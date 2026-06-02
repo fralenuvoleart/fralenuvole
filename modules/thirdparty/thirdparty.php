@@ -15,7 +15,7 @@ require_once __DIR__ . '/config-constants-thirdparty.php';
 add_action('wp_enqueue_scripts',     'frl_thirdparty_public_scripts',    FRL_THEMEKIT_STYLE_PRIORITY['modules'], 1);
 add_action('admin_enqueue_scripts',  'frl_thirdparty_admin_scripts',      0,   0);
 add_filter('emr/feature/background', '__return_false',                    10,  0);
-add_filter('saswp_modify_organization_output', 'frl_thirdparty_schema_organization_area_served', 10, 1);
+add_filter('saswp_modify_organization_output', 'frl_thirdparty_schema_organization_properties', 10, 1);
 add_action('add_meta_boxes',         'frl_remove_litespeed_meta_boxes',   999, 0);
 add_filter('rest_endpoints',         'frl_greenshift_fix_rest_schemas',   10,  1);
 
@@ -117,27 +117,44 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 }
 
 /**
- * Add "areaServed": "Worldwide" to SASWP Organization schema output.
+ * Inject third-party schema properties into SASWP Organization schema output.
  *
  * Hooks into the 'saswp_modify_organization_output' filter to inject
- * the areaServed property for Organization-type schemas.
+ * properties defined in FRL_THIRDPARTY_SCHEMA_PROPERTIES for Organization-type schemas.
  *
  * @param array $input The schema output array.
- * @return array Modified schema array with areaServed property.
+ * @return array Modified schema array with injected properties.
  */
-function frl_thirdparty_schema_organization_area_served(array $input): array
+function frl_thirdparty_schema_organization_properties(array $input): array
 {
     // Early exit: not an Organization schema
     if (($input['@type'] ?? '') !== 'Organization') {
         return $input;
     }
 
-    // Early exit: areaServed already set
-    if (isset($input['areaServed'])) {
+    // Early exit: no properties defined for Organization
+    $props = FRL_THIRDPARTY_SCHEMA_PROPERTIES['Organization'] ?? [];
+    if (empty($props)) {
         return $input;
     }
 
-    $input['areaServed'] = 'Worldwide';
+    foreach ($props as $key => $value) {
+        // Scalar property: skip if already set
+        if (!is_array($value)) {
+            if (isset($input[$key])) {
+                continue;
+            }
+            $input[$key] = $value;
+            continue;
+        }
+
+        // Array property (e.g. 'address'): deep-merge without overwriting existing keys
+        if (!isset($input[$key]) || !is_array($input[$key])) {
+            $input[$key] = $value;
+        } else {
+            $input[$key] = array_replace_recursive($input[$key], $value);
+        }
+    }
 
     return $input;
 }

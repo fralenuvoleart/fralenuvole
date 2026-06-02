@@ -102,3 +102,11 @@ const FRL_THIRDPARTY_OUTBOUND_HOOKS = [
     ],
 ];
 
+const FRL_THIRDPARTY_SCHEMA_PROPERTIES = [
+    'Organization' => [
+        'areaServed' => 'Worldwide',
+        'address'    => [
+            'addressCountry' => 'GE',
+        ],
+    ],
+];
