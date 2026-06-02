@@ -15,8 +15,7 @@ require_once __DIR__ . '/config-constants-thirdparty.php';
 add_action('wp_enqueue_scripts',     'frl_thirdparty_public_scripts',    FRL_THEMEKIT_STYLE_PRIORITY['modules'], 1);
 add_action('admin_enqueue_scripts',  'frl_thirdparty_admin_scripts',      0,   0);
 add_filter('emr/feature/background', '__return_false',                    10,  0);
-add_filter('saswp_modify_organization_output', 'frl_thirdparty_schema_organization_properties', 10, 1);
-//add_filter('saswp_modify_schema_output', 'frl_thirdparty_deduplicate_schemas', 9999, 1);
+add_filter('saswp_modify_schema_output', 'frl_thirdparty_deduplicate_schemas', 9999, 1);
 add_action('add_meta_boxes',         'frl_remove_litespeed_meta_boxes',   999, 0);
 add_filter('rest_endpoints',         'frl_greenshift_fix_rest_schemas',   10,  1);
 
@@ -118,81 +117,17 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 }
 
 /**
- * Inject third-party schema properties into SASWP Organization schema output.
+ * Deduplicate SASWP schema output and inject third-party properties.
  *
- * Hooks into the 'saswp_modify_organization_output' filter to inject
- * properties defined in FRL_THIRDPARTY_SCHEMA_PROPERTIES for Organization-type schemas.
+ * Hooks into 'saswp_modify_schema_output' (the final filter on the complete
+ * schema array) to:
+ * 1. Remove duplicate schemas by @id, keeping the one with 'address'
+ * 2. Inject properties from FRL_THIRDPARTY_SCHEMA_PROPERTIES into the kept schema
  *
- * @param array $input The schema output array.
- * @return array Modified schema array with injected properties.
- */
-function frl_thirdparty_schema_organization_properties(array $input): array
-{
-    // Reentrancy guard: execute only once per request, suppress duplicates
-    if (frl_is_already_running(__FUNCTION__)) {
-        return [];
-    }
-
-    // Early exit: not an Organization schema
-    if (($input['@type'] ?? '') !== 'Organization') {
-        return $input;
-    }
-
-    // Early exit: no properties defined for Organization
-    $props = FRL_THIRDPARTY_SCHEMA_PROPERTIES['Organization'] ?? [];
-    if (empty($props)) {
-        return $input;
-    }
-
-    // Early exit: input schema has no Organization keys beyond JSON-LD structural ones
-    // Only inject if SASWP has built an Organization schema structure (even with empty values)
-    $has_organization_keys = false;
-    foreach ($input as $key => $value) {
-        if ($key === '@context' || $key === '@type' || $key === '@id') {
-            continue;
-        }
-        $has_organization_keys = true;
-        break;
-    }
-    if (!$has_organization_keys) {
-        return $input;
-    }
-
-    // Early exit: Organization schema has no address field — destroy the schema
-    // Only output Organization schemas that include an address structure
-    if (!isset($input['address']) || !is_array($input['address'])) {
-        return [];
-    }
-
-    foreach ($props as $key => $value) {
-        // Scalar property: skip if already set
-        if (!is_array($value)) {
-            if (isset($input[$key])) {
-                continue;
-            }
-            $input[$key] = $value;
-            continue;
-        }
-
-        // Array property (e.g. 'address'): deep-merge without overwriting existing keys
-        if (!isset($input[$key]) || !is_array($input[$key])) {
-            $input[$key] = $value;
-        } else {
-            $input[$key] = array_replace_recursive($input[$key], $value);
-        }
-    }
-
-    return $input;
-}
-
-/**
- * Deduplicate SASWP schema output by @id, keeping the most complete version.
- *
- * Hooks into 'saswp_modify_schema_output' to remove duplicate Organization
- * schemas that SASWP generates (one with address, one without).
+ * Works for any schema type defined in FRL_THIRDPARTY_SCHEMA_PROPERTIES.
  *
  * @param array $schemas Array of all schema output arrays.
- * @return array Deduplicated schema array.
+ * @return array Deduplicated and enhanced schema array.
  */
 function frl_thirdparty_deduplicate_schemas(array $schemas): array
 {
@@ -201,6 +136,7 @@ function frl_thirdparty_deduplicate_schemas(array $schemas): array
         return $schemas;
     }
 
+    $all_props = FRL_THIRDPARTY_SCHEMA_PROPERTIES;
     $seen_ids = [];
     $deduplicated = [];
 
@@ -212,41 +148,86 @@ function frl_thirdparty_deduplicate_schemas(array $schemas): array
 
         $id = $schema['@id'];
         $type = $schema['@type'] ?? '';
+        $props = $all_props[$type] ?? [];
 
-        // Only deduplicate Organization schemas
-        if ($type !== 'Organization') {
+        // Not a managed type: pass through unchanged
+        if (empty($props)) {
             $deduplicated[] = $schema;
             continue;
         }
 
-        // First occurrence: keep it
+        // First occurrence: inject props and keep it
         if (!isset($seen_ids[$id])) {
-            $seen_ids[$id] = $schema;
+            $schema = frl_thirdparty_inject_schema_properties($schema, $props);
+            $seen_ids[$id] = true;
             $deduplicated[] = $schema;
             continue;
         }
 
-        // Duplicate found: prefer the one with 'address' (most complete Organization)
-        $existing = $seen_ids[$id];
+        // Duplicate found: prefer the one with 'address'
+        $kept_index = null;
+        foreach ($deduplicated as $i => $item) {
+            if (is_array($item) && ($item['@id'] ?? '') === $id) {
+                $kept_index = $i;
+                break;
+            }
+        }
+
+        if ($kept_index === null) {
+            $deduplicated[] = $schema;
+            continue;
+        }
+
+        $existing = $deduplicated[$kept_index];
         $existing_has_address = isset($existing['address']) && is_array($existing['address']);
         $new_has_address = isset($schema['address']) && is_array($schema['address']);
 
         if ($new_has_address && !$existing_has_address) {
             // New one has address, existing doesn't — replace
-            $seen_ids[$id] = $schema;
-            foreach ($deduplicated as $i => $item) {
-                if (is_array($item) && ($item['@id'] ?? '') === $id) {
-                    $deduplicated[$i] = $schema;
-                    break;
-                }
-            }
+            $schema = frl_thirdparty_inject_schema_properties($schema, $props);
+            $deduplicated[$kept_index] = $schema;
         }
-        // Otherwise: keep existing (either it has address, or neither does — keep first)
+        // Otherwise: keep existing (either it has address, or neither does)
     }
 
     $done = true;
 
     return $deduplicated;
+}
+
+/**
+ * Inject third-party properties into a single schema.
+ *
+ * @param array $schema The schema array.
+ * @param array $props Properties to inject from FRL_THIRDPARTY_SCHEMA_PROPERTIES.
+ * @return array Modified schema array.
+ */
+function frl_thirdparty_inject_schema_properties(array $schema, array $props): array
+{
+    if (empty($props)) {
+        return $schema;
+    }
+
+    foreach ($props as $key => $value) {
+        // Skip if already set
+        if (isset($schema[$key])) {
+            continue;
+        }
+
+        // Array property (e.g. 'address'): deep-merge without overwriting
+        if (is_array($value)) {
+            if (!isset($schema[$key]) || !is_array($schema[$key])) {
+                $schema[$key] = $value;
+            } else {
+                $schema[$key] = array_replace_recursive($schema[$key], $value);
+            }
+        } else {
+            // Scalar property: set directly
+            $schema[$key] = $value;
+        }
+    }
+
+    return $schema;
 }
 
 // =============================================================================
