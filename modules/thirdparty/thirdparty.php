@@ -127,6 +127,11 @@ function frl_greenshift_fix_rest_schemas($endpoints)
  */
 function frl_thirdparty_schema_organization_properties(array $input): array
 {
+    // Reentrancy guard: execute only once per request
+    if (frl_is_already_running(__FUNCTION__)) {
+        return $input;
+    }
+
     // Early exit: not an Organization schema
     if (($input['@type'] ?? '') !== 'Organization') {
         return $input;
@@ -135,6 +140,22 @@ function frl_thirdparty_schema_organization_properties(array $input): array
     // Early exit: no properties defined for Organization
     $props = FRL_THIRDPARTY_SCHEMA_PROPERTIES['Organization'] ?? [];
     if (empty($props)) {
+        return $input;
+    }
+
+    // Early exit: input schema is empty or has no meaningful Organization props
+    // Only inject if SASWP has already populated real data
+    $has_existing_data = false;
+    foreach ($input as $key => $value) {
+        if ($key === '@context' || $key === '@type' || $key === '@id') {
+            continue;
+        }
+        if (!empty($value)) {
+            $has_existing_data = true;
+            break;
+        }
+    }
+    if (!$has_existing_data) {
         return $input;
     }
 
