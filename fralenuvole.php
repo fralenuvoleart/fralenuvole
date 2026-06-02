@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Fralenuvole
  * Description: Multi-environment and performance management framework with comprehensive backend suite for admins and devs.
- * Version: 5.7.2.4
+ * Version: 5.7.2.5
  * Requires at least: 7.0
  * Requires PHP: 8.3
  * Text Domain: fralenuvole
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Upgrade routines trigger only when the first 3 version numbers change: 5.7.2 -> 5.7.3
-const FRL_VERSION = '5.7.2.4';
+const FRL_VERSION = '5.7.2.5';
 
 // Load required core files and constants
 require_once __DIR__ . '/includes/bootstrap.php';
