@@ -44,7 +44,7 @@ function frl_load_logged_user_scripts()
  */
 function frl_admin_bar_menu_render()
 {
-    if (!frl_get_option('custom_ab_menu') || !frl_has_access('install_plugins') ) {
+    if (!frl_get_option('custom_ab_menu') || !frl_has_access('install_plugins')) {
         return;
     }
 
@@ -67,10 +67,22 @@ function frl_admin_bar_menu_render()
 
     global $wp_admin_bar;
 
+    frl_admin_bar_apply_data($wp_admin_bar, $menu_data);
+}
+
+/**
+ * Apply cached menu data to the WordPress admin bar.
+ *
+ * @param WP_Admin_Bar $wp_admin_bar The WordPress admin bar instance.
+ * @param array $menu_data Cached menu configuration data.
+ * @return void
+ */
+function frl_admin_bar_apply_data($wp_admin_bar, array $menu_data)
+{
     // Add page-specific links (never cached, computed per-request)
     frl_admin_bar_add_page_tools($wp_admin_bar);
 
-    // Apply cached CPT group and links
+    // Apply cached CPT group
     if (!empty($menu_data['cpt_group'])) {
         $wp_admin_bar->add_group([
             'id' => $menu_data['cpt_group']['id'],
@@ -78,7 +90,7 @@ function frl_admin_bar_menu_render()
         ]);
     }
 
-    // Apply custom menu items from options (already verified truthy at line 47)
+    // Apply custom menu items (already verified truthy by caller)
     if (!empty($menu_data['menu_secondary'])) {
         foreach ($menu_data['menu_secondary'] as $item) {
             $wp_admin_bar->add_menu($item);
@@ -100,7 +112,6 @@ function frl_admin_bar_menu_render()
 
     // Remove specified admin bar nodes
     if (frl_get_option('ab_remove_links')) {
-
         if (!empty($menu_data['my_account_title'])) {
             $my_account = $wp_admin_bar->get_node('my-account');
             if (isset($my_account->title)) {
