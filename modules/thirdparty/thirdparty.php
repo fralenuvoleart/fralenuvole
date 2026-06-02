@@ -15,6 +15,7 @@ require_once __DIR__ . '/config-constants-thirdparty.php';
 add_action('wp_enqueue_scripts',     'frl_thirdparty_public_scripts',    FRL_THEMEKIT_STYLE_PRIORITY['modules'], 1);
 add_action('admin_enqueue_scripts',  'frl_thirdparty_admin_scripts',      0,   0);
 add_filter('emr/feature/background', '__return_false',                    10,  0);
+add_filter('saswp_modify_organization_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
 add_filter('saswp_modify_schema_output', 'frl_thirdparty_deduplicate_schemas', 9999, 1);
 add_action('add_meta_boxes',         'frl_remove_litespeed_meta_boxes',   999, 0);
 add_filter('rest_endpoints',         'frl_greenshift_fix_rest_schemas',   10,  1);
@@ -114,6 +115,30 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 	}
 	$done = true;
 	return $endpoints;
+}
+
+/**
+ * Inject third-party properties into a single SASWP schema.
+ *
+ * Generic per-schema filter — checks FRL_THIRDPARTY_SCHEMA_PROPERTIES
+ * for the schema's @type and injects matching properties.
+ *
+ * Hooks into 'saswp_modify_organization_output' (and can be reused for
+ * other per-schema filters if SASWP exposes them).
+ *
+ * @param array $input The schema output array.
+ * @return array Modified schema array.
+ */
+function frl_thirdparty_inject_schema_properties_filter(array $input): array
+{
+    $type = $input['@type'] ?? '';
+    $props = FRL_THIRDPARTY_SCHEMA_PROPERTIES[$type] ?? [];
+
+    if (empty($props)) {
+        return $input;
+    }
+
+    return frl_thirdparty_inject_schema_properties($input, $props);
 }
 
 /**
