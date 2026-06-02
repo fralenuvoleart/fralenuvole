@@ -27,7 +27,7 @@ function frl_get_schema_properties(): array
     $version = frl_get_option('translation_version') ?: 1;
     $cache_key = "schema_properties_{$language}_{$version}";
 
-    return frl_cache_remember('options', $cache_key, function () {
+    return frl_cache_remember('html', $cache_key, function () {
         $file = FRL_DIR_PATH . 'public/schema/default-schema.php';
         $raw = file_exists($file) ? include $file : [];
 
