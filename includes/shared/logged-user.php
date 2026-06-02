@@ -339,7 +339,7 @@ function frl_admin_bar_add_page_tools($wp_admin_bar)
 function frl_admin_bar_add_cpt_links($data)
 {
     $cpt_list = FRL_AB_CPT_LIST;
-    $cpt_group_id = 'cpt-menu-group';
+    $cpt_group_id = FRL_PREFIX . '-cpt-menu-group';
 
     $data['cpt_group'] = [
         'id' => $cpt_group_id,
@@ -376,7 +376,7 @@ function frl_admin_bar_remove_menu($data)
     // Data preparation
     $data['my_account_title'] = true;
 
-    $raw_handles = frl_get_option('ab_remove_links_handles');
+    $raw_handles = frl_get_option('ab_remove_links_handles') ?? '';
     $option_handles = array_unique(
         array_filter(
             array_map('trim', explode("\n", $raw_handles))
