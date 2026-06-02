@@ -226,15 +226,14 @@ function frl_thirdparty_deduplicate_schemas(array $schemas): array
             continue;
         }
 
-        // Duplicate found: keep the one with more data (prefer the one with 'address')
+        // Duplicate found: prefer the one with 'address' (most complete Organization)
         $existing = $seen_ids[$id];
-        $existing_keys = count(array_keys($existing));
-        $new_keys = count(array_keys($schema));
+        $existing_has_address = isset($existing['address']) && is_array($existing['address']);
+        $new_has_address = isset($schema['address']) && is_array($schema['address']);
 
-        if ($new_keys > $existing_keys) {
-            // Replace the kept version with this more complete one
+        if ($new_has_address && !$existing_has_address) {
+            // New one has address, existing doesn't — replace
             $seen_ids[$id] = $schema;
-            // Update in the output array
             foreach ($deduplicated as $i => $item) {
                 if (is_array($item) && ($item['@id'] ?? '') === $id) {
                     $deduplicated[$i] = $schema;
@@ -242,7 +241,7 @@ function frl_thirdparty_deduplicate_schemas(array $schemas): array
                 }
             }
         }
-        // Otherwise: discard $schema, keep existing
+        // Otherwise: keep existing (either it has address, or neither does — keep first)
     }
 
     $done = true;
