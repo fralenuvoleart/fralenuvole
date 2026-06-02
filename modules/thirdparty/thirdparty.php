@@ -125,7 +125,7 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 /**
  * Inject third-party properties into a single SASWP schema.
  *
- * Generic per-schema filter — checks FRL_THIRDPARTY_SCHEMA_PROPERTIES
+ * Generic per-schema filter — checks frl_get_schema_properties()
  * for the schema's @type and injects matching properties.
  *
  * Hooks into 'saswp_modify_organization_output' (and can be reused for
@@ -137,7 +137,7 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 function frl_thirdparty_inject_schema_properties_filter(array $input): array
 {
     $type = $input['@type'] ?? '';
-    $props = FRL_THIRDPARTY_SCHEMA_PROPERTIES[$type] ?? [];
+    $props = frl_get_schema_properties()[$type] ?? [];
 
     if (empty($props)) {
         return $input;
@@ -152,9 +152,9 @@ function frl_thirdparty_inject_schema_properties_filter(array $input): array
  * Hooks into 'saswp_modify_schema_output' (the final filter on the complete
  * schema array) to:
  * 1. Remove duplicate schemas by @id, keeping the one with 'address'
- * 2. Inject properties from FRL_THIRDPARTY_SCHEMA_PROPERTIES into the kept schema
+ * 2. Inject properties from frl_get_schema_properties() into the kept schema
  *
- * Works for any schema type defined in FRL_THIRDPARTY_SCHEMA_PROPERTIES.
+ * Works for any schema type defined in the schema properties data file.
  *
  * @param array $schemas Array of all schema output arrays.
  * @return array Deduplicated and enhanced schema array.
@@ -166,7 +166,7 @@ function frl_thirdparty_deduplicate_schemas(array $schemas): array
         return $schemas;
     }
 
-    $all_props = FRL_THIRDPARTY_SCHEMA_PROPERTIES;
+    $all_props = frl_get_schema_properties();
     $seen_ids = [];
     $deduplicated = [];
 

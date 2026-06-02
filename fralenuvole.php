@@ -154,6 +154,7 @@ function frl_load_admin_components()
 function frl_load_public_components()
 {
     require_once FRL_DIR_PATH . 'public/public.php';
+    require_once FRL_DIR_PATH . 'public/schema/schema.php';
 }
 
 /**
