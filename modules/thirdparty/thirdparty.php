@@ -136,6 +136,10 @@ function frl_greenshift_fix_rest_schemas($endpoints)
  */
 function frl_thirdparty_inject_schema_properties_filter(array $input): array
 {
+    if (!frl_get_option('thirdparty_schema_properties')) {
+        return $input;
+    }
+
     $type = $input['@type'] ?? '';
     $props = frl_get_schema_properties()[$type] ?? [];
 
@@ -163,6 +167,10 @@ function frl_thirdparty_deduplicate_schemas(array $schemas): array
 {
     static $done = false;
     if ($done) {
+        return $schemas;
+    }
+
+    if (!frl_get_option('thirdparty_schema_properties')) {
         return $schemas;
     }
 

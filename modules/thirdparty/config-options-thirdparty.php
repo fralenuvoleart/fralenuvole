@@ -31,4 +31,11 @@ $frl_thirdparty_default_fields = array(
         'sanitize_callback' => 'absint',
         'restricted'        => true,
     ),
+    'thirdparty_schema_properties' => array(
+        'label'             => 'Add Schema Properties',
+        'description'       => 'Injects address, publisher, and other properties into SASWP Schema JSON-LD.',
+        'type'              => 'checkbox',
+        'default'           => 1,
+        'sanitize_callback' => 'absint',
+    ),
 );

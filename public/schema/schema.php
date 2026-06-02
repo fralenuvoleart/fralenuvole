@@ -28,7 +28,21 @@ function frl_get_schema_properties(): array
     $cache_key = "schema_properties_{$language}_{$version}";
 
     return frl_cache_remember('html', $cache_key, function () {
+        // Per-brand file resolution (future-ready): load {prefix}-schema.php if it exists
+        $prefix = '';
+        if (function_exists('frl_environment_get_config')) {
+            $env_config = frl_environment_get_config();
+            $prefix = $env_config['prefix'] ?? '';
+        }
+
         $file = FRL_DIR_PATH . 'public/schema/default-schema.php';
+        if ($prefix) {
+            $brand_file = FRL_DIR_PATH . "public/schema/{$prefix}-schema.php";
+            if (file_exists($brand_file)) {
+                $file = $brand_file;
+            }
+        }
+
         $raw = file_exists($file) ? include $file : [];
 
         $resolved = frl_resolve_schema_properties($raw);
