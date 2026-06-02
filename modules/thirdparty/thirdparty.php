@@ -15,7 +15,8 @@ require_once __DIR__ . '/config-constants-thirdparty.php';
 add_action('wp_enqueue_scripts',     'frl_thirdparty_public_scripts',    FRL_THEMEKIT_STYLE_PRIORITY['modules'], 1);
 add_action('admin_enqueue_scripts',  'frl_thirdparty_admin_scripts',      0,   0);
 add_filter('emr/feature/background', '__return_false',                    10,  0);
-//add_filter('saswp_modify_organization_output', 'frl_thirdparty_schema_organization_properties', 10, 1);
+add_filter('saswp_modify_organization_output', 'frl_thirdparty_schema_organization_properties', 10, 1);
+add_filter('saswp_modify_schema_output', 'frl_thirdparty_deduplicate_schemas', 9999, 1);
 add_action('add_meta_boxes',         'frl_remove_litespeed_meta_boxes',   999, 0);
 add_filter('rest_endpoints',         'frl_greenshift_fix_rest_schemas',   10,  1);
 
@@ -182,6 +183,71 @@ function frl_thirdparty_schema_organization_properties(array $input): array
     }
 
     return $input;
+}
+
+/**
+ * Deduplicate SASWP schema output by @id, keeping the most complete version.
+ *
+ * Hooks into 'saswp_modify_schema_output' to remove duplicate Organization
+ * schemas that SASWP generates (one with address, one without).
+ *
+ * @param array $schemas Array of all schema output arrays.
+ * @return array Deduplicated schema array.
+ */
+function frl_thirdparty_deduplicate_schemas(array $schemas): array
+{
+    static $done = false;
+    if ($done) {
+        return $schemas;
+    }
+
+    $seen_ids = [];
+    $deduplicated = [];
+
+    foreach ($schemas as $schema) {
+        if (!is_array($schema) || empty($schema['@id'])) {
+            $deduplicated[] = $schema;
+            continue;
+        }
+
+        $id = $schema['@id'];
+        $type = $schema['@type'] ?? '';
+
+        // Only deduplicate Organization schemas
+        if ($type !== 'Organization') {
+            $deduplicated[] = $schema;
+            continue;
+        }
+
+        // First occurrence: keep it
+        if (!isset($seen_ids[$id])) {
+            $seen_ids[$id] = $schema;
+            $deduplicated[] = $schema;
+            continue;
+        }
+
+        // Duplicate found: keep the one with more data (prefer the one with 'address')
+        $existing = $seen_ids[$id];
+        $existing_keys = count(array_keys($existing));
+        $new_keys = count(array_keys($schema));
+
+        if ($new_keys > $existing_keys) {
+            // Replace the kept version with this more complete one
+            $seen_ids[$id] = $schema;
+            // Update in the output array
+            foreach ($deduplicated as $i => $item) {
+                if (is_array($item) && ($item['@id'] ?? '') === $id) {
+                    $deduplicated[$i] = $schema;
+                    break;
+                }
+            }
+        }
+        // Otherwise: discard $schema, keep existing
+    }
+
+    $done = true;
+
+    return $deduplicated;
 }
 
 // =============================================================================
