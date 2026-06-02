@@ -211,22 +211,21 @@ function frl_thirdparty_inject_schema_properties(array $schema, array $props): a
     }
 
     foreach ($props as $key => $value) {
-        // Skip if already set
-        if (isset($schema[$key])) {
-            continue;
-        }
-
-        // Array property (e.g. 'address'): deep-merge without overwriting
+        // Array property (e.g. 'address'): deep-merge without overwriting existing sub-keys
         if (is_array($value)) {
             if (!isset($schema[$key]) || !is_array($schema[$key])) {
                 $schema[$key] = $value;
             } else {
                 $schema[$key] = array_replace_recursive($schema[$key], $value);
             }
-        } else {
-            // Scalar property: set directly
-            $schema[$key] = $value;
+            continue;
         }
+
+        // Scalar property: skip if already set
+        if (isset($schema[$key])) {
+            continue;
+        }
+        $schema[$key] = $value;
     }
 
     return $schema;
