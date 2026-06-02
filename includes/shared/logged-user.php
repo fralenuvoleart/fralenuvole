@@ -174,10 +174,10 @@ function frl_admin_bar_add_menu_primary($data)
     ];
 
     // Rich snippets link
-    $data['menu_primary']['snippets'] = [
-        'id' => FRL_PREFIX . '-menu-child-snippets',
-        'title' => __('Rich Snippets'),
-        'href' => 'https://search.google.com/test/rich-results?url=' . $current_url,
+    $data['menu_primary']['schema'] = [
+        'id' => FRL_PREFIX . '-menu-child-schema',
+        'title' => __('Schema Validator'),
+        'href' => 'https://validator.schema.org/?hl=en-US#url=' . $current_url,
         'parent' => $parent_id,
         'meta' => ['target' => '_blank'],
     ];
