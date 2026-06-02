@@ -104,9 +104,12 @@ const FRL_THIRDPARTY_OUTBOUND_HOOKS = [
 
 const FRL_THIRDPARTY_SCHEMA_PROPERTIES = [
     'Organization' => [
-        'areaServed' => 'Worldwide',
         'address'    => [
             'addressCountry' => 'GE',
+            'streetAddress' => 'Zakaria Paliashvili Street 26',
+            'addressLocality' => 'Tbilisi',
+            'postalCode' => '0179',
         ],
+        'areaServed' => 'Worldwide',
     ],
 ];
