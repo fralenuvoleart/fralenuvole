@@ -35,12 +35,12 @@ The cache system addresses the following requirements on a multilingual WordPres
 
 | Requirement | Solution |
 |---|---|
-| **Unified caching API** across any backend | [`Frl_Cache_Manager`](includes/core/cache/class-cache-manager.php) abstracts over Litespeed, Docket Cache, Redis, Memcached, and WordPress Transients |
+| **Unified caching API** across any backend | [`Frl_Cache_Manager`](core/cache/class-cache-manager.php) abstracts over Litespeed, Docket Cache, Redis, Memcached, and WordPress Transients |
 | **Language-scoped keys** (Polylang/WPML) | `FRL_CACHE_LANGUAGE_GROUPS` adds a language prefix to cache keys |
 | **Automatic dependency clearing** | `FRL_CACHE_DEPENDENCIES` recursively clears groups when their dependents change |
 | **Graceful degradation** | Falls back to transients when no external object cache is available |
 | **Tiered cache clearing** | Light / All / Hard — different purge depths for different operational needs |
-| **Composite operations** | [`Frl_Cache_Operations`](includes/core/cache/class-cache-operations.php) sequences multi-step operations (clear + rewrite flush + third-party notification) with lifecycle hooks |
+| **Composite operations** | [`Frl_Cache_Operations`](core/cache/class-cache-operations.php) sequences multi-step operations (clear + rewrite flush + third-party notification) with lifecycle hooks |
 
 ---
 
@@ -76,7 +76,7 @@ In [`includes/bootstrap.php`](includes/bootstrap.php):
 
 1. `Frl_Cache_Manager` is loaded and `::init()` is called, which initializes O(1) lookup maps and triggers `auto_preload()` for the current context (admin/frontend)
 2. `Frl_Cache_Operations` is loaded after the manager
-3. Cache cleanup hooks ([`cache-cleanup.php`](includes/core/cache/cache-cleanup.php)) are loaded, registering WordPress event listeners for automatic cache invalidation
+3. Cache cleanup hooks ([`cache-cleanup.php`](core/cache/cache-cleanup.php)) are loaded, registering WordPress event listeners for automatic cache invalidation
 4. The public helper functions in [`functions-class-helpers.php`](includes/helpers/functions-class-helpers.php) provide the gate-keeper API
 
 ---
@@ -85,9 +85,9 @@ In [`includes/bootstrap.php`](includes/bootstrap.php):
 
 | File | Role |
 |---|---|
-| [`includes/core/cache/class-cache-manager.php`](includes/core/cache/class-cache-manager.php) | Core cache engine: runtime LRU, persistent get/set/delete, provider detection, batch loads, dependency cascading, purge operations, atomic clearing |
-| [`includes/core/cache/class-cache-operations.php`](includes/core/cache/class-cache-operations.php) | Orchestrator: multi-step composite operations with lifecycle hooks |
-| [`includes/core/cache/cache-cleanup.php`](includes/core/cache/cache-cleanup.php) | WordPress event hooks that trigger automatic cache invalidation |
+| [`core/cache/class-cache-manager.php`](core/cache/class-cache-manager.php) | Core cache engine: runtime LRU, persistent get/set/delete, provider detection, batch loads, dependency cascading, purge operations, atomic clearing |
+| [`core/cache/class-cache-operations.php`](core/cache/class-cache-operations.php) | Orchestrator: multi-step composite operations with lifecycle hooks |
+| [`core/cache/cache-cleanup.php`](core/cache/cache-cleanup.php) | WordPress event hooks that trigger automatic cache invalidation |
 | [`config/config-cache.php`](config/config-cache.php) | Group definitions, TTLs, dependencies, preload config, browser groups |
 | [`config/config-cache-operations.php`](config/config-cache-operations.php) | Multi-step operation definitions (`clear_hard`, `action_hard`, etc.) |
 | [`includes/helpers/functions-class-helpers.php`](includes/helpers/functions-class-helpers.php) | Gate-keeper functions (`frl_cache_is_loaded()`, `frl_cache_get/set/remember/clear`) |
@@ -190,25 +190,25 @@ See [§5.5 Dependency Cascading](#55-dependency-cascading).
 
 ## 5. Frl_Cache_Manager — Core
 
-[`Frl_Cache_Manager`](includes/core/cache/class-cache-manager.php) is a fully static class. It provides all cache read/write/clear operations across three storage tiers.
+[`Frl_Cache_Manager`](core/cache/class-cache-manager.php) is a fully static class. It provides all cache read/write/clear operations across three storage tiers.
 
 ### 5.1 Runtime LRU Cache
 
 A per-request in-memory caching layer.
 
 **Implementation:**
-- [`$runtime_cache`](includes/core/cache/class-cache-manager.php:16): `array` — static storage
-- [`$lru['access_order']`](includes/core/cache/class-cache-manager.php:23-25): Associative array tracking access order (most recently used at the tail). O(1) updates via `unset()` + `[]=`.
-- [`$group_keys`](includes/core/cache/class-cache-manager.php:18): Index of cache keys per group for O(1) group-level clearing
-- [`$max_runtime_items`](includes/core/cache/class-cache-manager.php:20): Configurable via `FRL_CACHE_RUNTIME_MAX_ITEMS`
+- [`$runtime_cache`](core/cache/class-cache-manager.php:16): `array` — static storage
+- [`$lru['access_order']`](core/cache/class-cache-manager.php:23-25): Associative array tracking access order (most recently used at the tail). O(1) updates via `unset()` + `[]=`.
+- [`$group_keys`](core/cache/class-cache-manager.php:18): Index of cache keys per group for O(1) group-level clearing
+- [`$max_runtime_items`](core/cache/class-cache-manager.php:20): Configurable via `FRL_CACHE_RUNTIME_MAX_ITEMS`
 
 **Eviction:** When the runtime cache exceeds `$max_runtime_items`, the least recently used item (head of `$lru['access_order']`) is evicted.
 
 **Key methods:**
-- [`set_runtime()`](includes/core/cache/class-cache-manager.php:413): Stores value, updates group index and LRU order, prunes if over limit
-- [`get_runtime()`](includes/core/cache/class-cache-manager.php:475): Returns value, moves key to MRU position
-- [`remove_runtime_item()`](includes/core/cache/class-cache-manager.php:448): Removes from storage, LRU tracking, and group index
-- [`purge_group_runtime()`](includes/core/cache/class-cache-manager.php:1309): Clears all runtime keys for a group at once
+- [`set_runtime()`](core/cache/class-cache-manager.php:413): Stores value, updates group index and LRU order, prunes if over limit
+- [`get_runtime()`](core/cache/class-cache-manager.php:475): Returns value, moves key to MRU position
+- [`remove_runtime_item()`](core/cache/class-cache-manager.php:448): Removes from storage, LRU tracking, and group index
+- [`purge_group_runtime()`](core/cache/class-cache-manager.php:1309): Clears all runtime keys for a group at once
 
 ### 5.2 Persistent Cache (Object Cache / Transients)
 
@@ -222,14 +222,14 @@ Two backends:
 The decision is made per-group: groups listed in `FRL_CACHE_PERSISTENT_GROUPS` use transients when object cache is absent; non-persistent groups bypass persistent storage entirely.
 
 **Key methods:**
-- [`set()`](includes/core/cache/class-cache-manager.php:496): Writes to runtime + persistent. Sanitizes values via `frl_sanitize_for_serialization()` before passing to `wp_cache_set()`/`set_transient()`.
-- [`get()`](includes/core/cache/class-cache-manager.php:547): Runtime → Persistent → Callback generation. Populates runtime cache on persistent hit.
-- [`get_multi()`](includes/core/cache/class-cache-manager.php:932): Batch load. Supports `$keys = null` (load all keys for group) or specific array of keys. On transient fallback with `$keys = null`, queries all transients for the group in a single `SELECT`, injects results into WordPress option cache via `wp_cache_add_multiple()`. Chunks specific-key loads in batches of 100.
-- [`preload_multi()`](includes/core/cache/class-cache-manager.php:1160): Calls `get_multi()` with `$return_values = false` (populates runtime cache without returning).
+- [`set()`](core/cache/class-cache-manager.php:496): Writes to runtime + persistent. Sanitizes values via `frl_sanitize_for_serialization()` before passing to `wp_cache_set()`/`set_transient()`.
+- [`get()`](core/cache/class-cache-manager.php:547): Runtime → Persistent → Callback generation. Populates runtime cache on persistent hit.
+- [`get_multi()`](core/cache/class-cache-manager.php:932): Batch load. Supports `$keys = null` (load all keys for group) or specific array of keys. On transient fallback with `$keys = null`, queries all transients for the group in a single `SELECT`, injects results into WordPress option cache via `wp_cache_add_multiple()`. Chunks specific-key loads in batches of 100.
+- [`preload_multi()`](core/cache/class-cache-manager.php:1160): Calls `get_multi()` with `$return_values = false` (populates runtime cache without returning).
 
 ### 5.3 Provider Detection
 
-[`get_provider_details()`](includes/core/cache/class-cache-manager.php:211) detects the active object cache provider.
+[`get_provider_details()`](core/cache/class-cache-manager.php:211) detects the active object cache provider.
 
 **Detection methods:**
 
@@ -261,7 +261,7 @@ The language is obtained via [`frl_get_language()`](includes/helpers/functions-t
 
 ### 5.5 Dependency Cascading
 
-[`clear_group_with_dependencies()`](includes/core/cache/class-cache-manager.php:1189) implements recursive dependency clearing.
+[`clear_group_with_dependencies()`](core/cache/class-cache-manager.php:1189) implements recursive dependency clearing.
 
 **Dependency graph** (from `FRL_CACHE_DEPENDENCIES`):
 
@@ -288,7 +288,7 @@ environment
   └── admin
 ```
 
-**Dedup:** [`$groups_cleared`](includes/core/cache/class-cache-manager.php:45) tracks which groups have been fully cleared this request. Full-group clears check this flag and skip if already done. Single-key clears do not set this flag, so dependencies still cascade on key-level clears.
+**Dedup:** [`$groups_cleared`](core/cache/class-cache-manager.php:45) tracks which groups have been fully cleared this request. Full-group clears check this flag and skip if already done. Single-key clears do not set this flag, so dependencies still cascade on key-level clears.
 
 **Dependency exclusion:** Callers can pass `$include_dependencies = false` to suppress cascading (used internally by `purge_light()` and `atomic_clear_group()`).
 
@@ -296,16 +296,16 @@ environment
 
 | Tier | Method | What It Clears | Dependencies | Heavy Groups |
 |---|---|---|---|---|
-| **Light** | [`purge_light()`](includes/core/cache/class-cache-manager.php:1621) | All groups except heavy | No | Skipped |
-| **All** | [`purge_all()`](includes/core/cache/class-cache-manager.php:855) | All groups | Yes | Cleared |
-| **Hard** | [`hard_cache_reset()`](includes/core/cache/class-cache-manager.php:1732) | `purge_all()` + `wp_cache_flush()` + all website transients + browser headers + `do_action()` | Yes | Cleared |
+| **Light** | [`purge_light()`](core/cache/class-cache-manager.php:1621) | All groups except heavy | No | Skipped |
+| **All** | [`purge_all()`](core/cache/class-cache-manager.php:855) | All groups | Yes | Cleared |
+| **Hard** | [`hard_cache_reset()`](core/cache/class-cache-manager.php:1732) | `purge_all()` + `wp_cache_flush()` + all website transients + browser headers + `do_action()` | Yes | Cleared |
 
 **`purge_all()` details:**
 1. Reset runtime state (cache, key cache, LRU, deferred writes, loaded groups)
 2. Batch-delete all plugin transients from DB (if transient fallback)
 3. Iterate all groups, calling `clear_group_with_dependencies()` with dependency cascade
 4. Respects `$transients_batch_deleted` flag to skip redundant per-group transient deletion
-5. Wraps execution in [`with_auth_preservation()`](includes/core/cache/class-cache-manager.php:835) to prevent auth cookie side-effects
+5. Wraps execution in [`with_auth_preservation()`](core/cache/class-cache-manager.php:835) to prevent auth cookie side-effects
 
 **`purge_light()` details:**
 1. Iterates all groups, skipping those in `FRL_CACHE_HEAVY_GROUPS`
@@ -320,7 +320,7 @@ environment
 
 ### 5.7 Atomic Group Clearing
 
-[`atomic_clear_group()`](includes/core/cache/class-cache-manager.php:1478) provides transactional clearing for transient-backed groups.
+[`atomic_clear_group()`](core/cache/class-cache-manager.php:1478) provides transactional clearing for transient-backed groups.
 
 **Behavior:**
 - **Object cache functional:** Delegates to `clear_group_with_dependencies()` (no transaction needed — object cache ops are inherently atomic per-key). Returns normalized stats.
@@ -330,7 +330,7 @@ environment
 
 ### 5.8 Race Condition Prevention
 
-[`remember()`](includes/core/cache/class-cache-manager.php:622) uses a locking mechanism:
+[`remember()`](core/cache/class-cache-manager.php:622) uses a locking mechanism:
 
 1. Generates a lock key via `wp_cache_add()` with `FRL_CACHE_LOCK_TTL` (2 seconds)
 2. On contention, waits with exponential backoff (50ms → 100ms → 200ms)
@@ -339,7 +339,7 @@ environment
 
 ### 5.9 Auth Preservation
 
-[`with_auth_preservation()`](includes/core/cache/class-cache-manager.php:835) snapshots and restores the current user's auth cookie around cache operations. This is necessary because:
+[`with_auth_preservation()`](core/cache/class-cache-manager.php:835) snapshots and restores the current user's auth cookie around cache operations. This is necessary because:
 
 - Object cache operations can interfere with WordPress's auth cookie validation
 - Options table operations (transient deletion) may indirectly affect auth state
@@ -351,7 +351,7 @@ Currently used by `purge_all()`.
 
 ## 6. Frl_Cache_Operations — Orchestrator
 
-[`Frl_Cache_Operations`](includes/core/cache/class-cache-operations.php) is a runtime dispatcher for composite cache operations. The operation definitions live in the `FRL_CACHE_OPERATIONS` constant ([`config/config-cache-operations.php`](config/config-cache-operations.php)).
+[`Frl_Cache_Operations`](core/cache/class-cache-operations.php) is a runtime dispatcher for composite cache operations. The operation definitions live in the `FRL_CACHE_OPERATIONS` constant ([`config/config-cache-operations.php`](config/config-cache-operations.php)).
 
 ### Two-Tier Design
 
@@ -402,37 +402,37 @@ The before hook receives `(string $operation)`. The after hook receives `(string
 
 ## 7. Cache Cleanup Hooks
 
-[`cache-cleanup.php`](includes/core/cache/cache-cleanup.php) registers WordPress event listeners that trigger automatic cache invalidation.
+[`cache-cleanup.php`](core/cache/cache-cleanup.php) registers WordPress event listeners that trigger automatic cache invalidation.
 
 ### Registered Hooks
 
 | Hook | Priority | Args | Function | What It Clears |
 |---|---|---|---|---|
-| `init` | 10 | 0 | [`frl_register_hooks_rewrite_flush()`](includes/core/cache/cache-cleanup.php:28) | Registers `created_/edited_/deleted_category/post_tag` hooks → rewrite flush |
-| `update_option` | 10 | 1 | [`frl_clear_option_transient()`](includes/core/cache/cache-cleanup.php:164) | Plugin transient matching option name |
-| `pll_save_strings_translations` | 10 | 0 | [`frl_clear_translation_cache()`](includes/core/cache/cache-cleanup.php:192) | Bumps `translation_version`, clears `translations` group (→ cascades to `metafields`) |
-| `edited_term` | 10 | 1 | [`frl_clear_term_permalink_cache()`](includes/core/cache/cache-cleanup.php:238) | `permalinks` group + tracked meta for term |
-| `save_post` | 10 | 1 | [`frl_clear_post_cache()`](includes/core/cache/cache-cleanup.php:43) | Postdata, permalinks, meta, icons, langswitcher, featured images |
-| `save_post_wp_navigation` | 10 | 1 | [`frl_clear_navigation_cache()`](includes/core/cache/cache-cleanup.php:208) | `wp_navigation_{$post_id}` key in `permalinks` group |
-| `wp_update_nav_menu` | 10 | 1 | [`frl_clear_menu_cache()`](includes/core/cache/cache-cleanup.php:225) | `wp_menu_{$menu_id}` key in `permalinks` group (separate namespace from navigation posts) |
-| `profile_update` | 10 | 1 | [`frl_clear_user_cache()`](includes/core/cache/cache-cleanup.php:182) | Tracked meta for user |
-| `updated_option` | 10 | 1 | [`frl_clear_option_cache()`](includes/core/cache/cache-cleanup.php:108) | Translated option caches for all languages (plugin-owned options only) |
-| `updated_option` | 10 | 1 | [`frl_clear_acf_option_icon_cache()`](includes/core/cache/cache-cleanup.php:146) | Entire `icons` group (when ACF options updated) |
-| `activated_plugin` | 10 | 2 | [`frl_purge_mu_plugin_exclusion_cache()`](includes/core/cache/cache-cleanup.php:296) | MU plugin exclusion cache keys |
+| `init` | 10 | 0 | [`frl_register_hooks_rewrite_flush()`](core/cache/cache-cleanup.php:28) | Registers `created_/edited_/deleted_category/post_tag` hooks → rewrite flush |
+| `update_option` | 10 | 1 | [`frl_clear_option_transient()`](core/cache/cache-cleanup.php:164) | Plugin transient matching option name |
+| `pll_save_strings_translations` | 10 | 0 | [`frl_clear_translation_cache()`](core/cache/cache-cleanup.php:192) | Bumps `translation_version`, clears `translations` group (→ cascades to `metafields`) |
+| `edited_term` | 10 | 1 | [`frl_clear_term_permalink_cache()`](core/cache/cache-cleanup.php:238) | `permalinks` group + tracked meta for term |
+| `save_post` | 10 | 1 | [`frl_clear_post_cache()`](core/cache/cache-cleanup.php:43) | Postdata, permalinks, meta, icons, langswitcher, featured images |
+| `save_post_wp_navigation` | 10 | 1 | [`frl_clear_navigation_cache()`](core/cache/cache-cleanup.php:208) | `wp_navigation_{$post_id}` key in `permalinks` group |
+| `wp_update_nav_menu` | 10 | 1 | [`frl_clear_menu_cache()`](core/cache/cache-cleanup.php:225) | `wp_menu_{$menu_id}` key in `permalinks` group (separate namespace from navigation posts) |
+| `profile_update` | 10 | 1 | [`frl_clear_user_cache()`](core/cache/cache-cleanup.php:182) | Tracked meta for user |
+| `updated_option` | 10 | 1 | [`frl_clear_option_cache()`](core/cache/cache-cleanup.php:108) | Translated option caches for all languages (plugin-owned options only) |
+| `updated_option` | 10 | 1 | [`frl_clear_acf_option_icon_cache()`](core/cache/cache-cleanup.php:146) | Entire `icons` group (when ACF options updated) |
+| `activated_plugin` | 10 | 2 | [`frl_purge_mu_plugin_exclusion_cache()`](core/cache/cache-cleanup.php:296) | MU plugin exclusion cache keys |
 | `deactivated_plugin` | 10 | 2 | `frl_purge_mu_plugin_exclusion_cache()` | MU plugin exclusion cache keys |
 
 ### Navigation Cache — Key Namespace Separation
 
 Two separate functions handle different navigation types to avoid ID namespace collisions:
 
-- [`frl_clear_navigation_cache($post_id)`](includes/core/cache/cache-cleanup.php:208) — hooked to `save_post_wp_navigation`. Cache key: `wp_navigation_{$post_id}` (post IDs)
-- [`frl_clear_menu_cache($menu_id)`](includes/core/cache/cache-cleanup.php:225) — hooked to `wp_update_nav_menu`. Cache key: `wp_menu_{$menu_id}` (term IDs)
+- [`frl_clear_navigation_cache($post_id)`](core/cache/cache-cleanup.php:208) — hooked to `save_post_wp_navigation`. Cache key: `wp_navigation_{$post_id}` (post IDs)
+- [`frl_clear_menu_cache($menu_id)`](core/cache/cache-cleanup.php:225) — hooked to `wp_update_nav_menu`. Cache key: `wp_menu_{$menu_id}` (term IDs)
 
 This prevents collisions between post IDs and term IDs that may use the same numeric value.
 
 ### Post Cache — Comprehensive Clearing
 
-[`frl_clear_post_cache($post_id)`](includes/core/cache/cache-cleanup.php:43) clears:
+[`frl_clear_post_cache($post_id)`](core/cache/cache-cleanup.php:43) clears:
 
 1. **Postdata:** `post_{$post_id}_translations` key
 2. **Permalinks:** `post_{$post_id}` key
@@ -567,13 +567,13 @@ Provider details are cached in a core transient (not through the cache manager's
 | Fix | File:Line | Description |
 |---|---|---|
 | `'all_options, false'` string leak | [`functions-options.php:124`](includes/helpers/functions-options.php:124), [:726](includes/helpers/functions-options.php:726) | `false` was inside the string literal, making it part of the cache key name instead of the `$include_dependencies` argument. Dependency skipping now works correctly. |
-| Auth cookie side-effect extraction | [`class-cache-manager.php:835`](includes/core/cache/class-cache-manager.php:835) | Extracted into `with_auth_preservation()` wrapper with documentation explaining the rationale. |
-| Double `serialize()` eliminated | [`class-cache-manager.php:504`](includes/core/cache/class-cache-manager.php:504) | `frl_sanitize_for_serialization()` output used directly — eliminates redundant pre-serialization test. |
-| `purge_all()` double work eliminated | [`class-cache-manager.php:887`](includes/core/cache/class-cache-manager.php:887) | `$transients_batch_deleted` flag skips redundant per-group transient deletion after batch delete. |
+| Auth cookie side-effect extraction | [`class-cache-manager.php:835`](core/cache/class-cache-manager.php:835) | Extracted into `with_auth_preservation()` wrapper with documentation explaining the rationale. |
+| Double `serialize()` eliminated | [`class-cache-manager.php:504`](core/cache/class-cache-manager.php:504) | `frl_sanitize_for_serialization()` output used directly — eliminates redundant pre-serialization test. |
+| `purge_all()` double work eliminated | [`class-cache-manager.php:887`](core/cache/class-cache-manager.php:887) | `$transients_batch_deleted` flag skips redundant per-group transient deletion after batch delete. |
 | LRU size made configurable | [`config/config-cache.php:146`](config/config-cache.php:146) | `FRL_CACHE_RUNTIME_MAX_ITEMS = 1000` constant, class references `self::$max_runtime_items`. |
-| Unrecognized group warning | [`class-cache-manager.php:1195`](includes/core/cache/class-cache-manager.php:1195) | `frl_log()` fires when group is in no configuration array. |
-| `atomic_clear_group()` return type normalization | [`class-cache-manager.php:1488`](includes/core/cache/class-cache-manager.php:1488) | Maps `clear_group_with_dependencies()` output to documented `$stats` shape for consistent return regardless of cache backend. |
-| Navigation cache ID namespace collision | [`cache-cleanup.php:208`](includes/core/cache/cache-cleanup.php:208), [:225](includes/core/cache/cache-cleanup.php:225) | Split `frl_clear_navigation_cache()` into two functions: one for `wp_navigation` posts (`wp_navigation_{$id}` key), one for nav_menu terms (`wp_menu_{$id}` key) — separate key namespaces. |
+| Unrecognized group warning | [`class-cache-manager.php:1195`](core/cache/class-cache-manager.php:1195) | `frl_log()` fires when group is in no configuration array. |
+| `atomic_clear_group()` return type normalization | [`class-cache-manager.php:1488`](core/cache/class-cache-manager.php:1488) | Maps `clear_group_with_dependencies()` output to documented `$stats` shape for consistent return regardless of cache backend. |
+| Navigation cache ID namespace collision | [`cache-cleanup.php:208`](core/cache/cache-cleanup.php:208), [:225](core/cache/cache-cleanup.php:225) | Split `frl_clear_navigation_cache()` into two functions: one for `wp_navigation` posts (`wp_navigation_{$id}` key), one for nav_menu terms (`wp_menu_{$id}` key) — separate key namespaces. |
 
 ### Known Considerations (Not Yet Addressed)
 
@@ -588,7 +588,7 @@ Provider details are cached in a core transient (not through the cache manager's
 
 | Concern | Resolution |
 |---|---|
-| `pre_option_*` filter removal targets plugin's own namespace only | [`reset_options_caches()`](includes/core/cache/class-cache-manager.php:1338) only removes `pre_option_frl_*` hooks — fully owned by this plugin |
+| `pre_option_*` filter removal targets plugin's own namespace only | [`reset_options_caches()`](core/cache/class-cache-manager.php:1338) only removes `pre_option_frl_*` hooks — fully owned by this plugin |
 | `$loaded_groups` reset fires only on full-group clears | Code path at line 1241 is inside the `$key === null` block — single-key clears don't touch it |
 | `auto_preload()` batching | Batching is optimal; disabling would scatter individual `get_transient()`/`wp_cache_get()` calls across page render, degrading performance |
 | `metadata` group on object cache sites | Works correctly with Redis/Litespeed/Memcached/Docket — only transient-only sites affected |

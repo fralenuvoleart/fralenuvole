@@ -125,7 +125,7 @@ The cron filter only executes during WP Cron requests (`frl_is_cron_job_request(
 
 ### Cache Invalidation
 
-When plugins are activated or deactivated, the persistent cache is purged via hooks in [`cache-cleanup.php`](includes/core/cache/cache-cleanup.php):
+When plugins are activated or deactivated, the persistent cache is purged via hooks in [`cache-cleanup.php`](core/cache/cache-cleanup.php):
 
 ```php
 add_action('activated_plugin',   'frl_purge_mu_plugin_exclusion_cache', 10, 2);
@@ -178,5 +178,5 @@ The DB query in `frl_get_auth_cookie_user_data()` is cached cross-request via `f
 | `assets/mu/frl-mu-plugin.php` | MU loader bootstrap — defines `FRL_MU_NAME`, loads bootstrap + helpers, registers `muplugins_loaded` hook |
 | `includes/mu/functions-mu.php` | All exclusion logic — combined DB query, exclusion types, cron cleanup, `frl_get_auth_cookie_user_data()`, `frl_mu_check_access()` |
 | `includes/helpers/functions-access-control.php` | Contains `frl_has_access()`, `frl_is_admin_page()` |
-| `includes/core/cache/cache-cleanup.php` | Cache invalidation hooks for `activated_plugin`/`deactivated_plugin` |
+| `core/cache/cache-cleanup.php` | Cache invalidation hooks for `activated_plugin`/`deactivated_plugin` |
 | `config/config-cache.php` | Cache group configuration — data stored in `options` group |

@@ -38,7 +38,7 @@ ThemeKit adds contextual classes to the body tag to facilitate targeted styling.
 ThemeKit uses a **Procedural, Hook-Driven Registry** pattern. The `frl_themekit_init()` function acts as the central dispatcher, registering filters and actions based on the current configuration.
 
 ### Key Components
-- **Logic:** `includes/core/themekit/themekit.php`
+- **Logic:** `core/themekit/themekit.php`
 - **Configuration:** `config/config-themekit.php` (Constants for priorities, categories, and tracked params).
 - **Settings:** Managed via `frl_get_option` calls throughout the initialization.
 

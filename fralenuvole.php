@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Fralenuvole
  * Description: Multi-environment and performance management framework with comprehensive backend suite for admins and devs.
- * Version: 5.7.2.6
+ * Version: 5.7.2.7
  * Requires at least: 7.0
  * Requires PHP: 8.3
  * Text Domain: fralenuvole
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Upgrade routines trigger only when the first 3 version numbers change: 1.1.1 -> 1.1.2
-const FRL_VERSION = '5.7.2.6';
+const FRL_VERSION = '5.7.2.7';
 
 // Load required core files and constants
 require_once __DIR__ . '/includes/bootstrap.php';
@@ -91,11 +91,11 @@ function frl_plugins_loaded()
 function frl_load_core_components()
 {
     // Load core files first (cache-manager already loaded in bootstrap)
-    require_once FRL_DIR_PATH . 'includes/core/cache/cache-cleanup.php';
+    require_once FRL_DIR_PATH . 'core/cache/cache-cleanup.php';
 
     // Environment Manager — only load + init if not explicitly disabled
     if (!frl_get_option('disable_environment')) {
-        require_once FRL_DIR_PATH . 'includes/core/environment/environment-manager.php';
+        require_once FRL_DIR_PATH . 'core/environment/environment-manager.php';
         frl_environment_init();
     }
 
@@ -103,18 +103,18 @@ function frl_load_core_components()
     // frl_is_multilingual_plugin_active() checks Polylang/WPML constants which are defined
     // during plugin file inclusion (before plugins_loaded), so it is safe to call here.
     if (frl_is_multilingual_plugin_active() && !frl_get_option('disable_translator')) {
-        require_once FRL_DIR_PATH . 'includes/core/translator/translator.php';
+        require_once FRL_DIR_PATH . 'core/translator/translator.php';
         frl_translator_init();
     }
 
     // Rewriter — only load + init if not explicitly disabled
     if (!frl_get_option('disable_rewriter')) {
-        require_once FRL_DIR_PATH . 'includes/core/rewriter/class-rewriter.php';
+        require_once FRL_DIR_PATH . 'core/rewriter/class-rewriter.php';
         frl_rewriter_init();
     }
 
     // Themekit — always loaded (no master disable toggle)
-    require_once FRL_DIR_PATH . 'includes/core/themekit/themekit.php';
+    require_once FRL_DIR_PATH . 'core/themekit/themekit.php';
 
     // Load always-active features
     require_once FRL_DIR_PATH . 'includes/main.php';

@@ -39,15 +39,15 @@ if (defined('FRL_MODE') && FRL_MODE === 'disable') {
 require_once dirname(__DIR__) . '/config/config.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions.php';
 
-require_once FRL_DIR_PATH . 'includes/core/cache/class-cache-manager.php';
+require_once FRL_DIR_PATH . 'core/cache/class-cache-manager.php';
 Frl_Cache_Manager::init();
 
-require_once FRL_DIR_PATH . 'includes/core/cache/class-cache-operations.php';
+require_once FRL_DIR_PATH . 'core/cache/class-cache-operations.php';
 
-require_once FRL_DIR_PATH . 'includes/core/error-handler.php';
+require_once FRL_DIR_PATH . 'core/error-handler.php';
 frl_errors_init();
 
 // Register rewriter CLI commands for WP-CLI
 if (defined('WP_CLI') && WP_CLI) { // @phpstan-ignore-line alwaysFalse
-    require_once FRL_DIR_PATH . 'includes/core/rewriter/cli/class-rewriter-cli.php';
+    require_once FRL_DIR_PATH . 'core/rewriter/cli/class-rewriter-cli.php';
 }

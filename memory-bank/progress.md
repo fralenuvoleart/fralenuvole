@@ -22,7 +22,7 @@
 
 ### Timing Bug Fix — [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:179)
 - **Problem:** "Flush Rewrite Rules" button showed no Litespeed admin notification, while "Clear Caches (Hard)" did.
-- **Root cause:** [`register_cache_invalidation_hooks()`](includes/core/rewriter/class-rewriter.php:446) registers `update_option_permalink_structure` → `clear_rewriter_caches()` inside a `wp_loaded` callback. The button action handler runs at `init:10` (before `wp_loaded`), so the hook listener was never registered and `frl_thirdparty_maybe_notify('rewrite_flush')` never executed. `flush_rewrite_rules(true)` also silently failed.
+- **Root cause:** [`register_cache_invalidation_hooks()`](core/rewriter/class-rewriter.php:446) registers `update_option_permalink_structure` → `clear_rewriter_caches()` inside a `wp_loaded` callback. The button action handler runs at `init:10` (before `wp_loaded`), so the hook listener was never registered and `frl_thirdparty_maybe_notify('rewrite_flush')` never executed. `flush_rewrite_rules(true)` also silently failed.
 - **Why "Clear Caches (Hard)" worked:** Its operation has `frl_thirdparty_maybe_notify('hard')` as a **direct step**, not via the rewriter's deferred hook chain.
 - **Fix:** Added `did_action('wp_loaded')` fallback in [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:188) — if `wp_loaded` hasn't fired yet, `flush_rewrite_rules(true)` and `frl_thirdparty_maybe_notify('rewrite_flush')` run directly. After `wp_loaded`, hooks handle it as before (no double-fire).
 
@@ -43,8 +43,8 @@
   - [`includes/plugin-lifecycle.php`](includes/plugin-lifecycle.php) — rewrote: added `frl_flush_rewrite_rules()`, deleted 3 functions, cron hook now points directly to `frl_flush_rewrite_rules`
   - [`includes/helpers/functions-action-handlers.php:327`](includes/helpers/functions-action-handlers.php:327) — calls `frl_flush_rewrite_rules()`
   - [`admin/helpers/functions-admin-action-handlers.php:500`](admin/helpers/functions-admin-action-handlers.php:500) — calls `frl_flush_rewrite_rules()`
-  - [`includes/core/rewriter/class-rewriter.php`](includes/core/rewriter/class-rewriter.php) — deleted `flush_rules()`, updated `force_rules_refresh()` and repair path
-  - [`includes/core/rewriter/class-rewriter-coordinator.php:277`](includes/core/rewriter/class-rewriter-coordinator.php:277) — `force_refresh()` calls `frl_flush_rewrite_rules()`
+  - [`core/rewriter/class-rewriter.php`](core/rewriter/class-rewriter.php) — deleted `flush_rules()`, updated `force_rules_refresh()` and repair path
+  - [`core/rewriter/class-rewriter-coordinator.php:277`](core/rewriter/class-rewriter-coordinator.php:277) — `force_refresh()` calls `frl_flush_rewrite_rules()`
   - [`config/config-cache-operations.php`](config/config-cache-operations.php) — `action_hard`, `action_flush_rewrite_rules`, `env_enforce_full` all call `frl_flush_rewrite_rules`
   - [`modules/thirdparty/config-constants-thirdparty.php:79`](modules/thirdparty/config-constants-thirdparty.php:79) — updated stale comment
 - **Zero regression:** Cron event name preserved for backward compatibility, `clear_rewriter_caches()` untouched.
@@ -99,7 +99,7 @@
   - **Cron query fix (confirmed applied):** The cron DB query in [`frl_get_exclusion_options()`](includes/mu/functions-mu.php:30) is now guarded behind [`frl_is_cron_job_request()`](includes/helpers/functions-access-control.php:475). On non-cron requests, `$options['cron'] = []` without touching the DB. Cron data is intentionally NOT cached via `frl_cache_remember` — stale cron data would cause duplicate event execution during WP-Cron cycles. Request-level static cache in `frl_get_exclusion_options():32` handles per-request dedup.
 
 ### Cache Operation Orchestrator (v5.4.0)
-- **Added `Frl_Cache_Operations`** (`includes/core/cache/class-cache-operations.php`):
+- **Added `Frl_Cache_Operations`** (`core/cache/class-cache-operations.php`):
   - **Two-tier `FRL_CACHE_OPERATIONS` constant** defined in `config/config-cache-operations.php` (loaded via `config/config.php`):
     - `clear_hard`, `clear_all`, `clear_light` — Helper-level operations that `frl_cache_clear()` delegates to. Each step enumerates granular calls (e.g., `[ 'Frl_Cache_Manager', 'hard_cache_reset' ]` + `frl_thirdparty_maybe_notify('hard')`).
     - `action_hard`, `action_flush_rewrite_rules`, `action_clear_plugin_transients`, `action_clear_website_transients`, `action_clear_scripts_tags` — Admin-action-level operations called by action handlers. Compose helper calls with additional steps (e.g., rewrite flush).
@@ -141,39 +141,39 @@
 - **Zero regressions:** All 39 non-MU-plugin callers of `frl_has_access()` are in standard post-`plugins_loaded` contexts.
 
 ### Fixed `@` Suppression Detection in Error Handler (2026-04-28)
-- **Bug:** [`frl_errors_handle_error()`](includes/core/error-handler.php:101) only checked `error_reporting() === 4437` to detect `@`-suppressed errors. In PHP 8.0+, `@` sets `error_reporting()` to `0`, not `4437`, so suppressed warnings (like `unserialize()` errors from excluded plugins' corrupted term meta) were being logged.
-- **Fix:** Added `$current_reporting === 0` check alongside the existing `4437` check at [line 148](includes/core/error-handler.php:148). Now correctly suppresses `@`-silenced errors on both PHP < 8.0 and PHP 8.0+.
+- **Bug:** [`frl_errors_handle_error()`](core/error-handler.php:101) only checked `error_reporting() === 4437` to detect `@`-suppressed errors. In PHP 8.0+, `@` sets `error_reporting()` to `0`, not `4437`, so suppressed warnings (like `unserialize()` errors from excluded plugins' corrupted term meta) were being logged.
+- **Fix:** Added `$current_reporting === 0` check alongside the existing `4437` check at [line 148](core/error-handler.php:148). Now correctly suppresses `@`-silenced errors on both PHP < 8.0 and PHP 8.0+.
 
 ### Cache System PHPDoc & Comment Audit (2026-04-28)
-- **Audited** all PHPDocs, `@param`/`@return` blocks, and internal comments in [`includes/core/cache/`](includes/core/cache/) (3 files)
+- **Audited** all PHPDocs, `@param`/`@return` blocks, and internal comments in [`core/cache/`](core/cache/) (3 files)
 - **7 inaccuracies corrected:**
-  1. [`cache-cleanup.php:11`](includes/core/cache/cache-cleanup.php:11) — "Register term-change hooks" → "On init, register term-change hooks that trigger rewrite flush"
-  2. [`cache-cleanup.php:198`](includes/core/cache/cache-cleanup.php:198) — "nav and blocks groups" → "metafields group" (matched to actual `FRL_CACHE_DEPENDENCIES`)
-  3. [`cache-cleanup.php:203-205`](includes/core/cache/cache-cleanup.php:203) — Navigation cache doc/param updated to reflect both `save_post_wp_navigation` and `wp_update_nav_menu` usage
-  4. [`cache-cleanup.php:210`](includes/core/cache/cache-cleanup.php:210) — "Simply clear the navigation cache group" → "Clear the wp_navigation key within the permalinks group"
-  5. [`cache-cleanup.php:245`](includes/core/cache/cache-cleanup.php:245) — Tracked meta guard comment simplified for typed `int` param
-  6. [`class-cache-manager.php`](includes/core/cache/class-cache-manager.php) — 3 stale comments updated (`"New tracking"`, `"New feature"`, `"REMOVED"`); `purge_all()` `@return` updated for early-return case
-  7. [`class-cache-operations.php:150`](includes/core/cache/class-cache-operations.php:150) — `get_operation_map()` `@return` from generic `array` to typed shape
+  1. [`cache-cleanup.php:11`](core/cache/cache-cleanup.php:11) — "Register term-change hooks" → "On init, register term-change hooks that trigger rewrite flush"
+  2. [`cache-cleanup.php:198`](core/cache/cache-cleanup.php:198) — "nav and blocks groups" → "metafields group" (matched to actual `FRL_CACHE_DEPENDENCIES`)
+  3. [`cache-cleanup.php:203-205`](core/cache/cache-cleanup.php:203) — Navigation cache doc/param updated to reflect both `save_post_wp_navigation` and `wp_update_nav_menu` usage
+  4. [`cache-cleanup.php:210`](core/cache/cache-cleanup.php:210) — "Simply clear the navigation cache group" → "Clear the wp_navigation key within the permalinks group"
+  5. [`cache-cleanup.php:245`](core/cache/cache-cleanup.php:245) — Tracked meta guard comment simplified for typed `int` param
+  6. [`class-cache-manager.php`](core/cache/class-cache-manager.php) — 3 stale comments updated (`"New tracking"`, `"New feature"`, `"REMOVED"`); `purge_all()` `@return` updated for early-return case
+  7. [`class-cache-operations.php:150`](core/cache/class-cache-operations.php:150) — `get_operation_map()` `@return` from generic `array` to typed shape
 - **2 code bugs patched:**
-  - [`atomic_clear_group()`](includes/core/cache/class-cache-manager.php:1478) return type normalized — maps `clear_group_with_dependencies()` output to documented `$stats` shape for consistent return regardless of cache backend (lines 1488-1496)
-  - [`frl_clear_navigation_cache()`](includes/core/cache/cache-cleanup.php:208) ID namespace collision — split into separate `frl_clear_navigation_cache()` (wp_navigation post) and new `frl_clear_menu_cache()` (nav_menu term) with distinct `wp_navigation_`/`wp_menu_` key prefixes (lines 17-18, 202-230)
+  - [`atomic_clear_group()`](core/cache/class-cache-manager.php:1478) return type normalized — maps `clear_group_with_dependencies()` output to documented `$stats` shape for consistent return regardless of cache backend (lines 1488-1496)
+  - [`frl_clear_navigation_cache()`](core/cache/cache-cleanup.php:208) ID namespace collision — split into separate `frl_clear_navigation_cache()` (wp_navigation post) and new `frl_clear_menu_cache()` (nav_menu term) with distinct `wp_navigation_`/`wp_menu_` key prefixes (lines 17-18, 202-230)
 
 ### Cache System Review & Fixes Applied (2026-04-28)
-- **Comprehensive review** of `includes/core/cache/` system written to `plans/cache-system-review.md`
+- **Comprehensive review** of `core/cache/` system written to `plans/cache-system-review.md`
 - **6 fixes applied:**
   1. ✅ `'all_options, false'` string-as-parameter bug at [`functions-options.php:124`](includes/helpers/functions-options.php:124) & [:726](includes/helpers/functions-options.php:726) — changed to separate arguments. Dependency skipping now works.
-  2. ✅ Auth cookie side-effect extracted — [`with_auth_preservation()`](includes/core/cache/class-cache-manager.php:828) wrapper method with docblock
-  3. ✅ Double `serialize()` eliminated — [`frl_sanitize_for_serialization()`](includes/core/cache/class-cache-manager.php:504) output used directly
-  4. ✅ `purge_all()` double work eliminated — [`$transients_batch_deleted`](includes/core/cache/class-cache-manager.php:47) flag skips redundant per-group transient deletion
+  2. ✅ Auth cookie side-effect extracted — [`with_auth_preservation()`](core/cache/class-cache-manager.php:828) wrapper method with docblock
+  3. ✅ Double `serialize()` eliminated — [`frl_sanitize_for_serialization()`](core/cache/class-cache-manager.php:504) output used directly
+  4. ✅ `purge_all()` double work eliminated — [`$transients_batch_deleted`](core/cache/class-cache-manager.php:47) flag skips redundant per-group transient deletion
   5. ✅ LRU size made configurable — [`FRL_CACHE_RUNTIME_MAX_ITEMS = 1000`](config/config-cache.php:148) constant
-  6. ✅ Unrecognized group warning — [`frl_log()`](includes/core/cache/class-cache-manager.php:1195) fires when group is in no config array
+  6. ✅ Unrecognized group warning — [`frl_log()`](core/cache/class-cache-manager.php:1195) fires when group is in no config array
 - **Issues retracted after code review:** pre_option filter removal (plugin's own namespace only), $loaded_groups reset (only on full clears), auto_preload overhead (batching is optimal), all-static design and non-filterable constants (by user direction)
 - **Remaining:** `metadata` group not in `FRL_CACHE_PERSISTENT_GROUPS` — affects transient-only sites only
 - (Review content archived in [`docs/CACHE.md §11`](docs/CACHE.md:565) — plan file deleted as obsolete)
 
 ---
 ### Cache System Architectural Reference Written (2026-04-28)
-- **Wrote comprehensive [`docs/CACHE.md`](docs/CACHE.md)** — synthesized from source files (`includes/core/cache/`), config files (`config/config-cache*.php`), and existing plan reviews (`plans/cache-system-review.md`, `plans/cache-orchestrator-implementation.md`)
+- **Wrote comprehensive [`docs/CACHE.md`](docs/CACHE.md)** — synthesized from source files (`core/cache/`), config files (`config/config-cache*.php`), and existing plan reviews (`plans/cache-system-review.md`, `plans/cache-orchestrator-implementation.md`)
 - Covers: architecture overview, file map, group configuration, `Frl_Cache_Manager` internals (LRU, persistent cache, provider detection, language keys, dependency cascading, clearing tiers, atomic ops, race prevention, auth preservation), `Frl_Cache_Operations` orchestrator, cleanup hooks, helper API reference, clearing behavior reference, performance considerations, and complete bug/fix history
 - Serves as a future synthetic reference for developers to understand caching features and behavior without reading every source file
 
@@ -183,7 +183,7 @@
 
 - **Problem:** `frl_rewriter_register_features` action fired at coordinator construction time (`plugins_loaded/5`), before module files were loaded — modules couldn't register features.
 - **Fix:** Moved `do_action()` + `usort()` from `register_features()` (constructor) to a `plugins_loaded/7` hook in `register_hooks()`. Now modules load at `plugins_loaded/5` → action fires at `plugins_loaded/7` → features sorted → registered at `init:15`.
-- **Scope:** ~3 lines moved in [`class-rewriter-coordinator.php`](includes/core/rewriter/class-rewriter-coordinator.php). Zero regressions verified.
+- **Scope:** ~3 lines moved in [`class-rewriter-coordinator.php`](core/rewriter/class-rewriter-coordinator.php). Zero regressions verified.
 - **Module DX:** Call `$coordinator->add_feature()` from module entry point. Default priority is 99 for features not in `FRL_REWRITER_PRIORITIES`.
 - **Docs:** [`docs/REWRITER.md`](docs/REWRITER.md) updated with bootstrap flow, timeline, and "Module Plugability" section.
 - **Plan:** [`plans/rewriter-module-plugability.md`](plans/rewriter-module-plugability.md) updated with final approach.
@@ -215,7 +215,7 @@
   - **Added `clear_options` and `clear_rewriter`** as orchestrated `clear_*` operations in [`FRL_CACHE_OPERATIONS`](../config/config-cache-operations.php) — previously these bypassed the orchestrator (direct `Frl_Cache_Manager::clear_group_with_dependencies()`).
   - **Added both to `$orchestrated_groups`** in [`frl_cache_clear()`](../includes/helpers/functions-class-helpers.php:178) — now `frl_cache_clear('options')` and `frl_cache_clear('rewriter')` route through the orchestrator, giving full visibility in `get_operation_map()`.
   - **Added 3 `env_*` operations** — `env_enforce_full`, `env_enforce_url_change`, `env_enforce_options` — mapping to each decision path in the change-type classifier. `env_enforce_none` was removed per user direction (guard pattern: orchestrator call is skipped entirely when `$env_op` is empty).
-  - **Refactored classifier** in [`class-environment-manager.php`](../includes/core/environment/class-environment-manager.php) — selects the `env_*` operation key and dispatches via `Frl_Cache_Operations::run($env_op)` (guarded: only runs when `$env_op` is non-empty) instead of calling `frl_cache_clear()` / `frl_schedule_admin_rewrite_flush()` directly.
+  - **Refactored classifier** in [`class-environment-manager.php`](../core/environment/class-environment-manager.php) — selects the `env_*` operation key and dispatches via `Frl_Cache_Operations::run($env_op)` (guarded: only runs when `$env_op` is non-empty) instead of calling `frl_cache_clear()` / `frl_schedule_admin_rewrite_flush()` directly.
 - **Result:** The orchestrator now has three tiers — `clear_*` (helpers), `action_*` (admin actions), `env_*` (environment manager). Every cache clearing path is documented in one place.
 - **Reference:** [`plans/env-manager-orchestrator-integration.md`](../plans/env-manager-orchestrator-integration.md)
 
@@ -225,7 +225,7 @@
   - `frl_thirdparty_maybe_notify('all')` notifies **zero** plugins — no outbound hook listens for `'all'` trigger (only `'hard'` and `'rewrite_flush'`)
   - Module changes DO require rewrite flush (modules register features via `add_feature()` at `plugins_loaded/5`)
   - The monolithic `frl_cache_clear('all')` was redundant with targeted clears inside apply methods (double-clearing)
-- **Fix:** Replaced the monolithic clear with a change-type classifier at [`class-environment-manager.php:236`](../includes/core/environment/class-environment-manager.php:236):
+- **Fix:** Replaced the monolithic clear with a change-type classifier at [`class-environment-manager.php:236`](../core/environment/class-environment-manager.php:236):
   - Plugin/module changes → full purge + rewrite flush
   - `siteurl`/`home` changes → full purge
   - Option-only changes → options group clear
@@ -235,11 +235,11 @@
 
 ### C1+ — Remove redundant targeted clears
 - **Problem:** `apply_plugin_options()` and `apply_modules_options()` each independently called `frl_cache_clear('options')` when changes were made (non-force mode), but these were immediately overwritten by the parent `frl_cache_clear('all')`.
-- **Fix:** Removed `$clear_cache_on_update` variable and `frl_cache_clear('options')` calls from both methods in [`class-environment-applier.php`](../includes/core/environment/class-environment-applier.php). All cache clearing is now centralized in the change-type classifier in `enforce_environment_settings()`.
+- **Fix:** Removed `$clear_cache_on_update` variable and `frl_cache_clear('options')` calls from both methods in [`class-environment-applier.php`](../core/environment/class-environment-applier.php). All cache clearing is now centralized in the change-type classifier in `enforce_environment_settings()`.
 
 ### P4 — Consolidate 15+ `update_option_{$name}` hooks
 - **Problem:** `setup_plugin_options_tracking()` registered individual `update_option_{$prefixed_name}` hooks for each managed option — creating N closures and N hook bucket entries per admin page load.
-- **Fix:** Replaced with a single `updated_option` hook using an O(1) lookup map at [`class-environment-monitor.php:16`](../includes/core/environment/class-environment-monitor.php:16):
+- **Fix:** Replaced with a single `updated_option` hook using an O(1) lookup map at [`class-environment-monitor.php:16`](../core/environment/class-environment-monitor.php:16):
   - Builds `prefixed_name → config_key` map once
   - `updated_option` passes 3 args (`$option, $old_value, $new_value`) — `add_action()` specifies `3` as `$accepted_args`
   - `isset($managed_options[$option])` guard for O(1) check
@@ -286,8 +286,8 @@
 
 ## Thirdparty Helper + CSS Extraction (2026-04-30)
 - **New helper:** [`frl_is_thirdparty_plugin_active()`](includes/helpers/functions.php:776) — checks if a plugin is active (site-wide or network-wide) using `frl_cache_remember('options', 'thirdparty_active_plugins', callback, WEEK_IN_SECONDS)`.
-- **Invalidation:** Cache cleared in [`frl_purge_mu_plugin_exclusion_cache()`](includes/core/cache/cache-cleanup.php:296) on `activated_plugin`/`deactivated_plugin` hooks.
-- **Cache manager refactored:** [`_is_plugin_globally_active()`](includes/core/cache/class-cache-manager.php:146) delegates to the public helper, eliminating duplicated logic.
+- **Invalidation:** Cache cleared in [`frl_purge_mu_plugin_exclusion_cache()`](core/cache/cache-cleanup.php:296) on `activated_plugin`/`deactivated_plugin` hooks.
+- **Cache manager refactored:** [`_is_plugin_globally_active()`](core/cache/class-cache-manager.php:146) delegates to the public helper, eliminating duplicated logic.
 - **Meow CSS extracted** from [`admin.css`](modules/thirdparty/assets/css/admin.css) into [`admin-meow.css`](modules/thirdparty/assets/css/admin-meow.css) — ~46% of the original file now conditionally enqueued.
 - **Array-based plugin detection:** [`frl_thirdparty_admin_scripts()`](modules/thirdparty/thirdparty.php:39) loops through `['ai-engine/ai-engine.php', 'seo-engine/seo-engine.php']` and enqueues Meow CSS when any match is found.
 
@@ -299,23 +299,23 @@
 
 ### Changes Applied
 
-#### [`includes/core/error-handler.php`](includes/core/error-handler.php)
+#### [`core/error-handler.php`](core/error-handler.php)
 1. **`frl_errors_init()` line 27** — Added `set_exception_handler('frl_errors_handle_exception')` alongside existing `set_error_handler()`
 2. **`$rebind` closure line 34** — Added `set_exception_handler()` to the re-bind closure (protects both `muplugins_loaded/PHP_INT_MAX` and `plugins_loaded/PHP_INT_MAX` hooks)
-3. **New function [`frl_errors_handle_exception(Throwable $e): void`](includes/core/error-handler.php:304)** — Maps exception types to error levels, delegates to existing [`frl_errors_handle_error()`](includes/core/error-handler.php:105) for consistent formatting, suppression rules, and logging. Has independent recursion guard.
+3. **New function [`frl_errors_handle_exception(Throwable $e): void`](core/error-handler.php:304)** — Maps exception types to error levels, delegates to existing [`frl_errors_handle_error()`](core/error-handler.php:105) for consistent formatting, suppression rules, and logging. Has independent recursion guard.
 
 ### Verification
-- ✅ PHP syntax valid (`php -l includes/core/error-handler.php` — no errors)
+- ✅ PHP syntax valid (`php -l core/error-handler.php` — no errors)
 - ✅ No `set_exception_handler()` calls existed previously — confirmed via codebase grep
 - ✅ All 6 `frl_errors_handle_error` references accounted for — no signatures changed
 - ✅ Zero regressions: No existing function signatures changed, no hooks removed/modified, suppression rules apply identically
 - ✅ Both error and exception handlers have independent `static $is_handling` recursion guards
 
 ### Re-Entrancy Hardening (2026-04-30)
-- Refactored both [`frl_errors_handle_error()`](includes/core/error-handler.php:105) and [`frl_errors_handle_exception()`](includes/core/error-handler.php:304) from manual `$guard = false` at each return point to `try/finally` pattern.
+- Refactored both [`frl_errors_handle_error()`](core/error-handler.php:105) and [`frl_errors_handle_exception()`](core/error-handler.php:304) from manual `$guard = false` at each return point to `try/finally` pattern.
 - **Before:** 5 manual reset points in error handler — brittle: if a new early return was added without reset, the guard would permanently disable the handler.
 - **After:** Single `finally` block guarantees reset regardless of exit path or unexpected exceptions from internal calls (`frl_log_add_details`, etc.).
-- **Consistent with** [`frl_errors_handle_doing_it_wrong()`](includes/core/error-handler.php:214) which already used `try/finally`.
+- **Consistent with** [`frl_errors_handle_doing_it_wrong()`](core/error-handler.php:214) which already used `try/finally`.
 - ✅ PHP syntax valid
 - ✅ No behavioral changes — all return values identical
 
@@ -510,10 +510,10 @@ Hardcoded legacy URLs (e.g., `pbservices.ge/ru/services/`) exist in post content
 
 ### Solution — Adapter Self-Contained Fallbacks
 - **Added `FRL_TRANSLATOR_DEFAULT_LANG`** constant in [`config/config-translator.php:18`](config/config-translator.php:18)
-- **Moved adapter `require_once`** to [`translator.php:14`](includes/core/translator/translator.php:14) — adapter always available after module loads
-- **Added private internal fallbacks** to [`Frl_Polylang_Adapter`](includes/core/translator/adapters/polylang.php:111): `get_default_language_internal()`, `get_active_languages_internal()`
+- **Moved adapter `require_once`** to [`translator.php:14`](core/translator/translator.php:14) — adapter always available after module loads
+- **Added private internal fallbacks** to [`Frl_Polylang_Adapter`](core/translator/adapters/polylang.php:111): `get_default_language_internal()`, `get_active_languages_internal()`
 - **Updated global helpers** in [`functions-translation-helpers.php:241`](includes/helpers/functions-translation-helpers.php:241) to delegate to adapter via `class_exists` check
-- **Removed duplicate `require_once`** from [`class-translation-service.php:62`](includes/core/translator/class-translation-service.php:62)
+- **Removed duplicate `require_once`** from [`class-translation-service.php:62`](core/translator/class-translation-service.php:62)
 - **Zero regression:** All 10 call sites traced, 8 edge cases verified, subdomain adapter behavior unchanged
 
 ### Documentation Updated

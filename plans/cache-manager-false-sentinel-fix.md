@@ -29,8 +29,8 @@ This creates an ambiguity: **a cached `false` value is indistinguishable from "k
 | # | File:Line | Callback returns `false` when... | Impact |
 |---|-----------|----------------------------------|--------|
 | 1 | [`admin/admin.php:325`](admin/admin.php:325) | Theme stylesheet doesn't exist | `file_exists()` runs every request |
-| 2 | [`class-cpt-base-removal-feature.php:315`](includes/core/rewriter/features/class-cpt-base-removal-feature.php:315) | No post found for slug | DB query runs every request |
-| 3 | [`class-cpt-base-removal-feature.php:317`](includes/core/rewriter/features/class-cpt-base-removal-feature.php:317) | No posts in `get_posts()` | DB query runs every request |
+| 2 | [`class-cpt-base-removal-feature.php:315`](core/rewriter/features/class-cpt-base-removal-feature.php:315) | No post found for slug | DB query runs every request |
+| 3 | [`class-cpt-base-removal-feature.php:317`](core/rewriter/features/class-cpt-base-removal-feature.php:317) | No posts in `get_posts()` | DB query runs every request |
 | 4 | [`functions.php:832`](includes/helpers/functions.php:832) | No post ID or empty taxonomy (early return, **never reaches cache**) | **NOT affected** — returns before `frl_cache_remember` |
 
 ### NOT Affected (return truthy values or `null`)
@@ -41,11 +41,11 @@ The remaining 81 callers return arrays, strings, objects, integers, or `null` �
 - **String returns**: URLs, HTML, slugs — truthy, safe
 - **Object returns**: `WP_User`, `WP_Post`, etc. — truthy, safe
 - **Integer returns**: IDs, timestamps — truthy (except `0`, but none return `0` from callbacks)
-- **`null` returns**: `Frl_Cache_Manager::get()` explicitly skips caching for `null` at [line 589-591](includes/core/cache/class-cache-manager.php:589) — safe by design
+- **`null` returns**: `Frl_Cache_Manager::get()` explicitly skips caching for `null` at [line 589-591](core/cache/class-cache-manager.php:589) — safe by design
 
 ### Edge Case: `0` as a cached value
 
-No caller was found returning `0` from a callback. If one existed, it would have the same ambiguity problem since `0 !== false` is `true` (so `0` would be cached correctly), but `if ($value !== null)` at [line 641](includes/core/cache/class-cache-manager.php:641) would still store it. **`0` is safe** — only `false` and `null` are problematic.
+No caller was found returning `0` from a callback. If one existed, it would have the same ambiguity problem since `0 !== false` is `true` (so `0` would be cached correctly), but `if ($value !== null)` at [line 641](core/cache/class-cache-manager.php:641) would still store it. **`0` is safe** — only `false` and `null` are problematic.
 
 ## Proposed Fix
 
@@ -119,7 +119,7 @@ private static function unwrap_value($raw): mixed {
 
 #### Step 2: Update `Frl_Cache_Manager::set()` to wrap values
 
-At [line 515-530](includes/core/cache/class-cache-manager.php:515):
+At [line 515-530](core/cache/class-cache-manager.php:515):
 ```php
 // BEFORE
 self::set_runtime($cache_key, $value, $group);
@@ -141,7 +141,7 @@ if (self::is_object_cache_truly_functional()) {
 
 #### Step 3: Update `Frl_Cache_Manager::get()` to unwrap values
 
-At [line 551-580](includes/core/cache/class-cache-manager.php:551):
+At [line 551-580](core/cache/class-cache-manager.php:551):
 ```php
 // Runtime cache check
 $data = self::get_runtime($cache_key);
@@ -175,7 +175,7 @@ if ($data !== false) {
 
 #### Step 4: Update `Frl_Cache_Manager::remember()` callback storage
 
-At [line 640-643](includes/core/cache/class-cache-manager.php:640):
+At [line 640-643](core/cache/class-cache-manager.php:640):
 ```php
 // BEFORE
 $value = $callback();
@@ -205,7 +205,7 @@ On first read after deployment, existing cached data won't have the `_frl_exists
 
 ### Files to Modify
 
-1. [`includes/core/cache/class-cache-manager.php`](includes/core/cache/class-cache-manager.php) — Add `wrap_value()`, `unwrap_value()`, update `get()`, `set()`, `remember()`
+1. [`core/cache/class-cache-manager.php`](core/cache/class-cache-manager.php) — Add `wrap_value()`, `unwrap_value()`, update `get()`, `set()`, `remember()`
 2. [`includes/helpers/functions.php`](includes/helpers/functions.php:847) — **Revert** the `false` → `[]` normalization in `frl_cf_get_post_terms()` since the cache manager now handles `false` correctly (optional — keeping it is also fine as defensive coding)
 3. [`admin/admin.php`](admin/admin.php:325) — **No change needed** — cache manager fix handles it automatically
 

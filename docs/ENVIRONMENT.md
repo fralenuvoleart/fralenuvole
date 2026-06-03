@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-04-29  
 **Applies to:** Fralenuvole v5.6.0  
-**Source:** [`includes/core/environment/`](../includes/core/environment/) (9 files)  
+**Source:** [`core/environment/`](../core/environment/) (9 files)  
 **Configuration:** [`config/environment/`](../config/environment/) (constants + snippets)
 
 ---
@@ -92,15 +92,15 @@ Utility:
 
 | File | Class/Trait | Responsibility |
 |------|-------------|----------------|
-| [`environment-manager.php`](../includes/core/environment/environment-manager.php) | — | Bootstrap loader; requires all sub-files |
-| [`class-environment-manager.php`](../includes/core/environment/class-environment-manager.php) | `Frl_Environment_Manager` | Public facade; init, enforce, config access, admin bar |
-| [`class-environment-config.php`](../includes/core/environment/class-environment-config.php) | `Frl_Environment_Config` | Domain config builder; FRL_ENV_MAP lookup; merge engine |
-| [`class-environment-state.php`](../includes/core/environment/class-environment-state.php) | `Frl_Environment_State` | State persistence; host change detection |
-| [`class-environment-monitor.php`](../includes/core/environment/class-environment-monitor.php) | `Frl_Environment_Monitor` | URL correction; option/plugin change tracking hooks |
-| [`class-environment-applier.php`](../includes/core/environment/class-environment-applier.php) | `Frl_Environment_Applier` | Applies WP options, plugin options, module states |
-| [`class-environment-plugin-manager.php`](../includes/core/environment/class-environment-plugin-manager.php) | `Frl_Environment_Plugin_Manager` | Plugin activation/deactivation |
-| [`class-environment-files.php`](../includes/core/environment/class-environment-files.php) | `Frl_Environment_Files` | File-based option loading with PHP syntax validation |
-| [`class-environment-utils.php`](../includes/core/environment/class-environment-utils.php) | `Frl_Environment_Host_Normalizer` (trait), `Frl_Environment_Utils` | Host normalization helpers; structured logging |
+| [`environment-manager.php`](../core/environment/environment-manager.php) | — | Bootstrap loader; requires all sub-files |
+| [`class-environment-manager.php`](../core/environment/class-environment-manager.php) | `Frl_Environment_Manager` | Public facade; init, enforce, config access, admin bar |
+| [`class-environment-config.php`](../core/environment/class-environment-config.php) | `Frl_Environment_Config` | Domain config builder; FRL_ENV_MAP lookup; merge engine |
+| [`class-environment-state.php`](../core/environment/class-environment-state.php) | `Frl_Environment_State` | State persistence; host change detection |
+| [`class-environment-monitor.php`](../core/environment/class-environment-monitor.php) | `Frl_Environment_Monitor` | URL correction; option/plugin change tracking hooks |
+| [`class-environment-applier.php`](../core/environment/class-environment-applier.php) | `Frl_Environment_Applier` | Applies WP options, plugin options, module states |
+| [`class-environment-plugin-manager.php`](../core/environment/class-environment-plugin-manager.php) | `Frl_Environment_Plugin_Manager` | Plugin activation/deactivation |
+| [`class-environment-files.php`](../core/environment/class-environment-files.php) | `Frl_Environment_Files` | File-based option loading with PHP syntax validation |
+| [`class-environment-utils.php`](../core/environment/class-environment-utils.php) | `Frl_Environment_Host_Normalizer` (trait), `Frl_Environment_Utils` | Host normalization helpers; structured logging |
 
 ---
 
@@ -504,7 +504,7 @@ Added at `admin_bar_menu` priority 9999.
 
 ### 9.2 Cache Clearing on Enforcement
 
-All cache clearing during environment enforcement is executed through the **cache orchestrator** ([`FRL_CACHE_OPERATIONS`](../../config/config-cache-operations.php)) for centralized visibility. The change-type classifier in [`enforce_environment_settings()`](../../includes/core/environment/class-environment-manager.php:236) inspects `$results` after all apply methods run, selects the appropriate `env_*` operation, and dispatches it via `Frl_Cache_Operations::run()` (guarded — skipped when `$env_op` is empty).
+All cache clearing during environment enforcement is executed through the **cache orchestrator** ([`FRL_CACHE_OPERATIONS`](../../config/config-cache-operations.php)) for centralized visibility. The change-type classifier in [`enforce_environment_settings()`](../../core/environment/class-environment-manager.php:236) inspects `$results` after all apply methods run, selects the appropriate `env_*` operation, and dispatches it via `Frl_Cache_Operations::run()` (guarded — skipped when `$env_op` is empty).
 
 **Three tiers of operations in the orchestrator:**
 
@@ -588,7 +588,7 @@ Files are named `{prefix}_{option_name}.php` where:
 | `update_option_{$prefixed_option}` | When a managed plugin option is updated | WordPress core |
 | `activated_plugin` | When any plugin is activated | WordPress core |
 | `deactivated_plugin` | When any plugin is deactivated | WordPress core |
-| `updated_option` | When any WordPress option is updated (WP 4.7+); fires with `($option_name, $old_value, $new_value)` | [`includes/core/environment/class-environment-monitor.php:37`](../../includes/core/environment/class-environment-monitor.php:37) |
+| `updated_option` | When any WordPress option is updated (WP 4.7+); fires with `($option_name, $old_value, $new_value)` | [`core/environment/class-environment-monitor.php:37`](../../core/environment/class-environment-monitor.php:37) |
 
 ### 12.3 Gateway Functions
 
@@ -621,7 +621,7 @@ A: The `FRL_ENV_MAP` keys must be unique. `pbservices.ge` and `staging.pbservice
 **Q: How does the `www.` prefix work?**
 A: `www.` is stripped for **matching** only (so `www.pbservices.ge` matches `pbservices.ge` in the map). However, `www.` is **preserved** in the `current_host` metadata for URL construction. The matcher is case-insensitive.
 
-   Note: `www.` stripping is handled by `build_domain_config()` at [`class-environment-config.php:49`](../../includes/core/environment/class-environment-config.php:49) — the actual config builder. The gatekeeper function `frl_is_valid_environment_host()` at [`functions-access-control.php:414`](../../includes/helpers/functions-access-control.php:414) does **not** strip `www.` before checking `array_key_exists()` on `$_SERVER['HTTP_HOST']`, but this has no practical impact because `build_domain_config()` performs the authoritative match. If you need to check host validity against `FRL_ENV_MAP`, prefer using `Frl_Environment_Config::get_domain_config()` rather than `frl_is_valid_environment_host()`.
+   Note: `www.` stripping is handled by `build_domain_config()` at [`class-environment-config.php:49`](../../core/environment/class-environment-config.php:49) — the actual config builder. The gatekeeper function `frl_is_valid_environment_host()` at [`functions-access-control.php:414`](../../includes/helpers/functions-access-control.php:414) does **not** strip `www.` before checking `array_key_exists()` on `$_SERVER['HTTP_HOST']`, but this has no practical impact because `build_domain_config()` performs the authoritative match. If you need to check host validity against `FRL_ENV_MAP`, prefer using `Frl_Environment_Config::get_domain_config()` rather than `frl_is_valid_environment_host()`.
 
 **Q: Can templates extend templates?**
 A: No. The `extends` mechanism is strictly one level (instance → template). Any `extends` key inside a template is silently stripped via `array_diff_key()`. The README documents this constraint.

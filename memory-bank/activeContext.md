@@ -10,8 +10,8 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
 ## ✅ Subdomain Adapter: Automatic Default Language Sync (2026-05-25 — implemented)
 - **Problem:** Manual step required to change Polylang's `default_lang` in DB on subdomain replica (`ru.pbservices.ge`) before the subdomain adapter works correctly.
 - **Fix:** Subdomain adapter hooks into EM's `frl_environment_before_wp_options` action at `init/10` to automatically sync the translation adapter's default language to the subdomain's language on first visit.
-- **Architecture:** EM provides extensibility via `do_action('frl_environment_before_wp_options', $config, $results)` at [`class-environment-applier.php:93`](includes/core/environment/class-environment-applier.php:93). Subdomain adapter delegates to translation adapter ([`Frl_Translation_Adapter_Interface::set_default_language()`](includes/core/translator/adapters/interface.php:108)) for DB updates. Polylang-specific logic lives in [`Frl_Polylang_Adapter`](includes/core/translator/adapters/polylang.php:143). Subdomain adapter then clears all fralenuvole caches (`frl_cache_clear('all')`), flushes rewrite rules (`frl_flush_rewrite_rules()`), and sets generic `cache_cleared` flag to suppress redundant EM cache operations. Polylang's language cache is cleaned automatically via `update_option_permalink_structure` hook — no separate `flush_cache()` call needed. The sync logs via `frl_log()` and displays an admin notice on next admin page load.
-- **Files modified:** [`class-environment-applier.php`](includes/core/environment/class-environment-applier.php:93), [`class-environment-manager.php`](includes/core/environment/class-environment-manager.php:239), [`interface.php`](includes/core/translator/adapters/interface.php:108), [`polylang.php`](includes/core/translator/adapters/polylang.php:143), [`class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php:422,1110), [`docs/SUBDOMAIN-ADAPTER.md`](docs/SUBDOMAIN-ADAPTER.md), [`memory-bank/systemPatterns.md`](memory-bank/systemPatterns.md:30)
+- **Architecture:** EM provides extensibility via `do_action('frl_environment_before_wp_options', $config, $results)` at [`class-environment-applier.php:93`](core/environment/class-environment-applier.php:93). Subdomain adapter delegates to translation adapter ([`Frl_Translation_Adapter_Interface::set_default_language()`](core/translator/adapters/interface.php:108)) for DB updates. Polylang-specific logic lives in [`Frl_Polylang_Adapter`](core/translator/adapters/polylang.php:143). Subdomain adapter then clears all fralenuvole caches (`frl_cache_clear('all')`), flushes rewrite rules (`frl_flush_rewrite_rules()`), and sets generic `cache_cleared` flag to suppress redundant EM cache operations. Polylang's language cache is cleaned automatically via `update_option_permalink_structure` hook — no separate `flush_cache()` call needed. The sync logs via `frl_log()` and displays an admin notice on next admin page load.
+- **Files modified:** [`class-environment-applier.php`](core/environment/class-environment-applier.php:93), [`class-environment-manager.php`](core/environment/class-environment-manager.php:239), [`interface.php`](core/translator/adapters/interface.php:108), [`polylang.php`](core/translator/adapters/polylang.php:143), [`class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php:422,1110), [`docs/SUBDOMAIN-ADAPTER.md`](docs/SUBDOMAIN-ADAPTER.md), [`memory-bank/systemPatterns.md`](memory-bank/systemPatterns.md:30)
 
 ## ✅ Flush Rewrite Rules Consolidation (2026-05-11 — implemented)
 - **Problem:** Page permalinks in secondary languages 404 over time. Flush button didn't fix it; required "Save Permalinks 2x + Purge Litespeed" manually.
@@ -19,11 +19,11 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Fix:** Single function [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:172) replaces 6 deleted legacy functions. Mirrors `WP_Rewrite::set_permalink_structure()`: handles timing (before/during/after init), fires `update_option_permalink_structure` (→ `clear_rewriter_caches()` + Polylang cache clean) + `permalink_structure_changed`. Immediate execution.
 - **Deleted (6):** `frl_flush_force_rewrite_rules()`, `frl_flush_rewrite_rules_mirror_permalink_save()`, `Frl_Rewriter::flush_rules()`, `frl_execute_rewrite_flush()`, `frl_schedule_admin_rewrite_flush()`, `frl_execute_scheduled_admin_flush()`.
 - **Kept (2):** `frl_schedule_rewrite_flush()` (schedules cron for before-init), `Frl_Rewriter::clear_rewriter_caches()` (reaction hooked to `update_option_*` actions — distinct purpose).
-- **Files:** 7 files modified — [`plugin-lifecycle.php`](includes/plugin-lifecycle.php), [`functions-action-handlers.php`](includes/helpers/functions-action-handlers.php:327), [`functions-admin-action-handlers.php`](admin/helpers/functions-admin-action-handlers.php:500), [`class-rewriter.php`](includes/core/rewriter/class-rewriter.php), [`class-rewriter-coordinator.php`](includes/core/rewriter/class-rewriter-coordinator.php:277), [`config-cache-operations.php`](config/config-cache-operations.php), [`config-constants-thirdparty.php`](modules/thirdparty/config-constants-thirdparty.php:79)
+- **Files:** 7 files modified — [`plugin-lifecycle.php`](includes/plugin-lifecycle.php), [`functions-action-handlers.php`](includes/helpers/functions-action-handlers.php:327), [`functions-admin-action-handlers.php`](admin/helpers/functions-admin-action-handlers.php:500), [`class-rewriter.php`](core/rewriter/class-rewriter.php), [`class-rewriter-coordinator.php`](core/rewriter/class-rewriter-coordinator.php:277), [`config-cache-operations.php`](config/config-cache-operations.php), [`config-constants-thirdparty.php`](modules/thirdparty/config-constants-thirdparty.php:79)
 - **Plan:** [`plans/fix-stale-rewrite-rules-litespeed.md`](plans/fix-stale-rewrite-rules-litespeed.md)
 
 ## 🔧 Flush Rewrite Rules — Litespeed Notification Fix (2026-05-12)
-- **Timing Bug:** Button action runs at `init:10` (before `wp_loaded`), but [`register_cache_invalidation_hooks()`](includes/core/rewriter/class-rewriter.php:446) defers hook registration to `wp_loaded`. Result: `clear_rewriter_caches()` never fires, so `frl_thirdparty_maybe_notify('rewrite_flush')` never executes.
+- **Timing Bug:** Button action runs at `init:10` (before `wp_loaded`), but [`register_cache_invalidation_hooks()`](core/rewriter/class-rewriter.php:446) defers hook registration to `wp_loaded`. Result: `clear_rewriter_caches()` never fires, so `frl_thirdparty_maybe_notify('rewrite_flush')` never executes.
 - **Fix:** Added `did_action('wp_loaded')` fallback in [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:188) — runs `flush_rewrite_rules(true)` and `frl_thirdparty_maybe_notify('rewrite_flush')` directly when called before `wp_loaded`.
 - **Cleanup:** Moved 3 getter functions from [`config-constants-thirdparty.php`](modules/thirdparty/config-constants-thirdparty.php) to [`thirdparty.php`](modules/thirdparty/thirdparty.php:251,271,296) — removed redundant `function_exists` wrappers.
 
@@ -37,7 +37,7 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Staging:** Add staging domain as top-level key — zero code changes needed
 
 ## 🏗️ Architecture Overview
-- **Error Handler:** Dual interception via `set_error_handler()` (PHP errors: `E_WARNING`, `E_NOTICE`, `E_DEPRECATED`, etc.) and `set_exception_handler()` (PHP 7+ uncaught Throwable: `TypeError`, `ValueError`, `DivisionByZeroError`, `ArgumentCountError`). Both registered at the earliest possible moment during MU plugin bootstrap. The exception handler [`frl_errors_handle_exception()`](includes/core/error-handler.php:304) delegates to the existing [`frl_errors_handle_error()`](includes/core/error-handler.php:105) for consistent formatting, suppression rules, and logging.
+- **Error Handler:** Dual interception via `set_error_handler()` (PHP errors: `E_WARNING`, `E_NOTICE`, `E_DEPRECATED`, etc.) and `set_exception_handler()` (PHP 7+ uncaught Throwable: `TypeError`, `ValueError`, `DivisionByZeroError`, `ArgumentCountError`). Both registered at the earliest possible moment during MU plugin bootstrap. The exception handler [`frl_errors_handle_exception()`](core/error-handler.php:304) delegates to the existing [`frl_errors_handle_error()`](core/error-handler.php:105) for consistent formatting, suppression rules, and logging.
 - **Feature-based rewriter:** Independent feature classes that self-register. The extension hook (`frl_rewriter_register_features`) fires at `plugins_loaded/7` (after module init at `plugins_loaded/5`) so module-loaded features participate in priority sorting. Module features not listed in `FRL_REWRITER_PRIORITIES` default to priority 99.
 - **5-backend cache system:** Litespeed, Docket Cache, Redis, Memcached, Transients
 - **3-tier options cascade:** Static → Persistent → DB with value normalization
@@ -46,7 +46,7 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Access Control Caching:** [`frl_get_auth_cookie_user_data()`](includes/mu/functions-mu.php:90) DB query now cached via `frl_cache_remember('admin', 'auth_cookie_user_' . $username, ..., 300)` — 300s TTL aligned with [`frl_has_access()`](includes/helpers/functions-access-control.php:95) standard path. Consistent "access control decisions cached for 5 minutes" rule across both functions. Both functions now live in [`functions-mu.php`](includes/mu/functions-mu.php) alongside their sole consumer.
 - **Cron query fix (applied):** In [`frl_get_exclusion_options()`](includes/mu/functions-mu.php:30), the cron DB query is now guarded behind [`frl_is_cron_job_request()`](includes/helpers/functions-access-control.php:475). On non-cron requests, `$options['cron'] = []` is set without touching the DB. On cron requests, fresh cron data is fetched via `$wpdb->get_var()`. Cron data is intentionally NOT cached via `frl_cache_remember` because stale cron data would cause duplicate event execution — the `cron` option changes on every WP-Cron execution cycle. Request-level static cache in `frl_get_exclusion_options():32` already deduplicates within a single request.
 - **Translation Module:** Adapter-based architecture decoupling the service from translation providers (Polylang/WPML), utilizing deferred registration via `shutdown` hook and multi-level caching.
-- **Cache Operations:** `Frl_Cache_Operations` (`includes/core/cache/class-cache-operations.php`) — runtime dispatcher for composite cache operations. The operation definitions live in `FRL_CACHE_OPERATIONS` constant (`config/config-cache-operations.php`, loaded via `config/config.php`). **Three-tier design:**
+- **Cache Operations:** `Frl_Cache_Operations` (`core/cache/class-cache-operations.php`) — runtime dispatcher for composite cache operations. The operation definitions live in `FRL_CACHE_OPERATIONS` constant (`config/config-cache-operations.php`, loaded via `config/config.php`). **Three-tier design:**
   - **`clear_*` operations** (`clear_hard`, `clear_all`, `clear_light`, `clear_options`, `clear_rewriter`): Helper-level operations that `frl_cache_clear()` delegates to for composite cache groups. Each enumerates granular steps with inline `note` fields documenting deferred chains. `clear_options` and `clear_rewriter` added 2026-04-29 to give `clear_group_with_dependencies('options'/'rewriter')` full orchestrator visibility.
   - **`action_*` operations** (`action_hard`, `action_flush_rewrite_rules`, `action_clear_plugin_transients`, `action_clear_website_transients`, `action_clear_scripts_tags`): Admin-action-level operations called from action handlers. Compose `clear_*` ops with additional steps (e.g., rewrite flush).
   - **`env_*` operations** (`env_enforce_full`, `env_enforce_url_change`, `env_enforce_options`): Environment Manager operations triggered by `enforce_environment_settings()`. Added 2026-04-29 — each maps to a specific decision path in the change-type classifier. The classifier now dispatches via `Frl_Cache_Operations::run($env_op)` (guarded: only runs when `$env_op` is non-empty) instead of calling `frl_cache_clear()` / `frl_schedule_admin_rewrite_flush()` directly. `env_enforce_none` was removed — when nothing changed, the orchestrator call is skipped entirely.
@@ -55,8 +55,8 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
   - **All existing helper functions preserved** (`frl_cache_clear`, `frl_flush_rewrite_rules` remain independently callable). `frl_cache_clear('hard'/'all'/'light'/'options'/'rewriter')` returns `$result['steps'][0]['result']` for backward compatibility with external callers.
 
 ## ⚠️ Active Considerations
-- **Exception handler added (2026-04-30):** `set_exception_handler('frl_errors_handle_exception')` installed at all three registration points — [`frl_errors_init()`](includes/core/error-handler.php:27), `muplugins_loaded/PHP_INT_MAX` re-bind, and `plugins_loaded/PHP_INT_MAX` re-bind. Catches `TypeError`, `ValueError`, `DivisionByZeroError`, `ArgumentCountError` that previously bypassed `set_error_handler()`. Delegates to existing [`frl_errors_handle_error()`](includes/core/error-handler.php:105) so all suppression rules (textlist, `@` operator, `error_reporting_plugin`) apply consistently. Each handler has an independent recursion guard.
-- **All three handlers now use `try/finally` for recursion guards** (2026-04-30): [`frl_errors_handle_error()`](includes/core/error-handler.php:105), [`frl_errors_handle_exception()`](includes/core/error-handler.php:304), and [`frl_errors_handle_doing_it_wrong()`](includes/core/error-handler.php:214). Guarantees guard reset even if an unexpected exception propagates through internal calls (e.g., `frl_log_add_details`). Eliminates the brittle manual-reset-at-each-return pattern that previously had 5 exit points in the error handler alone.
+- **Exception handler added (2026-04-30):** `set_exception_handler('frl_errors_handle_exception')` installed at all three registration points — [`frl_errors_init()`](core/error-handler.php:27), `muplugins_loaded/PHP_INT_MAX` re-bind, and `plugins_loaded/PHP_INT_MAX` re-bind. Catches `TypeError`, `ValueError`, `DivisionByZeroError`, `ArgumentCountError` that previously bypassed `set_error_handler()`. Delegates to existing [`frl_errors_handle_error()`](core/error-handler.php:105) so all suppression rules (textlist, `@` operator, `error_reporting_plugin`) apply consistently. Each handler has an independent recursion guard.
+- **All three handlers now use `try/finally` for recursion guards** (2026-04-30): [`frl_errors_handle_error()`](core/error-handler.php:105), [`frl_errors_handle_exception()`](core/error-handler.php:304), and [`frl_errors_handle_doing_it_wrong()`](core/error-handler.php:214). Guarantees guard reset even if an unexpected exception propagates through internal calls (e.g., `frl_log_add_details`). Eliminates the brittle manual-reset-at-each-return pattern that previously had 5 exit points in the error handler alone.
 - Ensure `init/15` rewriter registration stays strictly after `init/10` environment enforcement.
 - Monitor `write_attempted` flag in Options System to ensure zero duplicate DB writes.
 - MU plugin `option_cron` filter removes orphaned cron events during WP Cron and sanitizes `args` to array via **in-place modification** (refactored 2026-05-01). Changed from `pre_option_cron` 2026-04-28 because `pre_option_cron` is bypassed when `cron` is in WordPress' autoloaded `alloptions` cache.
@@ -83,20 +83,20 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
 ## ✅ Cache Documentation (2026-04-28)
 
 ### Recent Audit — Cache Docs Reviewed & Fixed
-- **Audited** all PHPDocs, internal comments, and `@param`/`@return` blocks in [`includes/core/cache/`](includes/core/cache/)
+- **Audited** all PHPDocs, internal comments, and `@param`/`@return` blocks in [`core/cache/`](core/cache/)
 - **7 inaccuracies corrected** across 3 files:
-  - [`cache-cleanup.php`](includes/core/cache/cache-cleanup.php): stale dependency comment, navigation param description, init-registration phrasing, tracked-meta guard comment
-  - [`class-cache-manager.php`](includes/core/cache/class-cache-manager.php): stale "New" tracking comment, `purge_all()` early-return `@return` type, stale "REMOVED" fallback comment, stale "New feature" comment
-  - [`class-cache-operations.php`](includes/core/cache/class-cache-operations.php): `get_operation_map()` `@return` updated from generic `array` to specific shape
+  - [`cache-cleanup.php`](core/cache/cache-cleanup.php): stale dependency comment, navigation param description, init-registration phrasing, tracked-meta guard comment
+  - [`class-cache-manager.php`](core/cache/class-cache-manager.php): stale "New" tracking comment, `purge_all()` early-return `@return` type, stale "REMOVED" fallback comment, stale "New feature" comment
+  - [`class-cache-operations.php`](core/cache/class-cache-operations.php): `get_operation_map()` `@return` updated from generic `array` to specific shape
 - **2 code bugs patched:**
-  - [`atomic_clear_group()`](includes/core/cache/class-cache-manager.php:1478) return type normalized — maps `clear_group_with_dependencies()` output to documented `$stats` shape for consistent return regardless of cache backend
-  - [`frl_clear_navigation_cache()`](includes/core/cache/cache-cleanup.php:208) ID namespace collision — split into separate `frl_clear_navigation_cache()` (wp_navigation post) and new `frl_clear_menu_cache()` (nav_menu term) with distinct `wp_navigation_`/`wp_menu_` key prefixes
+  - [`atomic_clear_group()`](core/cache/class-cache-manager.php:1478) return type normalized — maps `clear_group_with_dependencies()` output to documented `$stats` shape for consistent return regardless of cache backend
+  - [`frl_clear_navigation_cache()`](core/cache/cache-cleanup.php:208) ID namespace collision — split into separate `frl_clear_navigation_cache()` (wp_navigation post) and new `frl_clear_menu_cache()` (nav_menu term) with distinct `wp_navigation_`/`wp_menu_` key prefixes
 - Principle: **code is truth, comments reflect the code**
 
 ## ✅ Rewriter Module Plugability (2026-04-28)
 
 ### Applied
-- **Moved `do_action()` + `usort()`** from coordinator constructor to `plugins_loaded/7` hook in [`register_hooks()`](includes/core/rewriter/class-rewriter-coordinator.php:174)
+- **Moved `do_action()` + `usort()`** from coordinator constructor to `plugins_loaded/7` hook in [`register_hooks()`](core/rewriter/class-rewriter-coordinator.php:174)
 - Now: modules load at `plugins_loaded/5` → `frl_rewriter_register_features` fires at `plugins_loaded/7` → features sorted → registered at `init:15`
 - Zero regressions verified — only 2 internal references to the hook, no external dependents
 - Added clear module plugability documentation in [`docs/REWRITER.md`](docs/REWRITER.md) and code comments in the coordinator
@@ -107,7 +107,7 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
 ## ✅ Environment Manager Patches Applied (2026-04-29)
 
 ### C1 — Change-type classifier for cache clears
-- **File:** [`class-environment-manager.php:236-268`](../includes/core/environment/class-environment-manager.php:236)
+- **File:** [`class-environment-manager.php:236-268`](../core/environment/class-environment-manager.php:236)
 - **What:** Replaced monolithic `frl_cache_clear('all')` with a change-type classifier that inspects `$results` after all apply methods run.
 - **Logic (original):**
   - Force mode → `frl_cache_clear('all')`
@@ -117,12 +117,12 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
   - Nothing changed → no clear at all
 
 ### C1+ — Removed redundant targeted clears from apply methods
-- **Files:** [`class-environment-applier.php:183-186`](../includes/core/environment/class-environment-applier.php:183), [`class-environment-applier.php:228-231`](../includes/core/environment/class-environment-applier.php:228)
+- **Files:** [`class-environment-applier.php:183-186`](../core/environment/class-environment-applier.php:183), [`class-environment-applier.php:228-231`](../core/environment/class-environment-applier.php:228)
 - **What:** Removed the `$clear_cache_on_update` variable and `frl_cache_clear('options')` calls from both `apply_plugin_options()` and `apply_modules_options()`.
 - **Rationale:** These were architecturally redundant with the central change-type classifier. They caused double-clearing in non-force mode (targeted clear + parent `all` clear). Centralizing all cache clearing in `enforce_environment_settings()` simplifies the apply methods and eliminates wasted I/O.
 
 ### P4 — Consolidated 15+ `update_option_{$name}` hooks into single `updated_option`
-- **File:** [`class-environment-monitor.php:16-40`](../includes/core/environment/class-environment-monitor.php:16)
+- **File:** [`class-environment-monitor.php:16-40`](../core/environment/class-environment-monitor.php:16)
 - **What:** Replaced per-option `add_action("update_option_{$prefixed_name}", ...)` with a single `add_action('updated_option', ...)` using an O(1) lookup map (`prefixed_name → config_key`).
 - **Key detail:** `updated_option` passes 3 args (`$option, $old_value, $new_value`) — the old hooks passed 2 (`$old_value, $new_value`). The `add_action()` call specifies `3` as `$accepted_args`.
 - **Win:** Reduces closure allocation from N (~15) to 1; simplifies code; adapts automatically to config changes.
@@ -133,7 +133,7 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
   - Added `clear_options` and `clear_rewriter` as proper `clear_*` operations in [`FRL_CACHE_OPERATIONS`](../config/config-cache-operations.php) — previously these bypassed the orchestrator (direct `Frl_Cache_Manager::clear_group_with_dependencies()` calls).
   - Added both to the `$orchestrated_groups` map in [`frl_cache_clear()`](../includes/helpers/functions-class-helpers.php:178) so all `frl_cache_clear('options'/'rewriter')` calls now route through the orchestrator.
   - Added 3 new `env_*` operations (`env_enforce_full`, `env_enforce_url_change`, `env_enforce_options`) that map to the classifier's decision paths. `env_enforce_none` was removed — the orchestrator call is now guarded (skipped when `$env_op` is empty).
-  - Refactored the classifier in [`class-environment-manager.php`](../includes/core/environment/class-environment-manager.php) to select an `env_*` operation key and dispatch via `Frl_Cache_Operations::run($env_op)` (guarded).
+  - Refactored the classifier in [`class-environment-manager.php`](../core/environment/class-environment-manager.php) to select an `env_*` operation key and dispatch via `Frl_Cache_Operations::run($env_op)` (guarded).
   - The orchestrator now covers **all** cache clearing paths in a single `FRL_CACHE_OPERATIONS` registry — `clear_*` (helpers), `action_*` (admin actions), and `env_*` (environment manager).
 - **Zero regression risk:** Return values from `Frl_Cache_Operations::run()` are not used by the EM (only `$results` is used for UI). `frl_cache_clear()` return format unchanged via `$result['steps'][0]['result']` passthrough.
 - **Reference:** [`plans/env-manager-orchestrator-integration.md`](../plans/env-manager-orchestrator-integration.md)
@@ -181,9 +181,9 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Location:** [`includes/helpers/functions.php:776`](includes/helpers/functions.php:776)
 - **Purpose:** Checks if a third-party plugin is active (site-wide or network-wide).
 - **Caching:** Uses [`frl_cache_remember()`](includes/helpers/functions-class-helpers.php:108) with `WEEK_IN_SECONDS` TTL in the `'options'` group — persistent caching since `get_option('active_plugins')` only changes on activate/deactivate.
-- **Invalidation:** Key `'thirdparty_active_plugins'` is cleared in [`frl_purge_mu_plugin_exclusion_cache()`](includes/core/cache/cache-cleanup.php:296) on `activated_plugin`/`deactivated_plugin` hooks.
+- **Invalidation:** Key `'thirdparty_active_plugins'` is cleared in [`frl_purge_mu_plugin_exclusion_cache()`](core/cache/cache-cleanup.php:296) on `activated_plugin`/`deactivated_plugin` hooks.
 - **Multisite-safe:** Handles both `get_option('active_plugins')` and `get_site_option('active_sitewide_plugins')`.
-- **Refactored:** [`_is_plugin_globally_active()`](includes/core/cache/class-cache-manager.php:146) in the cache manager now delegates to this public helper, eliminating duplicated logic.
+- **Refactored:** [`_is_plugin_globally_active()`](core/cache/class-cache-manager.php:146) in the cache manager now delegates to this public helper, eliminating duplicated logic.
 
 ### Meow CSS Extraction
 - **Extracted** Meow-specific CSS from [`admin.css`](modules/thirdparty/assets/css/admin.css) into dedicated [`admin-meow.css`](modules/thirdparty/assets/css/admin-meow.css) (~164 lines).
@@ -288,8 +288,8 @@ On `ru.pbservices.ge`, `[frl]english_string[/frl]` shortcodes return English unt
 
 ### Original (Incorrect) Fix Attempt
 The first fix attempted a two-part approach:
-- **Part 1:** Added a `pll_strings` WordPress option fallback in [`Frl_Polylang_Adapter::translate_string()`](includes/core/translator/adapters/polylang.php:32)
-- **Part 2:** Changed `$wp_query->query['lang']` from unconditional overwrite to conditional fallback in [`get_language()`](includes/core/translator/class-translation-service.php:136)
+- **Part 1:** Added a `pll_strings` WordPress option fallback in [`Frl_Polylang_Adapter::translate_string()`](core/translator/adapters/polylang.php:32)
+- **Part 2:** Changed `$wp_query->query['lang']` from unconditional overwrite to conditional fallback in [`get_language()`](core/translator/class-translation-service.php:136)
 
 Both were reverted when testing showed the fix didn't work.
 
@@ -324,10 +324,10 @@ With the dead hooks never firing, `PLL()->curlang` resolved to EN on the subdoma
 
 ### Fix — Adapter Self-Contained Fallbacks (Option B)
 - **Added `FRL_TRANSLATOR_DEFAULT_LANG`** constant in [`config/config-translator.php:18`](config/config-translator.php:18) — single source of truth for default language fallback (default: `'en'`)
-- **Moved adapter `require_once`** to [`translator.php:14`](includes/core/translator/translator.php:14) — adapter class always available after module loads, regardless of service singleton instantiation
-- **Added private internal fallback methods** to [`Frl_Polylang_Adapter`](includes/core/translator/adapters/polylang.php:111): `get_default_language_internal()` and `get_active_languages_internal()`
+- **Moved adapter `require_once`** to [`translator.php:14`](core/translator/translator.php:14) — adapter class always available after module loads, regardless of service singleton instantiation
+- **Added private internal fallback methods** to [`Frl_Polylang_Adapter`](core/translator/adapters/polylang.php:111): `get_default_language_internal()` and `get_active_languages_internal()`
 - **Updated global helpers** in [`functions-translation-helpers.php:241`](includes/helpers/functions-translation-helpers.php:241) to delegate to adapter via `class_exists` check
-- **Removed duplicate `require_once`** from [`class-translation-service.php:62`](includes/core/translator/class-translation-service.php:62)
+- **Removed duplicate `require_once`** from [`class-translation-service.php:62`](core/translator/class-translation-service.php:62)
 - **Zero regression:** All 10 call sites traced, 8 edge cases verified, subdomain adapter behavior unchanged
 
 ### Documentation Updated
