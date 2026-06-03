@@ -25,9 +25,13 @@ return [
             'postalCode' => '0179',
         ],
         'areaServed' => 'Worldwide',
+        'logo' => [
+            'width' => '150',
+            'height' => '40',
+       ],
     ],
     'Service' => [
-        'publisher' => [
+        'provider' => [
             '@type' => 'Organization',
             '@id' => '{{site_url}}#Organization',
         ],

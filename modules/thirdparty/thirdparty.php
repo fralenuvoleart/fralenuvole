@@ -187,13 +187,12 @@ function frl_trim_schema_keys(array $array): array
 /**
  * Sanitize and deduplicate SASWP schema output.
  *
- * Hooks into 'saswp_modify_schema_output' (the final filter on the complete
- * schema array) to:
- * 1. Remove duplicate schemas by @id, keeping the first occurrence
- * 2. Inject properties from frl_get_schema_properties() into managed schemas
- * 3. Trim whitespace-contaminated keys from all schemas (e.g., SASWP's 'name ' bug)
- *
- * Works for any schema type defined in the schema properties data file.
+ * Hooks into 'saswp_modify_schema_output' to:
+ * - Deduplicate by @id, keep first occurrence
+ * - Inject static props from frl_get_schema_properties()
+ * - Inject post-term props from frl_get_schema_term_map()
+ * - Inject person reference props from frl_get_schema_person_map()
+ * - Trim whitespace-contaminated keys
  *
  * @param array $schemas Array of all schema output arrays.
  * @return array Sanitized, deduplicated, and enhanced schema array.
@@ -213,6 +212,13 @@ function frl_thirdparty_sanitize_schemas(array $schemas): array
     $seen_ids = [];
     $deduplicated = [];
 
+    // Pre-resolve post data once, outside the loop
+    $post_id = get_the_ID();
+    $schema_term_map = frl_get_schema_term_map();
+    $taxonomy_cache = [];
+    $schema_person_map = frl_get_schema_person_map();
+    $ref_cache = [];
+
     foreach ($schemas as $schema) {
         if (!is_array($schema) || empty($schema['@id'])) {
             $deduplicated[] = $schema;
@@ -222,16 +228,35 @@ function frl_thirdparty_sanitize_schemas(array $schemas): array
         $id = $schema['@id'];
         $type = $schema['@type'] ?? '';
         $props = $all_props[$type] ?? [];
+        $type_map = $schema_term_map[$type] ?? null;
+        $person_map = $schema_person_map[$type] ?? null;
 
-        // Not a managed type: pass through unchanged
-        if (empty($props)) {
+        // Skip types with no enrichment defined
+        if (empty($props) && empty($type_map) && empty($person_map)) {
             $deduplicated[] = $schema;
             continue;
         }
 
-        // First occurrence: inject props and keep it
+        // First occurrence: inject static props, post-term props, and person props
         if (!isset($seen_ids[$id])) {
-            $schema = frl_thirdparty_inject_schema_properties($schema, $props);
+            if (!empty($props)) {
+                $schema = frl_thirdparty_inject_schema_properties($schema, $props);
+            }
+
+            if ($post_id && !empty($type_map)) {
+                $post_props = frl_build_schema_term_properties($post_id, $type_map, $taxonomy_cache);
+                if (!empty($post_props)) {
+                    $schema = frl_thirdparty_inject_schema_properties($schema, $post_props);
+                }
+            }
+
+            if ($post_id && !empty($person_map)) {
+                $person_props = frl_build_schema_person_properties($post_id, $person_map, $ref_cache);
+                if (!empty($person_props)) {
+                    $schema = frl_thirdparty_inject_schema_properties($schema, $person_props);
+                }
+            }
+
             $seen_ids[$id] = true;
             $deduplicated[] = $schema;
             continue;
