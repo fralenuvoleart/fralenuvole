@@ -281,6 +281,8 @@ function frl_thirdparty_sanitize_schemas(array $schemas): array
  * via array_replace_recursive to preserve unset sub-keys from the source
  * (e.g. sameAs). Scalar values overwrite the existing value unconditionally.
  *
+ * Special sentinel: if $value is null, the property is removed from the schema.
+ *
  * @param array $schema The schema array.
  * @param array $props Properties to inject (property key => value).
  * @return array Modified schema array.
@@ -292,6 +294,12 @@ function frl_thirdparty_inject_schema_properties(array $schema, array $props): a
     }
 
     foreach ($props as $key => $value) {
+        // Sentinel: null means remove the property
+        if ($value === null) {
+            unset($schema[$key]);
+            continue;
+        }
+
         if (is_array($value)) {
             if (!isset($schema[$key]) || !is_array($schema[$key])) {
                 $schema[$key] = $value;

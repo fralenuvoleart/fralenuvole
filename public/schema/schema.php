@@ -222,21 +222,8 @@ function frl_build_schema_term_properties(int $post_id, array $type_map, array &
 /**
  * Get the Person reference mapping configuration.
  *
- * Loads the person reference data file (brand-file resolution),
- * then applies the 'frl_schema_person_map' filter.
- *
- * Data file format:
- *   'SchemaType' => [
- *       'schemaProperty' => [
- *           '_ref'     => 'acf_field_on_current_post',   // source of ref IDs
- *           'name'     => 'post_title',
- *           'jobTitle' => 'acf_field_on_ref_post',
- *           'url'      => 'post_permalink',
- *       ],
- *   ],
- *
- * The '_ref' key designates the ACF field on the current post
- * that holds the reference CPT ID(s).
+ * Keys: '_ref' = ACF field name for CPT ref IDs, '_default' = fallback (int CPT ID or static array),
+ * '_remove' = true to omit the property when no refs found.
  *
  * @return array Filterable map of schema @type => person field defs.
  */
@@ -269,15 +256,12 @@ function frl_get_schema_person_map(): array
 /**
  * Build Person reference properties from a type map.
  *
- * Resolves reference IDs once per property (cached in $ref_cache), then
- * builds Person objects from the referenced CPT posts using the field map.
- * Called once per schema type that has a mapping, but reference data is
- * fetched only once per unique property across all types.
+ * Resolution order: ACF ref IDs → _default (int CPT ID or static array) → _remove (unset) → nothing.
  *
- * @param int   $post_id   Post ID.
- * @param array $type_map  Array of person field defs from frl_get_schema_person_map().
- * @param array &$ref_cache Internal cache of resolved property => Person arrays.
- * @return array Schema properties to inject (property key => Person object/array).
+ * @param int   $post_id    Post ID.
+ * @param array $type_map   Person field defs from frl_get_schema_person_map().
+ * @param array &$ref_cache Cache of resolved property => Person arrays.
+ * @return array Schema properties to inject.
  */
 function frl_build_schema_person_properties(int $post_id, array $type_map, array &$ref_cache): array
 {
@@ -313,11 +297,6 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
                 }
             }
 
-            // Fallback: default author CPT post ID when ACF field is empty
-            if (empty($ref_ids) && defined('FRL_DEFAULT_AUTHOR_CPT_ID')) {
-                $ref_ids = [FRL_DEFAULT_AUTHOR_CPT_ID];
-            }
-
             // Build Person objects from reference IDs
             $persons = [];
             foreach ($ref_ids as $rid) {
@@ -334,6 +313,23 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
 
         if (!empty($persons)) {
             $props[$property] = count($persons) === 1 ? $persons[0] : $persons;
+        } elseif (isset($field_def['_default'])) {
+            // _default can be a CPT post ID (int) or a static Person array
+            $default = $field_def['_default'];
+            if (is_int($default)) {
+                $person = frl_build_person_from_ref($default, $field_def);
+                if ($person !== null) {
+                    $props[$property] = $person;
+                } elseif (!empty($field_def['_remove'])) {
+                    // _default CPT not found — remove the property
+                    $props[$property] = null;
+                }
+            } elseif (is_array($default)) {
+                $props[$property] = $default;
+            }
+        } elseif (!empty($field_def['_remove'])) {
+            // Remove the property from schema when no refs found
+            $props[$property] = null;
         }
     }
 
@@ -341,21 +337,12 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
 }
 
 /**
- * Build a Person schema object from a reference ID and field map.
+ * Build a Person schema object from a CPT post ID and field map.
  *
- * Reference IDs are CPT posts (ACF Post Object fields or FRL_DEFAULT_AUTHOR_CPT_ID fallback).
+ * Source resolution: 'post_' prefix = WP-native (post_permalink, post_thumbnail, post_{field}),
+ * anything else = ACF get_field().
  *
- * The '_ref' key is reserved — it's the ACF ref source on the current post.
- * All other keys are Person schema properties resolved from each ref post:
- *
- * Single convention: 'post_' prefix = WP-native functionality.
- *   'post_permalink'      → get_permalink($ref_id)
- *   'post_thumbnail'      → ImageObject { @type, url, height, width }
- *   'post_thumbnail_url'  → get_the_post_thumbnail_url($ref_id, 'full')
- *   'post_{field}'        → $post->{field} (e.g. post_title, post_content)
- *   anything else         → get_field($value, $ref_id) (ACF)
- *
- * @param int   $ref_id    Ref post ID.
+ * @param int   $ref_id    CPT post ID.
  * @param array $field_def Field definition (_ref + Person property map).
  * @return array|null Person array or null if post not found.
  */
