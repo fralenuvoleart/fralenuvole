@@ -313,6 +313,11 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
                 }
             }
 
+            // Fallback: default author CPT post ID when ACF field is empty
+            if (empty($ref_ids) && defined('FRL_DEFAULT_AUTHOR_CPT_ID')) {
+                $ref_ids = [FRL_DEFAULT_AUTHOR_CPT_ID];
+            }
+
             // Build Person objects from reference IDs
             $persons = [];
             foreach ($ref_ids as $rid) {
@@ -338,7 +343,7 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
 /**
  * Build a Person schema object from a reference ID and field map.
  *
- * Reference IDs are CPT posts (ACF Post Object fields).
+ * Reference IDs are CPT posts (ACF Post Object fields or FRL_DEFAULT_AUTHOR_CPT_ID fallback).
  *
  * The '_ref' key is reserved — it's the ACF ref source on the current post.
  * All other keys are Person schema properties resolved from each ref post:

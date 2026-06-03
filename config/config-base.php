@@ -40,6 +40,8 @@ if (!defined('FRL_MODULES_DIR_PATH')) {
 const FRL_PLUGIN_SUPERADMIN_ID = 1;
 const FRL_PLUGIN_ACCESS = 'delete_plugins';
 
+const FRL_DEFAULT_AUTHOR_CPT_ID = 18765;
+
 // Hooks context map
 const FRL_AB_CPT_LIST = [
 	'page' 		=> [
