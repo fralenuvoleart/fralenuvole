@@ -362,6 +362,26 @@ function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
             continue;
         }
 
+        // Array of meta keys → resolve each, collect non-empty values (e.g. sameAs)
+        if (is_array($source)) {
+            $values = [];
+            foreach ($source as $meta_key) {
+                $v = frl_get_post_meta($ref_id, (string) $meta_key, true);
+                if ($v !== null && $v !== false && $v !== '') {
+                    if (is_array($v) && isset($v['label'])) {
+                        $v = $v['label'];
+                    }
+                    if (is_scalar($v)) {
+                        $values[] = (string) $v;
+                    }
+                }
+            }
+            if (!empty($values)) {
+                $person[$sub_field] = count($values) === 1 ? $values[0] : $values;
+            }
+            continue;
+        }
+
         $value = null;
 
         // Single convention: 'post_' prefix = WP-native functionality
