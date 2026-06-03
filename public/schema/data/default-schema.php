@@ -37,6 +37,7 @@ return [
             '@type' => 'Organization',
             '@id' => '{{site_url}}#Organization',
         ],
+        'publisher' => '_remove',
     ],
     'WebSite' => [
         'publisher' => [

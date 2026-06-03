@@ -87,6 +87,11 @@ function frl_resolve_schema_properties(array $props): array
                 $value = frl_get_translation($value);
             }
 
+            // '_remove' sentinel → null (signals removal in injector)
+            if ($value === '_remove') {
+                $value = null;
+            }
+
             $result[$key] = $value;
         } else {
             $result[$key] = $value;
