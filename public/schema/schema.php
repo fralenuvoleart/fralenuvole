@@ -35,9 +35,9 @@ function frl_get_schema_properties(): array
             $prefix = $env_config['prefix'] ?? '';
         }
 
-        $file = FRL_DIR_PATH . 'public/schema/default-schema.php';
+        $file = FRL_DIR_PATH . 'public/schema/data/default-schema.php';
         if ($prefix) {
-            $brand_file = FRL_DIR_PATH . "public/schema/{$prefix}-schema.php";
+            $brand_file = FRL_DIR_PATH . "public/schema/data/{$prefix}-schema.php";
             if (file_exists($brand_file)) {
                 $file = $brand_file;
             }
@@ -114,9 +114,9 @@ function frl_get_schema_term_map(): array
         $prefix = $env_config['prefix'] ?? '';
     }
 
-    $file = FRL_DIR_PATH . 'public/schema/default-schema-terms.php';
+    $file = FRL_DIR_PATH . 'public/schema/data/default-schema-terms.php';
     if ($prefix) {
-        $brand_file = FRL_DIR_PATH . "public/schema/{$prefix}-schema-terms.php";
+        $brand_file = FRL_DIR_PATH . "public/schema/data/{$prefix}-schema-terms.php";
         if (file_exists($brand_file)) {
             $file = $brand_file;
         }
@@ -235,9 +235,9 @@ function frl_get_schema_person_map(): array
         $prefix = $env_config['prefix'] ?? '';
     }
 
-    $file = FRL_DIR_PATH . 'public/schema/default-schema-person.php';
+    $file = FRL_DIR_PATH . 'public/schema/data/default-schema-person.php';
     if ($prefix) {
-        $brand_file = FRL_DIR_PATH . "public/schema/{$prefix}-schema-person.php";
+        $brand_file = FRL_DIR_PATH . "public/schema/data/{$prefix}-schema-person.php";
         if (file_exists($brand_file)) {
             $file = $brand_file;
         }
