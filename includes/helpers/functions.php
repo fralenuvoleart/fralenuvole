@@ -890,5 +890,17 @@ function frl_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' )
  */
 function frl_get_post_meta(int $post_id, string $key, bool $single = true)
 {
-    return get_post_meta($post_id, $key, $single);
+    // Primary: raw post meta (ACPT or standard WP)
+    $value = get_post_meta($post_id, $key, $single);
+    if ($value !== null && $value !== '' && $value !== false) {
+        return $value;
+    }
+    // Fallback: ACF (handles serialization, repeaters, etc.)
+    if (function_exists('get_field')) {
+        $acf_value = get_field($key, $post_id, $single);
+        if ($acf_value !== null && $acf_value !== false) {
+            return $acf_value;
+        }
+    }
+    return $value;
 }

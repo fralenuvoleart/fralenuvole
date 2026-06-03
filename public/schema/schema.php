@@ -278,9 +278,10 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
             $ref_ids = [];
             $ref_source = $field_def['_ref'] ?? null;
 
-            // Try ACF field on current post for reference IDs
-            if ($ref_source && function_exists('get_field')) {
-                $raw = get_field($ref_source, $post_id, false);
+            // Resolve ref IDs via helper (handles ACF + ACPT)
+            $raw = $ref_source ? frl_get_post_meta($post_id, $ref_source, true) : null;
+
+            if ($raw !== null) {
                 if (is_numeric($raw)) {
                     $ref_ids = [(int) $raw];
                 } elseif ($raw instanceof \WP_Post) {
