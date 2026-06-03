@@ -17,6 +17,12 @@ if (!defined('ABSPATH')) {
 
 return [
     'Organization' => [
+        'logo' => [
+            '@type' => 'ImageObject',
+            'url' => '{{custom_logo}}',
+            'width' => '150',
+            'height' => '40',
+        ],
         'address' => [
             '@type' => 'PostalAddress',
             'addressCountry' => 'GE',
@@ -25,12 +31,18 @@ return [
             'postalCode' => '0179',
         ],
         'areaServed' => 'Worldwide',
-        'logo' => [
-            '@type' => 'ImageObject',
-            'url' => '{{custom_logo}}',
-            'width' => '150',
-            'height' => '40',
-       ],
+        'contactPoint' => [
+            'availableLanguage' => ['en', 'ru', 'ka', 'ar', 'zh'],
+        ],
+       'knowsAbout' => [
+            'https://en.wikipedia.org/wiki/Company_formation',
+           'https://en.wikipedia.org/wiki/Sole_proprietorship',
+            'https://en.wikipedia.org/wiki/Special_economic_zone',
+            'https://en.wikipedia.org/wiki/Bank_account',
+            'https://en.wikipedia.org/wiki/Tax_residence',
+            'https://en.wikipedia.org/wiki/Residence_permit',
+            'https://en.wikipedia.org/wiki/Expatriate',
+         ],    
     ],
     'Service' => [
         'provider' => [
