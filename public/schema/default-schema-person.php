@@ -32,7 +32,9 @@ return [
             'url'      => 'post_permalink', // Person.url from ref post permalink
             'image'    => 'post_thumbnail', // Person.image ImageObject
             'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF
+            'knowsLanguage' => 'team-settings_team-languages',          
             'sameAs' => [
+                'team-settings_team-whatsapp',
                 'team-settings_team-linkedin',
                 'team-settings_team-facebook',
                 'team-settings_team-website',
@@ -45,6 +47,13 @@ return [
             'url'      => 'post_permalink', // Person.url from ref post permalink
             'image'    => 'post_thumbnail', // Person.image ImageObject
             'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF
+            'knowsLanguage' => 'team-settings_team-languages',          
+            'sameAs' => [
+                'team-settings_team-whatsapp',
+                'team-settings_team-linkedin',
+                'team-settings_team-facebook',
+                'team-settings_team-website',
+            ],
         ],
     ],
 ];
