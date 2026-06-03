@@ -222,8 +222,8 @@ function frl_build_schema_term_properties(int $post_id, array $type_map, array &
 /**
  * Get the Person reference mapping configuration.
  *
- * Keys: '_ref' = ACF field name for CPT ref IDs, '_default' = fallback (int CPT ID or static array),
- * '_remove' = true to omit the property when no refs found.
+ * Keys: '_ref' = ACF field for CPT ref IDs, '_force' = always use (skip _ref),
+ * '_fallback' = use when _ref is empty, '_remove' = omit when no refs.
  *
  * @return array Filterable map of schema @type => person field defs.
  */
@@ -256,7 +256,7 @@ function frl_get_schema_person_map(): array
 /**
  * Build Person reference properties from a type map.
  *
- * Resolution order: ACF ref IDs → _default (int CPT ID or static array) → _remove (unset) → nothing.
+ * Resolution order: _force → ACF ref IDs → _fallback → _remove → nothing.
  *
  * @param int   $post_id    Post ID.
  * @param array $type_map   Person field defs from frl_get_schema_person_map().
@@ -275,61 +275,71 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
         $cache_key = "{$post_id}_{$property}";
 
         if (!isset($ref_cache[$cache_key])) {
-            $ref_ids = [];
-            $ref_source = $field_def['_ref'] ?? null;
+            // _force: always use this value, skip _ref entirely
+            if (isset($field_def['_force'])) {
+                $force = $field_def['_force'];
+                if (is_int($force)) {
+                    $person = frl_build_person_from_ref($force, $field_def);
+                    $ref_cache[$cache_key] = $person !== null ? [$person] : [];
+                } elseif (is_array($force)) {
+                    $ref_cache[$cache_key] = [$force];
+                } else {
+                    $ref_cache[$cache_key] = [];
+                }
+            } else {
+                $ref_ids = [];
+                $ref_source = $field_def['_ref'] ?? null;
 
-            // Resolve ref IDs via helper (handles ACF + ACPT)
-            $raw = $ref_source ? frl_get_post_meta($post_id, $ref_source, true) : null;
+                // Resolve ref IDs via helper (handles ACF + ACPT)
+                $raw = $ref_source ? frl_get_post_meta($post_id, $ref_source, true) : null;
 
-            if ($raw !== null) {
-                if (is_numeric($raw)) {
-                    $ref_ids = [(int) $raw];
-                } elseif ($raw instanceof \WP_Post) {
-                    // ACF Post Object field set to return post objects
-                    $ref_ids = [$raw->ID];
-                } elseif (is_array($raw)) {
-                    foreach ($raw as $item) {
-                        if ($item instanceof \WP_Post) {
-                            $ref_ids[] = $item->ID;
-                        } elseif (is_numeric($item)) {
-                            $ref_ids[] = (int) $item;
+                if ($raw !== null) {
+                    if (is_numeric($raw)) {
+                        $ref_ids = [(int) $raw];
+                    } elseif ($raw instanceof \WP_Post) {
+                        $ref_ids = [$raw->ID];
+                    } elseif (is_array($raw)) {
+                        foreach ($raw as $item) {
+                            if ($item instanceof \WP_Post) {
+                                $ref_ids[] = $item->ID;
+                            } elseif (is_numeric($item)) {
+                                $ref_ids[] = (int) $item;
+                            }
                         }
                     }
                 }
-            }
 
-            // Build Person objects from reference IDs
-            $persons = [];
-            foreach ($ref_ids as $rid) {
-                $person = frl_build_person_from_ref($rid, $field_def);
-                if ($person !== null) {
-                    $persons[] = $person;
+                // Build Person objects from reference IDs
+                $persons = [];
+                foreach ($ref_ids as $rid) {
+                    $person = frl_build_person_from_ref($rid, $field_def);
+                    if ($person !== null) {
+                        $persons[] = $person;
+                    }
                 }
-            }
 
-            $ref_cache[$cache_key] = $persons;
+                $ref_cache[$cache_key] = $persons;
+            }
         }
 
         $persons = $ref_cache[$cache_key];
 
         if (!empty($persons)) {
             $props[$property] = count($persons) === 1 ? $persons[0] : $persons;
-        } elseif (isset($field_def['_default'])) {
-            // _default can be a CPT post ID (int) or a static Person array
-            $default = $field_def['_default'];
-            if (is_int($default)) {
-                $person = frl_build_person_from_ref($default, $field_def);
+        } elseif (isset($field_def['_fallback'])) {
+            // _fallback: CPT post ID (int) or static Person array
+            $fallback = $field_def['_fallback'];
+            if (is_int($fallback)) {
+                $person = frl_build_person_from_ref($fallback, $field_def);
                 if ($person !== null) {
                     $props[$property] = $person;
                 } elseif (!empty($field_def['_remove'])) {
-                    // _default CPT not found — remove the property
                     $props[$property] = null;
                 }
-            } elseif (is_array($default)) {
-                $props[$property] = $default;
+            } elseif (is_array($fallback)) {
+                $props[$property] = $fallback;
             }
         } elseif (!empty($field_def['_remove'])) {
-            // Remove the property from schema when no refs found
             $props[$property] = null;
         }
     }
