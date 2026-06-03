@@ -31,8 +31,7 @@ return [
             'name'     => 'post_title', // Person.name from ref post title
             'url'      => 'post_permalink', // Person.url from ref post permalink
             'image'    => 'post_thumbnail', // Person.image ImageObject
-            'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF
-            'knowsLanguage' => 'team-settings_team-languages',          
+            'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF        
             'sameAs' => [
                 'team-settings_team-whatsapp',
                 'team-settings_team-linkedin',
@@ -46,8 +45,7 @@ return [
             'name'     => 'post_title', // Person.name from ref post title
             'url'      => 'post_permalink', // Person.url from ref post permalink
             'image'    => 'post_thumbnail', // Person.image ImageObject
-            'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF
-            'knowsLanguage' => 'team-settings_team-languages',          
+            'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF         
             'sameAs' => [
                 'team-settings_team-whatsapp',
                 'team-settings_team-linkedin',
