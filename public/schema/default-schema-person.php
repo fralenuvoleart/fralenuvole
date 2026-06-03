@@ -35,7 +35,7 @@ return [
         ],
         'editor' => [
             '_ref'     => 'post-settings_post-authors', // ACF field on current post → ref IDs
-            '_default' => FRL_DEFAULT_AUTHOR_CPT_ID, // fallback CPT post ID when ACF is empty
+            '_default' => FRL_DEFAULT_EDITOR_CPT_ID, // fallback CPT post ID when ACF is empty
             'name'     => 'post_title', // Person.name from ref post title
             'url'      => 'post_permalink', // Person.url from ref post permalink
             'image'    => 'post_thumbnail', // Person.image ImageObject
