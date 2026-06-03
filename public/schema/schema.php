@@ -227,15 +227,16 @@ function frl_build_schema_term_properties(int $post_id, array $type_map, array &
  *
  * Data file format:
  *   'SchemaType' => [
- *       'author' => [
- *           'name'     => 'acf_field_on_current_post',  // source of reference IDs
+ *       'schemaProperty' => [
+ *           '_ref'     => 'acf_field_on_current_post',   // source of ref IDs
+ *           'name'     => 'post_title',
  *           'jobTitle' => 'acf_field_on_ref_post',
- *           'url'      => 'permalink',
+ *           'url'      => 'post_permalink',
  *       ],
  *   ],
  *
- * The 'name' key is required — it designates the ACF field on the
- * current post that holds the reference CPT ID(s).
+ * The '_ref' key designates the ACF field on the current post
+ * that holds the reference CPT ID(s).
  *
  * @return array Filterable map of schema @type => person field defs.
  */
@@ -291,11 +292,11 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
 
         if (!isset($ref_cache[$cache_key])) {
             $ref_ids = [];
-            $name_field = $field_def['name'] ?? null;
+            $ref_source = $field_def['_ref'] ?? null;
 
             // Try ACF field on current post for reference IDs
-            if ($name_field && function_exists('get_field')) {
-                $raw = get_field($name_field, $post_id, false);
+            if ($ref_source && function_exists('get_field')) {
+                $raw = get_field($ref_source, $post_id, false);
                 if (is_numeric($raw)) {
                     $ref_ids = [(int) $raw];
                 } elseif (is_array($raw)) {
@@ -336,17 +337,18 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
 /**
  * Build a Person schema object from a reference post ID and field map.
  *
- * Resolves each Person sub-field from the referenced post:
- * - 'permalink'         → get_permalink($ref_id)
- * - '_thumbnail_id'     → get_the_post_thumbnail_url($ref_id, 'full')
- * - any other string    → get_field($value, $ref_id)
- * - 'post_title'        → get_the_title($ref_id)
+ * The '_ref' key is reserved — it's the ACF ref source on the current post.
+ * All other keys are Person schema properties resolved from each ref post:
  *
- * The '@type' => 'Person' is always set. Result is filterable via
- * 'frl_schema_person_fields'.
+ * Single convention: 'post_' prefix = WP-native functionality.
+ *   'post_permalink'       → get_permalink($ref_id)
+ *   'post_thumbnail'       → ImageObject { @type, url, height, width }
+ *   'post_thumbnail_url'   → get_the_post_thumbnail_url($ref_id, 'full') (string)
+ *   'post_{field}'         → $post->{field} (e.g. post_title, post_content)
+ *   anything else          → get_field($value, $ref_id) (ACF)
  *
  * @param int   $ref_id    Referenced post ID.
- * @param array $field_def Field definition (name + person sub-field map).
+ * @param array $field_def Field definition (_ref + Person property map).
  * @return array|null Person array or null if post not found.
  */
 function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
@@ -357,29 +359,43 @@ function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
     }
 
     $person = ['@type' => 'Person'];
-    $person['name'] = get_the_title($ref_id);
 
     foreach ($field_def as $sub_field => $source) {
-        // Skip the 'name' key — it's the ref source, not a Person sub-field
-        if ($sub_field === 'name') {
+        // Skip reserved key — it's the ref source, not a Person property
+        if ($sub_field === '_ref') {
             continue;
         }
 
         $value = null;
 
-        // Resolve special source values
-        if ($source === 'permalink') {
-            $value = get_permalink($ref_id);
-        } elseif ($source === '_thumbnail_id') {
-            $value = get_the_post_thumbnail_url($ref_id, 'full');
-        } elseif ($source === 'post_title') {
-            $value = get_the_title($ref_id);
+        // Single convention: 'post_' prefix = WP-native functionality
+        if (str_starts_with($source, 'post_')) {
+            if ($source === 'post_permalink') {
+                $value = get_permalink($ref_id);
+            } elseif ($source === 'post_thumbnail') {
+                $id = get_post_thumbnail_id($ref_id);
+                if ($id) {
+                    $size = apply_filters('frl_schema_thumbnail_size', 'medium');
+                    $url = wp_get_attachment_image_url($id, $size);
+                    $data = wp_get_attachment_image_src($id, $size);
+                    $value = [
+                        '@type'  => 'ImageObject',
+                        'url'    => $url ?: '',
+                        'height' => $data[2] ?? 0,
+                        'width'  => $data[1] ?? 0,
+                    ];
+                }
+            } elseif ($source === 'post_thumbnail_url') {
+                $value = get_the_post_thumbnail_url($ref_id, 'full');
+            } else {
+                // Native WP post field: post_title, post_content, post_excerpt, etc.
+                $value = $post->{$source} ?? null;
+            }
         } elseif (function_exists('get_field')) {
             $value = get_field($source, $ref_id, false);
         }
 
         if ($value !== null && $value !== false && $value !== '') {
-            // Coerce ACF field references to string for single values
             if (is_array($value) && isset($value['label'])) {
                 $value = $value['label'];
             }
