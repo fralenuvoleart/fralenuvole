@@ -807,3 +807,72 @@ function frl_is_thirdparty_plugin_active(string $plugin_path): bool
     return false;
 }
 
+/**
+ * Retrieves terms for any post type and taxonomy, with language filtering and caching.
+ *
+ * Filters terms by the current language when a translation plugin is active.
+ * The 'id' field is automatically mapped to 'term_id' for WP_Term compatibility.
+ * All results (including empty/false) are normalized to an array for safe caching.
+ *
+ * @param int|WP_Post $post     Post ID or object. Defaults to global $post.
+ * @param string      $taxonomy Taxonomy slug. Defaults to 'category'.
+ * @param string      $field    Specific field to return. Accepts 'all' (WP_Term[]),
+ *                              'term_id', 'name', 'slug', 'id' (mapped to 'term_id'),
+ *                              or any WP_Term property.
+ * @return WP_Term[]|string[]|int[]|false Array of WP_Term objects (field='all'),
+ *                                       array of field values, or false if no valid
+ *                                       post ID or taxonomy was provided.
+ */
+function frl_cf_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' ) {
+    $post_id = ( $post instanceof WP_Post ) ? $post->ID : (int) $post;
+    if ( ! $post_id ) {
+        $post_id = get_the_ID();
+    }
+    if ( ! $post_id || empty( $taxonomy ) ) {
+        return false;
+    }
+
+    // Include language in cache key for multilingual compatibility
+    $lang      = frl_get_language();
+    $cache_key = 'cf_terms_' . $post_id . '_' . sanitize_key( $taxonomy ) . '_' . $lang;
+
+    return frl_cache_remember( 'permalinks', $cache_key, function () use ( $post_id, $taxonomy, $field, $lang ) {
+        $terms = get_the_terms( $post_id, $taxonomy );
+
+        // Normalize false and WP_Error to empty array so the result is
+        // safely cacheable across requests. get_the_terms() returns false
+        // when no terms exist, but caching 'false' via transient fallback
+        // is unreliable (get_transient returns false for both "key missing"
+        // and "stored value is false"). WP_Error should not be cached
+        // because it may represent a transient database issue.
+        if ( ! $terms || is_wp_error( $terms ) ) {
+            return [];
+        }
+
+        // Filter by current language when a translation plugin is active
+        if ( frl_translator_is_enabled() && function_exists( 'pll_get_term_language' ) ) {
+            $filtered = [];
+            foreach ( $terms as $term ) {
+                $term_lang_obj = pll_get_term_language( $term->term_id );
+                $term_lang     = ( $term_lang_obj instanceof PLL_Language ) ? $term_lang_obj->slug : '';
+                if ( $term_lang === $lang || '' === $term_lang ) {
+                    $filtered[] = $term;
+                }
+            }
+            $terms = ! empty( $filtered ) ? $filtered : [];
+        }
+
+        if ( empty( $terms ) ) {
+            return [];
+        }
+
+        if ( 'all' === $field ) {
+            return $terms;
+        }
+
+        // Map 'id' to 'term_id' for WP_Term compatibility
+        $pluck_field = ( 'id' === $field ) ? 'term_id' : $field;
+
+        return wp_list_pluck( $terms, $pluck_field );
+    } );
+}

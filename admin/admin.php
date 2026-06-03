@@ -322,10 +322,10 @@ function frl_gutenberg_editor_css()
     $theme_style_url = get_stylesheet_uri(); // Theme's main stylesheet URL
 
     $version = frl_cache_remember('admin', 'gutenberg_style', function () use ($theme_style_path) {
-        return file_exists($theme_style_path) ? filemtime($theme_style_path) : false;
+        return file_exists($theme_style_path) ? filemtime($theme_style_path) : 0;
     });
 
-    if ($version === false) {
+    if (!$version) {
         return;
     }
 

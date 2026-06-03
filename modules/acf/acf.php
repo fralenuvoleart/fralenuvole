@@ -27,12 +27,15 @@ if (!function_exists('get_field')) {
 add_action('acf/save_post',
     'frl_acf_calculate_on_save',
     999,
-    1);
+    1
+);
 
 add_action('acf/save_post',
     'frl_acf_flush_shortcodes_cache_on_acf_save',
     99,
-    1);
+    1
+);
+
 /**
  * Compute configured calculated ACF fields when saving ACF Options.
  *

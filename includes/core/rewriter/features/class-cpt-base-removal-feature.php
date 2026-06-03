@@ -289,7 +289,7 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         // Per-request caches to minimize DB work. Note: PHP static variables are
         // method-scoped, so these are NOT shared with resolve_request()'s statics.
         // The persistent frl_cache_remember layer IS shared (same cache key), so both
-        // methods store the same shape: ['cpt', 'id', 'name'] or false.
+        // methods store the same shape: ['cpt', 'id', 'name'] or [].
         static $slug_hit_map = [];
         static $multi_index = [];
 
@@ -312,9 +312,9 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
                         $post = get_post($posts[0]);
                         return ($post && isset($post->ID, $post->post_type))
                             ? ['cpt' => $post->post_type, 'id' => (int) $post->ID, 'name' => basename($slug)]
-                            : false;
+                            : [];
                     }
-                    return false;
+                    return [];
                 }
             );
 
@@ -383,7 +383,7 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         $paged = $pagination['paged'];
 
         // Per-request caches. The persistent frl_cache_remember layer is shared with
-        // applies_to_request() via the same cache key; both store ['cpt','id','name'] or false.
+        // applies_to_request() via the same cache key; both store ['cpt','id','name'] or [].
         static $slug_hit_map = [];
         static $multi_index = [];
 
@@ -410,9 +410,9 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
                                 'id'   => (int) $post->ID,
                                 'name' => basename($slug),
                             ]
-                            : false;
+                            : [];
                     }
-                    return false;
+                    return [];
                 }
             );
 
