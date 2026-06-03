@@ -76,6 +76,13 @@ function frl_resolve_schema_properties(array $props): array
         } elseif (is_string($value)) {
             $value = str_replace('{{site_url}}', $site_url, $value);
 
+            // Resolve {{custom_logo}} placeholder
+            if (strpos($value, '{{custom_logo}}') !== false) {
+                $logo = wp_get_attachment_image_src(get_theme_mod('custom_logo'), 'full');
+                $logo_url = $logo[0] ?? '';
+                $value = str_replace('{{custom_logo}}', $logo_url, $value);
+            }
+
             if ($key !== '@type' && $key !== '@id' && function_exists('frl_get_translation')) {
                 $value = frl_get_translation($value);
             }

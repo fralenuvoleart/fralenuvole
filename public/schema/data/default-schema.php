@@ -26,6 +26,8 @@ return [
         ],
         'areaServed' => 'Worldwide',
         'logo' => [
+            '@type' => 'ImageObject',
+            'url' => '{{custom_logo}}',
             'width' => '150',
             'height' => '40',
        ],
