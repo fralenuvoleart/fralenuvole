@@ -163,6 +163,32 @@ function frl_thirdparty_inject_schema_properties_filter(array $input): array
  * @param array $schemas Array of all schema output arrays.
  * @return array Deduplicated and enhanced schema array.
  */
+/**
+ * Recursively trim whitespace-contaminated keys in a schema array.
+ *
+ * Only processes keys that contain leading/trailing whitespace.
+ * This is a targeted fix for third-party bugs (e.g., SASWP's 'name ' key).
+ *
+ * @param array $array The schema array to process.
+ * @return array Array with trimmed keys (only where needed).
+ */
+function frl_trim_schema_keys(array $array): array
+{
+    $result = [];
+    $needs_rebuild = false;
+
+    foreach ($array as $key => $value) {
+        $trimmed_key = $key;
+        if ($key !== '' && $key !== ($trimmed_key = trim($key))) {
+            $needs_rebuild = true;
+        }
+        $result[$trimmed_key] = is_array($value) ? frl_trim_schema_keys($value) : $value;
+    }
+
+    // Only return a new array if we actually found contaminated keys
+    return $needs_rebuild ? $result : $array;
+}
+
 function frl_thirdparty_deduplicate_schemas(array $schemas): array
 {
     static $done = false;
@@ -241,7 +267,10 @@ function frl_thirdparty_inject_schema_properties(array $schema, array $props): a
         $schema[$key] = $value;
     }
 
-    return $schema;
+    // Trim contaminated keys only after injection into this schema.
+    // This catches third-party bugs like SASWP's 'name ' key without
+    // paying the cost of walking the entire schema tree on every request.
+    return frl_trim_schema_keys($schema);
 }
 
 // =============================================================================
