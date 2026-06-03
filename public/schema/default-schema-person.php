@@ -33,10 +33,10 @@ return [
             'image'    => 'post_thumbnail', // Person.image ImageObject
             'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF        
             'sameAs' => [
-                'team-settings_team-whatsapp',
                 'team-settings_team-linkedin',
                 'team-settings_team-facebook',
                 'team-settings_team-website',
+                'team-settings_team-whatsapp',
             ],
         ],
         'editor' => [
@@ -47,10 +47,10 @@ return [
             'image'    => 'post_thumbnail', // Person.image ImageObject
             'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF         
             'sameAs' => [
-                'team-settings_team-whatsapp',
-                'team-settings_team-linkedin',
+                 'team-settings_team-linkedin',
                 'team-settings_team-facebook',
                 'team-settings_team-website',
+               'team-settings_team-whatsapp',
             ],
         ],
     ],
