@@ -169,7 +169,15 @@ function frl_trim_schema_keys(array $array): array
         if ($key !== '' && $key !== ($trimmed_key = trim($key))) {
             $needs_rebuild = true;
         }
-        $result[$trimmed_key] = is_array($value) ? frl_trim_schema_keys($value) : $value;
+        if (is_array($value)) {
+            $trimmed_value = frl_trim_schema_keys($value);
+            if ($trimmed_value !== $value) {
+                $needs_rebuild = true;
+            }
+            $result[$trimmed_key] = $trimmed_value;
+        } else {
+            $result[$trimmed_key] = $value;
+        }
     }
 
     // Only return a new array if we actually found contaminated keys
