@@ -138,7 +138,7 @@ class FRL_Icon_Resolver {
 		if (!empty($a['postmeta'])) {
 			if ($post_id > 0) {
 				$meta_key = (string)$a['postmeta'];
-				$meta_value = get_post_meta($post_id, $meta_key, true);
+				$meta_value = frl_get_post_meta($post_id, $meta_key, true);
 				if (is_string($meta_value) && $meta_value !== '') {
 					return $meta_value;
 				}

@@ -103,7 +103,7 @@ function frl_pbnova__acf_update_has_content($post, $update, $post_before) {
 	$content = (string) ($post->post_content ?? '');
 	if ($content === '') {
 		$new = '0';
-		$old = get_post_meta($post_id, 'has_content', true);
+		$old = frl_get_post_meta($post_id, 'has_content', true);
 		if ($old !== $new) {
 			update_post_meta($post_id, 'has_content', $new);
 		}
@@ -123,7 +123,7 @@ function frl_pbnova__acf_update_has_content($post, $update, $post_before) {
 	$text = trim(wp_strip_all_tags(htmlspecialchars_decode($content, ENT_QUOTES), true));
 
 	$new = ($text !== '') ? '1' : '0';
-	$old = get_post_meta($post_id, 'has_content', true);
+	$old = frl_get_post_meta($post_id, 'has_content', true);
 	if ($old !== $new) {
 		update_post_meta($post_id, 'has_content', $new);
 	}

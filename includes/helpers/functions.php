@@ -823,7 +823,7 @@ function frl_is_thirdparty_plugin_active(string $plugin_path): bool
  *                                       array of field values, or false if no valid
  *                                       post ID or taxonomy was provided.
  */
-function frl_cf_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' ) {
+function frl_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' ) {
     $post_id = ( $post instanceof WP_Post ) ? $post->ID : (int) $post;
     if ( ! $post_id ) {
         $post_id = get_the_ID();
@@ -875,4 +875,20 @@ function frl_cf_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all
 
         return wp_list_pluck( $terms, $pluck_field );
     } );
+}
+
+/**
+ * Get post meta with a single entry point for custom field retrieval.
+ *
+ * Centralized accessor so the retrieval method can be changed in one place
+ * (e.g., switching between ACPT, ACF, or raw post meta).
+ *
+ * @param int    $post_id Post ID.
+ * @param string $key     Meta key.
+ * @param bool   $single  Whether to return a single value.
+ * @return mixed Meta value.
+ */
+function frl_get_post_meta(int $post_id, string $key, bool $single = true)
+{
+    return get_post_meta($post_id, $key, $single);
 }

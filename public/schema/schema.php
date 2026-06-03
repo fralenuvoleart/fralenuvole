@@ -180,7 +180,7 @@ function frl_build_schema_term_properties(int $post_id, array $type_map, array &
 
         // Fetch terms once per taxonomy, reuse across type maps
         if (!isset($taxonomy_cache[$taxonomy])) {
-            $terms = frl_cf_get_post_terms($post_id, $taxonomy, $field);
+            $terms = frl_get_post_terms($post_id, $taxonomy, $field);
             $taxonomy_cache[$taxonomy] = (is_array($terms)) ? array_values(array_filter($terms, 'is_string')) : [];
         }
 
@@ -340,7 +340,7 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
  * Build a Person schema object from a CPT post ID and field map.
  *
  * Source resolution: 'post_' prefix = WP-native (post_permalink, post_thumbnail, post_{field}),
- * anything else = ACF get_field().
+ * anything else = get_post_meta($ref_id, $source, true).
  *
  * @param int   $ref_id    CPT post ID.
  * @param array $field_def Field definition (_ref + Person property map).
@@ -387,18 +387,8 @@ function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
                 // Native WP field: $post->{field}
                 $value = $post->{$source} ?? null;
             }
-        } elseif (function_exists('get_field')) {
-            $value = get_field($source, $ref_id, false);
-            // Debug: log ACF field resolution
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log(sprintf(
-                    'FRL Schema ACF: field="%s" ref_id=%d value_type=%s value=%s',
-                    $source,
-                    $ref_id,
-                    gettype($value),
-                    is_scalar($value) ? (string) $value : json_encode($value)
-                ));
-            }
+        } else {
+            $value = frl_get_post_meta($ref_id, $source, true);
         }
 
         if ($value !== null && $value !== false && $value !== '') {

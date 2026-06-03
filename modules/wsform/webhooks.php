@@ -397,7 +397,7 @@ function frl_wsf_button_webhook_handler()
     $page_url = sanitize_url($_POST['page_url'] ?? '');
     $post_id = url_to_postid($page_url);
     if ($post_id > 0 && defined('WS_BUTTON_WEBHOOK_SERVICE_META')) {
-        $meta = get_post_meta($post_id, WS_BUTTON_WEBHOOK_SERVICE_META, true);
+        $meta = frl_get_post_meta($post_id, WS_BUTTON_WEBHOOK_SERVICE_META, true);
         if (!empty($meta)) {
             $service = sanitize_text_field($meta);
         }

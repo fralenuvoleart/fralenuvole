@@ -372,7 +372,7 @@ function frl_shortcode_meta($atts)
     $default_value = (string) $a['default'];
     $cache_key = 'meta_' . $post->ID . '_' . $meta_key . '_' . md5(implode('|', $selectors) . '|' . $default_value);
     return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $meta_key, $selectors, $default_value) {
-        $raw = get_post_meta($post->ID, $meta_key, true);
+        $raw = frl_get_post_meta($post->ID, $meta_key, true);
         $value = frl_coerce_to_string($raw, $selectors);
         if ($value === '') {
             return $default_value;
@@ -421,7 +421,7 @@ function frl_shortcode_meta_rel($atts)
     ]));
 
     return frl_cache_remember('shortcodes', $cache_key, function () use ($target_post_id, $field, $a, $post) {
-        $raw = get_post_meta($target_post_id, $field, true);
+        $raw = frl_get_post_meta($target_post_id, $field, true);
         if (empty($raw)) {
             return '';
         }
