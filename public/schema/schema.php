@@ -299,12 +299,21 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
                 $raw = get_field($ref_source, $post_id, false);
                 if (is_numeric($raw)) {
                     $ref_ids = [(int) $raw];
+                } elseif ($raw instanceof \WP_Post) {
+                    // ACF Post Object field set to return post objects
+                    $ref_ids = [$raw->ID];
                 } elseif (is_array($raw)) {
-                    $ref_ids = array_map('intval', array_filter($raw, 'is_numeric'));
+                    foreach ($raw as $item) {
+                        if ($item instanceof \WP_Post) {
+                            $ref_ids[] = $item->ID;
+                        } elseif (is_numeric($item)) {
+                            $ref_ids[] = (int) $item;
+                        }
+                    }
                 }
             }
 
-            // Fallback: WordPress post_author
+            // Fallback: WordPress post_author (resolved from WP user, not post)
             if (empty($ref_ids)) {
                 $wp_author = (int) get_post_field('post_author', $post_id);
                 if ($wp_author) {
@@ -335,30 +344,40 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
 }
 
 /**
- * Build a Person schema object from a reference post ID and field map.
+ * Build a Person schema object from a reference ID and field map.
+ *
+ * Reference IDs may be CPT posts (ACF Post Object fields) or WP user IDs
+ * (post_author fallback). The function auto-detects which and resolves
+ * accordingly.
  *
  * The '_ref' key is reserved — it's the ACF ref source on the current post.
- * All other keys are Person schema properties resolved from each ref post:
+ * All other keys are Person schema properties resolved from each ref post/user:
  *
  * Single convention: 'post_' prefix = WP-native functionality.
- *   'post_permalink'       → get_permalink($ref_id)
+ *   'post_permalink'       → get_permalink($ref_id) or get_author_posts_url($ref_id)
  *   'post_thumbnail'       → ImageObject { @type, url, height, width }
- *   'post_thumbnail_url'   → get_the_post_thumbnail_url($ref_id, 'full') (string)
+ *   'post_thumbnail_url'   → get_the_post_thumbnail_url($ref_id, 'full') or get_avatar_url($ref_id)
  *   'post_{field}'         → $post->{field} (e.g. post_title, post_content)
- *   anything else          → get_field($value, $ref_id) (ACF)
+ *                           or $user->{field} (e.g. display_name, user_email)
+ *   anything else          → get_field($value, $ref_id) (ACF, posts only)
+ *                           or get_user_meta($ref_id, $value, true) (users)
  *
- * @param int   $ref_id    Referenced post ID.
+ * @param int   $ref_id    Ref post ID or WP user ID.
  * @param array $field_def Field definition (_ref + Person property map).
- * @return array|null Person array or null if post not found.
+ * @return array|null Person array or null if neither post nor user found.
  */
 function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
 {
     $post = get_post($ref_id);
-    if (!$post) {
+    $user = !$post ? get_userdata($ref_id) : null;
+
+    // Neither a post nor a user — nothing to resolve
+    if (!$post && !$user) {
         return null;
     }
 
     $person = ['@type' => 'Person'];
+    $is_user = ($user !== false);
 
     foreach ($field_def as $sub_field => $source) {
         // Skip reserved key — it's the ref source, not a Person property
@@ -371,26 +390,52 @@ function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
         // Single convention: 'post_' prefix = WP-native functionality
         if (str_starts_with($source, 'post_')) {
             if ($source === 'post_permalink') {
-                $value = get_permalink($ref_id);
+                $value = $is_user
+                    ? get_author_posts_url($ref_id)
+                    : get_permalink($ref_id);
             } elseif ($source === 'post_thumbnail') {
-                $id = get_post_thumbnail_id($ref_id);
-                if ($id) {
-                    $size = apply_filters('frl_schema_thumbnail_size', 'medium');
-                    $url = wp_get_attachment_image_url($id, $size);
-                    $data = wp_get_attachment_image_src($id, $size);
-                    $value = [
-                        '@type'  => 'ImageObject',
-                        'url'    => $url ?: '',
-                        'height' => $data[2] ?? 0,
-                        'width'  => $data[1] ?? 0,
-                    ];
+                if ($is_user) {
+                    $avatar = get_avatar_url($ref_id, ['size' => apply_filters('frl_schema_thumbnail_size', 'medium')]);
+                    if ($avatar) {
+                        $value = [
+                            '@type' => 'ImageObject',
+                            'url'   => $avatar,
+                        ];
+                    }
+                } else {
+                    $id = get_post_thumbnail_id($ref_id);
+                    if ($id) {
+                        $size = apply_filters('frl_schema_thumbnail_size', 'medium');
+                        $url = wp_get_attachment_image_url($id, $size);
+                        $data = wp_get_attachment_image_src($id, $size);
+                        $value = [
+                            '@type'  => 'ImageObject',
+                            'url'    => $url ?: '',
+                            'height' => $data[2] ?? 0,
+                            'width'  => $data[1] ?? 0,
+                        ];
+                    }
                 }
             } elseif ($source === 'post_thumbnail_url') {
-                $value = get_the_post_thumbnail_url($ref_id, 'full');
+                $value = $is_user
+                    ? get_avatar_url($ref_id, ['size' => 'full'])
+                    : get_the_post_thumbnail_url($ref_id, 'full');
             } else {
-                // Native WP post field: post_title, post_content, post_excerpt, etc.
-                $value = $post->{$source} ?? null;
+                // Native WP field: $post->{field} or $user->{field}
+                if ($is_user) {
+                    // post_title maps to display_name for WP users
+                    if ($source === 'post_title') {
+                        $value = $user->display_name ?? null;
+                    } else {
+                        $value = $user->{$source} ?? null;
+                    }
+                } else {
+                    $value = $post->{$source} ?? null;
+                }
             }
+        } elseif ($is_user) {
+            // User meta fallback (ACF not applicable to users in this context)
+            $value = get_user_meta($ref_id, $source, true);
         } elseif (function_exists('get_field')) {
             $value = get_field($source, $ref_id, false);
         }
@@ -407,7 +452,7 @@ function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
      * Filter the resolved Person schema object.
      *
      * @param array $person Person schema array.
-     * @param int   $ref_id Referenced post ID.
+     * @param int   $ref_id Referenced post or user ID.
      */
     return apply_filters('frl_schema_person_fields', $person, $ref_id);
 }

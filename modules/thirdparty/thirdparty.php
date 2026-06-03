@@ -277,8 +277,12 @@ function frl_thirdparty_sanitize_schemas(array $schemas): array
 /**
  * Inject third-party properties into a single schema.
  *
+ * Array values (Person objects, term collections, etc.) are deep-merged
+ * via array_replace_recursive to preserve unset sub-keys from the source
+ * (e.g. sameAs). Scalar values overwrite the existing value unconditionally.
+ *
  * @param array $schema The schema array.
- * @param array $props Properties to inject from FRL_THIRDPARTY_SCHEMA_PROPERTIES.
+ * @param array $props Properties to inject (property key => value).
  * @return array Modified schema array.
  */
 function frl_thirdparty_inject_schema_properties(array $schema, array $props): array
@@ -288,7 +292,6 @@ function frl_thirdparty_inject_schema_properties(array $schema, array $props): a
     }
 
     foreach ($props as $key => $value) {
-        // Array property (e.g. 'address'): deep-merge without overwriting existing sub-keys
         if (is_array($value)) {
             if (!isset($schema[$key]) || !is_array($schema[$key])) {
                 $schema[$key] = $value;
@@ -298,10 +301,7 @@ function frl_thirdparty_inject_schema_properties(array $schema, array $props): a
             continue;
         }
 
-        // Scalar property: skip if already set
-        if (isset($schema[$key])) {
-            continue;
-        }
+        // Scalar property: overwrite unconditionally
         $schema[$key] = $value;
     }
 
