@@ -389,6 +389,16 @@ function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
             }
         } elseif (function_exists('get_field')) {
             $value = get_field($source, $ref_id, false);
+            // Debug: log ACF field resolution
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log(sprintf(
+                    'FRL Schema ACF: field="%s" ref_id=%d value_type=%s value=%s',
+                    $source,
+                    $ref_id,
+                    gettype($value),
+                    is_scalar($value) ? (string) $value : json_encode($value)
+                ));
+            }
         }
 
         if ($value !== null && $value !== false && $value !== '') {
