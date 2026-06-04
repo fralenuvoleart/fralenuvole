@@ -80,8 +80,8 @@ function frl_get_schema_placeholders(): array
         '{{site_url}}'          => site_url(),
         '{{site_url_local}}'    => frl_get_home_url(),
         '{{custom_logo}}'       => $logo[0] ?? '',
-        '{{organization_url}}'  => frl_get_option('schema_organization_url') ?: site_url(),
-        '{{organization_name}}' => frl_get_option('schema_organization_name') ?: get_bloginfo('name'),
+        '{{schema_organization_url}}'  => frl_get_option('schema_organization_url') ?: site_url(),
+        '{{schema_organization_name}}' => frl_get_option('schema_organization_name') ?: get_bloginfo('name'),
         '{{schema_founder_name}}' => frl_get_option('schema_founder_name') ?: '',
     ];
 }

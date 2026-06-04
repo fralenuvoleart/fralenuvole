@@ -6,8 +6,8 @@
  *   {{site_url}}          → resolved to site_url() at runtime
  *   {{site_url_local}}    → resolved to current-language homepage via frl_get_home_url()
  *   {{custom_logo}}       → resolved to the site logo URL
- *   {{organization_url}}  → resolved from env plugin option 'schema_organization_url'
- *   {{organization_name}} → resolved from env plugin option 'schema_organization_name'
+ *   {{schema_organization_url}}  → resolved from env plugin option 'schema_organization_url'
+ *   {{schema_organization_name}} → resolved from env plugin option 'schema_organization_name'
  *   {{schema_founder_name}} → resolved from env plugin option 'schema_founder_name'
  *   {{post_title}}        → resolved at injection time to get_the_title($post_id)
  *
@@ -24,8 +24,8 @@ if (!defined('ABSPATH')) {
 
 return [
     'Organization' => [
-        '@id' => '{{organization_url}}#Organization',
-        'legalName' => '{{organization_name}}',
+        '@id' => '{{schema_organization_url}}#Organization',
+        'legalName' => '{{schema_organization_name}}',
         'publisher' => '_remove',
          'logo' => [
             '@type' => 'ImageObject',
@@ -89,43 +89,43 @@ return [
         ],
         'provider' => [
             '@type' => 'Organization',
-            '@id' => '{{organization_url}}#Organization',
+            '@id' => '{{schema_organization_url}}#Organization',
         ],
     ],
     'WebSite' => [
         'publisher' => [
             '@type' => 'Organization',
-            '@id' => '{{organization_url}}#Organization',
+            '@id' => '{{schema_organization_url}}#Organization',
         ],
     ],
     'WebPage' => [
         'publisher' => [
             '@type' => 'Organization',
-            '@id' => '{{organization_url}}#Organization',
+            '@id' => '{{schema_organization_url}}#Organization',
         ],
         'reviewedBy' => [
             '@type' => 'Organization',
-            '@id' => '{{organization_url}}#Organization',
+            '@id' => '{{schema_organization_url}}#Organization',
         ],
     ],
     'AboutPage' => [
         'publisher' => [
             '@type' => 'Organization',
-            '@id' => '{{organization_url}}#Organization',
+            '@id' => '{{schema_organization_url}}#Organization',
         ],
         'mainEntity' => [
             '@type' => 'Organization',
-            '@id' => '{{organization_url}}#Organization',
+            '@id' => '{{schema_organization_url}}#Organization',
         ],
     ],
     'ContactPage' => [
         'publisher' => [
             '@type' => 'Organization',
-            '@id' => '{{organization_url}}#Organization',
+            '@id' => '{{schema_organization_url}}#Organization',
         ],
         'mainEntity' => [
             '@type' => 'Organization',
-            '@id' => '{{organization_url}}#Organization',
+            '@id' => '{{schema_organization_url}}#Organization',
         ],
     ],
 ];
