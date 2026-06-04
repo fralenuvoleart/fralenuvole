@@ -12,41 +12,34 @@ if (!defined('ABSPATH')) {
 }
 
 /**
+ * Normalize a meta value: extract 'label' from arrays, cast scalars to string.
+ *
+ * @param mixed $value The raw meta value.
+ * @return string|null Extracted scalar string or null if invalid.
+ */
+function frl_extract_scalar_value($value): ?string
+{
+    if ($value === null || $value === false || $value === '') {
+        return null;
+    }
+    if (is_array($value) && isset($value['label'])) {
+        $value = $value['label'];
+    }
+    return is_scalar($value) ? (string) $value : null;
+}
+
+/**
  * Get the post-term schema mapping configuration.
  *
- * Loads the schema term data file (same brand-file resolution as
- * frl_get_schema_properties()), transforms simple "property => taxonomy"
+ * Loads the schema term data file, transforms simple "property => taxonomy"
  * pairs into full field definitions, then applies the filter.
- *
- * Data file format:
- *   'SchemaType' => [
- *       'schemaProperty' => 'taxonomy_slug',
- *   ]
- *
- * Expanded field defaults: field => 'name', format => 'csv'
  *
  * @return array Filterable map of schema @type => field definitions.
  */
 function frl_get_schema_term_map(): array
 {
-    // Per-brand file resolution (same pattern as frl_get_schema_properties())
-    $prefix = '';
-    if (function_exists('frl_environment_get_config')) {
-        $env_config = frl_environment_get_config();
-        $prefix = $env_config['prefix'] ?? '';
-    }
-
-    $file = FRL_DIR_PATH . 'public/schema/data/default-schema-terms.php';
-    if ($prefix) {
-        $brand_file = FRL_DIR_PATH . "public/schema/data/{$prefix}-schema-terms.php";
-        if (file_exists($brand_file)) {
-            $file = $brand_file;
-        }
-    }
-
+    $file = frl_get_schema_data_file('default-schema-terms.php');
     $raw = file_exists($file) ? include $file : [];
-
-    // Transform simple pairs into full field definitions
     $map = [];
     foreach ($raw as $type => $pairs) {
         if (!is_array($pairs)) {
@@ -151,20 +144,7 @@ function frl_build_schema_term_properties(int $post_id, array $type_map, array &
  */
 function frl_get_schema_person_map(): array
 {
-    $prefix = '';
-    if (function_exists('frl_environment_get_config')) {
-        $env_config = frl_environment_get_config();
-        $prefix = $env_config['prefix'] ?? '';
-    }
-
-    $file = FRL_DIR_PATH . 'public/schema/data/default-schema-person.php';
-    if ($prefix) {
-        $brand_file = FRL_DIR_PATH . "public/schema/data/{$prefix}-schema-person.php";
-        if (file_exists($brand_file)) {
-            $file = $brand_file;
-        }
-    }
-
+    $file = frl_get_schema_data_file('default-schema-person.php');
     $map = file_exists($file) ? include $file : [];
 
     /**
@@ -299,14 +279,9 @@ function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
         if (is_array($source)) {
             $values = [];
             foreach ($source as $meta_key) {
-                $v = frl_get_post_meta($ref_id, (string) $meta_key, true);
-                if ($v !== null && $v !== false && $v !== '') {
-                    if (is_array($v) && isset($v['label'])) {
-                        $v = $v['label'];
-                    }
-                    if (is_scalar($v)) {
-                        $values[] = (string) $v;
-                    }
+                $v = frl_extract_scalar_value(frl_get_post_meta($ref_id, (string) $meta_key, true));
+                if ($v !== null) {
+                    $values[] = $v;
                 }
             }
             if (!empty($values)) {
@@ -344,11 +319,11 @@ function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
             $value = frl_get_post_meta($ref_id, $source, true);
         }
 
-        if ($value !== null && $value !== false && $value !== '') {
-            if (is_array($value) && isset($value['label'])) {
-                $value = $value['label'];
-            }
-            $person[$sub_field] = is_scalar($value) ? (string) $value : $value;
+        $scalar = frl_extract_scalar_value($value);
+        if ($scalar !== null) {
+            $person[$sub_field] = $scalar;
+        } elseif (is_array($value) && !empty($value)) {
+            $person[$sub_field] = $value;
         }
     }
 

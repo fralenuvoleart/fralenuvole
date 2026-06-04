@@ -29,7 +29,7 @@ if (!defined('ABSPATH')) {
  *   (`translations`, `blocks`, `permalinks`, `postdata`). These involve expensive
  *   operations (DB queries, Polylang API calls) and are stable until content changes.
  *
- * Helper functions in `functions-translation-helpers.php` are thin wrappers with
+ * Helper functions in `functions-translator-helpers.php` are thin wrappers with
  * NO caching of their own — all caching lives here in the service.
  */
 

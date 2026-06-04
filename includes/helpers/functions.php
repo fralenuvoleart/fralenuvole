@@ -21,7 +21,7 @@ require_once FRL_DIR_PATH . 'includes/helpers/utilities.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-error-log.php';require_once FRL_DIR_PATH . 'includes/helpers/functions-access-control.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-options.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-class-helpers.php';
-require_once FRL_DIR_PATH . 'includes/helpers/functions-translation-helpers.php';
+require_once FRL_DIR_PATH . 'includes/helpers/functions-translator-helpers.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-modules.php';
 
 /**

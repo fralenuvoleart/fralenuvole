@@ -13,6 +13,33 @@ if (!defined('ABSPATH')) {
 }
 
 /**
+ * Resolve the file path for a schema data file, supporting per-brand overrides.
+ *
+ * Tries {prefix}-variant first; falls back to the default filename.
+ *
+ * @param string $default_filename The default filename (e.g. 'default-schema.php').
+ * @return string Resolved file path.
+ */
+function frl_get_schema_data_file(string $default_filename): string
+{
+    $prefix = '';
+    if (function_exists('frl_environment_get_config')) {
+        $env_config = frl_environment_get_config();
+        $prefix = $env_config['prefix'] ?? '';
+    }
+
+    $file = FRL_DIR_PATH . 'public/schema/data/' . $default_filename;
+    if ($prefix) {
+        $brand_filename = str_replace('default-', $prefix . '-', $default_filename);
+        $brand_file = FRL_DIR_PATH . 'public/schema/data/' . $brand_filename;
+        if (file_exists($brand_file)) {
+            return $brand_file;
+        }
+    }
+    return $file;
+}
+
+/**
  * Get resolved schema properties.
  *
  * Loads raw data, resolves placeholders and translations, caches per-language,
@@ -27,21 +54,7 @@ function frl_get_schema_properties(): array
     $cache_key = "schema_properties_{$language}_{$version}";
 
     return frl_cache_remember('html', $cache_key, function () {
-        // Per-brand file resolution: load {prefix}-schema.php if it exists
-        $prefix = '';
-        if (function_exists('frl_environment_get_config')) {
-            $env_config = frl_environment_get_config();
-            $prefix = $env_config['prefix'] ?? '';
-        }
-
-        $file = FRL_DIR_PATH . 'public/schema/data/default-schema.php';
-        if ($prefix) {
-            $brand_file = FRL_DIR_PATH . "public/schema/data/{$prefix}-schema.php";
-            if (file_exists($brand_file)) {
-                $file = $brand_file;
-            }
-        }
-
+        $file = frl_get_schema_data_file('default-schema.php');
         $raw = file_exists($file) ? include $file : [];
         $resolved = frl_resolve_schema_properties($raw, '', frl_get_schema_placeholders());
 
@@ -74,10 +87,36 @@ function frl_get_schema_placeholders(): array
 }
 
 /**
+ * Determine if a key should be translated based on the translate keys config.
+ *
+ * @param string $key           The bare key name.
+ * @param string $current_path  The full dot-path of the current key.
+ * @param array  $translate_keys FRL_SCHEMA_TRANSLATE_KEYS entries ('!' prefix = skip).
+ * @return bool True if this key should be translated.
+ */
+function frl_schema_should_translate_key(string $key, string $current_path, array $translate_keys): bool
+{
+    foreach ($translate_keys as $entry) {
+        $is_skip = str_starts_with($entry, '!');
+        $rule = $is_skip ? substr($entry, 1) : $entry;
+
+        $matches = str_contains($rule, '.')
+            ? str_starts_with($current_path, $rule)  // dot-path prefix match
+            : $key === $rule;                         // bare key exact match
+
+        if ($matches) {
+            return !$is_skip;   // '!' entries return false
+        }
+    }
+
+    return false;
+}
+
+/**
  * Recursively resolve schema properties.
  *
- * - Replaces all {{placeholder}} tokens via the pre-built $replacements map
- * - Translates string values whose bare key or dot-path matches FRL_SCHEMA_TRANSLATE_KEYS
+ * - Replaces all {{placeholder}} tokens via frl_resolve_placeholders() (once at root)
+ * - Translates matching keys and handles '_remove' sentinel
  *
  * @param array  $props        Raw schema properties array.
  * @param string $path         Dot-path of the current nesting level (internal).
@@ -86,55 +125,42 @@ function frl_get_schema_placeholders(): array
  */
 function frl_resolve_schema_properties(array $props, string $path = '', array $replacements = []): array
 {
-    $translate_keys = defined('FRL_SCHEMA_TRANSLATE_KEYS') ? FRL_SCHEMA_TRANSLATE_KEYS : [];
     if (empty($replacements)) {
         $replacements = frl_get_schema_placeholders();
     }
+
+    // Placeholder resolution: only at root level (empty $path). Recursive calls skip.
+    if ($path === '') {
+        $props = frl_resolve_placeholders($props, $replacements);
+    }
+
+    return frl_translate_schema_properties($props, $path);
+}
+
+/**
+ * Recursively translate schema properties and handle _remove sentinel.
+ *
+ * @param array  $props Resolved schema properties (placeholders already replaced).
+ * @param string $path  Dot-path of the current nesting level.
+ * @return array Translated schema properties array.
+ */
+function frl_translate_schema_properties(array $props, string $path = ''): array
+{
+    $translate_keys = defined('FRL_SCHEMA_TRANSLATE_KEYS') ? FRL_SCHEMA_TRANSLATE_KEYS : [];
     $result = [];
 
     foreach ($props as $key => $value) {
         $current_path = $path ? "{$path}.{$key}" : $key;
 
         if (is_array($value)) {
-            $result[$key] = frl_resolve_schema_properties($value, $current_path, $replacements);
+            $result[$key] = frl_translate_schema_properties($value, $current_path);
         } elseif (is_string($value)) {
-            $value = str_replace(array_keys($replacements), array_values($replacements), $value);
-
-            $should_translate = false;
-            if (function_exists('frl_get_translation') && !empty($translate_keys)) {
-                foreach ($translate_keys as $entry) {
-                    $is_skip = str_starts_with($entry, '!');
-                    $rule = $is_skip ? substr($entry, 1) : $entry;
-
-                    if (str_contains($rule, '.')) {
-                        // Dot-path: prefix match on current path (includes subkeys)
-                        if (str_starts_with($current_path, $rule)) {
-                            $should_translate = !$is_skip;
-                            if ($is_skip) {
-                                break; // ! overrides: stop checking
-                            }
-                        }
-                    } else {
-                        // Bare key: match at any depth
-                        if ($key === $rule) {
-                            $should_translate = !$is_skip;
-                            if ($is_skip) {
-                                break; // ! overrides: stop checking
-                            }
-                        }
-                    }
-                }
-            }
-
-            if ($should_translate) {
-                $value = frl_get_translation($value);
-            }
-
-            // '_remove' sentinel → null (signals removal in injector)
             if ($value === '_remove') {
                 $value = null;
+            } elseif (frl_schema_should_translate_key($key, $current_path, $translate_keys)
+                && function_exists('frl_get_translation')) {
+                $value = frl_get_translation($value);
             }
-
             $result[$key] = $value;
         } else {
             $result[$key] = $value;

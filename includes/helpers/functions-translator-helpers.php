@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 
 /**
  * Fralenuvole
- * functions-translation-helpers.php - Global helper functions for translation.
+ * functions-translator-helpers.php - Global helper functions for the Translator module.
  *
  * These functions provide a procedural API for the Frl_Translation_Service,
  * ensuring backward compatibility and ease of use across the plugin.
