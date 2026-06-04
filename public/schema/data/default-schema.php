@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 
 return [
     'Organization' => [
-        'legalName' => '{{organization_name}',
+        'legalName' => '{{organization_name}}',
          'logo' => [
             '@type' => 'ImageObject',
             'url' => '{{custom_logo}}',
