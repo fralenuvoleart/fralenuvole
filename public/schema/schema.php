@@ -61,7 +61,7 @@ function frl_get_schema_properties(): array
  * - Replaces {{site_url}} placeholders with site_url()
  * - Replaces {{site_url_local}} placeholders with current language homepage
  * - Translates non-structural string values via frl_get_translation()
- * - Skips values starting with prefixes defined in FRL_SCHEMA_EXCLUDE_VALUE_PREFIXES
+ * - Skips values starting with prefixes defined in FRL_SCHEMA_EXCLUDE_TRANSLATIONS
  *
  * @param array $props Raw schema properties array.
  * @return array Resolved schema properties array.
@@ -70,7 +70,7 @@ function frl_resolve_schema_properties(array $props): array
 {
     $site_url = site_url();
     $site_url_local = frl_get_home_url();
-    $exclude_prefixes = defined('FRL_SCHEMA_EXCLUDE_VALUE_PREFIXES') ? FRL_SCHEMA_EXCLUDE_VALUE_PREFIXES : ['@', '_'];
+    $exclude_prefixes = defined('FRL_SCHEMA_EXCLUDE_TRANSLATIONS') ? FRL_SCHEMA_EXCLUDE_TRANSLATIONS : ['@', '_'];
     $result = [];
 
     foreach ($props as $key => $value) {

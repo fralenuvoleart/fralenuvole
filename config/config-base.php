@@ -44,8 +44,13 @@ const FRL_PLUGIN_ACCESS = 'delete_plugins';
 // Default team-member fallback for blog author and editor
 const FRL_DEFAULT_AUTHOR_CPT_ID = 18765;
 const FRL_DEFAULT_EDITOR_CPT_ID = 18765;
+
 // Schema translation: value prefixes to exclude from translation
-const FRL_SCHEMA_EXCLUDE_VALUE_PREFIXES = ['@', '_'];
+const FRL_SCHEMA_EXCLUDE_TRANSLATIONS = [
+	'@', 
+	'_',
+	'knowsAbout',
+];
 
 // Hooks context map
 const FRL_AB_CPT_LIST = [
