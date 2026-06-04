@@ -58,13 +58,10 @@ function frl_get_schema_properties(): array
 /**
  * Recursively resolve schema properties.
  *
- * - Replaces {{site_url}} placeholders with site_url()
- * - Replaces {{site_url_local}} placeholders with current language homepage
- * - Translates non-structural string values via frl_get_translation()
- * - Skips values starting with prefixes defined in FRL_SCHEMA_SKIP_TRANSLATION_VALUES
- * - Skips keys matching FRL_SCHEMA_SKIP_TRANSLATION_KEYS (prefix or exact dot-path)
+ * - Replaces {{site_url}} and {{site_url_local}} placeholders
+ * - Translates string values whose bare key or dot-path matches FRL_SCHEMA_TRANSLATE_KEYS
  *
- * @param array $props Raw schema properties array.
+ * @param array  $props Raw schema properties array.
  * @param string $path  Dot-path of the current nesting level (internal).
  * @return array Resolved schema properties array.
  */
@@ -72,8 +69,7 @@ function frl_resolve_schema_properties(array $props, string $path = ''): array
 {
     $site_url = site_url();
     $site_url_local = frl_get_home_url();
-    $exclude_value_prefixes = defined('FRL_SCHEMA_SKIP_TRANSLATION_VALUES') ? FRL_SCHEMA_SKIP_TRANSLATION_VALUES : ['_'];
-    $exclude_keys = defined('FRL_SCHEMA_SKIP_TRANSLATION_KEYS') ? FRL_SCHEMA_SKIP_TRANSLATION_KEYS : ['@'];
+    $translate_keys = defined('FRL_SCHEMA_TRANSLATE_KEYS') ? FRL_SCHEMA_TRANSLATE_KEYS : [];
     $result = [];
 
     foreach ($props as $key => $value) {
@@ -92,30 +88,19 @@ function frl_resolve_schema_properties(array $props, string $path = ''): array
                 $value = str_replace('{{custom_logo}}', $logo_url, $value);
             }
 
-            $should_translate = function_exists('frl_get_translation');
-            if ($should_translate) {
-                // Check key exclusion (prefix or exact dot-path)
-                foreach ($exclude_keys as $excluded) {
-                    if (str_contains($excluded, '.')) {
-                        // Exact dot-path match
-                        if ($current_path === $excluded) {
-                            $should_translate = false;
+            $should_translate = false;
+            if (function_exists('frl_get_translation') && !empty($translate_keys)) {
+                foreach ($translate_keys as $entry) {
+                    if (str_contains($entry, '.')) {
+                        // Dot-path: prefix match on current path (includes subkeys)
+                        if (str_starts_with($current_path, $entry)) {
+                            $should_translate = true;
                             break;
                         }
                     } else {
-                        // Key prefix match
-                        if (str_starts_with($key, $excluded)) {
-                            $should_translate = false;
-                            break;
-                        }
-                    }
-                }
-
-                // Check value prefix exclusion
-                if ($should_translate) {
-                    foreach ($exclude_value_prefixes as $prefix) {
-                        if (str_starts_with($value, $prefix)) {
-                            $should_translate = false;
+                        // Bare key: match at any depth
+                        if ($key === $entry) {
+                            $should_translate = true;
                             break;
                         }
                     }

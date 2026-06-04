@@ -7,21 +7,17 @@
 if (!defined('ABSPATH')) exit;
 
 /**
- * Values starting with these prefixes are not translated (kept as-is).
+ * Only these keys are translated. All others kept as-is.
+ * Bare name (no dot) → matches that key at any depth.
+ * Dot-path → prefix match on the full path (includes all subkeys).
  * Use '_remove' in schema data to remove a key entirely.
- */
-const FRL_SCHEMA_SKIP_TRANSLATION_VALUES = [
-    '_',
-];
-
-/**
- * Keys matching these entries are not translated (kept as-is).
- * Key prefix match (str_starts_with). With '.' = exact dot-path match.
+ *
  * Examples:
- *   '@'                 → any key starting with '@' at any depth
- *   'Organization.name' → only that exact nested key
+ *   'name'                → any key named 'name' at any depth
+ *   'Organization.address' → all keys under Organization.address
  */
-const FRL_SCHEMA_SKIP_TRANSLATION_KEYS = [
-	'@',
-	'knowsAbout',
+const FRL_SCHEMA_TRANSLATE_KEYS = [
+	'name',
+	'streetAddress',
+	'addressLocality',
 ];
