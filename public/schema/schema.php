@@ -83,7 +83,7 @@ function frl_resolve_schema_properties(array $props): array
                 $value = str_replace('{{custom_logo}}', $logo_url, $value);
             }
 
-            if ($key !== '@type' && $key !== '@id' && function_exists('frl_get_translation')) {
+            if ($key !== '@type' && $key !== '@id' && function_exists('frl_get_translation') && !str_starts_with($value, '_')) {
                 $value = frl_get_translation($value);
             }
 
