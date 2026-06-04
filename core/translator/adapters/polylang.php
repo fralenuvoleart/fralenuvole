@@ -167,6 +167,14 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
         return true;
     }
 
+    public function get_home_url(string $language): string
+    {
+        if (function_exists('pll_home_url')) {
+            return pll_home_url($language);
+        }
+        return home_url();
+    }
+
     /**
      * Flush Polylang's internal language cache.
      *

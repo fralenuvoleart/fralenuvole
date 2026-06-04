@@ -59,8 +59,9 @@ function frl_get_schema_properties(): array
  * Recursively resolve schema properties.
  *
  * - Replaces {{site_url}} placeholders with site_url()
+ * - Replaces {{site_url_local}} placeholders with current language homepage
  * - Translates non-structural string values via frl_get_translation()
- * - Skips @type and @id keys (structural JSON-LD identifiers)
+ * - Skips values starting with prefixes defined in FRL_SCHEMA_EXCLUDE_VALUE_PREFIXES
  *
  * @param array $props Raw schema properties array.
  * @return array Resolved schema properties array.
@@ -68,6 +69,8 @@ function frl_get_schema_properties(): array
 function frl_resolve_schema_properties(array $props): array
 {
     $site_url = site_url();
+    $site_url_local = frl_get_home_url();
+    $exclude_prefixes = defined('FRL_SCHEMA_EXCLUDE_VALUE_PREFIXES') ? FRL_SCHEMA_EXCLUDE_VALUE_PREFIXES : ['@', '_'];
     $result = [];
 
     foreach ($props as $key => $value) {
@@ -75,6 +78,7 @@ function frl_resolve_schema_properties(array $props): array
             $result[$key] = frl_resolve_schema_properties($value);
         } elseif (is_string($value)) {
             $value = str_replace('{{site_url}}', $site_url, $value);
+            $value = str_replace('{{site_url_local}}', $site_url_local, $value);
 
             // Resolve {{custom_logo}} placeholder
             if (strpos($value, '{{custom_logo}}') !== false) {
@@ -83,7 +87,17 @@ function frl_resolve_schema_properties(array $props): array
                 $value = str_replace('{{custom_logo}}', $logo_url, $value);
             }
 
-            if ($key !== '@type' && $key !== '@id' && function_exists('frl_get_translation') && !str_starts_with($value, '_')) {
+            $should_translate = function_exists('frl_get_translation');
+            if ($should_translate) {
+                foreach ($exclude_prefixes as $prefix) {
+                    if (str_starts_with($value, $prefix)) {
+                        $should_translate = false;
+                        break;
+                    }
+                }
+            }
+
+            if ($should_translate) {
                 $value = frl_get_translation($value);
             }
 

@@ -741,6 +741,18 @@ final class Frl_Translation_Service
     }
 
     /**
+     * Get the home URL for the current or specified language.
+     *
+     * @param string|null $language Optional target language code.
+     * @return string The home URL for the language.
+     */
+    public function get_home_url(?string $language = null): string
+    {
+        $lang = $language ?: $this->get_language();
+        return $this->adapter->get_home_url($lang);
+    }
+
+    /**
      * Get the global translation version.
      *
      * @return int

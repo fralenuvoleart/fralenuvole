@@ -267,3 +267,17 @@ function frl_get_active_languages_fallback(): array
     }
     return [FRL_TRANSLATOR_DEFAULT_LANG];
 }
+
+/**
+ * Get the home URL for the current or specified language.
+ *
+ * @param string|null $language Optional target language code.
+ * @return string The home URL for the language.
+ */
+function frl_get_home_url(?string $language = null): string
+{
+    if (!frl_translator_is_enabled()) {
+        return home_url();
+    }
+    return Frl_Translation_Service::get_instance()->get_home_url($language);
+}

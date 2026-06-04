@@ -113,6 +113,14 @@ interface Frl_Translation_Adapter_Interface
     public function set_default_language(string $lang): bool;
 
     /**
+     * Get the home URL for the given language.
+     *
+     * @param string $language Language code.
+     * @return string The home URL for the language.
+     */
+    public function get_home_url(string $language): string;
+
+    /**
      * Flush the translation plugin's internal language cache.
      *
      * Note: When `frl_flush_rewrite_rules()` is called after `set_default_language()`,
