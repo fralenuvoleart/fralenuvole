@@ -43,7 +43,7 @@ function frl_get_schema_properties(): array
         }
 
         $raw = file_exists($file) ? include $file : [];
-        $resolved = frl_resolve_schema_properties($raw);
+        $resolved = frl_resolve_schema_properties($raw, '', frl_get_schema_placeholders());
 
         /**
          * Filter the resolved schema properties.
@@ -76,24 +76,27 @@ function frl_get_schema_placeholders(): array
 /**
  * Recursively resolve schema properties.
  *
- * - Replaces all {{placeholder}} tokens via frl_get_schema_placeholders()
+ * - Replaces all {{placeholder}} tokens via the pre-built $replacements map
  * - Translates string values whose bare key or dot-path matches FRL_SCHEMA_TRANSLATE_KEYS
  *
- * @param array  $props Raw schema properties array.
- * @param string $path  Dot-path of the current nesting level (internal).
+ * @param array  $props        Raw schema properties array.
+ * @param string $path         Dot-path of the current nesting level (internal).
+ * @param array  $replacements Map of {{placeholder}} => replacement string (built once).
  * @return array Resolved schema properties array.
  */
-function frl_resolve_schema_properties(array $props, string $path = ''): array
+function frl_resolve_schema_properties(array $props, string $path = '', array $replacements = []): array
 {
     $translate_keys = defined('FRL_SCHEMA_TRANSLATE_KEYS') ? FRL_SCHEMA_TRANSLATE_KEYS : [];
-    $replacements = frl_get_schema_placeholders();
+    if (empty($replacements)) {
+        $replacements = frl_get_schema_placeholders();
+    }
     $result = [];
 
     foreach ($props as $key => $value) {
         $current_path = $path ? "{$path}.{$key}" : $key;
 
         if (is_array($value)) {
-            $result[$key] = frl_resolve_schema_properties($value, $current_path);
+            $result[$key] = frl_resolve_schema_properties($value, $current_path, $replacements);
         } elseif (is_string($value)) {
             $value = str_replace(array_keys($replacements), array_values($replacements), $value);
 
