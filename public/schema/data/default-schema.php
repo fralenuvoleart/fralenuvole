@@ -46,9 +46,11 @@ return [
             'availableLanguage' => ['en', 'ru', 'ka', 'ar', 'zh'],
         ],
         'founder' => '{{schema_founder_name}}',
+        'foundingDate' => '2017',
         'foundingLocation' => [
             '@type' => 'Place',
             'name' => 'Georgia',
+            'sameAs' => 'https://www.wikidata.org/wiki/Q230'
         ],
        'knowsAbout' => [
             'https://en.wikipedia.org/wiki/Company_formation',

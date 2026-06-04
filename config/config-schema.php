@@ -20,6 +20,8 @@ if (!defined('ABSPATH')) exit;
  *   '!name'               → skip any key named 'name' at any depth
  */
 const FRL_SCHEMA_TRANSLATE_KEYS = [
-	'streetAddress',
-	'addressLocality',
+	'address',
+	'contactPoint',
+	'foundingDate',
+	'foundingLocation',
 ];
