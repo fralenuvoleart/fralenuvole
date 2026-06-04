@@ -15,7 +15,7 @@
  *   'post_permalink'     → get_permalink($ref_id)
  *   'post_thumbnail'     → ImageObject from featured image
  *   'post_{field}'       → $post->{field} (e.g. post_title)
- *   anything else        → get_post_meta($ref_id, $value, true)
+ *   anything else        → frl_get_post_meta($ref_id, $value, true)
  *
  * @package Fralenuvole
  */

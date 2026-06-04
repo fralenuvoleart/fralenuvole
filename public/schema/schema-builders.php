@@ -253,7 +253,7 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
  * Build a Person schema object from a CPT post ID and field map.
  *
  * Source resolution: 'post_' prefix = WP-native (post_permalink, post_thumbnail, post_{field}),
- * anything else = get_post_meta($ref_id, $source, true).
+ * anything else = frl_get_post_meta($ref_id, $source, true).
  *
  * @param int   $ref_id    CPT post ID.
  * @param array $field_def Field definition (_ref + Person property map).
