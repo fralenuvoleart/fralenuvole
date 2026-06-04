@@ -79,10 +79,6 @@ return [
     ],
     'Service' => [
         'publisher' => '_remove',
-        'hasOfferCatalog' => [
-            '@type' => 'OfferCatalog',
-            'name' => '{{post_title}}',
-        ],
         'audience' => [
             '@type' => 'Audience',
             'audienceType' => 'Foreign investors, offshore companies, international entrepreneurs and expats',
