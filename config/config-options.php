@@ -31,14 +31,6 @@ const FRL_OPTIONS_RUNTIME = [
 		'type' => 'text',
 		'default' => '0.0.0'
 	],
-	'schema_organization_url' => [
-		'type' => 'text',
-		'default' => '',
-	],
-	'schema_organization_name' => [
-		'type' => 'text',
-		'default' => '',
-	],
 ];
 
 /**
@@ -322,6 +314,12 @@ const FRL_DEFAULT_FIELDS = array(
 				'description' => 'Organization URL for Schema generation',
 				'type' => 'text',
 				'default' => 'https://pbservices.ge/',
+			),
+			'schema_founder_name' => array(
+				'label' => 'Founder Name',
+				'description' => 'Founder Name for Schema generation',
+				'type' => 'text',
+				'default' => 'Rati (Iese) Abashmadze',
 			),
 		),
 	),

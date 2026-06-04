@@ -8,6 +8,7 @@
  *   {{custom_logo}}       → resolved to the site logo URL
  *   {{organization_url}}  → resolved from env plugin option 'schema_organization_url'
  *   {{organization_name}} → resolved from env plugin option 'schema_organization_name'
+ *   {{schema_founder_name}} → resolved from env plugin option 'schema_founder_name'
  *
  * Translation is controlled by FRL_SCHEMA_TRANSLATE_KEYS in config-schema.php.
  * Only explicitly listed keys are translated; all others are kept as-is.
@@ -22,7 +23,8 @@ if (!defined('ABSPATH')) {
 
 return [
     'Organization' => [
-        'logo' => [
+        'legalName' => '{{organization_name}',
+         'logo' => [
             '@type' => 'ImageObject',
             'url' => '{{custom_logo}}',
             'width' => '150',
@@ -38,10 +40,12 @@ return [
         'areaServed' => [
             '@type' => 'AdministrativeArea',
             'name' => 'Worldwide',
+            'sameAs' => 'https://www.wikidata.org/wiki/Q2',
         ],
         'contactPoint' => [
             'availableLanguage' => ['en', 'ru', 'ka', 'ar', 'zh'],
         ],
+        'founder' => '{{schema_founder_name}}',
         'foundingLocation' => [
             '@type' => 'Place',
             'name' => 'Georgia',

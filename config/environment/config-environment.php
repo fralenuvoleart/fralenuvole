@@ -93,6 +93,7 @@ const FRL_ENV_PBNOVA_TEMPLATE = [
     'plugin_options' => [
         'schema_organization_name' => 'PB Nova',
         'schema_organization_url' => 'https://pbnova.com/',
+		'schema_founder_name' => 'Francesco Castronovo',
     ]
 ];
 
@@ -116,5 +117,6 @@ const FRL_ENV_FRALENUVOLE_PRODUCTION = [
     'plugin_options' => [
         'schema_organization_name' => 'Fralenuvole',
         'schema_organization_url' => 'https://fralenuvole.art/',
+		'schema_founder_name' => 'Francesco Castronovo',
     ]
 ];

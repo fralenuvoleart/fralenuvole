@@ -82,6 +82,7 @@ function frl_resolve_schema_properties(array $props, string $path = ''): array
             $value = str_replace('{{site_url_local}}', $site_url_local, $value);
             $value = str_replace('{{organization_url}}', frl_get_option('schema_organization_url') ?: $site_url, $value);
             $value = str_replace('{{organization_name}}', frl_get_option('schema_organization_name') ?: get_bloginfo('name'), $value);
+            $value = str_replace('{{schema_founder_name}}', frl_get_option('schema_founder_name') ?: '', $value);
 
             // Resolve {{custom_logo}} placeholder
             if (strpos($value, '{{custom_logo}}') !== false) {
