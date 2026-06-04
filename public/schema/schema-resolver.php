@@ -96,6 +96,8 @@ function frl_get_schema_placeholders(): array
  */
 function frl_schema_should_translate_key(string $key, string $current_path, array $translate_keys): bool
 {
+    $should_translate = false;
+
     foreach ($translate_keys as $entry) {
         $is_skip = str_starts_with($entry, '!');
         $rule = $is_skip ? substr($entry, 1) : $entry;
@@ -105,17 +107,20 @@ function frl_schema_should_translate_key(string $key, string $current_path, arra
             : $key === $rule;                         // bare key exact match
 
         if ($matches) {
-            return !$is_skip;   // '!' entries return false
+            if ($is_skip) {
+                return false;         // '!' trumps immediately
+            }
+            $should_translate = true; // match found; keep checking for '!' overrides
         }
     }
 
-    return false;
+    return $should_translate;
 }
 
 /**
- * Recursively resolve schema properties.
+ * Recursively resolve schema properties in a single pass.
  *
- * - Replaces all {{placeholder}} tokens via frl_resolve_placeholders() (once at root)
+ * - Replaces all {{placeholder}} tokens via the pre-built $replacements map
  * - Translates matching keys and handles '_remove' sentinel
  *
  * @param array  $props        Raw schema properties array.
@@ -128,24 +133,6 @@ function frl_resolve_schema_properties(array $props, string $path = '', array $r
     if (empty($replacements)) {
         $replacements = frl_get_schema_placeholders();
     }
-
-    // Placeholder resolution: only at root level (empty $path). Recursive calls skip.
-    if ($path === '') {
-        $props = frl_resolve_placeholders($props, $replacements);
-    }
-
-    return frl_translate_schema_properties($props, $path);
-}
-
-/**
- * Recursively translate schema properties and handle _remove sentinel.
- *
- * @param array  $props Resolved schema properties (placeholders already replaced).
- * @param string $path  Dot-path of the current nesting level.
- * @return array Translated schema properties array.
- */
-function frl_translate_schema_properties(array $props, string $path = ''): array
-{
     $translate_keys = defined('FRL_SCHEMA_TRANSLATE_KEYS') ? FRL_SCHEMA_TRANSLATE_KEYS : [];
     $result = [];
 
@@ -153,8 +140,10 @@ function frl_translate_schema_properties(array $props, string $path = ''): array
         $current_path = $path ? "{$path}.{$key}" : $key;
 
         if (is_array($value)) {
-            $result[$key] = frl_translate_schema_properties($value, $current_path);
+            $result[$key] = frl_resolve_schema_properties($value, $current_path, $replacements);
         } elseif (is_string($value)) {
+            $value = str_replace(array_keys($replacements), array_values($replacements), $value);
+
             if ($value === '_remove') {
                 $value = null;
             } elseif (frl_schema_should_translate_key($key, $current_path, $translate_keys)
