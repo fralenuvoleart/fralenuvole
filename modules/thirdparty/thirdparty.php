@@ -240,6 +240,7 @@ function frl_thirdparty_sanitize_schemas(array $schemas): array
         // First occurrence: inject static props, post-term props, and person props
         if (!isset($seen_ids[$id])) {
             if (!empty($props)) {
+                $props = frl_resolve_post_placeholders($props, $post_id);
                 $schema = frl_thirdparty_inject_schema_properties($schema, $props);
             }
 

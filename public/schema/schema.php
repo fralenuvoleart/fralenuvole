@@ -56,9 +56,28 @@ function frl_get_schema_properties(): array
 }
 
 /**
+ * Build the map of placeholder → value for schema resolution.
+ *
+ * @return array Map of {{placeholder}} => replacement string.
+ */
+function frl_get_schema_placeholders(): array
+{
+    $logo = wp_get_attachment_image_src(get_theme_mod('custom_logo'), 'full');
+
+    return [
+        '{{site_url}}'          => site_url(),
+        '{{site_url_local}}'    => frl_get_home_url(),
+        '{{custom_logo}}'       => $logo[0] ?? '',
+        '{{organization_url}}'  => frl_get_option('schema_organization_url') ?: site_url(),
+        '{{organization_name}}' => frl_get_option('schema_organization_name') ?: get_bloginfo('name'),
+        '{{schema_founder_name}}' => frl_get_option('schema_founder_name') ?: '',
+    ];
+}
+
+/**
  * Recursively resolve schema properties.
  *
- * - Replaces {{site_url}} and {{site_url_local}} placeholders
+ * - Replaces all {{placeholder}} tokens via frl_get_schema_placeholders()
  * - Translates string values whose bare key or dot-path matches FRL_SCHEMA_TRANSLATE_KEYS
  *
  * @param array  $props Raw schema properties array.
@@ -67,9 +86,8 @@ function frl_get_schema_properties(): array
  */
 function frl_resolve_schema_properties(array $props, string $path = ''): array
 {
-    $site_url = site_url();
-    $site_url_local = frl_get_home_url();
     $translate_keys = defined('FRL_SCHEMA_TRANSLATE_KEYS') ? FRL_SCHEMA_TRANSLATE_KEYS : [];
+    $replacements = frl_get_schema_placeholders();
     $result = [];
 
     foreach ($props as $key => $value) {
@@ -78,18 +96,7 @@ function frl_resolve_schema_properties(array $props, string $path = ''): array
         if (is_array($value)) {
             $result[$key] = frl_resolve_schema_properties($value, $current_path);
         } elseif (is_string($value)) {
-            $value = str_replace('{{site_url}}', $site_url, $value);
-            $value = str_replace('{{site_url_local}}', $site_url_local, $value);
-            $value = str_replace('{{organization_url}}', frl_get_option('schema_organization_url') ?: $site_url, $value);
-            $value = str_replace('{{organization_name}}', frl_get_option('schema_organization_name') ?: get_bloginfo('name'), $value);
-            $value = str_replace('{{schema_founder_name}}', frl_get_option('schema_founder_name') ?: '', $value);
-
-            // Resolve {{custom_logo}} placeholder
-            if (strpos($value, '{{custom_logo}}') !== false) {
-                $logo = wp_get_attachment_image_src(get_theme_mod('custom_logo'), 'full');
-                $logo_url = $logo[0] ?? '';
-                $value = str_replace('{{custom_logo}}', $logo_url, $value);
-            }
+            $value = str_replace(array_keys($replacements), array_values($replacements), $value);
 
             $should_translate = false;
             if (function_exists('frl_get_translation') && !empty($translate_keys)) {
@@ -133,6 +140,51 @@ function frl_resolve_schema_properties(array $props, string $path = ''): array
     }
 
     return $result;
+}
+
+/**
+ * Replace {{placeholder}} tokens in schema props with given values.
+ *
+ * @param array $props        Resolved schema properties array.
+ * @param array $replacements Map of placeholder → replacement string.
+ * @return array Props with placeholders resolved.
+ */
+function frl_resolve_placeholders(array $props, array $replacements): array
+{
+    if (empty($replacements)) {
+        return $props;
+    }
+
+    $result = [];
+
+    foreach ($props as $key => $value) {
+        if (is_array($value)) {
+            $result[$key] = frl_resolve_placeholders($value, $replacements);
+        } elseif (is_string($value)) {
+            $result[$key] = str_replace(array_keys($replacements), array_values($replacements), $value);
+        } else {
+            $result[$key] = $value;
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * Replace post-aware placeholders in resolved schema props.
+ *
+ * Delegates to frl_resolve_placeholders() with post-derived replacements.
+ * Replaces: {{post_title}} → get_the_title($post_id)
+ *
+ * @param array $props   Resolved schema properties array.
+ * @param int   $post_id Current post ID.
+ * @return array Props with post placeholders resolved.
+ */
+function frl_resolve_post_placeholders(array $props, int $post_id): array
+{
+    return frl_resolve_placeholders($props, [
+        '{{post_title}}' => get_the_title($post_id),
+    ]);
 }
 
 /**

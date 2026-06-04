@@ -9,6 +9,7 @@
  *   {{organization_url}}  → resolved from env plugin option 'schema_organization_url'
  *   {{organization_name}} → resolved from env plugin option 'schema_organization_name'
  *   {{schema_founder_name}} → resolved from env plugin option 'schema_founder_name'
+ *   {{post_title}}        → resolved at injection time to get_the_title($post_id)
  *
  * Translation is controlled by FRL_SCHEMA_TRANSLATE_KEYS in config-schema.php.
  * Only explicitly listed keys are translated; all others are kept as-is.
@@ -25,6 +26,7 @@ return [
     'Organization' => [
         '@id' => '{{organization_url}}#Organization',
         'legalName' => '{{organization_name}}',
+        'publisher' => '_remove',
          'logo' => [
             '@type' => 'ImageObject',
             'url' => '{{custom_logo}}',
@@ -42,10 +44,6 @@ return [
             '@type' => 'AdministrativeArea',
             'name' => 'Worldwide',
             'sameAs' => 'https://www.wikidata.org/wiki/Q2',
-        ],
-        'audience' => [
-            '@type' => 'Audience',
-            'audienceType' => 'Foreign investors, offshore companies, and international entrepreneurs',
         ],
         'contactPoint' => [
             'availableLanguage' => ['en', 'ru', 'ka', 'ar', 'zh'],
@@ -80,11 +78,19 @@ return [
          ],    
     ],
     'Service' => [
+        'publisher' => '_remove',
+        'hasOfferCatalog' => [
+            '@type' => 'OfferCatalog',
+            'name' => '{{post_title}}',
+        ],
+        'audience' => [
+            '@type' => 'Audience',
+            'audienceType' => 'Foreign investors, offshore companies, international entrepreneurs and expats',
+        ],
         'provider' => [
             '@type' => 'Organization',
             '@id' => '{{organization_url}}#Organization',
         ],
-        'publisher' => '_remove',
     ],
     'WebSite' => [
         'publisher' => [
