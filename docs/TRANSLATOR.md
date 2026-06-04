@@ -20,7 +20,7 @@ The system solves the following problems:
 - **`Frl_Translation_Adapter_Interface`**: Defines the contract for translation plugins.
 - **`Frl_Polylang_Adapter`**: The current implementation for Polylang. Fallback logic is self-contained — the adapter knows its own plugin's database schema and provides fallbacks independently of global helper functions.
 - **`field-translator.php`**: The hook-based layer that intercepts WordPress metadata calls to provide transparent translations.
-- **`functions-translation-helpers.php`**: The public API for developers.
+- **`functions-translator-helpers.php`**: The public API for developers.
 - **`translator.php`**: Module entry point. Loads adapter interface and implementation early so the adapter class is always available after the module loads, regardless of whether the service singleton is instantiated.
 
 ### Fallback Architecture

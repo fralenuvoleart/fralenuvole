@@ -326,7 +326,7 @@ With the dead hooks never firing, `PLL()->curlang` resolved to EN on the subdoma
 - **Added `FRL_TRANSLATOR_DEFAULT_LANG`** constant in [`config/config-translator.php:18`](config/config-translator.php:18) — single source of truth for default language fallback (default: `'en'`)
 - **Moved adapter `require_once`** to [`translator.php:14`](core/translator/translator.php:14) — adapter class always available after module loads, regardless of service singleton instantiation
 - **Added private internal fallback methods** to [`Frl_Polylang_Adapter`](core/translator/adapters/polylang.php:111): `get_default_language_internal()` and `get_active_languages_internal()`
-- **Updated global helpers** in [`functions-translation-helpers.php:241`](includes/helpers/functions-translation-helpers.php:241) to delegate to adapter via `class_exists` check
+- **Updated global helpers** in [`functions-translator-helpers.php:241`](includes/helpers/functions-translator-helpers.php:241) to delegate to adapter via `class_exists` check
 - **Removed duplicate `require_once`** from [`class-translation-service.php:62`](core/translator/class-translation-service.php:62)
 - **Zero regression:** All 10 call sites traced, 8 edge cases verified, subdomain adapter behavior unchanged
 

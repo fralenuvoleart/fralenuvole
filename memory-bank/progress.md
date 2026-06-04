@@ -512,7 +512,7 @@ Hardcoded legacy URLs (e.g., `pbservices.ge/ru/services/`) exist in post content
 - **Added `FRL_TRANSLATOR_DEFAULT_LANG`** constant in [`config/config-translator.php:18`](config/config-translator.php:18)
 - **Moved adapter `require_once`** to [`translator.php:14`](core/translator/translator.php:14) — adapter always available after module loads
 - **Added private internal fallbacks** to [`Frl_Polylang_Adapter`](core/translator/adapters/polylang.php:111): `get_default_language_internal()`, `get_active_languages_internal()`
-- **Updated global helpers** in [`functions-translation-helpers.php:241`](includes/helpers/functions-translation-helpers.php:241) to delegate to adapter via `class_exists` check
+- **Updated global helpers** in [`functions-translator-helpers.php:241`](includes/helpers/functions-translator-helpers.php:241) to delegate to adapter via `class_exists` check
 - **Removed duplicate `require_once`** from [`class-translation-service.php:62`](core/translator/class-translation-service.php:62)
 - **Zero regression:** All 10 call sites traced, 8 edge cases verified, subdomain adapter behavior unchanged
 

@@ -257,7 +257,7 @@ Format:  {group}_{lang}_{key}
 Example: permalinks_en_post_42
 ```
 
-The language is obtained via [`frl_get_language()`](includes/helpers/functions-translation-helpers.php) and is scoped to the current request context.
+The language is obtained via [`frl_get_language()`](includes/helpers/functions-translator-helpers.php) and is scoped to the current request context.
 
 ### 5.5 Dependency Cascading
 
