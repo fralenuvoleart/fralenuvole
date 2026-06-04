@@ -1,10 +1,14 @@
 <?php
 /**
- * Schema Translation Configuration
+ * Schema Configuration
  *
- * Controls which schema keys and values are excluded from translation.
+ * Organization identity constants and translation key inclusion list.
  */
 if (!defined('ABSPATH')) exit;
+
+
+const FRL_SCHEMA_ORGANIZATION_NAME = 'PB Services Georgia';
+const FRL_SCHEMA_ORGANIZATION_URL = 'https://pbservices.ge/';
 
 /**
  * Only these keys are translated. All others kept as-is.
@@ -17,7 +21,6 @@ if (!defined('ABSPATH')) exit;
  *   'Organization.address' → all keys under Organization.address
  */
 const FRL_SCHEMA_TRANSLATE_KEYS = [
-	'name',
 	'streetAddress',
 	'addressLocality',
 ];
