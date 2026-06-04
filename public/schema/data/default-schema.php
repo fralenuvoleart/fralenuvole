@@ -23,6 +23,7 @@ if (!defined('ABSPATH')) {
 
 return [
     'Organization' => [
+        '@id' => '{{organization_url}}#Organization',
         'legalName' => '{{organization_name}}',
          'logo' => [
             '@type' => 'ImageObject',
@@ -41,6 +42,10 @@ return [
             '@type' => 'AdministrativeArea',
             'name' => 'Worldwide',
             'sameAs' => 'https://www.wikidata.org/wiki/Q2',
+        ],
+        'audience' => [
+            '@type' => 'Audience',
+            'audienceType' => 'Foreign investors, offshore companies, and international entrepreneurs',
         ],
         'contactPoint' => [
             'availableLanguage' => ['en', 'ru', 'ka', 'ar', 'zh'],

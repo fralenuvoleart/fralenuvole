@@ -21,7 +21,6 @@ if (!defined('ABSPATH')) exit;
  */
 const FRL_SCHEMA_TRANSLATE_KEYS = [
 	'address',
-	'contactPoint',
-	'foundingDate',
 	'foundingLocation',
+	'audienceType',
 ];
