@@ -61,21 +61,26 @@ function frl_get_schema_properties(): array
  * - Replaces {{site_url}} placeholders with site_url()
  * - Replaces {{site_url_local}} placeholders with current language homepage
  * - Translates non-structural string values via frl_get_translation()
- * - Skips values starting with prefixes defined in FRL_SCHEMA_EXCLUDE_TRANSLATIONS
+ * - Skips values starting with prefixes defined in FRL_SCHEMA_SKIP_TRANSLATION_VALUES
+ * - Skips keys matching FRL_SCHEMA_SKIP_TRANSLATION_KEYS (prefix or exact dot-path)
  *
  * @param array $props Raw schema properties array.
+ * @param string $path  Dot-path of the current nesting level (internal).
  * @return array Resolved schema properties array.
  */
-function frl_resolve_schema_properties(array $props): array
+function frl_resolve_schema_properties(array $props, string $path = ''): array
 {
     $site_url = site_url();
     $site_url_local = frl_get_home_url();
-    $exclude_prefixes = defined('FRL_SCHEMA_EXCLUDE_TRANSLATIONS') ? FRL_SCHEMA_EXCLUDE_TRANSLATIONS : ['@', '_'];
+    $exclude_value_prefixes = defined('FRL_SCHEMA_SKIP_TRANSLATION_VALUES') ? FRL_SCHEMA_SKIP_TRANSLATION_VALUES : ['_'];
+    $exclude_keys = defined('FRL_SCHEMA_SKIP_TRANSLATION_KEYS') ? FRL_SCHEMA_SKIP_TRANSLATION_KEYS : ['@'];
     $result = [];
 
     foreach ($props as $key => $value) {
+        $current_path = $path ? "{$path}.{$key}" : $key;
+
         if (is_array($value)) {
-            $result[$key] = frl_resolve_schema_properties($value);
+            $result[$key] = frl_resolve_schema_properties($value, $current_path);
         } elseif (is_string($value)) {
             $value = str_replace('{{site_url}}', $site_url, $value);
             $value = str_replace('{{site_url_local}}', $site_url_local, $value);
@@ -89,10 +94,30 @@ function frl_resolve_schema_properties(array $props): array
 
             $should_translate = function_exists('frl_get_translation');
             if ($should_translate) {
-                foreach ($exclude_prefixes as $prefix) {
-                    if (str_starts_with($value, $prefix)) {
-                        $should_translate = false;
-                        break;
+                // Check key exclusion (prefix or exact dot-path)
+                foreach ($exclude_keys as $excluded) {
+                    if (str_contains($excluded, '.')) {
+                        // Exact dot-path match
+                        if ($current_path === $excluded) {
+                            $should_translate = false;
+                            break;
+                        }
+                    } else {
+                        // Key prefix match
+                        if (str_starts_with($key, $excluded)) {
+                            $should_translate = false;
+                            break;
+                        }
+                    }
+                }
+
+                // Check value prefix exclusion
+                if ($should_translate) {
+                    foreach ($exclude_value_prefixes as $prefix) {
+                        if (str_starts_with($value, $prefix)) {
+                            $should_translate = false;
+                            break;
+                        }
                     }
                 }
             }
