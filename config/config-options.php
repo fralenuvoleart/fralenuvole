@@ -31,6 +31,14 @@ const FRL_OPTIONS_RUNTIME = [
 		'type' => 'text',
 		'default' => '0.0.0'
 	],
+	'schema_organization_url' => [
+		'type' => 'text',
+		'default' => '',
+	],
+	'schema_organization_name' => [
+		'type' => 'text',
+		'default' => '',
+	],
 ];
 
 /**
@@ -297,6 +305,23 @@ const FRL_DEFAULT_FIELDS = array(
 				'default' => 0,
 				'sanitize_callback' => 'absint',
 				'restricted' => true,
+			),
+			'section_title_schema' => array(
+				'label' => 'Schema Settings',
+				'description' => 'Sitewide settings for structured data',
+				'type' => 'section_title',
+			),
+			'schema_organization_name' => array(
+				'label' => 'Organization name',
+				'description' => 'Organization name for Schema generation',
+				'type' => 'text',
+				'default' => 'PB Services Georgia',
+			),
+			'schema_organization_url' => array(
+				'label' => 'Organization URL',
+				'description' => 'Organization URL for Schema generation',
+				'type' => 'text',
+				'default' => 'https://pbservices.ge/',
 			),
 		),
 	),

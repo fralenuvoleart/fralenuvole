@@ -61,6 +61,8 @@ const FRL_ENV_DEFAULT = [
         'error_reporting_notice' => true,
         'error_reporting_warning' => true,
         'error_reporting_deprecated' => true,
+        'schema_organization_name' => 'PB Services Georgia',
+        'schema_organization_url' => 'https://pbservices.ge/',
     ],
 ];
 

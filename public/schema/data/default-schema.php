@@ -3,9 +3,11 @@
  * Default Schema Properties Data
  *
  * Pure data file — no function calls. Dynamic values use placeholders:
- *   {{site_url}}       → resolved to site_url() at runtime
- *   {{site_url_local}}  → resolved to current-language homepage via frl_get_home_url()
- *   {{custom_logo}}    → resolved to the site logo URL
+ *   {{site_url}}          → resolved to site_url() at runtime
+ *   {{site_url_local}}    → resolved to current-language homepage via frl_get_home_url()
+ *   {{custom_logo}}       → resolved to the site logo URL
+ *   {{organization_url}}  → resolved from env plugin option 'schema_organization_url'
+ *   {{organization_name}} → resolved from env plugin option 'schema_organization_name'
  *
  * Translation is controlled by FRL_SCHEMA_TRANSLATE_KEYS in config-schema.php.
  * Only explicitly listed keys are translated; all others are kept as-is.
@@ -69,44 +71,44 @@ return [
     'Service' => [
         'provider' => [
             '@type' => 'Organization',
-            '@id' => FRL_SCHEMA_ORGANIZATION_URL . '#Organization',
+            '@id' => '{{organization_url}}#Organization',
         ],
         'publisher' => '_remove',
     ],
     'WebSite' => [
         'publisher' => [
             '@type' => 'Organization',
-            '@id' => FRL_SCHEMA_ORGANIZATION_URL . '#Organization',
+            '@id' => '{{organization_url}}#Organization',
         ],
     ],
     'WebPage' => [
         'publisher' => [
             '@type' => 'Organization',
-            '@id' => FRL_SCHEMA_ORGANIZATION_URL . '#Organization',
+            '@id' => '{{organization_url}}#Organization',
         ],
         'reviewedBy' => [
             '@type' => 'Organization',
-            '@id' => FRL_SCHEMA_ORGANIZATION_URL . '#Organization',
+            '@id' => '{{organization_url}}#Organization',
         ],
     ],
     'AboutPage' => [
         'publisher' => [
             '@type' => 'Organization',
-            '@id' => FRL_SCHEMA_ORGANIZATION_URL . '#Organization',
+            '@id' => '{{organization_url}}#Organization',
         ],
         'mainEntity' => [
             '@type' => 'Organization',
-            '@id' => FRL_SCHEMA_ORGANIZATION_URL . '#Organization',
+            '@id' => '{{organization_url}}#Organization',
         ],
     ],
     'ContactPage' => [
         'publisher' => [
             '@type' => 'Organization',
-            '@id' => FRL_SCHEMA_ORGANIZATION_URL . '#Organization',
+            '@id' => '{{organization_url}}#Organization',
         ],
         'mainEntity' => [
             '@type' => 'Organization',
-            '@id' => FRL_SCHEMA_ORGANIZATION_URL . '#Organization',
+            '@id' => '{{organization_url}}#Organization',
         ],
     ],
 ];

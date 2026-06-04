@@ -80,6 +80,8 @@ function frl_resolve_schema_properties(array $props, string $path = ''): array
         } elseif (is_string($value)) {
             $value = str_replace('{{site_url}}', $site_url, $value);
             $value = str_replace('{{site_url_local}}', $site_url_local, $value);
+            $value = str_replace('{{organization_url}}', frl_get_option('schema_organization_url') ?: $site_url, $value);
+            $value = str_replace('{{organization_name}}', frl_get_option('schema_organization_name') ?: get_bloginfo('name'), $value);
 
             // Resolve {{custom_logo}} placeholder
             if (strpos($value, '{{custom_logo}}') !== false) {
@@ -91,17 +93,24 @@ function frl_resolve_schema_properties(array $props, string $path = ''): array
             $should_translate = false;
             if (function_exists('frl_get_translation') && !empty($translate_keys)) {
                 foreach ($translate_keys as $entry) {
-                    if (str_contains($entry, '.')) {
+                    $is_skip = str_starts_with($entry, '!');
+                    $rule = $is_skip ? substr($entry, 1) : $entry;
+
+                    if (str_contains($rule, '.')) {
                         // Dot-path: prefix match on current path (includes subkeys)
-                        if (str_starts_with($current_path, $entry)) {
-                            $should_translate = true;
-                            break;
+                        if (str_starts_with($current_path, $rule)) {
+                            $should_translate = !$is_skip;
+                            if ($is_skip) {
+                                break; // ! overrides: stop checking
+                            }
                         }
                     } else {
                         // Bare key: match at any depth
-                        if ($key === $entry) {
-                            $should_translate = true;
-                            break;
+                        if ($key === $rule) {
+                            $should_translate = !$is_skip;
+                            if ($is_skip) {
+                                break; // ! overrides: stop checking
+                            }
                         }
                     }
                 }

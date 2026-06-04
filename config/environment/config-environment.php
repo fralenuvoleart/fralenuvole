@@ -67,6 +67,8 @@ const FRL_ENV_PBP_TEMPLATE = [
         'wsform_webhook' => true,
         'header_html' => 'file',
         'header_html_php' => true,
+        'schema_organization_name' => 'PB Property Georgia',
+        'schema_organization_url' => 'https://pbproperty.ge/',
     ]
 ];
 
@@ -89,6 +91,8 @@ const FRL_ENV_PBNOVA_TEMPLATE = [
         'blog_public' => 0,
     ],
     'plugin_options' => [
+        'schema_organization_name' => 'PB Nova',
+        'schema_organization_url' => 'https://pbnova.com/',
     ]
 ];
 
@@ -109,4 +113,8 @@ const FRL_ENV_FRALENUVOLE_PRODUCTION = [
     'modules' => [
         'frl' => true,
     ],
+    'plugin_options' => [
+        'schema_organization_name' => 'Fralenuvole',
+        'schema_organization_url' => 'https://fralenuvole.art/',
+    ]
 ];
