@@ -13,33 +13,6 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Resolve the file path for a schema data file, supporting per-brand overrides.
- *
- * Tries {prefix}-variant first; falls back to the default filename.
- *
- * @param string $default_filename The default filename (e.g. 'default-schema.php').
- * @return string Resolved file path.
- */
-function frl_get_schema_data_file(string $default_filename): string
-{
-    $prefix = '';
-    if (function_exists('frl_environment_get_config')) {
-        $env_config = frl_environment_get_config();
-        $prefix = $env_config['prefix'] ?? '';
-    }
-
-    $file = FRL_DIR_PATH . 'public/schema/data/' . $default_filename;
-    if ($prefix) {
-        $brand_filename = str_replace('default-', $prefix . '-', $default_filename);
-        $brand_file = FRL_DIR_PATH . 'public/schema/data/' . $brand_filename;
-        if (file_exists($brand_file)) {
-            return $brand_file;
-        }
-    }
-    return $file;
-}
-
-/**
  * Get resolved schema properties.
  *
  * Loads raw data, resolves placeholders and translations, caches per-language,
@@ -49,6 +22,10 @@ function frl_get_schema_data_file(string $default_filename): string
  */
 function frl_get_schema_properties(): array
 {
+    if (!frl_get_option('schema_properties')) {
+        return [];
+    }
+
     $language = frl_get_language();
     $version = frl_get_option('translation_version') ?: 1;
     $cache_key = "schema_properties_{$language}_{$version}";

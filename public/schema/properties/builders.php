@@ -12,23 +12,6 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Normalize a meta value: extract 'label' from arrays, cast scalars to string.
- *
- * @param mixed $value The raw meta value.
- * @return string|null Extracted scalar string or null if invalid.
- */
-function frl_extract_scalar_value($value): ?string
-{
-    if ($value === null || $value === false || $value === '') {
-        return null;
-    }
-    if (is_array($value) && isset($value['label'])) {
-        $value = $value['label'];
-    }
-    return is_scalar($value) ? (string) $value : null;
-}
-
-/**
  * Get the post-term schema mapping configuration.
  *
  * Loads the schema term data file, transforms simple "property => taxonomy"
@@ -38,6 +21,10 @@ function frl_extract_scalar_value($value): ?string
  */
 function frl_get_schema_term_map(): array
 {
+    if (!frl_get_option('schema_properties')) {
+        return [];
+    }
+
     $file = frl_get_schema_data_file('default-schema-terms.php');
     $raw = file_exists($file) ? include $file : [];
     $map = [];
@@ -144,6 +131,10 @@ function frl_build_schema_term_properties(int $post_id, array $type_map, array &
  */
 function frl_get_schema_person_map(): array
 {
+    if (!frl_get_option('schema_properties')) {
+        return [];
+    }
+
     $file = frl_get_schema_data_file('default-schema-person.php');
     $map = file_exists($file) ? include $file : [];
 

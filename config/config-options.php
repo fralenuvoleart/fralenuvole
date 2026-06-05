@@ -321,6 +321,22 @@ const FRL_DEFAULT_FIELDS = array(
 				'type' => 'text',
 				'default' => 'Rati (Iese) Abashmadze',
 			),
+			'schema_properties' => array(
+				'label'       => 'Enable Schema Properties',
+				'description' => 'Master toggle for Schema properties injection.',
+				'type'        => 'checkbox',
+				'default'     => 1,
+				'sanitize_callback' => 'absint',
+				'restricted'  => true,
+			),
+			'schema_generator' => array(
+				'label'       => 'Enable Schema Generator',
+				'description' => 'Master toggle for dynamic schema generator (HowTo, FAQ, etc. from ACF/ACPT data).',
+				'type'        => 'checkbox',
+				'default'     => 1,
+				'sanitize_callback' => 'absint',
+				'restricted'  => true,
+			),
 		),
 	),
 	'features' => array(

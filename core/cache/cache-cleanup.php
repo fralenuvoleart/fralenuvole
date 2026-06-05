@@ -51,6 +51,9 @@ function frl_clear_post_cache($post_id)
     $translations_key = "post_{$post_id}_translations";
     frl_cache_clear('postdata', $translations_key);
 
+    $generated_schemas_key = "post_{$post_id}_schema";
+    frl_cache_clear('postdata', $generated_schemas_key);
+
     $permalinks_key = "post_{$post_id}";
     frl_cache_clear('permalinks', $permalinks_key);
 

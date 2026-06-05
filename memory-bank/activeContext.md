@@ -381,4 +381,16 @@ Two-phase migration module to convert ACPT custom fields to SCF/ACF, including c
 - **MEDIUM FIX:** Shim now bypasses during admin, REST API, and cron requests.
 - **LOW FIX:** `random_bytes()` catch updated to `\Throwable` for PHP 8.2+ compatibility. `add_post_meta` failures log to `error_log`. Reference row query filters out NULL/empty values.
 
+## ✅ Schema Generator Module (2026-06-05 — implemented)
+- **Purpose:** Config-driven, extensible system generating complete JSON-LD `@type` blocks from post data (ACF, ACPT, taxonomies).
+- **Architecture:** Two independent subsystems under `public/schema/`:
+  - `properties/` — Static property injection (Organization, address, Person refs) → enriches SASWP output
+  - `generators/` — Dynamic schema generation (HowTo, FAQ, etc.) → outputs via `wp_head`
+- **Master toggles:** `schema_properties` + `schema_generator` in `config/config-options.php` (both default 1, restricted)
+- **Generator registry:** Data file `data/generators/default-schema-generators.php` + filter `frl_schema_generators($configs, $post_id, $post_type)`
+- **HowTo generator:** Reads ACF (`have_rows`/`get_sub_field`) or ACPT (columnar serialized array) repeater; source swap via config key `'source'`
+- **Best practices:** `frl_is_already_running()` re-entrancy guard, `frl_cache_remember('html')` per-post caching, request-level static cache for data file, `try/catch` around generator callables, admin/REST/preview bail-out
+- **Files:** 4 dirs created, 5 files moved (schema-resolver + schema-builders → properties/, 3 data files → data/properties/), 2 new files (generators/schema-generator.php, data/generators/default-schema-generators.php), 4 files edited (schema.php, resolver.php, builders.php, config-options.php)
+- **Plan:** [`plans/schema-generator-module.md`](plans/schema-generator-module.md)
+
 *Last Updated: 2026-06-05*

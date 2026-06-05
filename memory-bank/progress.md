@@ -551,4 +551,32 @@ Two-phase migration module — ACPT custom fields → SCF/ACF with repeater tran
 ### Files Modified
 - `config/environment/config-defaults.php` — added `'acf-migration' => false`
 
+## Schema Generator Module — Implemented (2026-06-05)
+
+### Purpose
+Config-driven, extensible system generating complete JSON-LD `@type` blocks from post data (ACF, ACPT, taxonomies). Two independent subsystems: `properties/` (static injection → SASWP) and `generators/` (dynamic generation → `wp_head`).
+
+### Files Created (2)
+- `public/schema/generators/schema-generator.php` — Registry, `wp_head` output, HowTo generator (ACF + ACPT)
+- `public/schema/data/generators/default-schema-generators.php` — Config data mapping post types → generators
+
+### Files Moved (5)
+- `public/schema/schema-resolver.php` → `public/schema/properties/resolver.php`
+- `public/schema/schema-builders.php` → `public/schema/properties/builders.php`
+- 3 data files → `public/schema/data/properties/`
+
+### Files Edited (4)
+- `public/schema/schema.php` — Updated require paths
+- `public/schema/properties/resolver.php` — Updated data path + `schema_properties` guard
+- `public/schema/properties/builders.php` — `schema_properties` guards
+- `config/config-options.php` — Added `schema_properties` + `schema_generator` toggles
+
+### Key Features
+- **Source swap:** `'source' => 'acf'` ↔ `'acpt'` in data file — one word change, zero code changes
+- **Master toggles:** `schema_properties` (default 1) → gates property injection; `schema_generator` (default 1) → gates generation
+- **Module extensibility:** `frl_schema_generators` filter passes `($configs, $post_id, $post_type)`
+- **Best practices:** Re-entrancy guard, per-post caching, request-level static cache, try/catch, admin/REST/preview bail-out
+
+### Plan: `plans/schema-generator-module.md`
+
 *Last Updated: 2026-06-05*

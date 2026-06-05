@@ -13,5 +13,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-require_once FRL_DIR_PATH . 'public/schema/schema-resolver.php';
-require_once FRL_DIR_PATH . 'public/schema/schema-builders.php';
+require_once FRL_DIR_PATH . 'public/schema/properties/resolver.php';
+require_once FRL_DIR_PATH . 'public/schema/properties/builders.php';
+require_once FRL_DIR_PATH . 'public/schema/generator/generator.php';

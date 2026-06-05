@@ -23,6 +23,7 @@ require_once FRL_DIR_PATH . 'includes/helpers/functions-options.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-class-helpers.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-translator-helpers.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-modules.php';
+require_once FRL_DIR_PATH . 'includes/helpers/functions-schema.php';
 
 /**
  * Returns a string prefixed with the plugin's defined prefix.
