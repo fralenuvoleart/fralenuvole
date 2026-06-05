@@ -39,11 +39,12 @@ return [
             'totalTime'   => 'service-howtos_time', // optional: ACF field (e.g. 'PT30M')
             'estimatedCost' => 'service-howtos_cost', // optional: ACF field
             'step'         => [
+                '@type'    => 'HowToStep',
                 'repeater' => 'service-howtos_howto',
-                'source'   => 'acpt', // ACF Plugin
-                'position' => '{{index}}', // 1, 2, 3...
-                'name'     => 'title', // → HowToStep.name
-                'text'     => 'answer',  // → HowToStep.text
+                'source'   => 'acpt',
+                'position' => '{{index}}',
+                'name'     => 'title',
+                'text'     => 'answer',
             ],
         ],
     ],

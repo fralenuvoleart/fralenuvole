@@ -2,15 +2,13 @@
 /**
  * Schema Generator
  *
- * Config-driven system that generates complete JSON-LD @type blocks
- * from post data (ACF, ACPT, taxonomies, etc.).
- * Definitions are registered via data file + frl_schema_generators filter.
+ * Generic recursive builder that walks schema definition arrays
+ * and produces Schema.org JSON-LD from post data.
  *
- * All resolution delegates to shared helpers in includes/helpers/functions-schema.php.
- * Built-in generators are thin orchestrators — no data-fetching logic inlined.
- *
- * Master toggle: frl_get_option('schema_generator') — defaults to 1 (enabled).
- * When 0, all generator output is suppressed.
+ * No hardcoded types — the @type comes from the data config.
+ * No hardcoded property resolution — strings resolve via placeholder or field name.
+ * Arrays with a 'repeater' key expand into repeated item arrays.
+ * Arrays without 'repeater' are treated as nested sub-objects.
  *
  * @package Fralenuvole
  */
@@ -23,11 +21,6 @@ add_action('wp_head', 'frl_output_generated_schemas', 10, 0);
 
 /**
  * Output all generated schema blocks as a single <script> tag.
- *
- * Gated behind:
- * - Master toggle: frl_get_option('schema_generator')
- * - is_singular(), !frl_is_admin(), !frl_is_rest_api_request(), !is_preview(), !frl_is_cron_job_request()
- * - frl_is_already_running() re-entrancy guard
  */
 function frl_output_generated_schemas(): void
 {
@@ -80,14 +73,8 @@ function frl_get_generated_schemas(int $post_id): array
         $definitions = frl_get_schema_generators($post_id);
 
         foreach ($definitions as $def) {
-            $type = $def['@type'] ?? '';
-            $generator_fn = frl_schema_generator_for_type($type);
-            if ($generator_fn === null) {
-                continue;
-            }
-
             try {
-                $schema = call_user_func($generator_fn, $post_id, $def);
+                $schema = frl_schema_build($post_id, $def);
             } catch (\Throwable $e) {
                 if (defined('WP_DEBUG') && WP_DEBUG && function_exists('frl_log')) {
                     frl_log('Schema generator threw: {msg}', ['msg' => $e->getMessage()]);
@@ -105,41 +92,7 @@ function frl_get_generated_schemas(int $post_id): array
 }
 
 /**
- * Map a Schema.org @type to its generator function.
- *
- * Extend via filter 'frl_schema_generator_map' to register custom types.
- *
- * @param string $type Schema.org type (e.g. 'HowTo').
- * @return callable|null Generator function or null if unsupported.
- */
-function frl_schema_generator_for_type(string $type): ?callable
-{
-    static $map = [
-        'HowTo' => 'frl_schema_generate_howto',
-    ];
-
-    /**
-     * Filter the type → generator map.
-     *
-     * @param array $map Schema.org @type => callable.
-     */
-    $map = apply_filters('frl_schema_generator_map', $map);
-
-    $fn = $map[$type] ?? null;
-    if ($fn === null || !is_callable($fn)) {
-        if (defined('WP_DEBUG') && WP_DEBUG && function_exists('frl_log')) {
-            frl_log('No generator for schema type: {type}', ['type' => $type]);
-        }
-        return null;
-    }
-
-    return $fn;
-}
-
-/**
  * Build the definition registry for a given post.
- *
- * Uses request-level static cache for the data file include.
  *
  * @param int $post_id Post ID.
  * @return array List of schema definition arrays.
@@ -165,57 +118,109 @@ function frl_get_schema_generators(int $post_id): array
     /**
      * Filter the schema generator definitions for a post.
      *
-     * @param array  $definitions Schema definition arrays (each mirrors Schema.org JSON).
+     * @param array  $definitions Schema definition arrays.
      * @param int    $post_id     Post ID.
      * @param string $post_type   Post type.
      */
     return apply_filters('frl_schema_generators', $definitions, $post_id, $post_type);
 }
 
-// ─── Built-in Generators ─────────────────────────────────────────
+// ─── Generic Recursive Builder ───────────────────────────────────
 
 /**
- * Generate a HowTo schema.
+ * Build a Schema.org object from a definition array.
  *
- * All property resolution delegates to shared helpers:
- *   - frl_get_schema_placeholders($post_id) → {{post_title}} etc.
- *   - frl_schema_resolve_value() → placeholder or field name → scalar
- *   - frl_get_repeater_rows() → ACF/ACPT repeater → associative rows
- *   - frl_build_image_object() → featured image → ImageObject
+ * Rules:
+ *   - '@type'     → passed through as-is
+ *   - 'repeater'  → key in an array triggers row expansion
+ *   - 'source'    → data source for repeater ('acf' or 'acpt')
+ *   - 'image'     → if '@source' => 'featured_image', built from thumbnail
+ *   - Scalar      → resolved via frl_schema_resolve_value
+ *   - Array       → recursed into (sub-object)
+ *   - null/empty  → key omitted from output
  *
- * @see https://schema.org/HowTo
- *
- * @param int   $post_id Post ID.
- * @param array $def     Schema definition from data file.
- * @return array|null HowTo schema array, or null if required data is missing.
+ * @param int   $post_id      Post ID.
+ * @param array $def          Definition array from data file.
+ * @param array $placeholders Pre-built placeholder map.
+ * @return array|null Built schema array, or null if no content.
  */
-function frl_schema_generate_howto(int $post_id, array $def): ?array
+function frl_schema_build(int $post_id, array $def, ?array $placeholders = null): ?array
 {
-    // Placeholder map (post-aware: includes {{post_title}})
-    $placeholders = frl_get_schema_placeholders($post_id);
-
-    // Required: name
-    if (empty($def['name'])) {
-        return null;
-    }
-    $name = frl_schema_resolve_value($post_id, $def['name'], $placeholders);
-    if ($name === null) {
-        return null;
+    if ($placeholders === null) {
+        $placeholders = frl_get_schema_placeholders($post_id);
     }
 
-    // Required: step (repeater)
-    $step_def = $def['step'] ?? [];
-    if (!is_array($step_def) || empty($step_def['repeater'])) {
-        return null;
+    $result = [];
+
+    foreach ($def as $key => $value) {
+        // Skip structural keys
+        if ($key === 'source') {
+            continue;
+        }
+
+        // @type → pass through
+        if ($key === '@type') {
+            $result[$key] = $value;
+            continue;
+        }
+
+        // Array with 'repeater' → expand rows
+        if (is_array($value) && isset($value['repeater'])) {
+            $items = frl_schema_build_repeater_items($post_id, $value, $placeholders);
+            if (!empty($items)) {
+                $result[$key] = $items;
+            }
+            continue;
+        }
+
+        // @source special keys
+        if (is_array($value) && isset($value['@source'])) {
+            $sub = frl_schema_build_sourced($post_id, $value, $placeholders);
+            if ($sub !== null) {
+                $result[$key] = $sub;
+            }
+            continue;
+        }
+
+        // Array → recurse as sub-object
+        if (is_array($value)) {
+            $sub = frl_schema_build($post_id, $value, $placeholders);
+            if ($sub !== null) {
+                $result[$key] = $sub;
+            }
+            continue;
+        }
+
+        // Scalar → resolve
+        if (is_string($value) && $value !== '') {
+            $resolved = frl_schema_resolve_value($post_id, $value, $placeholders);
+            if ($resolved !== null) {
+                $result[$key] = $resolved;
+            }
+            continue;
+        }
     }
 
-    $source    = $step_def['source'] ?? 'acf';
-    $repeater  = $step_def['repeater'];
+    return !empty($result) ? $result : null;
+}
+
+/**
+ * Expand a repeater definition into an array of row objects.
+ *
+ * @param int   $post_id      Post ID.
+ * @param array $def          Repeater definition (must contain 'repeater' key).
+ * @param array $placeholders Placeholder map.
+ * @return array Array of built row arrays.
+ */
+function frl_schema_build_repeater_items(int $post_id, array $def, array $placeholders): array
+{
+    $repeater = $def['repeater'];
+    $source   = $def['source'] ?? 'acf';
+
+    // Build field map from non-structural keys
     $field_map = [];
-
-    // Build field map from step definition (exclude structural keys)
-    foreach ($step_def as $key => $field_name) {
-        if (!is_string($field_name) || in_array($key, ['source', 'repeater'], true)) {
+    foreach ($def as $key => $field_name) {
+        if (in_array($key, ['repeater', 'source', '@type'], true)) {
             continue;
         }
         $field_map[$key] = $field_name;
@@ -223,52 +228,75 @@ function frl_schema_generate_howto(int $post_id, array $def): ?array
 
     $rows = frl_get_repeater_rows($post_id, $repeater, $source, $field_map);
     if (empty($rows)) {
-        return null;
+        return [];
     }
 
-    // Build HowToStep objects with {{index}} replacement
-    $steps = [];
-    for ($i = 0; $i < count($rows); $i++) {
-        $step = ['@type' => 'HowToStep'];
-        $index = (string) ($i + 1);
+    $items = [];
+    foreach ($rows as $i => $row) {
+        $item = [];
+        // Inject @type if defined
+        if (!empty($def['@type'])) {
+            $item['@type'] = $def['@type'];
+        }
 
-        foreach ($rows[$i] as $prop => $value) {
-            // Apply {{index}} placeholder
+        $index = (string) ($i + 1);
+        foreach ($row as $prop => $value) {
+            // {{index}} replacement
             if (str_contains($value, '{{index}}')) {
                 $value = str_replace('{{index}}', $index, $value);
             }
-            $step[$prop] = $value;
+            // Placeholder replacement
+            $value = frl_replace_placeholders($value, $placeholders);
+            if ($value !== '' && $value !== null) {
+                $item[$prop] = $value;
+            }
         }
 
-        $steps[] = $step;
-    }
-
-    $schema = [
-        '@type' => 'HowTo',
-        'name'  => $name,
-        'step'  => $steps,
-    ];
-
-    // Optional scalar properties — resolved via shared helper
-    $optional_props = ['description', 'about', 'totalTime', 'estimatedCost'];
-    foreach ($optional_props as $prop) {
-        if (empty($def[$prop])) {
-            continue;
-        }
-        $val = frl_schema_resolve_value($post_id, $def[$prop], $placeholders);
-        if ($val !== null) {
-            $schema[$prop] = $val;
+        if (!empty($item)) {
+            $items[] = $item;
         }
     }
 
-    // Optional: image (featured image via shared helper)
-    $image_id = get_post_thumbnail_id($post_id);
-    if ($image_id) {
+    return $items;
+}
+
+/**
+ * Build a sourced object (e.g., image from featured image).
+ *
+ * Currently supports '@source' => 'featured_image'.
+ *
+ * @param int   $post_id      Post ID.
+ * @param array $def          Source definition.
+ * @param array $placeholders Placeholder map (unused here but consistent signature).
+ * @return array|null Built object or null.
+ */
+function frl_schema_build_sourced(int $post_id, array $def, array $placeholders): ?array
+{
+    $source = $def['@source'] ?? '';
+
+    if ($source === 'featured_image') {
+        $image_id = get_post_thumbnail_id($post_id);
+        if (!$image_id) {
+            return null;
+        }
         $image = frl_build_image_object($image_id);
-        if ($image !== null) {
-            $schema['image'] = $image;
+        if ($image === null) {
+            return null;
         }
+        // Merge any additional properties from config
+        foreach ($def as $key => $value) {
+            if ($key === '@source') {
+                continue;
+            }
+            if (is_string($value)) {
+                $resolved = frl_schema_resolve_value($post_id, $value, $placeholders);
+                if ($resolved !== null) {
+                    $image[$key] = $resolved;
+                }
+            }
+        }
+        return $image;
     }
 
-    return $schema;
+    return null;
 }

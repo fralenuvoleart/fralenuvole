@@ -269,3 +269,46 @@ function frl_schema_resolve_value(int $post_id, string $raw, array $placeholders
     // Treat as field name → resolve via post meta
     return frl_extract_scalar_value(frl_get_post_meta($post_id, $raw, true));
 }
+
+/**
+ * Determine if a key should be translated based on the translate keys config.
+ *
+ * @param string $key           The bare key name.
+ * @param string $current_path  The full dot-path of the current key.
+ * @param array  $translate_keys FRL_SCHEMA_TRANSLATE_KEYS entries ('!' prefix = skip).
+ * @return bool True if this key should be translated.
+ */
+function frl_schema_should_translate_key(string $key, string $current_path, array $translate_keys): bool
+{
+    $should_translate = false;
+
+    foreach ($translate_keys as $entry) {
+        $is_skip = str_starts_with($entry, '!');
+        $rule = $is_skip ? substr($entry, 1) : $entry;
+
+        $matches = str_contains($rule, '.')
+            ? str_starts_with($current_path, $rule)  // dot-path prefix match
+            : $key === $rule;                         // bare key exact match
+
+        if ($matches) {
+            if ($is_skip) {
+                return false;         // '!' trumps immediately
+            }
+            $should_translate = true; // match found; keep checking for '!' overrides
+        }
+    }
+
+    return $should_translate;
+}
+
+/**
+ * Replace post-aware placeholders in resolved schema props.
+ *
+ * @param array $props   Resolved schema properties array.
+ * @param int   $post_id Current post ID.
+ * @return array Props with post placeholders resolved.
+ */
+function frl_resolve_post_placeholders(array $props, int $post_id): array
+{
+    return frl_replace_placeholders($props, frl_get_schema_placeholders($post_id));
+}
