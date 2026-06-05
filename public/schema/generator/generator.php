@@ -17,12 +17,12 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-add_action('wp_head', 'frl_output_generated_schemas', 10, 0);
+add_action('wp_head', 'frl_schema_generator_output', 10, 0);
 
 /**
  * Output all generated schema blocks as a single <script> tag.
  */
-function frl_output_generated_schemas(): void
+function frl_schema_generator_output(): void
 {
     if (!frl_get_option('schema_generator')) {
         return;
@@ -45,7 +45,7 @@ function frl_output_generated_schemas(): void
         return;
     }
 
-    $schemas = frl_get_generated_schemas($post_id);
+    $schemas = frl_schema_generator_get($post_id);
     if (empty($schemas)) {
         return;
     }
@@ -64,17 +64,17 @@ function frl_output_generated_schemas(): void
  * @param int $post_id Post ID.
  * @return array Array of schema arrays (each with @type).
  */
-function frl_get_generated_schemas(int $post_id): array
+function frl_schema_generator_get(int $post_id): array
 {
     $cache_key = "post_{$post_id}_schema";
 
     return frl_cache_remember('postdata', $cache_key, function () use ($post_id) {
         $schemas = [];
-        $definitions = frl_get_schema_generators($post_id);
+        $definitions = frl_schema_generator_get_definitions($post_id);
 
         foreach ($definitions as $def) {
             try {
-                $schema = frl_schema_build($post_id, $def);
+                $schema = frl_schema_generator_build($post_id, $def);
             } catch (\Throwable $e) {
                 if (defined('WP_DEBUG') && WP_DEBUG && function_exists('frl_log')) {
                     frl_log('Schema generator threw: {msg}', ['msg' => $e->getMessage()]);
@@ -97,7 +97,7 @@ function frl_get_generated_schemas(int $post_id): array
  * @param int $post_id Post ID.
  * @return array List of schema definition arrays.
  */
-function frl_get_schema_generators(int $post_id): array
+function frl_schema_generator_get_definitions(int $post_id): array
 {
     $post_type = get_post_type($post_id);
     if (!$post_type) {
@@ -106,7 +106,7 @@ function frl_get_schema_generators(int $post_id): array
 
     static $raw_map = null;
     if ($raw_map === null) {
-        $file = frl_get_schema_data_file('default-schema.php', 'generators');
+        $file = frl_schema_get_data_file('default-schema.php', 'generators');
         $raw_map = file_exists($file) ? include $file : [];
         if (!is_array($raw_map)) {
             $raw_map = [];
@@ -144,10 +144,10 @@ function frl_get_schema_generators(int $post_id): array
  * @param array $placeholders Pre-built placeholder map.
  * @return array|null Built schema array, or null if no content.
  */
-function frl_schema_build(int $post_id, array $def, ?array $placeholders = null): ?array
+function frl_schema_generator_build(int $post_id, array $def, ?array $placeholders = null): ?array
 {
     if ($placeholders === null) {
-        $placeholders = frl_get_schema_placeholders($post_id);
+        $placeholders = frl_schema_get_placeholders($post_id);
     }
 
     $result = [];
@@ -166,7 +166,7 @@ function frl_schema_build(int $post_id, array $def, ?array $placeholders = null)
 
         // Array with 'repeater' → expand rows
         if (is_array($value) && isset($value['repeater'])) {
-            $items = frl_schema_build_repeater_items($post_id, $value, $placeholders);
+            $items = frl_schema_generator_build_repeater($post_id, $value, $placeholders);
             if (!empty($items)) {
                 $result[$key] = $items;
             }
@@ -175,7 +175,7 @@ function frl_schema_build(int $post_id, array $def, ?array $placeholders = null)
 
         // @source special keys
         if (is_array($value) && isset($value['@source'])) {
-            $sub = frl_schema_build_sourced($post_id, $value, $placeholders);
+            $sub = frl_schema_generator_build_sourced($post_id, $value, $placeholders);
             if ($sub !== null) {
                 $result[$key] = $sub;
             }
@@ -184,7 +184,7 @@ function frl_schema_build(int $post_id, array $def, ?array $placeholders = null)
 
         // Array → recurse as sub-object
         if (is_array($value)) {
-            $sub = frl_schema_build($post_id, $value, $placeholders);
+            $sub = frl_schema_generator_build($post_id, $value, $placeholders);
             if ($sub !== null) {
                 $result[$key] = $sub;
             }
@@ -212,7 +212,7 @@ function frl_schema_build(int $post_id, array $def, ?array $placeholders = null)
  * @param array $placeholders Placeholder map.
  * @return array Array of built row arrays.
  */
-function frl_schema_build_repeater_items(int $post_id, array $def, array $placeholders): array
+function frl_schema_generator_build_repeater(int $post_id, array $def, array $placeholders): array
 {
     $repeater = $def['repeater'];
     $source   = $def['source'] ?? 'acf';
@@ -226,7 +226,7 @@ function frl_schema_build_repeater_items(int $post_id, array $def, array $placeh
         $field_map[$key] = $field_name;
     }
 
-    $rows = frl_get_repeater_rows($post_id, $repeater, $source, $field_map);
+    $rows = frl_schema_get_repeater_rows($post_id, $repeater, $source, $field_map);
     if (empty($rows)) {
         return [];
     }
@@ -246,7 +246,7 @@ function frl_schema_build_repeater_items(int $post_id, array $def, array $placeh
                 $value = str_replace('{{index}}', $index, $value);
             }
             // Placeholder replacement
-            $value = frl_replace_placeholders($value, $placeholders);
+            $value = frl_schema_replace_placeholders($value, $placeholders);
             if ($value !== '' && $value !== null) {
                 $item[$prop] = $value;
             }
@@ -270,7 +270,7 @@ function frl_schema_build_repeater_items(int $post_id, array $def, array $placeh
  * @param array $placeholders Placeholder map (unused here but consistent signature).
  * @return array|null Built object or null.
  */
-function frl_schema_build_sourced(int $post_id, array $def, array $placeholders): ?array
+function frl_schema_generator_build_sourced(int $post_id, array $def, array $placeholders): ?array
 {
     $source = $def['@source'] ?? '';
 
@@ -279,7 +279,7 @@ function frl_schema_build_sourced(int $post_id, array $def, array $placeholders)
         if (!$image_id) {
             return null;
         }
-        $image = frl_build_image_object($image_id);
+        $image = frl_schema_build_image_object($image_id);
         if ($image === null) {
             return null;
         }

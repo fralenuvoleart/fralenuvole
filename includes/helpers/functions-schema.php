@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
  * @param mixed $value The raw meta value.
  * @return string|null Extracted scalar string or null if invalid.
  */
-function frl_extract_scalar_value($value): ?string
+function frl_schema_extract_scalar_value($value): ?string
 {
     if ($value === null || $value === false || $value === '') {
         return null;
@@ -38,7 +38,7 @@ function frl_extract_scalar_value($value): ?string
  * @param string $subdir           Data subdirectory: 'properties' or 'generators'.
  * @return string Resolved file path.
  */
-function frl_get_schema_data_file(string $default_filename, string $subdir = 'properties'): string
+function frl_schema_get_data_file(string $default_filename, string $subdir = 'properties'): string
 {
     $prefix = '';
     if (function_exists('frl_environment_get_config')) {
@@ -66,7 +66,7 @@ function frl_get_schema_data_file(string $default_filename, string $subdir = 'pr
  * @param array        $replacements Map of {{placeholder}} => replacement.
  * @return string|array Data with placeholders replaced.
  */
-function frl_replace_placeholders(string|array $data, array $replacements): string|array
+function frl_schema_replace_placeholders(string|array $data, array $replacements): string|array
 {
     if (empty($replacements)) {
         return $data;
@@ -79,7 +79,7 @@ function frl_replace_placeholders(string|array $data, array $replacements): stri
     $result = [];
     foreach ($data as $key => $value) {
         if (is_array($value)) {
-            $result[$key] = frl_replace_placeholders($value, $replacements);
+            $result[$key] = frl_schema_replace_placeholders($value, $replacements);
         } elseif (is_string($value)) {
             $result[$key] = str_replace(array_keys($replacements), array_values($replacements), $value);
         } else {
@@ -98,7 +98,7 @@ function frl_replace_placeholders(string|array $data, array $replacements): stri
  * @param int|null $post_id Post ID for post-aware placeholders, or null to skip.
  * @return array Map of {{placeholder}} => replacement string.
  */
-function frl_get_schema_placeholders(?int $post_id = null): array
+function frl_schema_get_placeholders(?int $post_id = null): array
 {
     $logo = wp_get_attachment_image_src(get_theme_mod('custom_logo'), 'full');
 
@@ -125,7 +125,7 @@ function frl_get_schema_placeholders(?int $post_id = null): array
  * @param string $size          Image size (default: 'medium').
  * @return array|null ImageObject array, or null if image not found.
  */
-function frl_build_image_object(int $attachment_id, string $size = 'medium'): ?array
+function frl_schema_build_image_object(int $attachment_id, string $size = 'medium'): ?array
 {
     $size   = apply_filters('frl_schema_thumbnail_size', $size);
     $url    = wp_get_attachment_image_url($attachment_id, $size);
@@ -155,12 +155,12 @@ function frl_build_image_object(int $attachment_id, string $size = 'medium'): ?a
  * @param array  $field_map Output key → source field name (e.g. ['name' => 'title', 'text' => 'answer']).
  * @return array List of associative arrays (one per row).
  */
-function frl_get_repeater_rows(int $post_id, string $repeater, string $source, array $field_map): array
+function frl_schema_get_repeater_rows(int $post_id, string $repeater, string $source, array $field_map): array
 {
     if ($source === 'acpt') {
-        return frl_get_repeater_rows_acpt($post_id, $repeater, $field_map);
+        return frl_schema_get_repeater_rows_acpt($post_id, $repeater, $field_map);
     }
-    return frl_get_repeater_rows_acf($post_id, $repeater, $field_map);
+    return frl_schema_get_repeater_rows_acf($post_id, $repeater, $field_map);
 }
 
 /**
@@ -171,7 +171,7 @@ function frl_get_repeater_rows(int $post_id, string $repeater, string $source, a
  * @param array  $field_map Output key → source field name.
  * @return array List of associative arrays.
  */
-function frl_get_repeater_rows_acf(int $post_id, string $repeater, array $field_map): array
+function frl_schema_get_repeater_rows_acf(int $post_id, string $repeater, array $field_map): array
 {
     if (!function_exists('have_rows')) {
         return [];
@@ -207,7 +207,7 @@ function frl_get_repeater_rows_acf(int $post_id, string $repeater, array $field_
  * @param array  $field_map Output key → source column name.
  * @return array List of associative arrays.
  */
-function frl_get_repeater_rows_acpt(int $post_id, string $repeater, array $field_map): array
+function frl_schema_get_repeater_rows_acpt(int $post_id, string $repeater, array $field_map): array
 {
     $data = frl_get_post_meta($post_id, $repeater, true);
     if (!is_array($data)) {
@@ -248,18 +248,18 @@ function frl_get_repeater_rows_acpt(int $post_id, string $repeater, array $field
  * Resolve a definition value: placeholder → field name → literal.
  *
  * Resolution order:
- *   1. Replace {{placeholders}} via frl_replace_placeholders
+ *   1. Replace {{placeholders}} via frl_schema_replace_placeholders
  *   2. If value changed → use resolved result
  *   3. Otherwise → treat as field name, resolve via frl_get_post_meta
  *
  * @param int    $post_id      Post ID.
  * @param string $raw          Raw definition value.
- * @param array  $placeholders Placeholder map (from frl_get_schema_placeholders).
+ * @param array  $placeholders Placeholder map (from frl_schema_get_placeholders).
  * @return string|null Resolved value, or null if unresolvable.
  */
 function frl_schema_resolve_value(int $post_id, string $raw, array $placeholders): ?string
 {
-    $resolved = frl_replace_placeholders($raw, $placeholders);
+    $resolved = frl_schema_replace_placeholders($raw, $placeholders);
 
     // Placeholder was replaced → use directly
     if ($resolved !== $raw) {
@@ -267,7 +267,7 @@ function frl_schema_resolve_value(int $post_id, string $raw, array $placeholders
     }
 
     // Treat as field name → resolve via post meta
-    return frl_extract_scalar_value(frl_get_post_meta($post_id, $raw, true));
+    return frl_schema_extract_scalar_value(frl_get_post_meta($post_id, $raw, true));
 }
 
 /**
@@ -308,7 +308,7 @@ function frl_schema_should_translate_key(string $key, string $current_path, arra
  * @param int   $post_id Current post ID.
  * @return array Props with post placeholders resolved.
  */
-function frl_resolve_post_placeholders(array $props, int $post_id): array
+function frl_schema_resolve_post_placeholders(array $props, int $post_id): array
 {
-    return frl_replace_placeholders($props, frl_get_schema_placeholders($post_id));
+    return frl_schema_replace_placeholders($props, frl_schema_get_placeholders($post_id));
 }

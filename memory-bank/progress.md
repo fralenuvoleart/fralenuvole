@@ -554,28 +554,31 @@ Two-phase migration module — ACPT custom fields → SCF/ACF with repeater tran
 ## Schema Generator Module — Implemented (2026-06-05)
 
 ### Purpose
-Config-driven, extensible system generating complete JSON-LD `@type` blocks from post data (ACF, ACPT, taxonomies). Two independent subsystems: `properties/` (static injection → SASWP) and `generators/` (dynamic generation → `wp_head`).
+Config-driven, extensible system generating complete JSON-LD `@type` blocks from post data (ACF, ACPT, taxonomies). Two independent subsystems: `properties/` (static injection → SASWP) and `generator/` (dynamic generation → `wp_head`).
 
 ### Files Created (2)
-- `public/schema/generators/schema-generator.php` — Registry, `wp_head` output, HowTo generator (ACF + ACPT)
-- `public/schema/data/generators/default-schema-generators.php` — Config data mapping post types → generators
+- `public/schema/generator/generator.php` — Registry, `wp_head` output, generic recursive builder (ACF + ACPT)
+- `public/schema/data/generators/default-schema.php` — Config data mapping post types → generators
 
 ### Files Moved (5)
 - `public/schema/schema-resolver.php` → `public/schema/properties/resolver.php`
 - `public/schema/schema-builders.php` → `public/schema/properties/builders.php`
 - 3 data files → `public/schema/data/properties/`
 
-### Files Edited (4)
+### Files Edited (5 + 1)
 - `public/schema/schema.php` — Updated require paths
-- `public/schema/properties/resolver.php` — Updated data path + `schema_properties` guard
-- `public/schema/properties/builders.php` — `schema_properties` guards
-- `config/config-options.php` — Added `schema_properties` + `schema_generator` toggles
+- `public/schema/generator/generator.php` — Functions renamed to `frl_schema_generator_*`
+- `public/schema/properties/builders.php` — Functions renamed to `frl_schema_builder_*`
+- `public/schema/properties/resolver.php` — Functions renamed to `frl_schema_resolver_*`
+- `includes/helpers/functions-schema.php` — Functions renamed to `frl_schema_*`
+- `modules/thirdparty/thirdparty.php` — Updated all external references
 
-### Key Features
-- **Source swap:** `'source' => 'acf'` ↔ `'acpt'` in data file — one word change, zero code changes
-- **Master toggles:** `schema_properties` (default 1) → gates property injection; `schema_generator` (default 1) → gates generation
-- **Module extensibility:** `frl_schema_generators` filter passes `($configs, $post_id, $post_type)`
-- **Best practices:** Re-entrancy guard, per-post caching, request-level static cache, try/catch, admin/REST/preview bail-out
+### Function Rename Map (2026-06-05)
+All schema functions consistently prefixed:
+- **generator.php:** `frl_output_generated_schemas` → `frl_schema_generator_output`, `frl_get_generated_schemas` → `frl_schema_generator_get`, `frl_get_schema_generators` → `frl_schema_generator_get_definitions`, `frl_schema_build` → `frl_schema_generator_build`, `frl_schema_build_repeater_items` → `frl_schema_generator_build_repeater`, `frl_schema_build_sourced` → `frl_schema_generator_build_sourced`
+- **builders.php:** `frl_get_schema_term_map` → `frl_schema_builder_get_term_map`, `frl_build_schema_term_properties` → `frl_schema_builder_build_term_properties`, `frl_get_schema_person_map` → `frl_schema_builder_get_person_map`, `frl_build_schema_person_properties` → `frl_schema_builder_build_person_properties`, `frl_build_person_from_ref` → `frl_schema_builder_build_person_from_ref`
+- **resolver.php:** `frl_get_schema_properties` → `frl_schema_resolver_get`, `frl_resolve_schema_properties` → `frl_schema_resolver_resolve`
+- **functions-schema.php:** `frl_extract_scalar_value` → `frl_schema_extract_scalar_value`, `frl_get_schema_data_file` → `frl_schema_get_data_file`, `frl_replace_placeholders` → `frl_schema_replace_placeholders`, `frl_get_schema_placeholders` → `frl_schema_get_placeholders`, `frl_build_image_object` → `frl_schema_build_image_object`, `frl_get_repeater_rows` → `frl_schema_get_repeater_rows`, `frl_get_repeater_rows_acf` → `frl_schema_get_repeater_rows_acf`, `frl_get_repeater_rows_acpt` → `frl_schema_get_repeater_rows_acpt`, `frl_schema_resolve_value` (kept), `frl_schema_should_translate_key` (kept), `frl_resolve_post_placeholders` → `frl_schema_resolve_post_placeholders`
 
 ### Plan: `plans/schema-generator-module.md`
 

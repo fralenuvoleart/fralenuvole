@@ -125,7 +125,7 @@ function frl_greenshift_fix_rest_schemas($endpoints)
 /**
  * Inject third-party properties into a single SASWP schema.
  *
- * Generic per-schema filter — checks frl_get_schema_properties()
+ * Generic per-schema filter — checks frl_schema_resolver_get()
  * for the schema's @type and injects matching properties.
  *
  * Hooks into 'saswp_modify_organization_output' (and can be reused for
@@ -141,7 +141,7 @@ function frl_thirdparty_inject_schema_properties_filter(array $input): array
     }
 
     $type = $input['@type'] ?? '';
-    $props = frl_get_schema_properties()[$type] ?? [];
+    $props = frl_schema_resolver_get()[$type] ?? [];
 
     if (empty($props)) {
         return $input;
@@ -189,9 +189,9 @@ function frl_trim_schema_keys(array $array): array
  *
  * Hooks into 'saswp_modify_schema_output' to:
  * - Deduplicate by @id, keep first occurrence
- * - Inject static props from frl_get_schema_properties()
- * - Inject post-term props from frl_get_schema_term_map()
- * - Inject person reference props from frl_get_schema_person_map()
+ * - Inject static props from frl_schema_resolver_get()
+ * - Inject post-term props from frl_schema_builder_get_term_map()
+ * - Inject person reference props from frl_schema_builder_get_person_map()
  * - Trim whitespace-contaminated keys
  *
  * @param array $schemas Array of all schema output arrays.
@@ -208,15 +208,15 @@ function frl_thirdparty_sanitize_schemas(array $schemas): array
         return $schemas;
     }
 
-    $all_props = frl_get_schema_properties();
+    $all_props = frl_schema_resolver_get();
     $seen_ids = [];
     $deduplicated = [];
 
     // Pre-resolve post data once, outside the loop
     $post_id = get_the_ID();
-    $schema_term_map = frl_get_schema_term_map();
+    $schema_term_map = frl_schema_builder_get_term_map();
     $taxonomy_cache = [];
-    $schema_person_map = frl_get_schema_person_map();
+    $schema_person_map = frl_schema_builder_get_person_map();
     $ref_cache = [];
 
     foreach ($schemas as $schema) {
@@ -240,19 +240,19 @@ function frl_thirdparty_sanitize_schemas(array $schemas): array
         // First occurrence: inject static props, post-term props, and person props
         if (!isset($seen_ids[$id])) {
             if (!empty($props)) {
-                $props = frl_resolve_post_placeholders($props, $post_id);
+                $props = frl_schema_resolve_post_placeholders($props, $post_id);
                 $schema = frl_thirdparty_inject_schema_properties($schema, $props);
             }
 
             if ($post_id && !empty($type_map)) {
-                $post_props = frl_build_schema_term_properties($post_id, $type_map, $taxonomy_cache);
+                $post_props = frl_schema_builder_build_term_properties($post_id, $type_map, $taxonomy_cache);
                 if (!empty($post_props)) {
                     $schema = frl_thirdparty_inject_schema_properties($schema, $post_props);
                 }
             }
 
             if ($post_id && !empty($person_map)) {
-                $person_props = frl_build_schema_person_properties($post_id, $person_map, $ref_cache);
+                $person_props = frl_schema_builder_build_person_properties($post_id, $person_map, $ref_cache);
                 if (!empty($person_props)) {
                     $schema = frl_thirdparty_inject_schema_properties($schema, $person_props);
                 }

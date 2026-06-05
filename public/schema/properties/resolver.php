@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
  *
  * @return array Resolved schema properties array.
  */
-function frl_get_schema_properties(): array
+function frl_schema_resolver_get(): array
 {
     if (!frl_get_option('schema_properties')) {
         return [];
@@ -31,9 +31,9 @@ function frl_get_schema_properties(): array
     $cache_key = "schema_properties_{$language}_{$version}";
 
     return frl_cache_remember('html', $cache_key, function () {
-        $file = frl_get_schema_data_file('default-schema.php');
+        $file = frl_schema_get_data_file('default-schema.php');
         $raw = file_exists($file) ? include $file : [];
-        $resolved = frl_resolve_schema_properties($raw, '', frl_get_schema_placeholders());
+        $resolved = frl_schema_resolver_resolve($raw, '', frl_schema_get_placeholders());
 
         /**
          * Filter the resolved schema properties.
@@ -47,7 +47,7 @@ function frl_get_schema_properties(): array
 /**
  * Recursively resolve schema properties in a single pass.
  *
- * - Replaces all {{placeholder}} tokens via the shared frl_replace_placeholders
+ * - Replaces all {{placeholder}} tokens via the shared frl_schema_replace_placeholders
  * - Translates matching keys and handles '_remove' sentinel
  *
  * @param array  $props        Raw schema properties array.
@@ -55,10 +55,10 @@ function frl_get_schema_properties(): array
  * @param array  $replacements Map of {{placeholder}} => replacement string (built once).
  * @return array Resolved schema properties array.
  */
-function frl_resolve_schema_properties(array $props, string $path = '', array $replacements = []): array
+function frl_schema_resolver_resolve(array $props, string $path = '', array $replacements = []): array
 {
     if (empty($replacements)) {
-        $replacements = frl_get_schema_placeholders();
+        $replacements = frl_schema_get_placeholders();
     }
     $translate_keys = defined('FRL_SCHEMA_TRANSLATE_KEYS') ? FRL_SCHEMA_TRANSLATE_KEYS : [];
     $result = [];
@@ -67,7 +67,7 @@ function frl_resolve_schema_properties(array $props, string $path = '', array $r
         $current_path = $path ? "{$path}.{$key}" : $key;
 
         if (is_array($value)) {
-            $result[$key] = frl_resolve_schema_properties($value, $current_path, $replacements);
+            $result[$key] = frl_schema_resolver_resolve($value, $current_path, $replacements);
         } elseif (is_string($value)) {
             $value = str_replace(array_keys($replacements), array_values($replacements), $value);
 

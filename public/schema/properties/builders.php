@@ -19,13 +19,13 @@ if (!defined('ABSPATH')) {
  *
  * @return array Filterable map of schema @type => field definitions.
  */
-function frl_get_schema_term_map(): array
+function frl_schema_builder_get_term_map(): array
 {
     if (!frl_get_option('schema_properties')) {
         return [];
     }
 
-    $file = frl_get_schema_data_file('default-schema-terms.php');
+    $file = frl_schema_get_data_file('default-schema-terms.php');
     $raw = file_exists($file) ? include $file : [];
     $map = [];
     foreach ($raw as $type => $pairs) {
@@ -62,11 +62,11 @@ function frl_get_schema_term_map(): array
  * only once per unique taxonomy across all types.
  *
  * @param int   $post_id        Post ID.
- * @param array $type_map       Array of field definitions from frl_get_schema_term_map().
+ * @param array $type_map       Array of field definitions from frl_schema_builder_get_term_map().
  * @param array &$taxonomy_cache Internal cache of resolved taxonomy => term values.
  * @return array Schema properties to inject (property key => formatted value).
  */
-function frl_build_schema_term_properties(int $post_id, array $type_map, array &$taxonomy_cache): array
+function frl_schema_builder_build_term_properties(int $post_id, array $type_map, array &$taxonomy_cache): array
 {
     $props = [];
 
@@ -129,13 +129,13 @@ function frl_build_schema_term_properties(int $post_id, array $type_map, array &
  *
  * @return array Filterable map of schema @type => person field defs.
  */
-function frl_get_schema_person_map(): array
+function frl_schema_builder_get_person_map(): array
 {
     if (!frl_get_option('schema_properties')) {
         return [];
     }
 
-    $file = frl_get_schema_data_file('default-schema-person.php');
+    $file = frl_schema_get_data_file('default-schema-person.php');
     $map = file_exists($file) ? include $file : [];
 
     /**
@@ -152,11 +152,11 @@ function frl_get_schema_person_map(): array
  * Resolution order: _force → ACF ref IDs → _fallback → _remove → nothing.
  *
  * @param int   $post_id    Post ID.
- * @param array $type_map   Person field defs from frl_get_schema_person_map().
+ * @param array $type_map   Person field defs from frl_schema_builder_get_person_map().
  * @param array &$ref_cache Cache of resolved property => Person arrays.
  * @return array Schema properties to inject.
  */
-function frl_build_schema_person_properties(int $post_id, array $type_map, array &$ref_cache): array
+function frl_schema_builder_build_person_properties(int $post_id, array $type_map, array &$ref_cache): array
 {
     $props = [];
 
@@ -172,7 +172,7 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
             if (isset($field_def['_force'])) {
                 $force = $field_def['_force'];
                 if (is_int($force)) {
-                    $person = frl_build_person_from_ref($force, $field_def);
+                    $person = frl_schema_builder_build_person_from_ref($force, $field_def);
                     $ref_cache[$cache_key] = $person !== null ? [$person] : [];
                 } elseif (is_array($force)) {
                     $ref_cache[$cache_key] = [$force];
@@ -205,7 +205,7 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
                 // Build Person objects from reference IDs
                 $persons = [];
                 foreach ($ref_ids as $rid) {
-                    $person = frl_build_person_from_ref($rid, $field_def);
+                    $person = frl_schema_builder_build_person_from_ref($rid, $field_def);
                     if ($person !== null) {
                         $persons[] = $person;
                     }
@@ -223,7 +223,7 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
             // _fallback: CPT post ID (int) or static Person array
             $fallback = $field_def['_fallback'];
             if (is_int($fallback)) {
-                $person = frl_build_person_from_ref($fallback, $field_def);
+                $person = frl_schema_builder_build_person_from_ref($fallback, $field_def);
                 if ($person !== null) {
                     $props[$property] = $person;
                 } elseif (!empty($field_def['_remove'])) {
@@ -250,7 +250,7 @@ function frl_build_schema_person_properties(int $post_id, array $type_map, array
  * @param array $field_def Field definition (_ref + Person property map).
  * @return array|null Person array or null if post not found.
  */
-function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
+function frl_schema_builder_build_person_from_ref(int $ref_id, array $field_def): ?array
 {
     $post = get_post($ref_id);
 
@@ -270,7 +270,7 @@ function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
         if (is_array($source)) {
             $values = [];
             foreach ($source as $meta_key) {
-                $v = frl_extract_scalar_value(frl_get_post_meta($ref_id, (string) $meta_key, true));
+                $v = frl_schema_extract_scalar_value(frl_get_post_meta($ref_id, (string) $meta_key, true));
                 if ($v !== null) {
                     $values[] = $v;
                 }
@@ -310,7 +310,7 @@ function frl_build_person_from_ref(int $ref_id, array $field_def): ?array
             $value = frl_get_post_meta($ref_id, $source, true);
         }
 
-        $scalar = frl_extract_scalar_value($value);
+        $scalar = frl_schema_extract_scalar_value($value);
         if ($scalar !== null) {
             $person[$sub_field] = $scalar;
         } elseif (is_array($value) && !empty($value)) {
