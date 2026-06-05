@@ -6,6 +6,9 @@
  * from post data (ACF, ACPT, taxonomies, etc.).
  * Definitions are registered via data file + frl_schema_generators filter.
  *
+ * All resolution delegates to shared helpers in includes/helpers/functions-schema.php.
+ * Built-in generators are thin orchestrators — no data-fetching logic inlined.
+ *
  * Master toggle: frl_get_option('schema_generator') — defaults to 1 (enabled).
  * When 0, all generator output is suppressed.
  *
@@ -65,9 +68,6 @@ function frl_output_generated_schemas(): void
 /**
  * Get all generated schema blocks for a post, cached per-post.
  *
- * Definitions from the data file mirror Schema.org JSON structure.
- * The @type key selects the generator via frl_schema_generator_for_type().
- *
  * @param int $post_id Post ID.
  * @return array Array of schema arrays (each with @type).
  */
@@ -107,6 +107,8 @@ function frl_get_generated_schemas(int $post_id): array
 /**
  * Map a Schema.org @type to its generator function.
  *
+ * Extend via filter 'frl_schema_generator_map' to register custom types.
+ *
  * @param string $type Schema.org type (e.g. 'HowTo').
  * @return callable|null Generator function or null if unsupported.
  */
@@ -115,6 +117,13 @@ function frl_schema_generator_for_type(string $type): ?callable
     static $map = [
         'HowTo' => 'frl_schema_generate_howto',
     ];
+
+    /**
+     * Filter the type → generator map.
+     *
+     * @param array $map Schema.org @type => callable.
+     */
+    $map = apply_filters('frl_schema_generator_map', $map);
 
     $fn = $map[$type] ?? null;
     if ($fn === null || !is_callable($fn)) {
@@ -130,9 +139,6 @@ function frl_schema_generator_for_type(string $type): ?callable
 /**
  * Build the definition registry for a given post.
  *
- * Loads from data file (filtered by post type), then applies
- * the frl_schema_generators filter for extensibility.
- *
  * Uses request-level static cache for the data file include.
  *
  * @param int $post_id Post ID.
@@ -145,8 +151,6 @@ function frl_get_schema_generators(int $post_id): array
         return [];
     }
 
-    // Request-level static cache — data file parsed once per request
-    // Uses shared frl_get_schema_data_file() for brand-override support
     static $raw_map = null;
     if ($raw_map === null) {
         $file = frl_get_schema_data_file('default-schema.php', 'generators');
@@ -173,17 +177,11 @@ function frl_get_schema_generators(int $post_id): array
 /**
  * Generate a HowTo schema.
  *
- * Each definition value is resolved in a single pass:
- *   1. Replace {{placeholders}} using the shared properties subsystem convention.
- *      Supported: {{post_title}} → get_the_title($post_id)
- *   2. If the value changed after placeholder replacement (it was a placeholder),
- *      use the resolved value directly.
- *   3. Otherwise (it's a field name), resolve via frl_get_post_meta().
- *
- * {{index}} in step string values is replaced with 1-based step number.
- *
- * Missing/empty values → property omitted. Required `name` or `step`
- * missing → returns null → no schema output.
+ * All property resolution delegates to shared helpers:
+ *   - frl_get_schema_placeholders($post_id) → {{post_title}} etc.
+ *   - frl_schema_resolve_value() → placeholder or field name → scalar
+ *   - frl_get_repeater_rows() → ACF/ACPT repeater → associative rows
+ *   - frl_build_image_object() → featured image → ImageObject
  *
  * @see https://schema.org/HowTo
  *
@@ -193,173 +191,84 @@ function frl_get_schema_generators(int $post_id): array
  */
 function frl_schema_generate_howto(int $post_id, array $def): ?array
 {
+    // Placeholder map (post-aware: includes {{post_title}})
+    $placeholders = frl_get_schema_placeholders($post_id);
+
+    // Required: name
+    if (empty($def['name'])) {
+        return null;
+    }
+    $name = frl_schema_resolve_value($post_id, $def['name'], $placeholders);
+    if ($name === null) {
+        return null;
+    }
+
+    // Required: step (repeater)
     $step_def = $def['step'] ?? [];
-    if (!is_array($step_def)) {
+    if (!is_array($step_def) || empty($step_def['repeater'])) {
         return null;
     }
 
-    $source     = $step_def['source'] ?? 'acf';
-    $repeater   = $step_def['repeater'] ?? '';
-    $name_field = $step_def['name'] ?? 'title';
-    $text_field = $step_def['text'] ?? 'text';
+    $source    = $step_def['source'] ?? 'acf';
+    $repeater  = $step_def['repeater'];
+    $field_map = [];
 
-    if (empty($repeater)) {
-        return null;
-    }
-
-    // Build steps
-    $steps = ($source === 'acpt')
-        ? frl_schema_get_howto_steps_acpt($post_id, $repeater, $name_field, $text_field)
-        : frl_schema_get_howto_steps_acf($post_id, $repeater, $name_field, $text_field);
-
-    if (empty($steps)) {
-        return null;
-    }
-
-    // Apply {{index}} placeholder across all step string values (1-based)
-    for ($i = 0; $i < count($steps); $i++) {
-        $index = (string) ($i + 1);
-        foreach ($steps[$i] as $key => $value) {
-            if (is_string($value) && str_contains($value, '{{index}}')) {
-                $steps[$i][$key] = str_replace('{{index}}', $index, $value);
-            }
-        }
-    }
-
-    // Resolve all scalar definition values in a single pass
-    // Placeholder map — shared with properties subsystem convention
-    $placeholders = [
-        '{{post_title}}' => get_the_title($post_id),
-    ];
-
-    $schema = ['@type' => 'HowTo', 'step' => $steps];
-    $has_name = false;
-
-    foreach ($def as $key => $raw) {
-        // Skip structural keys
-        if ($key === '@type' || $key === 'step' || !is_string($raw) || $raw === '') {
+    // Build field map from step definition (exclude structural keys)
+    foreach ($step_def as $key => $field_name) {
+        if (!is_string($field_name) || in_array($key, ['source', 'repeater'], true)) {
             continue;
         }
-
-        // Replace placeholders in the raw value
-        $resolved = str_replace(array_keys($placeholders), array_values($placeholders), $raw);
-
-        // If placeholder was replaced, use it directly; otherwise resolve as field name
-        if ($resolved !== $raw) {
-            $value = $resolved;
-        } else {
-            $value = frl_extract_scalar_value(frl_get_post_meta($post_id, $raw, true));
-            if ($value === null) {
-                continue;
-            }
-        }
-
-        $schema[$key] = $value;
-        if ($key === 'name') {
-            $has_name = true;
-        }
+        $field_map[$key] = $field_name;
     }
 
-    if (!$has_name) {
+    $rows = frl_get_repeater_rows($post_id, $repeater, $source, $field_map);
+    if (empty($rows)) {
         return null;
     }
 
-    // Optional: image (featured image)
+    // Build HowToStep objects with {{index}} replacement
+    $steps = [];
+    for ($i = 0; $i < count($rows); $i++) {
+        $step = ['@type' => 'HowToStep'];
+        $index = (string) ($i + 1);
+
+        foreach ($rows[$i] as $prop => $value) {
+            // Apply {{index}} placeholder
+            if (str_contains($value, '{{index}}')) {
+                $value = str_replace('{{index}}', $index, $value);
+            }
+            $step[$prop] = $value;
+        }
+
+        $steps[] = $step;
+    }
+
+    $schema = [
+        '@type' => 'HowTo',
+        'name'  => $name,
+        'step'  => $steps,
+    ];
+
+    // Optional scalar properties — resolved via shared helper
+    $optional_props = ['description', 'about', 'totalTime', 'estimatedCost'];
+    foreach ($optional_props as $prop) {
+        if (empty($def[$prop])) {
+            continue;
+        }
+        $val = frl_schema_resolve_value($post_id, $def[$prop], $placeholders);
+        if ($val !== null) {
+            $schema[$prop] = $val;
+        }
+    }
+
+    // Optional: image (featured image via shared helper)
     $image_id = get_post_thumbnail_id($post_id);
     if ($image_id) {
-        $img_size = apply_filters('frl_schema_thumbnail_size', 'medium');
-        $img_url  = wp_get_attachment_image_url($image_id, $img_size);
-        $img_data = wp_get_attachment_image_src($image_id, $img_size);
-        if ($img_url) {
-            $schema['image'] = [
-                '@type'  => 'ImageObject',
-                'url'    => $img_url,
-                'width'  => $img_data[1] ?? 0,
-                'height' => $img_data[2] ?? 0,
-            ];
+        $image = frl_build_image_object($image_id);
+        if ($image !== null) {
+            $schema['image'] = $image;
         }
     }
 
     return $schema;
-}
-
-/**
- * Read HowTo steps from an ACF repeater.
- *
- * Uses have_rows()/the_row()/get_sub_field() — the standard ACF repeater API.
- * Returns [] if ACF is not available or the repeater has no rows.
- *
- * @param int    $post_id    Post ID.
- * @param string $repeater   Repeater field name.
- * @param string $name_field Sub-field key for HowToStep.name.
- * @param string $text_field Sub-field key for HowToStep.text.
- * @return array List of HowToStep arrays.
- */
-function frl_schema_get_howto_steps_acf(int $post_id, string $repeater, string $name_field, string $text_field): array
-{
-    if (!function_exists('have_rows')) {
-        return [];
-    }
-
-    $steps = [];
-    if (have_rows($repeater, $post_id)) {
-        while (have_rows($repeater, $post_id)) {
-            the_row();
-            $name = get_sub_field($name_field);
-            $text = get_sub_field($text_field);
-            if (!empty($name) && !empty($text)) {
-                $steps[] = [
-                    '@type' => 'HowToStep',
-                    'name'  => is_string($name) ? $name : '',
-                    'text'  => is_string($text) ? $text : '',
-                ];
-            }
-        }
-    }
-
-    return $steps;
-}
-
-/**
- * Read HowTo steps from an ACPT repeater.
- *
- * ACPT stores repeaters as columnar serialized arrays:
- *   meta_key = 'howto_steps' → ['title' => [...], 'answer' => [...]]
- *
- * Uses frl_get_post_meta() which handles both ACPT raw meta and ACF fallback.
- *
- * @param int    $post_id    Post ID.
- * @param string $repeater   Repeater meta key.
- * @param string $name_field Column key for HowToStep.name.
- * @param string $text_field Column key for HowToStep.text.
- * @return array List of HowToStep arrays.
- */
-function frl_schema_get_howto_steps_acpt(int $post_id, string $repeater, string $name_field, string $text_field): array
-{
-    $data = frl_get_post_meta($post_id, $repeater, true);
-    if (!is_array($data)) {
-        return [];
-    }
-
-    $names = $data[$name_field] ?? [];
-    $texts = $data[$text_field] ?? [];
-    if (!is_array($names) || !is_array($texts)) {
-        return [];
-    }
-
-    $steps = [];
-    $count = min(count($names), count($texts));
-    for ($i = 0; $i < $count; $i++) {
-        $name = $names[$i] ?? '';
-        $text = $texts[$i] ?? '';
-        if ($name !== '' && $text !== '') {
-            $steps[] = [
-                '@type' => 'HowToStep',
-                'name'  => (string) $name,
-                'text'  => (string) $text,
-            ];
-        }
-    }
-
-    return $steps;
 }
