@@ -523,3 +523,32 @@ Hardcoded legacy URLs (e.g., `pbservices.ge/ru/services/`) exist in post content
 
 ### Plans Directory Cleaned
 - Deleted entire `plans/` directory (10 obsolete files)
+
+## ACPT → SCF Migration Module — Implemented (2026-06-05)
+
+### Purpose
+Two-phase migration module — ACPT custom fields → SCF/ACF with repeater transformation, rollback support, and backward-compatibility shim.
+
+### Files Created (11)
+- Config: `config-constants-acf-migration.php`
+- Entry: `acf-migration.php`
+- Core lib (6 standalone classes): Parser, Importer, RepeaterTransformer, CompatShim, Validator, UfjSchema
+- CLI: `class-acpt-migrate-command.php` (6 WP-CLI commands)
+- Admin UI: `admin-acf-migration.js`, `admin-acf-migration.css`
+- Plan: `plans/acpt-to-acf-migration-feasibility.md`
+
+### Total: 3,455 lines across 11 files — all PHP syntax-validated
+
+### Key Features
+- Export: ACPT JSON → Universal Field JSON (UFJ) intermediate format
+- Import: UFJ → SCF field groups, fields, reference rows, options pages
+- Repeater Transform: ACPT columnar serialized array → SCF row-indexed meta rows
+- Backward-compat Shim: `get_post_metadata` filter (p100) returns ACPT-format for legacy consumers
+- Rollback: Registry-based via `acpt_migration_log` option
+- Dry-run: Built into every phase — zero DB writes until confirmed
+- Edge cases: Empty repeaters, missing sub-fields, options page repeaters, Polylang, large tables
+
+### Files Modified
+- `config/environment/config-defaults.php` — added `'acf-migration' => false`
+
+*Last Updated: 2026-06-05*

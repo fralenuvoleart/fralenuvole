@@ -337,3 +337,48 @@ With the dead hooks never firing, `PLL()->curlang` resolved to EN on the subdoma
 
 ### Plans Directory Cleaned
 - Deleted entire `plans/` directory (10 obsolete plan files)
+
+## ✅ ACPT → SCF Migration Module (2026-06-05 — implemented)
+
+### Purpose
+Two-phase migration module to convert ACPT custom fields to SCF/ACF, including complex repeater field transformation.
+
+### Architecture
+- **Export Phase:** `Frl_Acpt_Parser` reads ACPT export JSON → produces Universal Field JSON (UFJ) intermediate format
+- **Import Phase:** `Frl_Scf_Importer` reads UFJ → creates SCF field groups, fields, and reference rows
+- **Repeater Transformer:** `Frl_Repeater_Transformer` converts ACPT columnar serialized arrays → SCF row-indexed meta rows
+- **Compat Shim:** `Frl_Acpt_Compat_Shim` (`get_post_metadata` filter, p100) intercepts `get_post_meta()` calls for repeaters and returns ACPT-format columnar data for backward compatibility
+- **Validator:** `Frl_Migration_Validator` samples posts and compares `get_post_meta()` vs `get_field()` values
+- **WP-CLI:** 6 commands (`export`, `import`, `validate`, `rollback`, `cleanup`, `shim`)
+- **Rollback:** Registry-based via `acpt_migration_log` option — tracks all created post IDs and meta IDs
+
+### Module Structure
+- **11 files, 3,455 total lines**
+- Config: [`config-constants-acf-migration.php`](modules/acf-migration/config-constants-acf-migration.php)
+- Entry: [`acf-migration.php`](modules/acf-migration/acf-migration.php)
+- Core lib (zero fralenuvole deps): 6 standalone classes
+- CLI: [`class-acpt-migrate-command.php`](modules/acf-migration/cli/class-acpt-migrate-command.php)
+- Admin UI: JS + CSS assets
+
+### Key Design Decisions
+- UFJ intermediate format decouples export from import — reusable for other migration targets
+- Field keys generated via `bin2hex(random_bytes(6))` with MD5-based idempotency check
+- Shim priority 100 ensures SCF is fully initialized before interception
+- Dry-run mode built into every phase — zero DB writes until confirmed
+- Module disabled by default (`'acf-migration' => false` in config-defaults)
+
+### Plan
+- [`plans/acpt-to-acf-migration-feasibility.md`](plans/acpt-to-acf-migration-feasibility.md)
+
+### Security Audit & Bug Fixes (2026-06-05)
+- **CRITICAL FIX:** Cleanup DELETE query used wild `LIKE '%_id'` pattern that would have deleted WordPress core meta (`_thumbnail_id`, `_edit_last`, etc.). Fixed to use only known field names from migration log.
+- **CRITICAL FIX:** Compat shim had infinite recursion risk — `rebuild_acpt_format()` calls `get_post_meta()` which re-triggers `filter_post_meta()`. Added `$rebuilding` guard with `try/finally`.
+- **HIGH FIX:** Original ACPT repeater data now backed up to `_{name}_acpt_backup` before overwriting.
+- **HIGH FIX:** Repeater configs now persisted in migration log for shim/rollback retrieval.
+- **MEDIUM FIX:** Conditional logic format corrected for SCF's expected `[[]]` wrapping.
+- **MEDIUM FIX:** Validator failure report had key collision (`field` used twice). Unique keys: `field_name`, `meta_value`, `acf_value`.
+- **MEDIUM FIX:** Importer now logs errors for failed `wp_insert_post()` calls instead of silent returns.
+- **MEDIUM FIX:** Shim now bypasses during admin, REST API, and cron requests.
+- **LOW FIX:** `random_bytes()` catch updated to `\Throwable` for PHP 8.2+ compatibility. `add_post_meta` failures log to `error_log`. Reference row query filters out NULL/empty values.
+
+*Last Updated: 2026-06-05*

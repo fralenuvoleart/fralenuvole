@@ -1,0 +1,105 @@
+/**
+ * ACF Migration — Admin Styles
+ *
+ * @package Fralenuvole
+ * @since  5.9.0
+ */
+
+.frl-acf-migration-wrap {
+    max-width: 960px;
+}
+
+.frl-acf-migration-wrap h1 {
+    margin-bottom: 20px;
+}
+
+.frl-migration-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.frl-migration-card h2 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.2em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.frl-migration-card .description {
+    margin-bottom: 12px;
+    color: #646970;
+}
+
+.frl-status-ok {
+    color: #00a32a;
+    font-weight: 600;
+}
+
+.frl-status-warn {
+    color: #d63638;
+    font-weight: 600;
+}
+
+.frl-cli-examples {
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    padding: 12px 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+}
+
+.frl-cli-examples code {
+    background: none;
+    padding: 0;
+}
+
+/* Progress indicator */
+.frl-migration-progress {
+    margin: 15px 0;
+    display: none;
+}
+
+.frl-migration-progress.is-active {
+    display: block;
+}
+
+.frl-progress-bar {
+    height: 6px;
+    background: #dcdcde;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.frl-progress-bar-fill {
+    height: 100%;
+    background: #2271b1;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.frl-progress-text {
+    font-size: 12px;
+    color: #646970;
+}
+
+/* Action buttons */
+.frl-migration-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+/* Log table */
+.frl-migration-card .widefat {
+    margin-top: 10px;
+}

@@ -42,6 +42,7 @@ const FRL_ENV_DEFAULT = [
         'thirdparty' => true,
         'subdomain_adapter' => false,
         'acf' => false,
+        'acf-migration' => false,
         'pbnova' => false,
         'pbs' => false,
         'pbproperty' => false,
