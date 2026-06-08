@@ -391,23 +391,119 @@ function frl_pbs_kill_taxonomy_archives( $query ) {
  *
  * Hooked at priority 1 — before the rewriter's feature filters (p115+).
  */
-add_filter('request', function ($query_vars) {
-    if (empty($query_vars['team-member'])) {
-        return $query_vars;
+/**
+ * Resolve /about/{slug}/ collision between team-member CPT and child pages.
+ *
+ * The team-member CPT rewrite slug 'about' generates a native rewrite rule
+ * about/([^/]+)/?$ that matches before the generic page rule. When no
+ * team-member post exists for the requested slug, fall back to page resolution
+ * so child pages like /about/team/ resolve correctly.
+ *
+ * Hooks at parse_request (after all request filters), pre_get_posts,
+ * and wp (after 404 determination) for triple protection.
+ */
+add_action('parse_request', function ($wp) {
+    if (empty($wp->query_vars['team-member'])) {
+        return;
     }
 
-    $slug = $query_vars['team-member'];
+    $slug = $wp->query_vars['team-member'];
+
+    // If a real team-member post exists, let it win.
+    $team_member = get_page_by_path($slug, OBJECT, 'team-member');
+    if ($team_member) {
+        return;
+    }
+
+    // Check for child page of 'about'.
+    $page = get_page_by_path("about/{$slug}", OBJECT, 'page');
+    if (!$page) {
+        return;
+    }
+
+    // Rewrite the query vars before WP_Query parses them.
+    unset(
+        $wp->query_vars['team-member'],
+        $wp->query_vars['post_type'],
+        $wp->query_vars['name'],
+        $wp->query_vars['error']
+    );
+    $wp->query_vars['page_id']   = $page->ID;
+    $wp->query_vars['pagename']  = "about/{$slug}";
+
+    // Also update the matched rule so WordPress treats this as a page match.
+    $wp->matched_rule = '(.?.+?)(/[0-9]+)?/?$';
+    $wp->matched_query = 'pagename=about/' . $slug . '&page=';
+}, 1);
+
+/**
+ * Backup: if WP_Query still flags 404, override at pre_get_posts.
+ */
+add_action('pre_get_posts', function ($query) {
+    if (!$query->is_main_query() || !$query->is_404()) {
+        return;
+    }
+
+    if (empty($query->query_vars['team-member'])) {
+        return;
+    }
+
+    $slug = $query->query_vars['team-member'];
 
     $team_member = get_page_by_path($slug, OBJECT, 'team-member');
     if ($team_member) {
-        return $query_vars;
+        return;
     }
 
     $page = get_page_by_path("about/{$slug}", OBJECT, 'page');
-    if ($page) {
-        unset($query_vars['team-member'], $query_vars['post_type']);
-        $query_vars['pagename'] = "about/{$slug}";
+    if (!$page) {
+        return;
     }
 
-    return $query_vars;
-}, 1);
+    $query->set('team-member', '');
+    $query->set('post_type', '');
+    $query->set('name', '');
+    $query->set('error', '');
+    $query->set('page_id', $page->ID);
+    $query->set('pagename', "about/{$slug}");
+    $query->is_404  = false;
+    $query->is_page = true;
+}, 999);
+
+/**
+ * Last resort: after WP_Query completes and 404 is determined, force override.
+ */
+add_action('wp', function ($wp) {
+    if (!is_404()) {
+        return;
+    }
+
+    if (empty($wp->query_vars['team-member'])) {
+        return;
+    }
+
+    $slug = $wp->query_vars['team-member'];
+
+    $team_member = get_page_by_path($slug, OBJECT, 'team-member');
+    if ($team_member) {
+        return;
+    }
+
+    $page = get_page_by_path("about/{$slug}", OBJECT, 'page');
+    if (!$page) {
+        return;
+    }
+
+    global $wp_query;
+    $wp_query->is_404    = false;
+    $wp_query->is_page   = true;
+    $wp_query->is_single = false;
+    $wp_query->is_singular = true;
+    $wp_query->queried_object    = $page;
+    $wp_query->queried_object_id = $page->ID;
+    $wp_query->posts             = [$page];
+    $wp_query->post_count        = 1;
+    $wp_query->found_posts       = 1;
+    $wp_query->max_num_pages     = 1;
+    status_header(200);
+});
