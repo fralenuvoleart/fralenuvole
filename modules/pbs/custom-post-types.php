@@ -380,3 +380,34 @@ function frl_pbs_kill_taxonomy_archives( $query ) {
         $query->set_404();
     }
 }
+
+/**
+ * Resolve /about/{slug}/ collision between team-member CPT and child pages.
+ *
+ * The team-member CPT rewrite slug 'about' generates a native rewrite rule
+ * about/([^/]+)/?$ that matches before the generic page rule. When no
+ * team-member post exists for the requested slug, fall back to page resolution
+ * so child pages like /about/team/ resolve correctly.
+ *
+ * Hooked at priority 1 — before the rewriter's feature filters (p115+).
+ */
+add_filter('request', function ($query_vars) {
+    if (empty($query_vars['team-member'])) {
+        return $query_vars;
+    }
+
+    $slug = $query_vars['team-member'];
+
+    $team_member = get_page_by_path($slug, OBJECT, 'team-member');
+    if ($team_member) {
+        return $query_vars;
+    }
+
+    $page = get_page_by_path("about/{$slug}", OBJECT, 'page');
+    if ($page) {
+        unset($query_vars['team-member'], $query_vars['post_type']);
+        $query_vars['pagename'] = "about/{$slug}";
+    }
+
+    return $query_vars;
+}, 1);
