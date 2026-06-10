@@ -396,4 +396,10 @@ Two-phase migration module to convert ACPT custom fields to SCF/ACF, including c
   - External references updated in [`thirdparty.php`](modules/thirdparty/thirdparty.php)
 - **Files:** 5 files edited (generator.php, builders.php, resolver.php, functions-schema.php, thirdparty.php)
 
-*Last Updated: 2026-06-05*
+## ✅ CPT / Page Slug Collision Fix — team-member 'about' Rewrite (2026-06-08)
+- **Problem:** `team-member` CPT registered with `rewrite => ['slug' => 'about']` at [`custom-post-types.php:202-207`](modules/pbs/custom-post-types.php:202) generates a native rewrite rule `about/([^/]+)/?$` that matches before the generic page rule. Child pages of `/about/` (e.g., `/about/team/`) were stolen by the CPT rule — WordPress resolved `team-member=team`, found no post, returned 404.
+- **Fix:** Single `parse_request` action at priority 1 in [`custom-post-types.php:395-425`](modules/pbs/custom-post-types.php:395). When `team-member` query var is set but no matching CPT post exists (`get_page_by_path`), checks if `about/{slug}` is a child page and rewrites `$wp->query_vars` + `$wp->matched_rule` before `WP_Query` parses.
+- **Subdomain adapter ruled out:** All 404-producing hooks gated behind `is_on_subdomain()`.
+- **Performance:** `get_page_by_path` is WP-core cached; filter only activates when native `about/([^/]+)/?$` rule matches.
+
+*Last Updated: 2026-06-08*

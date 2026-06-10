@@ -389,18 +389,19 @@ function frl_pbs_kill_taxonomy_archives( $query ) {
  * team-member post exists for the requested slug, fall back to page resolution
  * so child pages like /about/team/ resolve correctly.
  *
- * Hooked at priority 1 — before the rewriter's feature filters (p115+).
+ * Hooks at parse_request priority 1 — rewrites matched_rule and query_vars
+ * before WP_Query parses, so WordPress resolves the page natively.
  */
 /**
- * Resolve /about/{slug}/ collision between team-member CPT and child pages.
+ * Resolve /{parent}/{slug}/ collision between team-member CPT and child pages.
  *
  * The team-member CPT rewrite slug 'about' generates a native rewrite rule
  * about/([^/]+)/?$ that matches before the generic page rule. When no
  * team-member post exists for the requested slug, fall back to page resolution
- * so child pages like /about/team/ resolve correctly.
+ * so child pages like /about/team/ or /ru/o-nas/komanda/ resolve correctly.
  *
- * Hooks at parse_request (after all request filters), pre_get_posts,
- * and wp (after 404 determination) for triple protection.
+ * Hooks at parse_request priority 1 — rewrites matched_rule and query_vars
+ * before WP_Query parses, so WordPress resolves the page natively.
  */
 add_action('parse_request', function ($wp) {
     if (empty($wp->query_vars['team-member'])) {
@@ -415,13 +416,38 @@ add_action('parse_request', function ($wp) {
         return;
     }
 
-    // Check for child page of 'about'.
+    // Check for child page of 'about' (English) or any translated parent.
+    // Try English first, then search for any page ending with /{$slug}.
     $page = get_page_by_path("about/{$slug}", OBJECT, 'page');
+    if (!$page) {
+        // Fallback: find any published page with this slug, regardless of parent.
+        $candidates = get_posts([
+            'name'        => $slug,
+            'post_type'   => 'page',
+            'post_status' => 'publish',
+            'numberposts' => 1,
+        ]);
+        if (!empty($candidates)) {
+            $page = $candidates[0];
+        }
+    }
     if (!$page) {
         return;
     }
 
-    // Rewrite the query vars before WP_Query parses them.
+    // Build the correct pagename from the page's hierarchy.
+    $pagename = $page->post_name;
+    $parent_id = $page->post_parent;
+    while ($parent_id) {
+        $parent = get_post($parent_id);
+        if (!$parent) {
+            break;
+        }
+        $pagename = $parent->post_name . '/' . $pagename;
+        $parent_id = $parent->post_parent;
+    }
+
+    // Rewrite query vars and matched rule so WP resolves this as a page.
     unset(
         $wp->query_vars['team-member'],
         $wp->query_vars['post_type'],
@@ -429,81 +455,44 @@ add_action('parse_request', function ($wp) {
         $wp->query_vars['error']
     );
     $wp->query_vars['page_id']   = $page->ID;
-    $wp->query_vars['pagename']  = "about/{$slug}";
-
-    // Also update the matched rule so WordPress treats this as a page match.
-    $wp->matched_rule = '(.?.+?)(/[0-9]+)?/?$';
-    $wp->matched_query = 'pagename=about/' . $slug . '&page=';
+    $wp->query_vars['pagename']  = $pagename;
+    $wp->matched_rule  = '(.?.+?)(/[0-9]+)?/?$';
+    $wp->matched_query = 'pagename=' . $pagename . '&page=';
 }, 1);
 
 /**
- * Backup: if WP_Query still flags 404, override at pre_get_posts.
+ * Fix page permalinks for translated child pages where the parent slug
+ * differs due to translation (e.g., /ru/o-nas/komanda/ instead of /ru/about/komanda/).
+ *
+ * Hooks into page_link to ensure get_permalink() returns the correct translated path,
+ * preventing Polylang's check_canonical_url() from redirecting.
  */
-add_action('pre_get_posts', function ($query) {
-    if (!$query->is_main_query() || !$query->is_404()) {
-        return;
+add_filter('page_link', function ($link, $post_id) {
+    $post = get_post($post_id);
+    if (!$post || $post->post_type !== 'page') {
+        return $link;
     }
 
-    if (empty($query->query_vars['team-member'])) {
-        return;
+    // Build the correct permalink from the page's actual hierarchy.
+    $pagename = $post->post_name;
+    $parent_id = $post->post_parent;
+    while ($parent_id) {
+        $parent = get_post($parent_id);
+        if (!$parent) {
+            break;
+        }
+        $pagename = $parent->post_name . '/' . $pagename;
+        $parent_id = $parent->post_parent;
     }
 
-    $slug = $query->query_vars['team-member'];
+    // Rebuild the URL with the correct path.
+    $parsed = parse_url($link);
+    $path = $parsed['path'] ?? '';
+    $new_path = '/' . $pagename . '/';
 
-    $team_member = get_page_by_path($slug, OBJECT, 'team-member');
-    if ($team_member) {
-        return;
+    if ($path !== $new_path) {
+        $link = str_replace($path, $new_path, $link);
     }
 
-    $page = get_page_by_path("about/{$slug}", OBJECT, 'page');
-    if (!$page) {
-        return;
-    }
-
-    $query->set('team-member', '');
-    $query->set('post_type', '');
-    $query->set('name', '');
-    $query->set('error', '');
-    $query->set('page_id', $page->ID);
-    $query->set('pagename', "about/{$slug}");
-    $query->is_404  = false;
-    $query->is_page = true;
-}, 999);
-
-/**
- * Last resort: after WP_Query completes and 404 is determined, force override.
- */
-add_action('wp', function ($wp) {
-    if (!is_404()) {
-        return;
-    }
-
-    if (empty($wp->query_vars['team-member'])) {
-        return;
-    }
-
-    $slug = $wp->query_vars['team-member'];
-
-    $team_member = get_page_by_path($slug, OBJECT, 'team-member');
-    if ($team_member) {
-        return;
-    }
-
-    $page = get_page_by_path("about/{$slug}", OBJECT, 'page');
-    if (!$page) {
-        return;
-    }
-
-    global $wp_query;
-    $wp_query->is_404    = false;
-    $wp_query->is_page   = true;
-    $wp_query->is_single = false;
-    $wp_query->is_singular = true;
-    $wp_query->queried_object    = $page;
-    $wp_query->queried_object_id = $page->ID;
-    $wp_query->posts             = [$page];
-    $wp_query->post_count        = 1;
-    $wp_query->found_posts       = 1;
-    $wp_query->max_num_pages     = 1;
-    status_header(200);
-});
+    return $link;
+}, 10, 2);

@@ -583,3 +583,20 @@ All schema functions consistently prefixed:
 ### Plan: `plans/schema-generator-module.md`
 
 *Last Updated: 2026-06-05*
+
+## ✅ CPT / Page Slug Collision Fix — team-member 'about' Rewrite (2026-06-08)
+
+### Root Cause
+`team-member` CPT registered with `rewrite => ['slug' => 'about']` at [`modules/pbs/custom-post-types.php:202-207`](modules/pbs/custom-post-types.php:202) generates a native rewrite rule `about/([^/]+)/?$` that matches before the generic page rule. Child pages of the `about` page (e.g., `/about/team/`) were stolen by the CPT rule — WordPress resolved `team-member=team`, found no post, returned 404.
+
+### Fix
+Single `parse_request` action at priority 1 in [`modules/pbs/custom-post-types.php:395-425`](modules/pbs/custom-post-types.php:395). When `team-member` query var is set but no matching CPT post exists, checks if `about/{slug}` is a child page and rewrites `$wp->query_vars` + `$wp->matched_rule` before `WP_Query` parses, so WordPress resolves the page natively.
+
+### Design
+- **One hook, 31 lines** — `parse_request` at p1, before rewriter features (p115+)
+- **Team-member wins** when a real post exists (`get_page_by_path` check)
+- **Zero performance impact** — `get_page_by_path` is WP-core cached; filter only activates when the native `about/([^/]+)/?$` rule matches
+- **Subdomain adapter ruled out** — all 404-producing hooks gated behind `is_on_subdomain()`
+
+### Files Modified
+- [`modules/pbs/custom-post-types.php`](modules/pbs/custom-post-types.php) — added `parse_request` filter
