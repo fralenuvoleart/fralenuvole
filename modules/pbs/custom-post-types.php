@@ -473,6 +473,11 @@ add_filter('page_link', function ($link, $post_id) {
         return $link;
     }
 
+    // Only process child pages — top-level pages don't need this fix.
+    if (empty($post->post_parent)) {
+        return $link;
+    }
+
     // Build the correct permalink from the page's actual hierarchy.
     $pagename = $post->post_name;
     $parent_id = $post->post_parent;
