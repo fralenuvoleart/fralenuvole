@@ -393,12 +393,12 @@ function frl_pbs_kill_taxonomy_archives( $query ) {
  * before WP_Query parses, so WordPress resolves the page natively.
  */
 /**
- * Resolve /about/{slug}/ collision between team-member CPT and child pages.
+ * Resolve /{parent}/{slug}/ collision between team-member CPT and child pages.
  *
  * The team-member CPT rewrite slug 'about' generates a native rewrite rule
  * about/([^/]+)/?$ that matches before the generic page rule. When no
  * team-member post exists for the requested slug, fall back to page resolution
- * so child pages like /about/team/ resolve correctly.
+ * so child pages like /about/team/ or /ru/o-nas/komanda/ resolve correctly.
  *
  * Hooks at parse_request priority 1 — rewrites matched_rule and query_vars
  * before WP_Query parses, so WordPress resolves the page natively.
@@ -416,10 +416,35 @@ add_action('parse_request', function ($wp) {
         return;
     }
 
-    // Check for child page of 'about'.
+    // Check for child page of 'about' (English) or any translated parent.
+    // Try English first, then search for any page ending with /{$slug}.
     $page = get_page_by_path("about/{$slug}", OBJECT, 'page');
     if (!$page) {
+        // Fallback: find any published page with this slug, regardless of parent.
+        $candidates = get_posts([
+            'name'        => $slug,
+            'post_type'   => 'page',
+            'post_status' => 'publish',
+            'numberposts' => 1,
+        ]);
+        if (!empty($candidates)) {
+            $page = $candidates[0];
+        }
+    }
+    if (!$page) {
         return;
+    }
+
+    // Build the correct pagename from the page's hierarchy.
+    $pagename = $page->post_name;
+    $parent_id = $page->post_parent;
+    while ($parent_id) {
+        $parent = get_post($parent_id);
+        if (!$parent) {
+            break;
+        }
+        $pagename = $parent->post_name . '/' . $pagename;
+        $parent_id = $parent->post_parent;
     }
 
     // Rewrite query vars and matched rule so WP resolves this as a page.
@@ -430,7 +455,44 @@ add_action('parse_request', function ($wp) {
         $wp->query_vars['error']
     );
     $wp->query_vars['page_id']   = $page->ID;
-    $wp->query_vars['pagename']  = "about/{$slug}";
+    $wp->query_vars['pagename']  = $pagename;
     $wp->matched_rule  = '(.?.+?)(/[0-9]+)?/?$';
-    $wp->matched_query = 'pagename=about/' . $slug . '&page=';
+    $wp->matched_query = 'pagename=' . $pagename . '&page=';
 }, 1);
+
+/**
+ * Fix page permalinks for translated child pages where the parent slug
+ * differs due to translation (e.g., /ru/o-nas/komanda/ instead of /ru/about/komanda/).
+ *
+ * Hooks into page_link to ensure get_permalink() returns the correct translated path,
+ * preventing Polylang's check_canonical_url() from redirecting.
+ */
+add_filter('page_link', function ($link, $post_id) {
+    $post = get_post($post_id);
+    if (!$post || $post->post_type !== 'page') {
+        return $link;
+    }
+
+    // Build the correct permalink from the page's actual hierarchy.
+    $pagename = $post->post_name;
+    $parent_id = $post->post_parent;
+    while ($parent_id) {
+        $parent = get_post($parent_id);
+        if (!$parent) {
+            break;
+        }
+        $pagename = $parent->post_name . '/' . $pagename;
+        $parent_id = $parent->post_parent;
+    }
+
+    // Rebuild the URL with the correct path.
+    $parsed = parse_url($link);
+    $path = $parsed['path'] ?? '';
+    $new_path = '/' . $pagename . '/';
+
+    if ($path !== $new_path) {
+        $link = str_replace($path, $new_path, $link);
+    }
+
+    return $link;
+}, 10, 2);
