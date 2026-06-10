@@ -485,14 +485,16 @@ add_filter('page_link', function ($link, $post_id) {
         $parent_id = $parent->post_parent;
     }
 
-    // Rebuild the URL with the correct path.
-    $parsed = parse_url($link);
-    $path = $parsed['path'] ?? '';
-    $new_path = '/' . $pagename . '/';
+    // Rebuild the URL with the correct path, preserving language prefix.
+    $current_lang = frl_get_language();
+    $default_lang = frl_get_default_language();
+    $home_url = frl_get_home_url($current_lang);
 
-    if ($path !== $new_path) {
-        $link = str_replace($path, $new_path, $link);
-    }
+    // Build the correct path with language prefix only if not default language.
+    $path_prefix = ($current_lang !== $default_lang) ? $current_lang . '/' : '';
+    $new_path = '/' . $path_prefix . $pagename . '/';
+
+    $link = rtrim($home_url, '/') . $new_path;
 
     return $link;
 }, 10, 2);
