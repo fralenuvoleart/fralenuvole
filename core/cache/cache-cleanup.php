@@ -48,6 +48,13 @@ function frl_clear_post_cache($post_id)
     }
     $post_id = absint($post_id);
 
+    // Skip cache clearing for autosaves, revisions, auto-drafts, and trash.
+    // Gutenberg triggers save_post every ~60 seconds during editing for autosaves,
+    // so this guard prevents unnecessary cache clearing on every keystroke.
+    if (!frl_is_post_save_action($post_id)) {
+        return;
+    }
+
     $translations_key = "post_{$post_id}_translations";
     frl_cache_clear('postdata', $translations_key);
 
@@ -62,12 +69,17 @@ function frl_clear_post_cache($post_id)
 
     // Clear only post-scoped icon repeater caches within the 'icons' group
     // Renderer caches include file mtimes and do not need clearing on post save
-    $icon_keys = frl_cache_get_multi('icons');
-    if (!empty($icon_keys)) {
-        $prefix = 'repeater_' . $post_id . '_';
-        foreach (array_keys($icon_keys) as $key) {
-            if (is_string($key) && str_starts_with($key, $prefix)) {
-                frl_cache_clear('icons', $key, false);
+    // Only scan when the icon module is actually enabled to avoid unnecessary DB queries
+    $icon_field_enabled = frl_get_option('acf_icon_field') === '1';
+    $icon_shortcode_enabled = frl_get_option('acf_icon_shortcode') === '1';
+    if ($icon_field_enabled || $icon_shortcode_enabled) {
+        $icon_keys = frl_cache_get_multi('icons');
+        if (!empty($icon_keys)) {
+            $prefix = 'repeater_' . $post_id . '_';
+            foreach (array_keys($icon_keys) as $key) {
+                if (is_string($key) && str_starts_with($key, $prefix)) {
+                    frl_cache_clear('icons', $key, false);
+                }
             }
         }
     }

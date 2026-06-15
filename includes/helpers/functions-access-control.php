@@ -453,3 +453,61 @@ function frl_is_log_manager_request(): bool
     }
     return false;
 }
+
+/**
+ * Checks if the current save_post action is a real post save that should trigger
+ * cache clearing and other post-save side effects.
+ *
+ * Returns false for autosaves, revisions, auto-drafts, and trash operations.
+ *
+ * @param int $post_id Post ID.
+ * @return bool True if this is a real post save (not autosave/revision/auto-draft/trash).
+ */
+function frl_is_post_save_action($post_id): bool
+{
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return false;
+    }
+    if (wp_is_post_revision($post_id)) {
+        return false;
+    }
+    if (wp_is_post_autosave($post_id)) {
+        return false;
+    }
+    $status = get_post_status($post_id);
+    if (in_array($status, ['auto-draft', 'trash', 'inherit'], true)) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Checks if a third-party plugin is active (site-wide or network-wide).
+ *
+ * Cached via frl_cache_remember in the 'options' group with WEEK_IN_SECONDS TTL,
+ * since the active plugins list changes only on plugin activation/deactivation.
+ * Invalidated via frl_purge_mu_plugin_exclusion_cache() on activated_plugin/
+ * deactivated_plugin hooks.
+ *
+ * @param string $plugin_path Plugin path relative to plugins directory, e.g. 'mwai/mwai.php'.
+ * @return bool True if the plugin is active (site-wide or network-wide).
+ */
+function frl_is_thirdparty_plugin_active(string $plugin_path): bool
+{
+    $active_plugins = frl_cache_remember('options', 'thirdparty_active_plugins', function () {
+        return [
+            'site'   => (array) get_option('active_plugins', []),
+            'network' => is_multisite()
+                ? array_keys((array) get_site_option('active_sitewide_plugins', []))
+                : [],
+        ];
+    });
+
+    if (in_array($plugin_path, $active_plugins['site'], true)) {
+        return true;
+    }
+    if (in_array($plugin_path, $active_plugins['network'], true)) {
+        return true;
+    }
+    return false;
+}
