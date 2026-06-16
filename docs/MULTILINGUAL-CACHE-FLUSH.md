@@ -204,9 +204,9 @@ function frl_flush_rewrite_rules(): void
 
 **Result: One click produces identical effects as Save Permalinks + LiteSpeed Purge All.**
 
-### 5.4 Non-Critical Limitation
+### 5.4 TO-DO: Non-Critical Limitation
 
-`clear_rewriter_caches()` is still not triggered by the button (hook registration is deferred to `wp_loaded`). This means Fralenuvole's `rewriter` and `permalinks` object cache groups are not explicitly cleared. These groups contain computed/derived data that self-heals on the next cache miss. They are NOT the source of 404 errors.
+`clear_rewriter_caches()` is still not triggered by the button (hook registration is deferred to `wp_loaded`). This means Fralenuvole's `rewriter` and `permalinks` object cache groups are not explicitly cleared. These groups contain computed/derived data that self-heals on the next cache miss. They are not the source of 404 errors.
 
 ---
 
