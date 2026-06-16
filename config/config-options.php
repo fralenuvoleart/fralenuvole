@@ -610,21 +610,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'autoload' => 'no',
 			),
-			'am_menu_order' => array(
-				'label' => 'Reorder Admin menu items',
-				'description' => 'One menu / order number pair per line. Format: "menu_handle|number".',
-				'type' => 'textlist',
-				'default' => '',
-				'rows' => 10,
-				'cols' => 70,
-				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload' => 'no',
-			),
-			'am_menu_order_info' => array(
-				'label' => 'Available Menu Items',
-				'type' => 'custom',
-				'callback' => 'frl_render_admin_menu_order',
-			),
 			'section_title_dashboard_widgets' => array(
 				'label' => 'Dashboard Widgets',
 				'description' => 'Customise Dashboard widgets',

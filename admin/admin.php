@@ -144,119 +144,17 @@ function frl_add_column_featured_image($column_name, $post_id)
  */
 function frl_set_custom_admin_menu()
 {
-    // Early exit on post edit screens — menu reordering/reduction is not needed
-    // when editing posts; it only applies to the main admin menu pages (e.g. Dashboard,
-    // Posts, Pages listing). Saves get_post_types() call inside frl_remove_admin_menus()
-    // and usort overhead in frl_reorder_admin_menu().
-    if (frl_is_post_edit_screen()) {
-        frl_capture_original_admin_menu();
-        frl_add_plugin_menu();
-        return;
-    }
-
-    // 1. Capture the menu state as it exists when this function is called.
-    frl_capture_original_admin_menu();
-
-    // 2. Add the main plugin settings page
+    // Add the main plugin settings page (needed on all admin pages).
     frl_add_plugin_menu();
-    // 3. Add translation menu items if relevant
-    frl_add_translation_menu();
-    // 4. Handle menu item removal for non-admin users
-    frl_remove_admin_menus();
-    // 5. Reorder menu items based on custom order
-    frl_reorder_admin_menu();
-}
 
-/**
- * Capture the current state of the admin menu.
- *
- * Stores the global $menu array into a plugin-specific global variable
- * to allow for stable reordering and comparison.
- *
- * @return void
- */
-function frl_capture_original_admin_menu() {
-    global $menu, $frl_original_admin_menu;
-    if (empty($frl_original_admin_menu)) {
-        $frl_original_admin_menu = $menu;
-    }
-}
-
-/**
- * Reorder the main admin menu items based on plugin settings.
- *
- * Uses a custom order map fetched from 'am_menu_order'. Items not specified
- * in the custom order maintain their original relative positions.
- *
- * @return void
- */
-function frl_reorder_admin_menu()
-{
-    global $menu, $frl_original_admin_menu;
-
-    $option = frl_get_option('am_menu_order');
-    if (empty($option) || empty($frl_original_admin_menu)) {
-        return; // Exit if no custom order is set or original menu wasn't captured.
-    }
-
-    $user_id = frl_get_current_user()->ID;
-    $option_hash = substr(md5($option), 0, 8);
-    $cache_key = "menuorder_uid{$user_id}_{$option_hash}";
-
-    $processed_order = frl_cache_remember('admin', $cache_key, function() use ($option) {
-        $order_list = frl_textlist_to_array($option);
-        if (empty($order_list)) {
-            return [];
-        }
-
-        // Create the user's desired order map.
-        $desired_order = [];
-        foreach ($order_list as $item) {
-            if (count($item) === 2) {
-                $slug = trim($item[0]);
-                $order = floatval(trim($item[1]));
-                $desired_order[$slug] = $order;
-            }
-        }
-        return $desired_order;
-    });
-
-    if (empty($processed_order)) {
+    // Post edit screens only need the plugin menu — skip translation menu
+    // addition and menu item removal which are unnecessary when editing posts.
+    if (frl_is_post_edit_screen()) {
         return;
     }
 
-    // Create a lookup map of original menu positions.
-    $original_order_map = [];
-    foreach ($frl_original_admin_menu as $original_order => $original_item) {
-        if (isset($original_item[2])) {
-            $original_order_map[$original_item[2]] = $original_order;
-        }
-    }
-
-    usort($menu, function ($a, $b) use ($processed_order, $original_order_map) {
-        // Ensure the menu items are valid arrays.
-        if (!isset($a[2]) || !isset($b[2])) {
-            return 0;
-        }
-
-        $slug_a = $a[2];
-        $slug_b = $b[2];
-
-        // Use the custom order if it exists, otherwise fall back to the item's original order.
-        $pos_a = $processed_order[$slug_a] ?? $original_order_map[$slug_a] ?? 999;
-        $pos_b = $processed_order[$slug_b] ?? $original_order_map[$slug_b] ?? 999;
-
-        // If positions are different, sort by position.
-        if ($pos_a !== $pos_b) {
-            return $pos_a <=> $pos_b;
-        }
-
-        // If positions are the same, use original position as a tie-breaker for a stable sort.
-        $original_pos_a = $original_order_map[$slug_a] ?? 999;
-        $original_pos_b = $original_order_map[$slug_b] ?? 999;
-
-        return $original_pos_a <=> $original_pos_b;
-    });
+    frl_add_translation_menu();
+    frl_remove_admin_menus();
 }
 
 /**

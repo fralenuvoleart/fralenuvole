@@ -79,14 +79,6 @@
                         activate: function(event, ui) {
                             var newTabId = ui.newPanel.attr("id");
 
-                            // --- Conditional Load for Admin Tools ---
-                            // Check if the activated tab is the Administration tab and if the UI hasn't been initialized yet.
-                            if (newTabId === 'frl-tabs-administration' && !window.frlMenuReorderUIInitialized) {
-                                initMenuReorderUI();
-                                window.frlMenuReorderUIInitialized = true; // Set flag to prevent re-initialization
-                            }
-                            // --- End Conditional Load ---
-
                             // Update the hidden form field with the current tab ID
                             $("input[name='frl_active_tab']").val(newTabId);
 
@@ -203,64 +195,4 @@ jQuery(document).ready(function ($) {
         initToggleButtons();
     });
 
-    /**
-     * Initializes the UI functionality for the admin menu reordering tool.
-     * This function is called only when the "Admin Tools" tab is active.
-     */
-    function initMenuReorderUI() {
-        var $reorderUI = $('#frl-menu-reorder-ui');
-        if (!$reorderUI.length) {
-            return; // Exit if the container doesn't exist
-        }
-
-        var $copyAllButton = $('#frl-copy-all-menu-items');
-        var $targetTextarea = $('textarea[name="frl_am_menu_order"]');
-
-        // 1. Handle copying all items to the textarea
-        if ($copyAllButton.length) {
-            $copyAllButton.on('click', function () {
-                var allItemsText = $reorderUI.find('.frl-copy-menu-item')
-                    .map(function() {
-                        return $(this).data('copy-text');
-                    }).get().join('\n');
-
-                $targetTextarea.val(allItemsText);
-
-                var originalButtonText = $(this).html();
-                $(this).text('Order Copied!');
-                setTimeout(function() {
-                    $copyAllButton.html(originalButtonText);
-                }, 2000);
-            });
-        }
-
-        // 2. Handle copying a single item to the clipboard using event delegation
-        $reorderUI.on('click', '.frl-copy-menu-item', function(e) {
-            var $listItem = $(this);
-            var textToCopy = $listItem.data('copy-text');
-            var originalItemHTML = $listItem.html();
-
-            navigator.clipboard.writeText(textToCopy).then(function() {
-                $listItem.html('<strong>Copied to clipboard!</strong>').css('opacity', 0.7);
-                setTimeout(function() {
-                    $listItem.html(originalItemHTML).css('opacity', 1);
-                }, 1500);
-            }).catch(function(err) {
-                console.error('Failed to copy text: ', err);
-                $listItem.html('<strong>Copy Failed!</strong>');
-                setTimeout(function() {
-                    $listItem.html(originalItemHTML);
-                }, 2000);
-            });
-        });
-    }
-
-    // --- Initial check on page load ---
-    // This handles the case where the page loads with the Admin Tools tab already active.
-    if ($('#frl-tabs-administration.ui-tabs-active').length) {
-        if (!window.frlMenuReorderUIInitialized) {
-            initMenuReorderUI();
-            window.frlMenuReorderUIInitialized = true;
-        }
-    }
 });

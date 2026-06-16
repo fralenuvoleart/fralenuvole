@@ -75,7 +75,6 @@ function frl_asset_loader_scripts(): void
         'log-manager-css' => 'assets/css/admin-log-manager.css',
         'log-manager-js' => 'assets/js/admin-log-manager.js',
         'import-export-js' => 'assets/js/admin-import-export.js',
-        'menu-order-js' => 'assets/js/admin-menu-order.js',
     ];
 
     frl_enqueue_scripts(
