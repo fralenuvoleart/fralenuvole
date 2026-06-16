@@ -93,7 +93,7 @@ function frl_load_core_components()
     // Load core files first (cache-manager already loaded in bootstrap)
     require_once FRL_DIR_PATH . 'core/cache/cache-cleanup.php';
 
-    // Environment Manager — only load + init if not explicitly disabled
+    // Environment Manager — only load + init if not explicitly disabled.
     if (!frl_get_option('disable_environment')) {
         require_once FRL_DIR_PATH . 'core/environment/environment-manager.php';
         frl_environment_init();

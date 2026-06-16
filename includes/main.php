@@ -30,13 +30,6 @@ if (frl_is_logged_in()) {
 add_action('init', 'frl_main_init', 10, 0);
 add_action('wp_head', 'frl_add_critical_css', -999, 1);
 
-if (!frl_is_rest_api_request()) {
-    add_filter('render_block_data', 'frl_log_capture_render_block_enter', 10, 1);
-    add_filter('render_block', 'frl_log_capture_render_block_exit', 10, 2);
-    add_action('pre_get_posts', 'frl_log_capture_query', 1, 1);
-    add_filter('do_shortcode_tag', 'frl_log_capture_shortcode', 10, 4);
-}
-
 add_filter('pll_get_post_types', 'frl_making_wp_navigation_translatable', 10, 2);
 add_filter('block_type_metadata_settings', 'frl_render_block_core_navigation_translation', 10, 2);
 add_action('init', 'frl_nav_menu_custom_urls_init', 20);
@@ -45,6 +38,12 @@ add_action('init', 'frl_disable_oembed_discovery', 5, 0);
 add_filter('auth_cookie_expiration', 'frl_extend_admin_cookie', 10, 1);
 add_action('shutdown', 'frl_process_deferred_writes', 10, 0);
 
+if (!frl_is_rest_api_request()) {
+    add_filter('render_block_data', 'frl_log_capture_render_block_enter', 10, 1);
+    add_filter('render_block', 'frl_log_capture_render_block_exit', 10, 2);
+    add_action('pre_get_posts', 'frl_log_capture_query', 1, 1);
+    add_filter('do_shortcode_tag', 'frl_log_capture_shortcode', 10, 4);
+}
 /**
  * Disables oEmbed discovery to reduce external requests.
  *

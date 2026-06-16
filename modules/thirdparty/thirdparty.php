@@ -22,7 +22,6 @@ add_filter('saswp_modify_author_output', 'frl_thirdparty_inject_schema_propertie
 add_filter('saswp_modify_website_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
 add_filter('saswp_modify_profile_page_schema_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
 add_filter('saswp_modify_schema_output', 'frl_thirdparty_sanitize_schemas', 9999, 1);
-add_action('add_meta_boxes',         'frl_remove_litespeed_meta_boxes',   999, 0);
 add_filter('rest_endpoints',         'frl_greenshift_fix_rest_schemas',   10,  1);
 
 /**
@@ -64,20 +63,6 @@ function frl_thirdparty_admin_scripts()
     }
     
     frl_enqueue_scripts($assets, 'thirdparty_admin');
-}
-
-function frl_remove_litespeed_meta_boxes()
-{
-    if (frl_is_admin()) {
-        $args = array(
-            'public' => true,
-        );
-
-        $post_types = get_post_types($args);
-        foreach ($post_types as $post_type) {
-            remove_meta_box('litespeed_meta_boxes', $post_type, 'side');
-        }
-    }
 }
 
 /**

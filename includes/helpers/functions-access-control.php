@@ -151,6 +151,23 @@ function frl_is_admin_page($page, $param = 'page')
 }
 
 /**
+ * Checks if the current screen is a post edit or post creation screen.
+ *
+ * Detects post.php (edit) and post-new.php (add new) screens.
+ * Useful for gating logic that only needs to run on post editing interfaces.
+ *
+ * @return bool True if on a post edit or post creation screen, false otherwise.
+ */
+function frl_is_post_edit_screen(): bool
+{
+    if (!function_exists('get_current_screen')) {
+        return false;
+    }
+    $screen = get_current_screen();
+    return $screen && $screen->base === 'post' && in_array($screen->action, ['add', 'edit'], true);
+}
+
+/**
  * Checks if the current user is logged in.
  *
  * @return bool True if the user is logged in.

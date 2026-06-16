@@ -1,5 +1,45 @@
 # Project Progress
 
+## ✅ Post Edit Screen Optimization (2026-06-16)
+
+### Changes Applied (7 files modified)
+
+1. **New helper: [`frl_is_post_edit_screen()`](includes/helpers/functions-access-control.php:161)**
+   - Detects `post.php` (edit) and `post-new.php` (add new) screens via `$screen->base === 'post'` with action `add/edit`
+   - Returns `false` gracefully when `get_current_screen()` is unavailable
+
+2. **Applied helper in [`frl_maybe_load_metabox_class()`](admin/admin.php:494)**
+   - Replaced raw `$screen->base === 'post'` check with `frl_is_post_edit_screen()`
+
+3. **Re-entrancy guard added to [`Frl_Metabox::__construct()`](admin/metaboxes/class-metabox.php:35)**
+   - Uses `frl_is_already_running(__METHOD__)` to prevent double registration
+
+4. **Removed [`frl_remove_litespeed_meta_boxes()`](modules/thirdparty/thirdparty.php) entirely**
+   - Deleted `add_action('add_meta_boxes', 'frl_remove_litespeed_meta_boxes', 999, 0)` (was line 25)
+   - Deleted function definition (was lines 69-81)
+   - Zero remaining references verified via codebase grep
+
+5. **Optimized [`frl_set_custom_admin_menu()`](admin/admin.php:151)**
+   - Early return on post edit screens: calls only `frl_capture_original_admin_menu()` + `frl_add_plugin_menu()`
+   - Skips `frl_remove_admin_menus()` (calls `get_post_types()` → DB query) and `frl_reorder_admin_menu()` (`usort` overhead)
+   - Also skips `frl_add_translation_menu()` (not needed on edit screens)
+
+6. **Environment Manager elaboration comment in [`fralenuvole.php`](fralenuvole.php:96)**
+   - Documents why EM is essential on post edit screens: site URL overrides, plugin status overrides, option value overrides for correct editor rendering
+
+7. **Log capture hooks documented in [`includes/main.php`](includes/main.php:33)**
+   - Confirms these ARE triggered on post edit screens via block editor `render_block`
+   - Cost is negligible: in-memory stack push/pop only, no I/O or DB queries
+   - Actual write-to-log gated behind `WP_DEBUG_LOG`
+
+### Performance Impact Summary
+| Codepath | Before | After | Savings |
+|----------|--------|-------|---------|
+| Menu reordering | Full `get_post_types()` + `usort` on every admin page | Early exit on post edit screens | 1 DB query + sort per edit screen load |
+| Litespeed meta boxes | `WP_Query` on every post edit screen | Removed entirely | 1 DB query per edit screen load |
+| Metabox class | No re-entrancy guard | `frl_is_already_running()` guard | Prevents double registration edge case |
+| Screen detection | Raw `$screen->base` check | Centralized `frl_is_post_edit_screen()` | Codebase consistency |
+
 ## ✅ Multilingual Cache Flush — Complete Analysis & Fix (2026-06-16)
 
 ### Background

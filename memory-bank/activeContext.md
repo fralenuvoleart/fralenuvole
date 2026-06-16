@@ -7,8 +7,13 @@
 ## 🔄 Current Focus
 Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
 
-**Current session:** Multilingual cache flush analysis & fix (2026-06-16) — see [`docs/MULTILINGUAL-CACHE-FLUSH.md`](docs/MULTILINGUAL-CACHE-FLUSH.md) for full reference.
-- **4 inaccuracies corrected** in original analysis (`_purge_all_object` NO-OP, `options` group cleared, transient storage, `dc_flush()` call)
+**Current session:** Post edit screen optimization (2026-06-16)
+- **[`frl_is_post_edit_screen()`](includes/helpers/functions-access-control.php:161)** helper created and applied
+- **[`frl_set_custom_admin_menu()`](admin/admin.php:145)** optimized with early return on post edit screens
+- **[`Frl_Metabox`](admin/metaboxes/class-metabox.php:33)** re-entrancy guard added
+- **[`frl_remove_litespeed_meta_boxes()`](modules/thirdparty/thirdparty.php)** removed entirely
+- **[Environment Manager](fralenuvole.php:96)** necessity on post edit screens documented
+- **[Log capture hooks](includes/main.php:33)** behavior on post edit screens documented
 - **Fix applied:** [`wp_cache_delete('alloptions', 'options')`](includes/plugin-lifecycle.php:191) in `frl_flush_rewrite_rules()`
 - **Root cause:** Docket Cache defers `alloptions` file deletion to shutdown; button code reads stale file same-request
 - **Automatic scenarios verified safe** — inbound bridge already handles `alloptions` deletion via `purge_light()`

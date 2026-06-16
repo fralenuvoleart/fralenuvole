@@ -32,6 +32,9 @@ class Frl_Metabox
 	 */
 	public function __construct()
 	{
+		if (frl_is_already_running(__METHOD__)) {
+			return;
+		}
 		add_action('add_meta_boxes', array($this, 'add_meta_boxes'));
 	}
 

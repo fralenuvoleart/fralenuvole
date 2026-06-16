@@ -144,6 +144,16 @@ function frl_add_column_featured_image($column_name, $post_id)
  */
 function frl_set_custom_admin_menu()
 {
+    // Early exit on post edit screens — menu reordering/reduction is not needed
+    // when editing posts; it only applies to the main admin menu pages (e.g. Dashboard,
+    // Posts, Pages listing). Saves get_post_types() call inside frl_remove_admin_menus()
+    // and usort overhead in frl_reorder_admin_menu().
+    if (frl_is_post_edit_screen()) {
+        frl_capture_original_admin_menu();
+        frl_add_plugin_menu();
+        return;
+    }
+
     // 1. Capture the menu state as it exists when this function is called.
     frl_capture_original_admin_menu();
 
@@ -481,7 +491,7 @@ function frl_maybe_load_metabox_class($screen)
     }
 
     // Check if we're on a post edit or post add new screen
-    if ($screen && ($screen->base === 'post' || $screen->action === 'add')) {
+    if (frl_is_post_edit_screen()) {
         // Load for all post types - this ensures custom post types are supported
         require_once FRL_DIR_PATH . 'admin/metaboxes/class-metabox.php';
     }
