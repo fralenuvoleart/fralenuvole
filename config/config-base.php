@@ -95,5 +95,30 @@ const FRL_PUBLIC_ACTIONS = [
     'clear_website_transients',
 ];
 
+/**
+ * REST API endpoints disabled for unauthenticated users.
+ *
+ * /oembed/1.0 and /wp/v2/oembed are intentionally excluded.
+ * The frl_disable_oembed() function in includes/shared/website-features.php:124
+ * already removes oEmbed route registration via remove_action('rest_api_init', 'wp_oembed_register_route')
+ * when disable_oembed is enabled — managing oEmbed REST removal through the proper toggle.
+ *
+ * @see includes/shared/website-features.php:124
+ * @see public/public.php:frl_disable_rest_endpoints()
+ */
+const FRL_REST_ENDPOINTS = [
+    '/wp/v2/users',
+    '/wp/v2/settings',
+    '/wp/v2/themes',
+    '/wp/v2/plugins',
+    '/wp/v2/types',
+    '/wp/v2/statuses',
+    '/wp/v2/taxonomies',
+    '/wp/v2/categories',
+    '/wp/v2/tags',
+    '/wp/v2/media',
+    '/wp/v2/comments',
+];
+
 // PHP 8.0+ error code for errors suppressed with the @ operator.
 const FRL_PHP8_SUPPRESSED_ERROR_CODE = 4437;

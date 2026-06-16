@@ -342,6 +342,13 @@ function frl_remove_jquery_migrate($scripts)
 
 /**
  * Disable sensitive or non-essential REST API endpoints for unauthenticated users.
+ *
+ * The endpoint list is defined in the FRL_REST_ENDPOINTS constant in config/config-base.php.
+ * /oembed/1.0 and /wp/v2/oembed are intentionally absent — the frl_disable_oembed() function
+ * handles oEmbed REST route removal through its own toggle (disable_oembed).
+ *
+ * @see config/config-base.php:FRL_REST_ENDPOINTS
+ * @see includes/shared/website-features.php:124
  */
 function frl_disable_rest_endpoints($endpoints)
 {
@@ -349,56 +356,18 @@ function frl_disable_rest_endpoints($endpoints)
         return $endpoints;
     }
 
+    // Allow themes/plugins to modify the removal list
+    $endpoints_to_remove = apply_filters('frl_rest_endpoints_to_remove', FRL_REST_ENDPOINTS);
 
-
-    // Default list of endpoints to remove for non-logged-in users.
-    // Focus on security (users, settings) and non-essential info.
-    // Avoid blocking potentially needed content endpoints (posts, pages, search, blocks) by default.
-    static $endpoints_to_remove = array(
-        // Security related:
-        '/wp/v2/users',
-        '/wp/v2/settings',
-        // Non-essential info:
-        '/wp/v2/themes',
-        '/wp/v2/plugins', // Added: Generally good to hide plugin list too
-        '/wp/v2/types',
-        '/wp/v2/statuses',
-        // Taxonomies (Generally safe, unlikely needed publicly by API):
-        '/wp/v2/taxonomies',
-        '/wp/v2/categories',
-        '/wp/v2/tags',
-        // Other:
-        '/wp/v2/media', // Usually safe, hides media library structure
-        '/wp/v2/comments', // Safe if comments not needed via API
-        // OEmbed (Redundant if oEmbed globally disabled, but safe to keep here):
-        '/oembed/1.0',
-        '/wp/v2/oembed'
-        // --- Problematic endpoints REMOVED from default list: ---
-        // '/wp/v2', // Too broad
-        // '/wp/v2/posts', // Might break headless/JS themes
-        // '/wp/v2/pages', // Might break headless/JS themes
-        // '/wp/v2/search', // Might break API-based search
-        // '/wp/v2/blocks', // Might break block themes
-        // '/wp/v2/block-renderer', // Might break dynamic blocks
-    );
-
-    // Allow themes/plugins to filter this list if needed
-    $endpoints_to_remove = apply_filters('frl_rest_endpoints_to_remove', $endpoints_to_remove);
-
-    if (!frl_is_logged_in()) { // @phpstan-ignore-line
-        // --- Use the more efficient loop ---
-        foreach ($endpoints as $route => $data) {
-            foreach ($endpoints_to_remove as $prefix_to_remove) {
-                // Use str_starts_with for precise prefix matching (PHP 8+)
-                // Using str_starts_with() since we're on PHP 8+
-                if (str_starts_with($route, $prefix_to_remove)) {
-                    unset($endpoints[$route]);
-                    break; // Move to the next endpoint once a match is found
-                }
+    foreach ($endpoints as $route => $data) {
+        foreach ($endpoints_to_remove as $prefix_to_remove) {
+            if (str_starts_with($route, $prefix_to_remove)) {
+                unset($endpoints[$route]);
+                break;
             }
         }
-        // --- End efficient loop ---
     }
+
     return $endpoints;
 }
 
