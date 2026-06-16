@@ -183,6 +183,13 @@ function frl_uninstall_plugin(): void
  */
 function frl_flush_rewrite_rules(): void
 {
+    // Delete Docket's cached alloptions BEFORE regenerating rewrite rules.
+    // Docket defers alloptions invalidation to shutdown (cache.php:2065),
+    // so the cached file survives the current request. Without this,
+    // wp_load_alloptions() returns stale rewrite_rules during flush,
+    // causing 404 errors on secondary-language permalinks.
+    wp_cache_delete('alloptions', 'options');
+
     $permastruct = get_option('permalink_structure');
     do_action('update_option_permalink_structure', $permastruct, $permastruct);
     do_action('permalink_structure_changed', $permastruct, $permastruct);
