@@ -32,7 +32,9 @@ When the user clicks "Save Changes" on the Permalinks settings page:
       │         └──→ Deletes from DB + Docket's TransientDb          ✓ immediate
       │
       ├──→ Docket: updated_option hook                              [cache.php:2058]
-      │    └──→ Queues delete('alloptions','options') on SHUTDOWN   ⏳ deferred
+      │    ├──→ Calls wp_load_alloptions() INLINE [cache.php:2063]  ⚠ reads stale cached file
+      │    │    to check if changed option is in alloptions array
+      │    └──→ Queues delete('alloptions','options') on SHUTDOWN   ⏳ deferred [cache.php:2065-2071]
       │
       └──→ flush_rewrite_rules()
            └──→ Regenerates rewrite_rules, calls update_option()
@@ -40,6 +42,8 @@ When the user clicks "Save Changes" on the Permalinks settings page:
 ```
 
 **Critical timing issue:** `wp_load_alloptions()` is called during `flush_rewrite_rules()`. At this point, Docket's cached `alloptions` file **still exists on disk** — the shutdown hook hasn't fired yet. The function returns stale data including the OLD `rewrite_rules` and potentially the OLD `_transient_pll_languages_list` value.
+
+**Nuance:** Docket's `updated_option` handler at [cache.php:2063] calls `wp_load_alloptions()` inline during the action to check if the changed option key exists in the alloptions array. This reads the same stale cached file, but is harmless — the real problem is the deferred shutdown deletion.
 
 **After the request ends:** Docket's shutdown hook fires → `delete('alloptions', 'options')` → deletes ONE cache file from disk. The cached `alloptions` is now gone. Next request will query DB directly.
 
@@ -98,9 +102,11 @@ Button click → frl_handle_action_flush_rewrite_rules()               [function
 $permastruct = get_option('permalink_structure');       // ← reads Docket's STALE alloptions
 do_action('update_option_permalink_structure', ...);    // ← Polylang clean_languages_cache() ✓
                                                         // ← Docket queues alloptions delete (shutdown) ⏳
-                                                        // ← Fralenuvole clear_rewriter_caches() SILENTLY SKIPPED
-                                                        //    because hooks registered at wp_loaded [class-rewriter.php:450]
+                                                        // ← Fralenuvole clear_rewriter_caches() has NO LISTENER
+                                                        //    because add_action('update_option_permalink_structure', ...)
+                                                        //    is deferred inside wp_loaded callback [class-rewriter.php:450]
                                                         //    and button fires at init:10 (before wp_loaded)
+                                                        //    The action fires, but nothing is listening yet
 do_action('permalink_structure_changed');
 
 // Lines 193-198 (did_action('wp_loaded') = false at init:10)
@@ -114,7 +120,7 @@ frl_thirdparty_maybe_notify('rewrite_flush');           // ← LiteSpeed _purge_
 
 | # | Location | What Happens | Impact |
 |---|----------|-------------|--------|
-| 1 | Line 187 | `clear_rewriter_caches()` hook never fires — registered at `wp_loaded` but button at `init:10`. The `did_action('wp_loaded')` fallback at line 193 handles `flush_rewrite_rules(true)` but does NOT call `clear_rewriter_caches()`. | Fralenuvole's `options→rewriter→permalinks` dependency cascade is never triggered internally. |
+| 1 | Line 187 | `clear_rewriter_caches()` has no listener — the `add_action('update_option_permalink_structure', ...)` call is deferred inside a `wp_loaded` callback [class-rewriter.php:450], but the button fires at `init:10` (before `wp_loaded`). The action fires normally, but nothing is registered to hear it. The `did_action('wp_loaded')` fallback at line 193 handles `flush_rewrite_rules(true)` but does NOT call `clear_rewriter_caches()`. | Fralenuvole's `options→rewriter→permalinks` dependency cascade is never triggered internally. |
 | 2 | Line 194 | `flush_rewrite_rules(true)` calls `wp_load_alloptions()` which reads Docket's STALE `alloptions` cached file. The file still contains old `rewrite_rules` and possibly old `_transient_pll_languages_list`. | Rewrite rules are generated from stale input data. |
 | 3 | Line 196 | `frl_thirdparty_maybe_notify('rewrite_flush')` → `do_action('litespeed_purge_all')` → `_purge_all_object()` → `wp_cache_flush()` → Docket `dc_flush()` — but this happens AFTER the contamination. The current request's in-memory data is already stale. Docket `dc_flush()` is also heavyweight (iterates all files) and vulnerable to timeout/static guard. | Too late, too heavy. |
 
@@ -124,7 +130,7 @@ frl_thirdparty_maybe_notify('rewrite_flush');           // ← LiteSpeed _purge_
 
 ### What the 2× manual pattern proves
 
-The ONLY action needed to make a single Save Permalinks work is: **delete Docket's cached `alloptions` file BEFORE `flush_rewrite_rules()` runs.**
+The ONLY action needed to make a single Save Permalinks + LiteSpeed Purge All work in one click is: **delete Docket's cached `alloptions` file BEFORE `flush_rewrite_rules()` runs.**
 
 ### The fix
 
@@ -183,7 +189,7 @@ With the fix applied, the button's execution becomes:
 2. do_action('update_option_permalink_structure')
    → Polylang: clean_languages_cache() ✓
    → Docket: queues alloptions delete on shutdown (harmless, file already gone)
-   → clear_rewriter_caches() still skipped (timing issue — separate fix, non-critical)
+   → clear_rewriter_caches() still skipped (timing issue — non-critical)
 
 3. flush_rewrite_rules(true)
    → wp_load_alloptions() → queries DB → gets CORRECT rewrite_rules ✓
@@ -191,16 +197,16 @@ With the fix applied, the button's execution becomes:
 
 4. frl_thirdparty_maybe_notify('rewrite_flush')
    → LiteSpeed _purge_all() → clears page cache ✓
-   → _purge_all_object() → wp_cache_flush() redundant for Docket but harmless
+   → _purge_all_object() → wp_cache_flush() → matches manual "Purge All" ✓
 ```
 
-Result: **One click = clean slate.**
+Result: **One click = Save Permalinks + LiteSpeed Purge All. Clean slate.**
 
 ---
 
 ## 8. Remaining Non-Critical Issue: `clear_rewriter_caches()` Timing
 
-The rewriter hooks are registered at `wp_loaded` ([`class-rewriter.php:450`](core/rewriter/class-rewriter.php:450)). When the button fires at `init:10`, the `update_option_permalink_structure` action at line 187 does NOT trigger `clear_rewriter_caches()` because the hook hasn't been registered yet.
+The rewriter hooks are registered at `wp_loaded` ([`class-rewriter.php:450`](core/rewriter/class-rewriter.php:450)). When the button fires at `init:10`, the `update_option_permalink_structure` action at line 187 fires normally, but `clear_rewriter_caches()` is not called because the `add_action()` registration hasn't executed yet (it's inside the `wp_loaded` callback).
 
 This means Fralenuvole's internal `options→rewriter→permalinks` cache cascade is not triggered by the button. The fallback at line 193 handles `flush_rewrite_rules(true)` for WordPress core, but Fralenuvole's own cached data in the `rewriter` and `permalinks` Object Cache groups is not explicitly cleared.
 
