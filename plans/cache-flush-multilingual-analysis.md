@@ -13,7 +13,7 @@
 | Page Cache | LiteSpeed Cache (LSCWP) | LiteSpeed web server | Full HTML pages |
 | Object Cache | Docket Cache v26.04.04 | PHP files on disk | `wp_cache_get/set/delete` — all WordPress object cache calls |
 | `alloptions` Cache | WordPress Core + Docket Cache | Single file in Docket dir (`options` group, key `alloptions`) | ALL autoloaded options in one array — includes `rewrite_rules` |
-| Transients | Docket Cache (TransientDb) | Custom SQLite DB | `get_transient/set_transient` — including `pll_languages_list` |
+| Transients | Docket Cache | PHP files on disk (optional SQLite via `TransientDb`) | `get_transient/set_transient` — including `pll_languages_list` |
 | Rewrite Rules | WordPress Core | `rewrite_rules` option in `wp_options` table | URL routing regex array |
 | Polylang Language Cache | Polylang | `pll_languages_list` transient + `PLL_Cache` (in-memory) | `PLL_Language` objects (slugs, home_urls, term counts) |
 | Fralenuvole Groups | Fralenuvole | Object cache (`options`, `rewriter`, `permalinks`, etc.) | Rewriter data, translated permalinks, option lookups |
@@ -29,7 +29,7 @@ When the user clicks "Save Changes" on the Permalinks settings page:
       │
       ├──→ Polylang: clean_languages_cache()                        [model.php:119]
       │    └──→ delete_transient('pll_languages_list')              [Languages.php:849]
-      │         └──→ Deletes from DB + Docket's TransientDb          ✓ immediate
+      │         └──→ Deletes from DB + Docket transient storage        ✓ immediate
       │
       ├──→ Docket: updated_option hook                              [cache.php:2058]
       │    ├──→ Calls wp_load_alloptions() INLINE [cache.php:2063]  ⚠ reads stale cached file
@@ -57,17 +57,25 @@ Purge::_purge_all()                                                 [purge.cls.p
       ├──→ _purge_all_lscache()                                     [purge.cls.php:264]
       │    └──→ Sends '*' purge header to LiteSpeed server           ✓ page cache cleared
       │
+      ├──→ _purge_all_cssjs() / _purge_all_localres() / purge_all_opcache()
+      │    └──→ Clears CSS/JS optimization, local resources, OPcache
+      │
       ├──→ _purge_all_object()                                      [purge.cls.php:558]
-      │    └──→ wp_cache_flush() → Docket dc_flush()
-      │         └──→ cachedir_flush() iterates ALL files in cache dir  ⚠ HEAVY
-      │              └──→ Static $is_done guard: once per request
-      │              └──→ 180s timeout: partial flush on large dirs
-      │              └──→ File locking: silently skips locked files
+      │    ├──→ Guard: if LSCWP_OBJECT_CACHE not defined, returns false (no-op)
+      │    │    When Docket is the active drop-in, this guard blocks execution
+      │    └──→ If defined: calls LiteSpeed's internal Redis/Memcached connector
+      │         (Object_Cache::flush()), NOT wp_cache_flush()
       │
       └──→ do_action('litespeed_purged_all')                        [purge.cls.php:239]
+           │    ↑ NOTIFICATION hook: fired AFTER all sub-purges complete
+           │    Not a trigger — external plugins listen to this for cleanup
+           │
            └──→ Docket listener → delete('alloptions','options')     [cache.php:2037]
-                └──→ Deletes the alloptions cache file               ✓
+                ├──→ Deletes the alloptions cache file               ✓
+                └──→ Also deletes litespeed_messages keys            [cache.php:2041-2042]
 ```
+
+> **Key distinction:** [`litespeed_purge_all`](../litespeed-cache/src/api.cls.php:110) is the **trigger** hook (verbs: "please purge"), listened to by `Purge::purge_all()`. [`litespeed_purged_all`](../litespeed-cache/src/purge.cls.php:239) is the **notification** hook (past tense: "purge completed"), fired by LiteSpeed after it finishes. Fralenuvole fires the former; Docket listens to the latter.
 
 ---
 
@@ -112,8 +120,11 @@ do_action('permalink_structure_changed');
 // Lines 193-198 (did_action('wp_loaded') = false at init:10)
 flush_rewrite_rules(true);                              // ← wp_load_alloptions() reads STALE alloptions
                                                         //    Generates rules with stale data
-frl_thirdparty_maybe_notify('rewrite_flush');           // ← LiteSpeed _purge_all()
-                                                        //    → wp_cache_flush() → dc_flush() AFTER contamination
+frl_thirdparty_maybe_notify('rewrite_flush');           // ← do_action('litespeed_purge_all') → _purge_all()
+                                                         //    → page cache cleared ✓
+                                                         //    → _purge_all_object() is NO-OP (LSCWP_OBJECT_CACHE guard)
+                                                         //    → litespeed_purged_all → Docket delete('alloptions')
+                                                         //    All happens AFTER contamination — too late
 ```
 
 ### Three failure points
@@ -122,7 +133,7 @@ frl_thirdparty_maybe_notify('rewrite_flush');           // ← LiteSpeed _purge_
 |---|----------|-------------|--------|
 | 1 | Line 187 | `clear_rewriter_caches()` has no listener — the `add_action('update_option_permalink_structure', ...)` call is deferred inside a `wp_loaded` callback [class-rewriter.php:450], but the button fires at `init:10` (before `wp_loaded`). The action fires normally, but nothing is registered to hear it. The `did_action('wp_loaded')` fallback at line 193 handles `flush_rewrite_rules(true)` but does NOT call `clear_rewriter_caches()`. | Fralenuvole's `options→rewriter→permalinks` dependency cascade is never triggered internally. |
 | 2 | Line 194 | `flush_rewrite_rules(true)` calls `wp_load_alloptions()` which reads Docket's STALE `alloptions` cached file. The file still contains old `rewrite_rules` and possibly old `_transient_pll_languages_list`. | Rewrite rules are generated from stale input data. |
-| 3 | Line 196 | `frl_thirdparty_maybe_notify('rewrite_flush')` → `do_action('litespeed_purge_all')` → `_purge_all_object()` → `wp_cache_flush()` → Docket `dc_flush()` — but this happens AFTER the contamination. The current request's in-memory data is already stale. Docket `dc_flush()` is also heavyweight (iterates all files) and vulnerable to timeout/static guard. | Too late, too heavy. |
+| 3 | Line 196 | `frl_thirdparty_maybe_notify('rewrite_flush')` → `do_action('litespeed_purge_all')` → `Purge::_purge_all()` → page cache cleared ✓, but `_purge_all_object()` is a NO-OP when Docket is the drop-in (LSCWP_OBJECT_CACHE guard blocks it). The `litespeed_purged_all` notification triggers Docket `delete('alloptions','options')` but this happens AFTER `flush_rewrite_rules(true)` already ran with stale data. | Too late — contamination already occurred. LiteSpeed object cache flush path doesn't actually involve Docket at all. |
 
 ---
 
@@ -196,9 +207,17 @@ With the fix applied, the button's execution becomes:
    → Regenerates rules with correct input ✓
 
 4. frl_thirdparty_maybe_notify('rewrite_flush')
-   → LiteSpeed _purge_all() → clears page cache ✓
-   → _purge_all_object() → wp_cache_flush() → matches manual "Purge All" ✓
+   → do_action('litespeed_purge_all') → Purge::_purge_all()
+      → _purge_all_lscache() → sends '*' header → page cache cleared ✓
+      → _purge_all_cssjs() / _purge_all_localres() / purge_all_opcache() ✓
+      → _purge_all_object() → guard blocks (LSCWP_OBJECT_CACHE not defined with Docket) — NO-OP
+      → do_action('litespeed_purged_all') → Docket delete('alloptions','options') — harmless (already deleted in step 1)
+   → Matches manual "Purge All" behavior exactly ✓
 ```
+
+The full chain with the fix produces exactly the same effects as the manual 2-click pattern
+(Save Permalinks + LiteSpeed Purge All), in a single click. No redundancies — the two
+shutdown-level alloptions deletions become harmless no-ops since the file is already gone.
 
 Result: **One click = Save Permalinks + LiteSpeed Purge All. Clean slate.**
 
@@ -210,9 +229,9 @@ The rewriter hooks are registered at `wp_loaded` ([`class-rewriter.php:450`](cor
 
 This means Fralenuvole's internal `options→rewriter→permalinks` cache cascade is not triggered by the button. The fallback at line 193 handles `flush_rewrite_rules(true)` for WordPress core, but Fralenuvole's own cached data in the `rewriter` and `permalinks` Object Cache groups is not explicitly cleared.
 
-**Severity:** Low. The `frl_thirdparty_maybe_notify('rewrite_flush')` at line 196 calls `do_action('litespeed_purge_all')` which calls `wp_cache_flush()` → clears ALL Docket files including Fralenuvole's groups. This happens at the end so Fralenuvole's groups will be clean for the NEXT request.
+**Severity:** Low. The proposed fix directly addresses the 404-causing defect (stale `rewrite_rules` in `alloptions`). Fralenuvole's own rewriter/permalinks object cache groups contain computed/derived data (translated post bases, URL mappings) that self-heals on the next cache miss. These groups are NOT the source of the 404 errors.
 
-**If needed for completeness**, a second `wp_cache_delete` or `wp_cache_flush_group` call targeting the Fralenuvole groups can be added at the end. But given the LiteSpeed chain already does this, and the primary 404 fix (alloptions timing) is addressed by the one-line fix, this is optional.
+**If needed for completeness**, explicit `wp_cache_delete` or `wp_cache_flush_group` calls targeting Fralenuvole's `rewriter`/`permalinks` groups can be added. This is optional — the 404 issue is resolved by the `alloptions` fix alone.
 
 ---
 
@@ -223,12 +242,12 @@ This means Fralenuvole's internal `options→rewriter→permalinks` cache cascad
 | Save Permalinks → Polylang | `add_action('update_option_permalink_structure', 'clean_languages_cache')` at [`model.php:119`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/polylang/src/model.php:119) | ✓ Yes |
 | Save Permalinks → Docket alloptions | `updated_option` hook at [`cache.php:2058`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/docket-cache/includes/cache.php:2058) → deferred to shutdown | ⏳ Deferred |
 | Save Permalinks → LiteSpeed | None — `O_PURGE_HOOK_ALL` is empty by default | ✗ No |
-| LiteSpeed Purge → Docket | `_purge_all_object()` calls `wp_cache_flush()` at [`purge.cls.php:570`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/litespeed-cache/src/purge.cls.php:570) | ✓ Yes |
-| LiteSpeed Purge → Docket alloptions | `litespeed_purged_all` event → Docket listener at [`cache.php:2037`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/docket-cache/includes/cache.php:2037) | ✓ Yes |
+| LiteSpeed Purge → Docket (full flush) | No direct path — `_purge_all_object()` gates on `LSCWP_OBJECT_CACHE` and calls LiteSpeed's internal connector, not `wp_cache_flush()` | ✗ No |
+| LiteSpeed Purge → Docket alloptions | `litespeed_purged_all` notification → Docket listener at [`cache.php:2037`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/docket-cache/includes/cache.php:2037) — deletes `alloptions` + `litespeed_messages` keys | ✓ Yes |
 | LiteSpeed Purge → Polylang | None | ✗ No |
 | Polylang → Docket | `delete_transient()` deletes from TransientDb only — no alloptions invalidation | ✗ No |
-| Fralenuvole → LiteSpeed | `frl_thirdparty_maybe_notify('rewrite_flush')` → `do_action('litespeed_purge_all')` at [`thirdparty.php:559`](modules/thirdparty/thirdparty.php:559) | ✓ Yes |
-| Fralenuvole → Docket | **Currently none** — proposed fix adds `wp_cache_delete('alloptions', 'options')` | ✗ → ✓ with fix |
+| Fralenuvole → LiteSpeed | `frl_thirdparty_maybe_notify('rewrite_flush')` → `do_action('litespeed_purge_all')` (trigger hook) at [`thirdparty.php:559`](modules/thirdparty/thirdparty.php:559) → LiteSpeed listener `Purge::purge_all()` at [`api.cls.php:110`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/litespeed-cache/src/api.cls.php:110) | ✓ Yes |
+| Fralenuvole → Docket alloptions | **Currently none** — proposed fix adds `wp_cache_delete('alloptions', 'options')` (~O(1)) directly in Fralenuvole | ✗ → ✓ with fix |
 
 ---
 
@@ -236,7 +255,8 @@ This means Fralenuvole's internal `options→rewriter→permalinks` cache cascad
 
 | File | Lines | What |
 |------|-------|------|
-| [`litespeed-cache/src/purge.cls.php`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/litespeed-cache/src/purge.cls.php) | 78-100, 208-240, 547-583 | Purge init hooks, `_purge_all()`, `_purge_all_object()` |
+| [`litespeed-cache/src/purge.cls.php`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/litespeed-cache/src/purge.cls.php) | 78-100, 208-240, 547-583 | Purge init hooks, `_purge_all()`, `_purge_all_object()` (guards on `LSCWP_OBJECT_CACHE`) |
+| [`litespeed-cache/src/api.cls.php`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/litespeed-cache/src/api.cls.php) | 108-122 | `litespeed_purge_all` (trigger) and `litespeed_purged_all` (notification) hook registration |
 | [`litespeed-cache/src/core.cls.php`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/litespeed-cache/src/core.cls.php) | 100-115 | `O_PURGE_HOOK_ALL` configurable purge hooks (empty by default) |
 | [`docket-cache/includes/cache.php`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/docket-cache/includes/cache.php) | 605-621, 734-741, 2016-2078 | `delete()`, `flush()`, option/alloptions handlers (shutdown-deferred) |
 | [`docket-cache/includes/src/Filesystem.php`](/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/docket-cache/includes/src/Filesystem.php) | 452-501, 1007-1085 | `unlink()` with file locking, `cachedir_flush()` with static guard |
