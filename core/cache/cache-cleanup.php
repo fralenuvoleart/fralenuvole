@@ -18,7 +18,6 @@ add_action('save_post_wp_navigation',     'frl_clear_navigation_cache',        1
 add_action('wp_update_nav_menu',          'frl_clear_menu_cache',              10, 1);
 add_action('profile_update',              'frl_clear_user_cache',              10, 1);
 add_action('updated_option',              'frl_clear_option_cache',            10, 1);
-add_action('updated_option',              'frl_clear_acf_option_icon_cache',   10, 1);
 
 /**
  * Register term-change hooks that require a rewrite flush.
@@ -35,7 +34,7 @@ function frl_register_hooks_rewrite_flush(): void
 }
 
 /**
- * Clear all post-related caches (permalinks, meta, icons, language switcher, featured image).
+ * Clear all post-related caches (permalinks, meta, language switcher, featured image).
  *
  * @param int $post_id Post ID.
  * @return void
@@ -66,23 +65,6 @@ function frl_clear_post_cache($post_id)
 
     // Clear all tracked translated meta fields for this post
     frl_clear_tracked_meta_cache('post', $post_id);
-
-    // Clear only post-scoped icon repeater caches within the 'icons' group
-    // Renderer caches include file mtimes and do not need clearing on post save
-    // Only scan when the icon module is actually enabled to avoid unnecessary DB queries
-    $icon_field_enabled = frl_get_option('acf_icon_field') === '1';
-    $icon_shortcode_enabled = frl_get_option('acf_icon_shortcode') === '1';
-    if ($icon_field_enabled || $icon_shortcode_enabled) {
-        $icon_keys = frl_cache_get_multi('icons');
-        if (!empty($icon_keys)) {
-            $prefix = 'repeater_' . $post_id . '_';
-            foreach (array_keys($icon_keys) as $key) {
-                if (is_string($key) && str_starts_with($key, $prefix)) {
-                    frl_cache_clear('icons', $key, false);
-                }
-            }
-        }
-    }
 
     // Clear Language switcher for post
     $type = frl_get_option('langswitcher_dropdown') ? 'dropdown' : 'flags';
@@ -148,24 +130,6 @@ function frl_clear_option_cache($option_name)
         // Clear only this option-specific key (dependency cascades are skipped by the cache manager for key-level clears)
         frl_cache_clear('options', $cache_key);
     }
-}
-
-/**
- * Clear icon cache when ACF options (keys starting with 'options_') are updated.
- *
- * @param string $option_name Name of the updated option.
- * @return void
- */
-function frl_clear_acf_option_icon_cache($option_name)
-{
-    // Only handle ACF option keys (format: options_{field_name})
-    if (!str_starts_with($option_name, 'options_')) {
-        return;
-    }
-
-    // Clear entire icons group (includes both resolved paths and inline SVG)
-    // Since we use md5 hashes for keys, simpler to clear all
-    frl_cache_clear('icons');
 }
 
 /**

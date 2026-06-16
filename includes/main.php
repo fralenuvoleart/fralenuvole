@@ -28,7 +28,6 @@ if (frl_is_logged_in()) {
 }
 
 add_action('init', 'frl_main_init', 10, 0);
-add_action('init', 'frl_register_icon_block', 10, 0);
 add_action('wp_head', 'frl_add_critical_css', -999, 1);
 
 add_filter('render_block_data', 'frl_log_capture_render_block_enter', 10, 1);

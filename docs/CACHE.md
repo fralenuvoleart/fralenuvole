@@ -412,12 +412,11 @@ The before hook receives `(string $operation)`. The after hook receives `(string
 | `update_option` | 10 | 1 | [`frl_clear_option_transient()`](core/cache/cache-cleanup.php:164) | Plugin transient matching option name |
 | `pll_save_strings_translations` | 10 | 0 | [`frl_clear_translation_cache()`](core/cache/cache-cleanup.php:192) | Bumps `translation_version`, clears `translations` group (→ cascades to `metafields`) |
 | `edited_term` | 10 | 1 | [`frl_clear_term_permalink_cache()`](core/cache/cache-cleanup.php:238) | `permalinks` group + tracked meta for term |
-| `save_post` | 10 | 1 | [`frl_clear_post_cache()`](core/cache/cache-cleanup.php:43) | Postdata, permalinks, meta, icons, langswitcher, featured images |
+| `save_post` | 10 | 1 | [`frl_clear_post_cache()`](core/cache/cache-cleanup.php:43) | Postdata, permalinks, meta, langswitcher, featured images |
 | `save_post_wp_navigation` | 10 | 1 | [`frl_clear_navigation_cache()`](core/cache/cache-cleanup.php:208) | `wp_navigation_{$post_id}` key in `permalinks` group |
 | `wp_update_nav_menu` | 10 | 1 | [`frl_clear_menu_cache()`](core/cache/cache-cleanup.php:225) | `wp_menu_{$menu_id}` key in `permalinks` group (separate namespace from navigation posts) |
 | `profile_update` | 10 | 1 | [`frl_clear_user_cache()`](core/cache/cache-cleanup.php:182) | Tracked meta for user |
 | `updated_option` | 10 | 1 | [`frl_clear_option_cache()`](core/cache/cache-cleanup.php:108) | Translated option caches for all languages (plugin-owned options only) |
-| `updated_option` | 10 | 1 | [`frl_clear_acf_option_icon_cache()`](core/cache/cache-cleanup.php:146) | Entire `icons` group (when ACF options updated) |
 | `activated_plugin` | 10 | 2 | [`frl_purge_mu_plugin_exclusion_cache()`](core/cache/cache-cleanup.php:296) | MU plugin exclusion cache keys |
 | `deactivated_plugin` | 10 | 2 | `frl_purge_mu_plugin_exclusion_cache()` | MU plugin exclusion cache keys |
 

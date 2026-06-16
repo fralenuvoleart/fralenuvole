@@ -13,7 +13,6 @@ if (!defined('ABSPATH')) {
 
 // Load configuration and helpers always
 require_once __DIR__ . '/config-constants-acf.php';
-require_once __DIR__ . '/acf-icon/acf-icon.php';
 
 // Shortcodes work without ACF when id=... is used
 require_once __DIR__ . '/acf-shortcodes.php';

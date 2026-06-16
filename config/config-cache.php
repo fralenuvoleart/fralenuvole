@@ -28,7 +28,6 @@ const FRL_CACHE_PERSISTENT_GROUPS = [
     'permalinks',   // Used for URL generation
     'rewriter',     // Used for rewriter data
     'metafields',   // Used for meta fields data
-    'icons',        // Used for icon shortcode ACF repeater data
     'options',      // Used for plugin options
     'environment',  // Add environment group
     'adminui',      // Used for admin interface assembly
@@ -47,7 +46,6 @@ const FRL_CACHE_TTL = [
     'permalinks'    => DAY_IN_SECONDS,      // 1 day
     'rewriter'      => DAY_IN_SECONDS,      // 1 day (rewriter data is stable)
     'metafields'    => DAY_IN_SECONDS,      // 1 day
-    'icons'         => DAY_IN_SECONDS,      // 1 day (icon ACF repeater data)
     'versions'      => DAY_IN_SECONDS,      // 1 day
     'options'       => HOUR_IN_SECONDS,     // 1 hour
     'environment'   => HOUR_IN_SECONDS,     // 1 hour
@@ -118,7 +116,6 @@ const FRL_CACHE_DEPENDENCIES = [
     'postdata'      => [],
     'permalinks'    => [],
     'metafields'    => [],
-    'icons'         => [],  // Icon ACF repeater data (terminal)
     'html'          => [],
     'versions'      => [],
     'blocks'        => [],  // Translations dependency handled by versioned keys

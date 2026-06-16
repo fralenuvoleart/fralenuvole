@@ -78,34 +78,3 @@ const FRL_ACF_CALC_OPTIONS = [
         #filter-query',
 	],
 ];
-
-const FRL_ACF_FIELD_TYPE_ICON = 'frl_icon';
-
-/**
- * Icons selector configuration
- */
-const FRL_ICONS_RELATIVE_PATH = 'assets/icons/';
-
-// Top-level folders inside icons to expose as separate tabs (e.g., ['flags','brands']).
-// Empty array disables tabs and shows a single unified selector.
-const FRL_ICONS_FLAGS_ROOT = ['flags'];
-
-// Special token to represent a CSS counter bullet instead of an SVG icon
-const FRL_ICONS_COUNTER_TOKEN = '@counter';
-
-// Icon render mode for shortcode: 'svg' (inline SVG) or 'span' (CSS mask wrapper)
-const FRL_ICONS_RENDER_SHORTCODE = 'span';
-
-// Automatic ACF value formatting for field 'frl_icon': 'svg' or 'span'
-// When ACF calls get_field() with formatting enabled, output will follow this mode.
-const FRL_ICONS_RENDER_VALUE = 'span';
-
-// Favorites folder name (icons in this folder appear first in results)
-const FRL_ICONS_FAVORITES_FOLDER = 'favorites';
-
-// Cache groups used by the icons
-const FRL_ICONS_CACHE_GROUP = 'icons';      // SVG content & ACF repeater data
-const FRL_ICONS_CACHE_GROUP_ADMIN = 'staticdata';// Admin icon listing UI/index
-
-// Cache key namespace/version for admin icon listing
-const FRL_ICONS_LISTING_CACHE_KEY = 'icons';

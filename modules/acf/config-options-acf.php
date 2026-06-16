@@ -22,26 +22,4 @@ $frl_acf_default_fields = array(
         'type' => 'section_title',
         'description' => 'ACF Custom Fields module settings',
     ),
-    'acf_icon_field' => array(
-        'label' => 'Enable ACF Icon Field',
-        'description' => 'Enable ACF Icon to use icons in ACF fields',
-        'type' => 'select',
-        'default' => '0',
-        'options' => [
-            '0' => 'Disabled',
-            'span' => 'Render as Span',
-            'svg' => 'Render as SVG',
-        ],
-    ),
-    'acf_icon_shortcode' => array(
-        'label' => 'Enable ACF Icon Shortcode',
-        'description' => 'Enable ACF Icon Shortcode to use icons in posts',
-        'type' => 'select',
-        'default' => '0',
-        'options' => [
-            '0' => 'Disabled',
-            'span' => 'Render as Span',
-            'svg' => 'Render as SVG',
-        ],
-    )
 );
