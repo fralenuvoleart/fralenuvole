@@ -98,10 +98,7 @@ const FRL_PUBLIC_ACTIONS = [
 /**
  * REST API endpoints disabled for unauthenticated users.
  *
- * /oembed/1.0 and /wp/v2/oembed are intentionally excluded.
- * The frl_disable_oembed() function in includes/shared/website-features.php:124
- * already removes oEmbed route registration via remove_action('rest_api_init', 'wp_oembed_register_route')
- * when disable_oembed is enabled — managing oEmbed REST removal through the proper toggle.
+ * /oembed/1.0 and /wp/v2/oembed are intentionally excluded. The frl_disable_oembed() function already removes oEmbed when disable_oembed is enabled.
  *
  * @see includes/shared/website-features.php:124
  * @see public/public.php:frl_disable_rest_endpoints()
