@@ -115,7 +115,6 @@ const FRL_CACHE_PERSISTENT_GROUPS = [
     'permalinks',   // URL generation
     'rewriter',     // Rewriter data
     'metafields',   // Meta fields data
-    'icons',        // Icon shortcode ACF repeater data
     'options',      // Plugin options
     'environment',  // Environment config data
     'adminui',      // Admin interface assembly
@@ -137,7 +136,6 @@ const FRL_CACHE_TTL = [
     'permalinks'    => DAY_IN_SECONDS,   // 1 day
     'rewriter'      => DAY_IN_SECONDS,   // 1 day
     'metafields'    => DAY_IN_SECONDS,   // 1 day
-    'icons'         => DAY_IN_SECONDS,   // 1 day
     'versions'      => DAY_IN_SECONDS,   // 1 day
     'options'       => HOUR_IN_SECONDS,  // 1 hour
     'environment'   => HOUR_IN_SECONDS,  // 1 hour
@@ -436,9 +434,8 @@ This prevents collisions between post IDs and term IDs that may use the same num
 1. **Postdata:** `post_{$post_id}_translations` key
 2. **Permalinks:** `post_{$post_id}` key
 3. **Metafields:** All tracked translated meta keys for the post
-4. **Icons:** Post-scoped icon repeater caches (prefix `repeater_{$post_id}_`)
-5. **Shortcodes:** Language switcher key (`langswitcher_{type}_post_{$post_id}`)
-6. **Postdata (featured image):** `featured_img_post_{$post_id}_{$size}` + all common sizes
+4. **Shortcodes:** Language switcher key (`langswitcher_{type}_post_{$post_id}`)
+5. **Postdata (featured image):** `featured_img_post_{$post_id}_{$size}` + all common sizes
 
 ---
 
