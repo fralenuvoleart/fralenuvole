@@ -1,5 +1,60 @@
 # Project Progress
 
+## ✅ Multilingual Cache Flush — Complete Analysis & Fix (2026-06-16)
+
+### Background
+- **Request:** User asked me to review [`plans/cache-flush-multilingual-analysis.md`](plans/cache-flush-multilingual-analysis.md) for factual accuracy by scanning actual source code from Fralenuvole, Docket Cache v26.04.04, LiteSpeed Cache, and Polylang plugins. The original developer's analysis was not fully trusted.
+- **Scope:** Exhaustive verification of every claim in the analysis against live source code.
+
+### Code Review Findings — 4 Inaccuracies Found
+1. **`_purge_all_object()` does NOT call `wp_cache_flush()`** — Gated by `defined('LSCWP_OBJECT_CACHE')`. Calls LiteSpeed's internal Object_Cache::flush() (Redis/Memcached connector). When Docket is the drop-in, this constant is not defined → **NO-OP**. Fixed in analysis.
+2. **LiteSpeed does NOT clear Fralenuvole's Docket groups** — Since `_purge_all_object()` is a no-op, LiteSpeed never touches wp-cache groups managed by Docket. Fixed in analysis.
+3. **Transient storage overstated as "SQLite DB"** — SQLite (`TransientDb`) is conditional behind `$this->use_transientdb` flag. Default is file-based. Fixed in analysis.
+4. **No `dc_flush()` call from LiteSpeed** — LiteSpeed never calls Docket's `dc_flush()`. Fixed in analysis.
+
+### Root Cause Identified
+- **Docket Cache defers `alloptions` cache file deletion to shutdown** ([`cache.php:2065`](includes/../docket-cache/includes/cache.php:2065)): When WordPress calls `update_option('permalink_structure', ...)`, Docket's `updated_option` handler marks `alloptions` for deletion but defers execution to `shutdown` (`PHP_INT_MAX - 1`). During the same request, `flush_rewrite_rules()` reads back stale `alloptions` via `wp_load_alloptions()`, getting old `rewrite_rules`.
+- **Three failure points in the button execution path:**
+  1. `clear_rewriter_caches()` listener not yet registered (registers at `wp_loaded`, button runs at `init:10`)
+  2. `flush_rewrite_rules(true)` reads stale `alloptions` with old `rewrite_rules`
+  3. LiteSpeed purge fires after the stale rules are already written
+
+### Fix Applied — [`includes/plugin-lifecycle.php:191`](includes/plugin-lifecycle.php:191)
+```php
+wp_cache_delete('alloptions', 'options');
+```
+Added at the top of `frl_flush_rewrite_rules()`. Forces Docket to delete the cached alloptions file immediately, before `flush_rewrite_rules()` reads fresh data from the DB. This replaces the missing shutdown deletion within the same request.
+
+### Hook Distinction Clarified
+- **`litespeed_purge_all`** (outbound TRIGGER): Imperative action hook — "please purge all". Fralenuvole fires this via `frl_thirdparty_maybe_notify('hard'/'rewrite_flush')`.
+- **`litespeed_purged_all`** (inbound NOTIFICATION): Past-tense action hook — "purge completed". Docket Cache listens to auto-clean its files. Fralenuvole listens via inbound bridge → `frl_cache_clear('light')` → `purge_light()` → `reset_options_caches()` (which explicitly calls `wp_cache_delete('alloptions', 'options')` at [`class-cache-manager.php:1349`](core/cache/class-cache-manager.php:1349)).
+
+### Execution Trace Verified (Post-Fix)
+**Single button click** (no redundancies):
+1. `frl_flush_rewrite_rules()` called
+2. `wp_cache_delete('alloptions', 'options')` — deletes Docket's cached alloptions immediately
+3. `do_action('update_option_permalink_structure', ...)` — triggers Polylang `clean_languages_cache()` + Fralenuvole `clear_rewriter_caches()`
+4. `flush_rewrite_rules(true)` — reads fresh `rewrite_rules` from DB (alloptions no longer cached)
+5. `frl_thirdparty_maybe_notify('rewrite_flush')` — fires `litespeed_purge_all` + `after_rocket_clean_domain` + `breeze_clear_all_cache`
+6. LiteSpeed's `_purge_all()` → calls `_purge_all_object()` (NO-OP with Docket) → fires `litespeed_purged_all`
+7. Docket: `dc_flush()` deletes its entire cache from disk
+8. Fralenuvole inbound: `purge_light()` → `reset_options_caches()` → `wp_cache_delete('alloptions', 'options')` (harmless no-op if already deleted)
+
+### Section 11 — Automatic/Routine Flush Scenarios
+- **Inbound bridge already safe:** When `litespeed_purged_all` fires externally (e.g., LiteSpeed auto-purge on upgrade), Fralenuvole's inbound bridge calls `purge_light()` which calls `reset_options_caches()` → `wp_cache_delete('alloptions', 'options')`. Rewrite flush via 15s delayed cron with 60s cooldown.
+- **4 scenarios verified:** LiteSpeed auto-purge on upgrade (Scenario A), Polylang auto-regeneration (Scenario B), Fralenuvole post/term auto-invalidation (Scenario C), TTL expiration (Scenario D).
+- **Key insight:** The deferred cron-based rewrite flush pattern (`frl_schedule_rewrite_flush()`) avoids the same-request timing conflict entirely — by the time the cron runs at 15s delay, the alloptions cache file has already been deleted by shutdown.
+- **Verdict: No Fralenuvole code can poison stale cache during automatic flows.**
+
+### Documentation Created
+- [`docs/MULTILINGUAL-CACHE-FLUSH.md`](docs/MULTILINGUAL-CACHE-FLUSH.md) — 416-line comprehensive developer reference covering: cache layers, dependency cascade, hook distinction, problem statement, root cause analysis, fix documentation, cross-plugin notification matrix, automatic scenarios, extensibility guide, and file reference.
+
+### Files Deleted from plans/
+- `plans/cache-flush-multilingual-analysis.md` — content migrated to docs/MULTILINGUAL-CACHE-FLUSH.md
+- `plans/cache-flush-multilingual-review.md` — obsolete review artifact
+- `plans/rest-guard-log-capture-hooks.md` — stale plan file
+- `plans/schema-generator-module.md` — stale plan file
+
 ## Shortcode Translation Fix — Subdomain Adapter Compatibility (2026-05-21 — CORRECTED)
 
 ### Root Cause: Subdomain Adapter Hooks Into Non-Existent Polylang Filters

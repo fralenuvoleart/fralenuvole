@@ -7,6 +7,13 @@
 ## 🔄 Current Focus
 Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
 
+**Current session:** Multilingual cache flush analysis & fix (2026-06-16) — see [`docs/MULTILINGUAL-CACHE-FLUSH.md`](docs/MULTILINGUAL-CACHE-FLUSH.md) for full reference.
+- **4 inaccuracies corrected** in original analysis (`_purge_all_object` NO-OP, `options` group cleared, transient storage, `dc_flush()` call)
+- **Fix applied:** [`wp_cache_delete('alloptions', 'options')`](includes/plugin-lifecycle.php:191) in `frl_flush_rewrite_rules()`
+- **Root cause:** Docket Cache defers `alloptions` file deletion to shutdown; button code reads stale file same-request
+- **Automatic scenarios verified safe** — inbound bridge already handles `alloptions` deletion via `purge_light()`
+- **Deleted obsolete plans files:** `cache-flush-multilingual-analysis.md`, `cache-flush-multilingual-review.md`, `rest-guard-log-capture-hooks.md`, `schema-generator-module.md`
+
 ## ✅ Subdomain Adapter: Automatic Default Language Sync (2026-05-25 — implemented)
 - **Problem:** Manual step required to change Polylang's `default_lang` in DB on subdomain replica (`ru.pbservices.ge`) before the subdomain adapter works correctly.
 - **Fix:** Subdomain adapter hooks into EM's `frl_environment_before_wp_options` action at `init/10` to automatically sync the translation adapter's default language to the subdomain's language on first visit.
