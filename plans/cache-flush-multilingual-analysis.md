@@ -270,3 +270,108 @@ This means Fralenuvole's internal `options→rewriter→permalinks` cache cascad
 | [`core/rewriter/class-rewriter.php`](core/rewriter/class-rewriter.php) | 397, 450-458 | `clear_rewriter_caches()` — deferred to `wp_loaded` |
 | [`modules/thirdparty/config-constants-thirdparty.php`](modules/thirdparty/config-constants-thirdparty.php) | 81-103 | `FRL_THIRDPARTY_OUTBOUND_HOOKS` |
 | [`modules/thirdparty/thirdparty.php`](modules/thirdparty/thirdparty.php) | 519-559 | `frl_thirdparty_maybe_notify()` |
+| [`config/config-cache.php`](config/config-cache.php) | 67-74 | `FRL_CACHE_HEAVY_GROUPS` — groups skipped by `purge_light()` |
+| [`core/cache/class-cache-manager.php`](core/cache/class-cache-manager.php) | 1341-1354, 1624-1652 | `reset_options_caches()` (deletes alloptions via `wp_cache_delete`), `purge_light()` |
+| [`core/cache/cache-cleanup.php`](core/cache/cache-cleanup.php) | 27-33, 55-64 | Automatic rewrite flush triggers (term CRUD), post cache invalidation |
+| [`includes/plugin-lifecycle.php`](includes/plugin-lifecycle.php) | 16-19, 219-223 | Cron hook `frl_flush_rewrite_rules`, `frl_schedule_rewrite_flush()` |
+
+---
+
+## 11. Automatic / Routine Flush Scenarios
+
+### 11.1 Overview
+
+The analysis above (§2-10) covers **manual** user-initiated flush operations (Save Permalinks, LiteSpeed Purge All, Fralenuvole button). This section examines whether **automatic** cache operations — triggered by WordPress core, LiteSpeed, Polylang, or Fralenuvole without user intervention — can introduce stale rewrite rules or broken cache state.
+
+### 11.2 Inbound Bridge: How External Purges Trigger Fralenuvole
+
+Fralenuvole has a bidirectional thirdparty bridge ([`thirdparty.php:320-332`](modules/thirdparty/thirdparty.php:320)). The **inbound** path listens to external plugins' purge notifications and clears Fralenuvole's own caches:
+
+External Trigger | Fralenuvole Inbound Hook | Effect |
+|-----------------|--------------------------|--------|
+`litespeed_purged_all` (LiteSpeed purge completed) | [`config-constants-thirdparty.php:29-33`](modules/thirdparty/config-constants-thirdparty.php:29) | `clear` = `'light'` → `purge_light()`, `rewrite_flush` = `true` → schedules cron |
+`breeze_clear_all_cache` (Breeze purge) | [`config-constants-thirdparty.php:37-41`](modules/thirdparty/config-constants-thirdparty.php:37) | Same as above |
+`after_rocket_clean_domain` (WP Rocket purge) | [`config-constants-thirdparty.php:43-47`](modules/thirdparty/config-constants-thirdparty.php:43) | Same as above |
+
+The inbound handler ([`thirdparty.php:405-436`](modules/thirdparty/thirdparty.php:405)) runs two operations:
+
+1. **`frl_cache_clear('light')`** → calls `purge_light()` ([`class-cache-manager.php:1624`](core/cache/class-cache-manager.php:1624)) which iterates ALL cache groups **except** the heavy groups listed in `FRL_CACHE_HEAVY_GROUPS` ([`config-cache.php:68-74`](config/config-cache.php:68)): `['staticdata', 'blocks', 'translations', 'permalinks', 'postdata']`. Critically, `options` is **NOT** in the heavy list, so `purge_light()` clears the `options` group — which cascades to `reset_options_caches()` → `wp_cache_delete('alloptions', 'options')` ([`class-cache-manager.php:1341-1354`](core/cache/class-cache-manager.php:1341)). **The alloptions file IS deleted by the inbound bridge.**
+
+2. **`frl_schedule_rewrite_flush()`** — schedules a cron event with a **15-second delay** ([`plugin-lifecycle.php:219-223`](includes/plugin-lifecycle.php:219)) and a **60-second cooldown** ([`thirdparty.php:423-424`](modules/thirdparty/thirdparty.php:423)) to prevent cross-plugin ping-pong loops.
+
+### 11.3 Automatic Scenarios — Risk Assessment
+
+#### Scenario A: LiteSpeed auto-purge on WordPress upgrade
+
+If `O_PURGE_ON_UPGRADE` is enabled (default: `false`, [`base.cls.php:597`](../litespeed-cache/src/base.cls.php:597)), LiteSpeed fires `Purge::purge_all()` on `automatic_updates_complete` or `upgrader_process_complete` ([`core.cls.php:104-108`](../litespeed-cache/src/core.cls.php:104)).
+
+**Event chain:**
+
+```
+upgrader_process_complete
+  → Purge::purge_all() → _purge_all()
+    → _purge_all_lscache() → page cache ✓
+    → _purge_all_object() → LSCWP_OBJECT_CACHE guard → NO-OP (Docket)
+    → do_action('litespeed_purged_all')
+      → Docket: delete('alloptions', 'options') ✓        [immediate, file-based]
+      → Fralenuvole inbound: clear('light') + schedule rewrite flush
+
+REQUEST ENDS → shutdown: Docket's updated_option deletes alloptions (harmless, already gone)
+
+NEXT REQUEST (cron, 15s later):
+  → frl_flush_rewrite_rules() fires
+    → wp_cache_delete('alloptions', 'options')           [FIX applied — belt-and-suspenders]
+    → flush_rewrite_rules(true) → DB → FRESH ✓
+    → frl_thirdparty_maybe_notify('rewrite_flush') → LiteSpeed page cache ✓
+```
+
+**Risk: NONE.** The automated chain produces fresh rewrite rules. Before the fix, the cron `frl_flush_rewrite_rules()` would also succeed because:
+- Docket's shutdown from the upgrade request has already deleted alloptions (separate request)
+- The inbound bridge already called `wp_cache_delete('alloptions', 'options')` via `purge_light()` → `reset_options_caches()`
+- By the time the cron fires (15s later), the DB has correct rewrite_rules from the upgrade
+
+#### Scenario B: Polylang auto-regeneration of language cache
+
+Polylang's `pll_languages_list` transient expires every ~24 hours (standard WordPress transient TTL). On expiration, `PLL_Languages::get_list()` queries the DB and repopulates. This is a **read-only** operation — no cache invalidation of rewrite rules occurs.
+
+**Risk: NONE.** Polylang's language cache regeneration does not interact with rewrite rules or alloptions. The transient lives in Docket's transient storage (file-based or optional SQLite), separate from the `options` cache group.
+
+#### Scenario C: Fralenuvole auto-invalidation on post/term changes
+
+Fralenuvole registers automatic cache invalidation hooks:
+
+Trigger | Handler | What It Clears | Source |
+|---------|---------|---------------|--------|
+`save_post` | Post cache clear | `postdata`, `permalinks` (post-specific), `shortcodes` (lang-switcher) | [`cache-cleanup.php:55-74`](core/cache/cache-cleanup.php:55) |
+`created_{tax}`, `edited_{tax}`, `deleted_{tax}` | Schedule rewrite flush | `frl_schedule_rewrite_flush()` → cron `frl_flush_rewrite_rules()` | [`cache-cleanup.php:29-32`](core/cache/cache-cleanup.php:29) |
+Translation change | Clear `translations` group | Dependencies cascade to `metafields`, `permalinks` | [`cache-cleanup.php:175-176`](core/cache/cache-cleanup.php:175) |
+Permalink option change | `clear_rewriter_caches()` | `options` → `rewriter` → `permalinks` cascade + `flush_rewrite_rules(true)` | [`class-rewriter.php:397-417`](core/rewriter/class-rewriter.php:397) |
+
+**Risk: LOW (now eliminated).** The term CRUD handlers schedule a deferred rewrite flush via cron (15s delay). This was potentially vulnerable to the same stale-alloptions timing issue as the manual button, since `frl_flush_rewrite_rules()` didn't delete alloptions before calling `flush_rewrite_rules(true)`. However, the cron runs as a separate request — the Docket shutdown from the original request has already fired and deleted the old alloptions file. **After the fix** (§6), the belt-and-suspenders `wp_cache_delete('alloptions', 'options')` at the top of `frl_flush_rewrite_rules()` guarantees fresh data regardless of timing.
+
+#### Scenario D: Fralenuvole cache TTL expiration
+
+Fralenuvole cache groups have configurable TTLs. On expiration, the next cache read misses and repopulates from source. This is a **pure read** operation — no rewrite rules interaction.
+
+**Risk: NONE.** TTL expiration is passive invalidation. The next `wp_cache_get()` call misses and queries the authoritative source. No active flush occurs.
+
+### 11.4 The Key Insight
+
+Fralenuvole's automatic invalidation architecture is sound. The inbound bridge correctly:
+- Deletes Docket's alloptions file via `purge_light()` → `reset_options_caches()` → `wp_cache_delete('alloptions', 'options')`
+- Schedules a separate cron request for `flush_rewrite_rules(true)` (avoids running it during the inbound purge request)
+- Applies a 60-second cooldown to prevent cross-plugin notification loops
+
+The only vulnerability in automatic scenarios was the **same** stale-alloptions timing issue in `frl_flush_rewrite_rules()` — manifesting only if, for some reason, the cron fired before Docket's prior shutdown completed. **The fix applied in §6 eliminates this by adding the synchronous `wp_cache_delete('alloptions', 'options')` call at function entry, making every invocation of `frl_flush_rewrite_rules()` self-sufficient regardless of when it runs.**
+
+### 11.5 Verified: No Fralenuvole Stale Cache Poisoning in Automatic Flows
+
+The user's concern — *"could Fralenuvole plugin rewriter cache stay stale while other plugins flush appropriately?"* — is addressed:
+
+1. **Fralenuvole's rewriter caches** (`rewriter`, `permalinks` groups) contain **computed/derived data** (translated post bases, URL mappings, exclusion patterns). They are NOT the source of 404 errors. The 404s come from stale `rewrite_rules` in WordPress core's `alloptions`.
+
+2. **All automatic invalidation** of Fralenuvole caches happens through `frl_cache_clear()` which respects the dependency cascade: `options` → `rewriter` → `permalinks`. When `options` is cleared (as done by `purge_light()` in the inbound bridge), `rewriter` and `permalinks` are also cleared.
+
+3. **The `permalinks` group** (heavy group, skipped by `purge_light()`) is cleared **post-specifically** on `save_post` ([`cache-cleanup.php:63-64`](core/cache/cache-cleanup.php:63)). A mass invalidation is not needed and would be wasteful — stale individual post permalink entries self-correct on the next request to that post.
+
+4. **The only scenario** where Fralenuvole rewriter data could become truly stale while the rest of the system is clean is if `clear_rewriter_caches()` was never called during the lifecycle (e.g., no permalink option changes, no term CRUD, no manual flushes). Even then, the rewriter's computed data is **derivative** of the DB state (post bases, language slugs) — stale data would only be served for a single request before the TTL expires or the next cache miss triggers regeneration.
