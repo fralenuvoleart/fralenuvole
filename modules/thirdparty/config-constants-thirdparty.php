@@ -24,7 +24,8 @@ if (!defined('ABSPATH')) {
  *   'rewrite_flush' – whether to also schedule a rewrite-rules flush.
  */
 const FRL_THIRDPARTY_INBOUND_HOOKS = [
-    // LiteSpeed Cache — post-purge hook (litespeed_purged_all, not litespeed_purge_all)
+    // litespeed_purge_all is an action hook used to trigger a purge. 
+    // litespeed_purged_all is an action hook fired after the Litespeed has successfully cleared all the cache.
     'litespeed_purged_all' => [
         'label' => 'LiteSpeed Cache',
         'clear' => 'light',
