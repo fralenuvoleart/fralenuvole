@@ -7,7 +7,15 @@
 ## 🔄 Current Focus
 Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
 
-**Current session:** Post edit screen optimization (2026-06-16)
+**Current session:** SASWP schema hook gate fix (2026-06-17)
+
+## 🔧 SASWP Schema Hook Gate — Fatal Error Fix (2026-06-17)
+- **Bug:** `PHP Fatal error: Call to undefined function frl_schema_resolver_get()` at [`thirdparty.php:196`](modules/thirdparty/thirdparty.php:196) during REST/AJAX requests where SASWP fires `saswp_modify_schema_output` but schema subsystem isn't loaded.
+- **Root cause:** SASWP schema hooks at [`thirdparty.php:18-24`](modules/thirdparty/thirdparty.php:18) registered unconditionally, but their callbacks (`frl_thirdparty_inject_schema_properties_filter`, `frl_thirdparty_sanitize_schemas`) depend on functions in `resolver.php` + `builders.php`, which are loaded conditionally behind [`frl_is_valid_frontend_page_request()`](fralenuvole.php:80).
+- **Fix:** Wrapped all 7 SASWP schema hook registrations in `if (frl_is_valid_frontend_page_request())` — the same gate that controls schema subsystem loading. On REST/AJAX/CLI, hooks never register → callbacks never fire → no undefined function error.
+- **File modified:** [`modules/thirdparty/thirdparty.php:23`](modules/thirdparty/thirdparty.php:23)
+
+**Previous session:** Post edit screen optimization (2026-06-16)
 - **[`frl_is_post_edit_screen()`](includes/helpers/functions-access-control.php:161)** helper created and applied
 - **[`frl_set_custom_admin_menu()`](admin/admin.php:145)** optimized with early return on post edit screens
 - **[`Frl_Metabox`](admin/metaboxes/class-metabox.php:33)** re-entrancy guard added

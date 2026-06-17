@@ -12,17 +12,21 @@ if (!defined('ABSPATH')) {
 
 require_once __DIR__ . '/config-constants-thirdparty.php';
 
-add_action('wp_enqueue_scripts',     'frl_thirdparty_public_scripts',    FRL_THEMEKIT_STYLE_PRIORITY['modules'], 1);
-add_action('admin_enqueue_scripts',  'frl_thirdparty_admin_scripts',      0,   0);
-add_filter('emr/feature/background', '__return_false',                    10,  0);
-add_filter('saswp_modify_organization_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
-add_filter('saswp_modify_about_page_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
-add_filter('saswp_modify_contact_page_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
-add_filter('saswp_modify_author_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
-add_filter('saswp_modify_website_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
-add_filter('saswp_modify_profile_page_schema_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
-add_filter('saswp_modify_schema_output', 'frl_thirdparty_sanitize_schemas', 9999, 1);
-add_filter('rest_endpoints',         'frl_greenshift_fix_rest_schemas',   10,  1);
+add_action('wp_enqueue_scripts', 'frl_thirdparty_public_scripts', FRL_THEMEKIT_STYLE_PRIORITY['modules'], 1);
+add_action('admin_enqueue_scripts', 'frl_thirdparty_admin_scripts', 0, 0);
+add_filter('emr/feature/background', '__return_false', 10, 0);
+add_filter('rest_endpoints', 'frl_greenshift_fix_rest_schemas', 10, 1);
+
+// SASWP schema injection hooks — only register when the schema subsystem is loaded conditionally via frl_is_valid_frontend_page_request() in frl_load_public_components().
+if (frl_is_valid_frontend_page_request()) {
+    add_filter('saswp_modify_organization_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
+    add_filter('saswp_modify_about_page_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
+    add_filter('saswp_modify_contact_page_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
+    add_filter('saswp_modify_author_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
+    add_filter('saswp_modify_website_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
+    add_filter('saswp_modify_profile_page_schema_output', 'frl_thirdparty_inject_schema_properties_filter', 10, 1);
+    add_filter('saswp_modify_schema_output', 'frl_thirdparty_sanitize_schemas', 9999, 1);
+}
 
 /**
  * Enqueue thirdparty-specific styles and scripts
