@@ -1,18 +1,16 @@
 function pbs_remove_end_words(selector, substring){
 
-  // Get array of all the selected elements
   var elems = document.querySelectorAll(selector);
-  var i;
-  for(i = 0; i < elems.length; ++i){
+  if (elems.length === 0) return;
 
-    // Split the text content of each element into an array
-    var text = elems[i].innerText;
-    var trimmedText = text.replace(substring, "");
+  // Batch reads first — avoid interleaved read/write forced reflow.
+  var texts = [];
+  for (var i = 0; i < elems.length; i++) {
+    texts.push(elems[i].innerText);
+  }
 
-
-    // Join it all back together and replace the existing
-    // text with the new text
-
-    elems[i].innerHTML = trimmedText;
+  // Batch writes second.
+  for (var j = 0; j < elems.length; j++) {
+    elems[j].innerHTML = texts[j].replace(substring, "");
   }
 }
