@@ -16,6 +16,7 @@ add_action('wp_enqueue_scripts', 'frl_thirdparty_public_scripts', FRL_THEMEKIT_S
 add_action('admin_enqueue_scripts', 'frl_thirdparty_admin_scripts', 0, 0);
 add_filter('emr/feature/background', '__return_false', 10, 0);
 add_filter('rest_endpoints', 'frl_greenshift_fix_rest_schemas', 10, 1);
+add_filter('wp_rest_cache/display_clear_cache_button', '__return_false', 10, 1);
 
 // SASWP schema injection hooks — only register when the schema subsystem is loaded conditionally via frl_is_valid_frontend_page_request() in frl_load_public_components().
 if (frl_is_valid_frontend_page_request()) {
