@@ -17,8 +17,6 @@ if (!defined('ABSPATH')) {
  * Injects critical CSS into the document head.
  *
  * If enabled, retrieves minified critical CSS and outputs it in a style tag.
- * The `data-no-defer="1"` attribute prevents the defer parser from delaying
- * this style, ensuring it remains render-blocking for the critical path.
  *
  * @hook wp_head
  * @priority -999
@@ -33,7 +31,7 @@ function frl_add_critical_css()
 
     if (frl_is_array_not_empty($css)) {
         printf(
-            '<style id="%s-critical-css" data-lastmod="%s" data-no-defer="1" data-plugin="%s" data-parsing="critical-css">%s</style>',
+            '<style id="%s-critical-css" data-lastmod="%s" data-plugin="%s" data-parsing="critical-css">%s</style>',
             FRL_PREFIX,
             date('Y-m-d-H:i', $css['mtime']),
             FRL_NAME,

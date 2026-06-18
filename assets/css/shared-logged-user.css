@@ -222,4 +222,17 @@
     body:is(.stage, .staging, .dev, .test) #wp-admin-bar-root-default:before {
         height: 46px;
     }
+    .wp-admin-bar-top-secondary {
+        flex-direction: column;
+    }
+    #wp-toolbar>ul>li#wp-admin-bar-frl-menu-primary {
+        display: initial;
+    }
+    #wpadminbar .frl-plugin-logo {
+        width: 52px !important;
+        height: 46px !important;
+        background-position: center center;
+        background-size: 36px;
+    }
+
 }

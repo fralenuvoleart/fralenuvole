@@ -148,7 +148,7 @@ function frl_defer_css($html, $handle, $href, $media)
             if (str_contains($href, $script)) {
                 return str_replace(
                     "media='all'",
-                    "data-no-defer='1' data-plugin='" . FRL_NAME . "' data-parsing='defer-css' media='print' onload='this.media=\"all\"'",
+                    "data-plugin='" . FRL_NAME . "' data-parsing='defer-css' media='print' onload='this.media=\"all\"'",
                     $html
                 );
             }
