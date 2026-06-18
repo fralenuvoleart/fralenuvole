@@ -25,6 +25,48 @@ require_once FRL_DIR_PATH . 'includes/helpers/functions-translator-helpers.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-modules.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-schema.php';
 
+/*
+ * Nginx-COMPATIBLE HELPERS
+ *
+ * wp_get_referer() returns false when no Referer header is present or
+ * when wp_validate_redirect() fails — common on Nginx/PHP-FPM hosts
+ * like Kinsta where the reverse proxy may strip or alter HTTP_REFERER.
+ * The elvis operator (?:) correctly handles both false and null returns.
+ *
+ * Nginx also sets $_SERVER['HTTPS'] to '' (empty string), not 'on',
+ * unlike Apache. frl_is_https() handles both plus port-based detection.
+ */
+
+/**
+ * Returns the HTTP referer with a safe fallback to REQUEST_URI.
+ *
+ * @return string The referer URL, or the current request URI as fallback.
+ */
+function frl_wp_get_referer(): string
+{
+    $referer = wp_get_referer();
+    return $referer ?: ($_SERVER['REQUEST_URI'] ?? '');
+}
+
+/**
+ * Detects HTTPS consistently across Apache and Nginx reverse proxies.
+ *
+ * @return bool True if the current request is over HTTPS.
+ */
+function frl_is_https(): bool
+{
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return true;
+    }
+    if (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443) {
+        return true;
+    }
+    if (function_exists('is_ssl') && is_ssl()) {
+        return true;
+    }
+    return false;
+}
+
 /**
  * Returns a string prefixed with the plugin's defined prefix.
  *
@@ -717,11 +759,8 @@ function frl_safe_redirect($redirect_url = '')
         $action = $_GET[$action_param];
     }
 
-    // Referer as fallback. Use elvis (?:) not null-coalesce (??)
-    // because wp_get_referer() returns false (not null) when no Referer
-    // is present or when validation fails — common on Nginx/PHP-FPM hosts
-    // like Kinsta where the proxy layer may alter HTTP_REFERER handling.
-    $referer = wp_get_referer() ?: ($_SERVER['REQUEST_URI'] ?? '');
+    // Referer as fallback — frl_wp_get_referer() handles Nginx false return
+    $referer = frl_wp_get_referer();
 
     // Determine default redirect URL
     if (empty($redirect_url)) {

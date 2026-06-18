@@ -51,7 +51,7 @@ function frl_pbproperty_redirect_search_by_language()
         }
 
         if (in_array($current_slug, PBP_SEARCH_SLUGS)) {
-            $referer = wp_get_referer();
+            $referer = frl_wp_get_referer();
             $source_lang = null;
 
             if ($referer) {

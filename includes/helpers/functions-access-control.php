@@ -94,7 +94,7 @@ function frl_is_admin()
 
     $is_ajax = frl_is_doing_ajax();
     if ($is_ajax) {
-        $referer = wp_get_referer();
+        $referer = frl_wp_get_referer();
         // Avoid admin_url() filters for performance
         if (!empty($referer) && str_contains($referer, '/wp-admin/')) {
             return $is_admin = true;

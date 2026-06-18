@@ -619,14 +619,7 @@ function frl_get_request_url(): string
     }
 
     // Scheme and final fallbacks using WordPress context when available
-    $scheme = 'http';
-    if ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443)
-    ) {
-        $scheme = 'https';
-    } elseif (function_exists('is_ssl') && is_ssl()) {
-        $scheme = 'https';
-    }
+    $scheme = frl_is_https() ? 'https' : 'http';
 
     if (function_exists('home_url')) {
         $home = home_url('/');

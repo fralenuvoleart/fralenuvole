@@ -492,12 +492,7 @@ function frl_trace_logged_user_visits()
     $user_id = $user->ID;
 
     // Get the current full URL
-    $current_url = '';
-    if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
-        $current_url .= "https";
-    } else {
-        $current_url .= "http";
-    }
+    $current_url = frl_is_https() ? 'https' : 'http';
     $current_url .= "://";
     if (isset($_SERVER['HTTP_HOST'])) {
         $current_url .= $_SERVER['HTTP_HOST'];
