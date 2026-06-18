@@ -58,10 +58,14 @@ p:empty:has(+.widget_polylang), .widget_polylang ul li a img+span {
     display: none;
 }
 
+/* Polylang */
 .widget_polylang {
     display: flex;
-    margin-block: 0 !important; }
+    margin-block: 0 !important; 
+    opacity: 0.85;
+    filter: saturate(0.85);
 
+}
 .widget_polylang ul {
     display: flex;
     gap: 1.3em;

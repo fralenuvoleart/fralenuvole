@@ -717,8 +717,11 @@ function frl_safe_redirect($redirect_url = '')
         $action = $_GET[$action_param];
     }
 
-    // Referer as fallback
-    $referer = wp_get_referer() ?? $_SERVER['REQUEST_URI'];
+    // Referer as fallback. Use elvis (?:) not null-coalesce (??)
+    // because wp_get_referer() returns false (not null) when no Referer
+    // is present or when validation fails — common on Nginx/PHP-FPM hosts
+    // like Kinsta where the proxy layer may alter HTTP_REFERER handling.
+    $referer = wp_get_referer() ?: ($_SERVER['REQUEST_URI'] ?? '');
 
     // Determine default redirect URL
     if (empty($redirect_url)) {
