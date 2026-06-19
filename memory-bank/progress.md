@@ -695,3 +695,24 @@ Single `parse_request` action at priority 1 in [`modules/pbs/custom-post-types.p
 
 ### Files Modified
 - [`modules/pbs/custom-post-types.php`](modules/pbs/custom-post-types.php) — added `parse_request` filter
+
+## ✅ Token Exclude Filter — FRL_TRANSLATOR_EXCLUDE (2026-06-19)
+
+### Purpose
+Constant-driven exclusion list for `{{TOKEN}}` delimiters in translated blocks. Excluded tokens pass through as literal text (delimiters stripped) but never reach the translation adapter or Polylang string registration queue.
+
+### Files Modified
+- [`config/config-translator.php:23`](config/config-translator.php:23) — Added `FRL_TRANSLATOR_EXCLUDE` constant with O(1) `isset()` layout. Default: `['CONTENT' => true]`.
+- [`core/translator/class-translation-service.php:788-834`](core/translator/class-translation-service.php:788) — Two guards in `_process_all_patterns()`:
+  1. Sort loop (line 795): `isset($exclude[$token])` prevents excluded tokens from entering the batch
+  2. Replace callback (line 818): returns raw `$original` for excluded matches — preserves throughput without adapter call
+
+### Performance
+- `defined('FRL_TRANSLATOR_EXCLUDE')` guard with local `$exclude` variable — constant fetches once per method call
+- `isset()` per token: O(1) native opcode, ~1µs overhead
+- Excluded tokens bypass adapter and registration entirely
+
+### Config Extensibility
+Add any token key to the `FRL_TRANSLATOR_EXCLUDE` array — no code changes needed. Format: `'TOKEN_NAME' => true`. Key is what matters (matched against trimmed `{{...}}` inner content), value is ignored.
+
+*Last Updated: 2026-06-19*

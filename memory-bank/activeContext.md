@@ -210,7 +210,24 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
 - **Conditional enqueue:** [`frl_thirdparty_admin_scripts()`](modules/thirdparty/thirdparty.php:39) uses an array of known Meow plugin paths (`ai-engine/ai-engine.php`, `seo-engine/seo-engine.php`) and loops until one is found active — Meow CSS only enqueued when a match is hit.
 - **Benefit:** ~46% of original admin.css is now conditionally loaded. Maintainability improved (separate file for Meow tweaks).
 
-*Last Updated: 2026-04-30*
+## ✅ Token Exclude Filter (2026-06-19)
+
+### Feature
+`FRL_TRANSLATOR_EXCLUDE` constant — tokens that should NOT be translated or registered. `{{CONTENT}}` passes through as literal text `CONTENT` but never hits the translation adapter or Polylang string registration.
+
+### Implementation
+- **Constant:** `FRL_TRANSLATOR_EXCLUDE = ['CONTENT' => true]` in [`config/config-translator.php:23`](config/config-translator.php:23)
+- **Sort-loop guard:** [`_process_all_patterns():795`](core/translator/class-translation-service.php:795) — `isset($exclude[$token])` prevents excluded tokens from entering the batch
+- **Replace-callback guard:** [`_process_all_patterns():818`](core/translator/class-translation-service.php:818) — returns raw token for excluded matches, preserving throughput without translation
+- **Perf:** O(1) `isset()` per token. Excluded tokens never reach adapter, never queued for registration.
+
+### Translator Performance Analysis (same session)
+- Block translation uses combined regex + batch adapter calls
+- `frl-translate` on outermost block = optimal (1 regex + 1 batch for all nested)
+- `[frl]` shortcode uses individual per-string adapter calls — less efficient but correct for selective/no-class use
+- `blocks` cache group uses object cache (not autoloaded options) — single large entry is fine
+
+*Last Updated: 2026-06-19*
 
 ## 🔧 Subdomain Adapter — Homepage Language Switcher URL Fix (2026-05-12)
 - **Bug:** On `staging.pbservices.ge` EN homepage, Polylang language switcher generated `https://staging.pbservices.ge/ru/` instead of `https://ru.pbservices.ge/` for the RU link. Non-homepage links worked correctly.

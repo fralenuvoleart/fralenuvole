@@ -785,10 +785,16 @@ final class Frl_Translation_Service
         $strings_to_translate = [];
         $permalinks_to_translate = [];
 
+        // Pre-load exclude map for O(1) lookup.
+        $exclude = defined('FRL_TRANSLATOR_EXCLUDE') ? FRL_TRANSLATOR_EXCLUDE : [];
+
         // Sort matches into batches for efficient lookup.
         foreach ($matches as $match) {
             if (!empty($match[1])) {
-                $strings_to_translate[] = trim($match[1]);
+                $token = trim($match[1]);
+                if (!isset($exclude[$token])) {
+                    $strings_to_translate[] = $token;
+                }
             } elseif (!empty($match[2])) {
                 $permalinks_to_translate[] = trim($match[2]);
             }
@@ -805,9 +811,13 @@ final class Frl_Translation_Service
         $lEnd   = preg_quote($this->delimiter_link_end, '/');
         $combined_pattern = "/{$tStart}(.*?){$tEnd}|{$lStart}(.*?){$lEnd}/";
 
-        return preg_replace_callback($combined_pattern, function ($match) use ($translated_strings, $translated_permalinks) {
+        return preg_replace_callback($combined_pattern, function ($match) use ($translated_strings, $translated_permalinks, $exclude) {
             if (!empty($match[1])) {
                 $original = trim($match[1]);
+                // Excluded tokens: strip delimiters, return raw text, no translation.
+                if (isset($exclude[$original])) {
+                    return $original;
+                }
                 // Fetch the translated string (or fall back to original).
                 $translated = $translated_strings[$original] ?? $original;
 
