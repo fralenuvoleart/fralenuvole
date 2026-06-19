@@ -275,8 +275,16 @@ final class Frl_Translation_Service
             $tEnd   = preg_quote($this->delimiter_text_end, '/');
             $text_pattern = "/{$tStart}(.*?){$tEnd}/";
 
+            // Pre-load exclude map for O(1) lookup during registration gathering.
+            $exclude = defined('FRL_TRANSLATOR_EXCLUDE') ? FRL_TRANSLATOR_EXCLUDE : [];
+
             if (preg_match_all($text_pattern, $block_content, $string_matches)) {
-                $strings_to_register = array_unique(array_map('trim', $string_matches[1]));
+                $all_tokens = array_unique(array_map('trim', $string_matches[1]));
+                foreach ($all_tokens as $token) {
+                    if (!isset($exclude[$token])) {
+                        $strings_to_register[] = $token;
+                    }
+                }
             }
 
             // 2. Perform all translations in one efficient pass.
@@ -814,9 +822,9 @@ final class Frl_Translation_Service
         return preg_replace_callback($combined_pattern, function ($match) use ($translated_strings, $translated_permalinks, $exclude) {
             if (!empty($match[1])) {
                 $original = trim($match[1]);
-                // Excluded tokens: strip delimiters, return raw text, no translation.
+                // Excluded tokens: pass through verbatim (including delimiters), no translation.
                 if (isset($exclude[$original])) {
-                    return $original;
+                    return $match[0];
                 }
                 // Fetch the translated string (or fall back to original).
                 $translated = $translated_strings[$original] ?? $original;
