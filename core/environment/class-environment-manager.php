@@ -410,13 +410,9 @@ class Frl_Environment_Manager
             // Compare with the current environment's type to find the opposite type
             if ($counterpart_env_type !== $current_env_type) {
 
-                $base_domain_current     = frl_strip_env_prefix($current_domain);
-                $base_domain_counterpart = frl_strip_env_prefix($domain);
-
-                if ($base_domain_current === $base_domain_counterpart) {
-                    // Found the counterpart domain (e.g., staging found production or vice-versa)
+                if (!empty($config['counterpart']) && $domain === $config['counterpart']) {
                     $env_link = "https://" . $domain;
-                    break; // Found the counterpart, no need to check further
+                    break;
                 }
             }
         }
@@ -462,12 +458,16 @@ class Frl_Environment_Manager
 
         $nodes = frl_cache_remember('admin', $cache_key, function () use ($current_domain) {
             $links        = array_keys(FRL_ENV_MAP);
-            $base_current = frl_strip_env_prefix($current_domain);
 
-            // Exclude the current host and its staging/production counterpart.
+            // Resolve counterpart for exclusion.
+            $current_config = Frl_Environment_Config::get_domain_config();
+            $counterpart = $current_config['counterpart'] ?? null;
+
+            // Exclude the current host and its counterpart.
             $links = array_filter(
                 $links,
-                fn($v) => $v !== $current_domain && frl_strip_env_prefix($v) !== $base_current
+                fn($v) => $v !== $current_domain
+                    && $v !== $counterpart
             );
 
             // Exclude staging domains for non-admins.
