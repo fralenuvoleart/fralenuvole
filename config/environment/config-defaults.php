@@ -19,7 +19,7 @@ const FRL_ENV_CLEAR_WEBSITE_TRANSIENTS = true;
 // Subdomain prefixes that identify a staging environment.
 // Used for sibling-domain detection (switcher button and secondary links filter).
 // www. is NOT listed here — it is a canonical alias convention, handled separately.
-const FRL_ENV_STAGING_PREFIXES = ['staging.', 'stage', 'dev.', 'test'];
+const FRL_ENV_STAGING_PREFIXES = ['stg-', 'staging.', 'stage', 'dev.', 'test'];
 
 // --- Base Default Configuration ---
 /** Universal baseline applied to every site. Override per brand via templates. */
