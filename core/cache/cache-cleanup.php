@@ -68,7 +68,7 @@ function frl_clear_post_cache($post_id)
 
     // Clear Language switcher for post
     $type = frl_get_option('langswitcher_dropdown') ? 'dd' : 'fl';
-    $langswitch_key = 'langswitcher_v3_' . $type . '_post_' . $post_id;
+    $langswitch_key = 'langswitcher_' . $type . '_post_' . $post_id;
 
     frl_cache_clear('shortcodes', $langswitch_key);
 
