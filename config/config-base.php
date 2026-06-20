@@ -72,7 +72,7 @@ const FRL_LANGSWITCHER_ARGS = [
 	'dropdown' 				=> 0,  		// default 0
 	'show_flags' 			=> 1,		// default 0, depenndency on dropdown
 	'show_names' 			=> 0,		// default 1, depenndency on dropdown
-	'display_names_as' 		=> 'slug', 	// default name, depenndency on dropdown
+	'display_names_as' 		=> 'name', 	// Native names for title attributes in both list and dropdown
 	'echo' 					=> 0,  		// default 1
 	// configurable arguments
 	'hide_current' 			=> 0,  		// default 0, hide current language

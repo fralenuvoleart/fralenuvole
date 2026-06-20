@@ -229,21 +229,11 @@ function frl_shortcode_langswitcher($atts = [])
 	$exclude_slugs = array_values(array_filter(array_map('sanitize_key', array_map('trim', explode(',', (string)$a['exclude'])))));
 
 	$dropdown_enabled = (bool) frl_get_option('langswitcher_dropdown');
-	$cache_key = 'langswitcher_' . ($dropdown_enabled ? 'dd' : 'fl') . '_post_' . get_queried_object_id() . (empty($exclude_slugs) ? '' : '_x_' . md5(implode(',', $exclude_slugs)));
+	$cache_key = 'langswitcher_v3_' . ($dropdown_enabled ? 'dd' : 'fl') . '_post_' . get_queried_object_id() . (empty($exclude_slugs) ? '' : '_x_' . md5(implode(',', $exclude_slugs)));
 
 	return frl_cache_remember('shortcodes', $cache_key, function () use ($args, $exclude_slugs, $dropdown_enabled) {
 
-		// Raw call: get all elements with native names for title attributes.
-		// hide_current and hide_if_no_translation are set to 0 — we filter manually below.
-		$raw_args = [
-			'show_flags'             => 1,
-			'show_names'             => 0,
-			'display_names_as'       => 'name',
-			'echo'                   => 0,
-			'raw'                    => 1,
-			'hide_current'           => 0,
-			'hide_if_no_translation' => 0,
-		];
+		$raw_args = array_merge(FRL_LANGSWITCHER_ARGS, ['raw' => 1]);
 
 		/** @disregard P1010 Undefined type */
 		$elements = pll_the_languages($raw_args);

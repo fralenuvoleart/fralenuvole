@@ -67,8 +67,8 @@ function frl_clear_post_cache($post_id)
     frl_clear_tracked_meta_cache('post', $post_id);
 
     // Clear Language switcher for post
-    $type = frl_get_option('langswitcher_dropdown') ? 'dropdown' : 'flags';
-    $langswitch_key = 'langswitcher_' . $type . '_post_' . $post_id;
+    $type = frl_get_option('langswitcher_dropdown') ? 'dd' : 'fl';
+    $langswitch_key = 'langswitcher_v3_' . $type . '_post_' . $post_id;
 
     frl_cache_clear('shortcodes', $langswitch_key);
 
