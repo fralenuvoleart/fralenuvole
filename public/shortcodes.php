@@ -151,7 +151,7 @@ function frl_shortcode_readtime($atts)
         }
 
         $words = str_word_count($content);
-        $mins = max(1, round($words / absint($a['words_per_min'])));
+        $mins = max(1, round($words / (int) $a['words_per_min']));
 
         $prefix = wp_kses_post(frl_get_translation($a['prefix']));
         $postfix = frl_get_translation($a['postfix']);
@@ -199,11 +199,11 @@ function frl_shortcode_langswitcher($atts = [])
 	// Option-based overrides (only when provided)
 	$opt_hide_current = frl_get_option('langswitcher_hide_current');
 	if (!empty($opt_hide_current)) {
-		$args['hide_current'] = absint($opt_hide_current) ? 1 : 0;
+		$args['hide_current'] = (int) $opt_hide_current ? 1 : 0;
 	}
 	$opt_hide_if_no_translation = frl_get_option('langswitcher_hide_if_no_translation');
 	if (!empty($opt_hide_if_no_translation)) {
-		$args['hide_if_no_translation'] = absint($opt_hide_if_no_translation) ? 1 : 0;
+		$args['hide_if_no_translation'] = (int) $opt_hide_if_no_translation ? 1 : 0;
 	}
 
 	// Parse option-based hidden language slugs (merged with shortcode exclude later)
@@ -654,7 +654,7 @@ function frl_shortcode_excerpt($atts)
     $a = shortcode_atts(['id' => 0], $atts, 'frl_excerpt');
 
     // Determine target post ID
-    $post_id = absint($a['id']);
+    $post_id = (int) $a['id'];
     if (!$post_id) {
         $post_id = frl_get_current_post_id();
     }

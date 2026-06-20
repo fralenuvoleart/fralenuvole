@@ -407,7 +407,7 @@ function frl_get_page_title_from_url($url)
 
         // Post Edit Screen check
         if ($current_path_relative === 'post.php' && isset($params['action']) && $params['action'] === 'edit' && isset($params['post'])) {
-            $post_id = absint($params['post']);
+            $post_id = (int) $params['post'];
             if ($post_id > 0) {
                 $post_title = get_the_title($post_id);
                 if (!empty($post_title)) {

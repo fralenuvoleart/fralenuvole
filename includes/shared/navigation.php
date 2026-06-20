@@ -51,7 +51,7 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
             return render_block_core_navigation($attributes, $content, $block);
         }
 
-        $nav_id = absint($attributes['ref']);
+        $nav_id = (int) $attributes['ref'];
         $final_nav_id = $nav_id; // Default to original ID
 
         // Resolve translated navigation ID — always attempt translation regardless of
@@ -68,7 +68,7 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
 
             // Use translated ID if valid and different from original
             if ($translated_id > 0 && $translated_id !== $nav_id) {
-                $final_nav_id = absint($translated_id);
+                $final_nav_id = (int) $translated_id;
             }
         }
 

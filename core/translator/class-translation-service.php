@@ -886,7 +886,7 @@ final class Frl_Translation_Service
         $mod_timestamp = '0';
 
         if (!empty($block['context']['postId'])) {
-            $context_post_id = (int) absint($block['context']['postId']);
+            $context_post_id = (int) $block['context']['postId'];
             $context_post_type = $block['context']['postType'] ?? 'post';
             $container_id = $context_post_id;
             if (in_array($context_post_type, ['wp_template_part', 'wp_template'])) {
@@ -897,7 +897,7 @@ final class Frl_Translation_Service
                 $container_type = 'post';
             }
         } elseif (isset($block['attrs']['ref'])) {
-            $ref_id = (int) absint($block['attrs']['ref']);
+            $ref_id = (int) $block['attrs']['ref'];
             if ($ref_id > 0) {
                 $container_id = $ref_id;
                 $container_type = 'reusable';

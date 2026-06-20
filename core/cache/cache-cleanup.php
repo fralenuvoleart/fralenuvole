@@ -41,11 +41,11 @@ function frl_register_hooks_rewrite_flush(): void
  */
 function frl_clear_post_cache($post_id)
 {
-    // Validate post ID - empty() catches both falsy values and 0, absint() ensures positive int
+    // Validate post ID - empty() catches falsy values and 0; (int) cast sanitizes
     if (empty($post_id)) {
         return;
     }
-    $post_id = absint($post_id);
+    $post_id = (int) $post_id;
 
     // Skip cache clearing for autosaves, revisions, auto-drafts, and trash.
     // Gutenberg triggers save_post every ~60 seconds during editing for autosaves,
@@ -235,11 +235,10 @@ function frl_clear_term_permalink_cache($term_id)
  */
 function frl_clear_tracked_meta_cache(string $type, int $id)
 {
-    // Skip on zero ID; absint() ensures positive int
+    // Skip on zero ID; $id is already typed int
     if (empty($id)) {
         return;
     }
-    $id = absint($id);
 
     // Get the current translation version to build the correct cache key.
     $version = frl_get_option('translation_version') ?: 1;

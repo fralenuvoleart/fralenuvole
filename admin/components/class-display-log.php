@@ -99,7 +99,7 @@ class Frl_Log_Manager
 	 */
 	public function set_entries_limit($limit)
 	{
-		$this->entries_limit = absint($limit);
+		$this->entries_limit = (int) $limit;
 	}
 
 	/**

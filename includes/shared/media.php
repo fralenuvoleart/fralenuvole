@@ -249,7 +249,7 @@ function frl_add_avatar_upload_field($user)
 function frl_save_custom_avatar($user_id)
 {
     if (isset($_POST[FRL_PREFIX . '_avatar_id'])) {
-        $avatar_id = absint($_POST[FRL_PREFIX . '_avatar_id']);
+        $avatar_id = (int) $_POST[FRL_PREFIX . '_avatar_id'];
         frl_update_user_meta($user_id, 'avatar', $avatar_id);
 
         // Invalidate avatar cache after update
