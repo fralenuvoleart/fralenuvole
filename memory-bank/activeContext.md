@@ -448,8 +448,8 @@ Add `title` attribute with native language name to each `<a>` tag in `[frl_langs
 Instead of post-processing `pll_the_languages()` HTML (regex-splitting `<li>` tags, regex-removing `<option>` elements), the shortcode now uses `pll_the_languages(['raw' => 1])` to get structured language element arrays, then builds identical HTML with `title` attributes added.
 
 ### Changes
-- **New helper [`frl_build_langswitcher_list()`](public/shortcodes.php:298):** Builds `<div class="widget_polylang"><ul><li><a title="Name">...</a></li></ul></div>` from raw elements. Mirrors `PLL_Walker_List::start_el()` exactly (same classes, attributes, whitespace), adding `title="Native Name"` to `<a>` tags.
-- **New helper [`frl_build_langswitcher_dropdown()`](public/shortcodes.php:342):** Builds `<select class="pll-switcher-select"><option title="Name" data-lang="...">slug</option></select>` + inline `<script>`. Mirrors `PLL_Walker_Dropdown` exactly, adding `title` to `<option>` tags.
+- **New helper [`frl_langswitcher_build_list()`](public/shortcodes.php:298):** Builds `<div class="widget_polylang"><ul><li><a title="Name">...</a></li></ul></div>` from raw elements. Mirrors `PLL_Walker_List::start_el()` exactly (same classes, attributes, whitespace), adding `title="Native Name"` to `<a>` tags.
+- **New helper [`frl_langswitcher_build_dropdown()`](public/shortcodes.php:342):** Builds `<select class="pll-switcher-select"><option title="Name" data-lang="...">slug</option></select>` + inline `<script>`. Mirrors `PLL_Walker_Dropdown` exactly, adding `title` to `<option>` tags.
 - **Refactored [`frl_shortcode_langswitcher()`](public/shortcodes.php:189):** Single `pll_the_languages(['raw' => 1])` call replaces 5 separate calls. Exclusion/hide logic uses clean `array_filter` instead of `preg_split`, `str_contains`, and `preg_replace`. Cache key bumped to `v2` to avoid conflicts with stale cached HTML.
 - **New cache key:** `langswitcher_v2_{dd|fl}_post_{id}_x_{hash}`
 

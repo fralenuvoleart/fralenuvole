@@ -277,10 +277,10 @@ function frl_shortcode_langswitcher($atts = [])
 		}
 
 		if ($dropdown_enabled) {
-			return frl_build_langswitcher_dropdown($elements);
+			return frl_langswitcher_build_dropdown($elements);
 		}
 
-		return frl_build_langswitcher_list($elements);
+		return frl_langswitcher_build_list($elements);
 	});
 }
 
@@ -295,7 +295,7 @@ function frl_shortcode_langswitcher($atts = [])
  * @param array $elements Raw language elements from pll_the_languages( [ 'raw' => 1 ] ).
  * @return string HTML <li> items wrapped in <div class="widget_polylang"><ul>…</ul></div>.
  */
-function frl_build_langswitcher_list(array $elements): string
+function frl_langswitcher_build_list(array $elements): string
 {
 	$items = '';
 	foreach ($elements as $el) {
@@ -339,7 +339,7 @@ function frl_build_langswitcher_list(array $elements): string
  * @param array $elements Raw language elements from pll_the_languages( [ 'raw' => 1 ] ).
  * @return string HTML <select> element with inline <script>.
  */
-function frl_build_langswitcher_dropdown(array $elements): string
+function frl_langswitcher_build_dropdown(array $elements): string
 {
 	$name = 'lang_choice_1';
 
