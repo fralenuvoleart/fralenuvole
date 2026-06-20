@@ -326,7 +326,7 @@ function frl_langswitcher_build_list(array $elements): string
 		);
 	}
 
-	return sprintf('<div class="widget_polylang"><ul>%s</ul></div>', $items);
+	return sprintf('<div class="widget_polylang lang-switcher-flags"><ul>%s</ul></div>', $items);
 }
 
 /**
@@ -417,7 +417,7 @@ function frl_langswitcher_build_dropdown(array $elements): string
 	}
 
 	$output = sprintf(
-		'<select name="%1$s" id="%1$s" class="pll-switcher-select">' . "\n" . '%2$s' . "\n" . '</select>' . "\n",
+		'<select name="%1$s" id="%1$s" class="pll-switcher-select lang-switcher-dropdown">' . "\n" . '%2$s' . "\n" . '</select>' . "\n",
 		esc_attr($name),
 		$options
 	);
