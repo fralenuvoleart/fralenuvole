@@ -1,6 +1,15 @@
 {
     "phpstan.config": ".dev/phpstan.neon",
-    "intelephense.environment.includePaths": [
-        "./vendor/php-stubs/wordpress-stubs"
+    "intelephense.environment.includePaths": [],
+    "files.watcherExclude": {
+        ".dev/stubs/**": true,
+        "vendor/**": true
+    },
+    "files.exclude": {
+        ".dev/stubs": true
+    },
+    "phpTools.exclude": [
+        ".dev/stubs",
+        "vendor"
     ]
 }
