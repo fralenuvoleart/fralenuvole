@@ -224,16 +224,25 @@ function frl_shortcode_langswitcher($atts = [])
 		$opt_exclude_slugs = array_values(array_unique($opt_exclude_slugs));
 	}
 
-	// Optional shortcode-level exclusions
-	$a = shortcode_atts(['exclude' => !empty($opt_exclude_slugs) ? implode(',', $opt_exclude_slugs) : ''], $atts, 'frl_langswitcher');
+	// Optional shortcode-level overrides
+	$a = shortcode_atts([
+		'exclude'  => !empty($opt_exclude_slugs) ? implode(',', $opt_exclude_slugs) : '',
+		'dropdown' => '', // '' = use default, '1' = dropdown, '0' = flags
+	], $atts, 'frl_langswitcher');
 	$exclude_slugs = array_values(array_filter(array_map('sanitize_key', array_map('trim', explode(',', (string)$a['exclude'])))));
 
-	$dropdown_enabled = (bool) frl_get_option('langswitcher_dropdown');
+	$dropdown_enabled = $a['dropdown'] !== ''
+		? (bool) $a['dropdown']
+		: (bool) ($args['dropdown'] ?? frl_get_option('langswitcher_dropdown'));
 	$cache_key = 'langswitcher_v3_' . ($dropdown_enabled ? 'dd' : 'fl') . '_post_' . get_queried_object_id() . (empty($exclude_slugs) ? '' : '_x_' . md5(implode(',', $exclude_slugs)));
 
 	return frl_cache_remember('shortcodes', $cache_key, function () use ($args, $exclude_slugs, $dropdown_enabled) {
 
-		$raw_args = array_merge(FRL_LANGSWITCHER_ARGS, ['raw' => 1]);
+		// show_flags=0 avoids Polylang rendering unused base64 PNGs.
+		$raw_args = array_merge(FRL_LANGSWITCHER_ARGS, [
+			'raw'        => 1,
+			'show_flags' => 0,
+		]);
 
 		/** @disregard P1010 Undefined type */
 		$elements = pll_the_languages($raw_args);
@@ -289,6 +298,8 @@ function frl_langswitcher_build_list(array $elements): string
 {
 	$items = '';
 	foreach ($elements as $el) {
+		$native_name = PLL()->model->get_language($el['slug'])->name ?? '';
+
 		$link_atts = sprintf(
 			'lang="%1$s" hreflang="%1$s" href="%2$s"',
 			esc_attr($el['locale']),
@@ -301,11 +312,11 @@ function frl_langswitcher_build_list(array $elements): string
 		if (!empty($el['current_lang'])) {
 			$link_atts .= ' aria-current="true"';
 		}
-		if (!empty($el['name'])) {
-			$link_atts .= sprintf(' title="%s"', esc_attr($el['name']));
+		if ($native_name !== '') {
+			$link_atts .= sprintf(' title="%s"', esc_attr($native_name));
 		}
 
-		$flag = frl_langswitcher_inline_flag($el['slug'], $el['name']);
+		$flag = frl_langswitcher_inline_flag($el['slug'], $native_name);
 
 		$items .= sprintf(
 			"\t<li class=\"%1\$s\"><a %2\$s>%3\$s</a></li>\n",
@@ -382,9 +393,11 @@ function frl_langswitcher_build_dropdown(array $elements): string
 
 	$options = '';
 	foreach ($elements as $el) {
+		$native_name = PLL()->model->get_language($el['slug'])->name ?? '';
+
 		$data_lang = wp_json_encode([
 			'id'   => $el['id'],
-			'name' => $el['name'],
+			'name' => $native_name,
 			'slug' => $el['slug'],
 			'dir'  => $el['is_rtl'] ?? '',
 		]);
@@ -398,8 +411,8 @@ function frl_langswitcher_build_dropdown(array $elements): string
 			$lang_attr,
 			$selected,
 			esc_html($data_lang),
-			esc_attr($el['name']),
-			esc_html($el['slug'])
+			esc_attr($native_name),
+			esc_html($el['name'])
 		);
 	}
 

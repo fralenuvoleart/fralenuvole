@@ -67,17 +67,13 @@ const FRL_AB_CPT_LIST = [
 // Directory containing custom SVG flag files for the language switcher. `{slug}.svg` (e.g., en.svg, ru.svg).
 const FRL_LANGSWITCHER_FLAGS_DIR = __DIR__ . '/../assets/images/flags';
 
-// Arguments for default flags langswitcher
+// Arguments for default langs switcher
 const FRL_LANGSWITCHER_ARGS = [
-	'dropdown' 				=> 0,  		// default 0
-	'show_flags' 			=> 1,		// default 0, depenndency on dropdown
-	'show_names' 			=> 0,		// default 1, depenndency on dropdown
-	'display_names_as' 		=> 'name', 	// Native names for title attributes in both list and dropdown
-	'echo' 					=> 0,  		// default 1
-	// configurable arguments
-	'hide_current' 			=> 0,  		// default 0, hide current language
-	'hide_if_no_translation'=> 0,  		// default 0, hide if no translation
-	'hide_languages' 		=> '', 		// comma-separated list of lang slugs
+	'dropdown' 				=> 0, 		// 0 = flags, 1 = dropdown
+	'display_names_as' 		=> 'slug',	// Dropdown only: option text: 'name' or 'slug'
+	'hide_current' 			=> 0,  		// Flag only: default 0
+	'hide_if_no_translation'=> 0,  		// Both: default 0
+	'hide_languages' 		=> '', 		// Both: comma-separated list of lang slugs
 ];
 
 // Email notifications
