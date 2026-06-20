@@ -80,6 +80,43 @@
     8rem        = 128px
 */
 
+/* Polylang */
+.widget_polylang {
+    display: flex;
+    margin-block: 0 !important; 
+    opacity: 0.85;
+    filter: saturate(0.85);
+
+}
+
+.widget_polylang ul {
+    display: flex;
+    gap: 1.3em;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--wp--preset--font-size--x-small);
+}
+
+.widget_polylang a {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.widget_polylang ul li a img {
+    display: none;
+}
+
+.widget_polylang ul li a:before {
+    content: "";
+    width: 26px;
+    height: 26px;
+    background-size: cover;
+    border-radius: 999px;
+}
+
 .wp-site-blocks > main {
     margin-block-start: 0;
 }
