@@ -193,8 +193,8 @@ function frl_shortcode_langswitcher($atts = [])
 		return '';
 	}
 
-    // Arguments for default flags langswitcher
-    $args = FRL_LANGSWITCHER_ARGS;
+	// Arguments for default flags langswitcher
+	$args = FRL_LANGSWITCHER_ARGS;
 
 	// Option-based overrides (only when provided)
 	$opt_hide_current = frl_get_option('langswitcher_hide_current');
@@ -205,124 +205,182 @@ function frl_shortcode_langswitcher($atts = [])
 	if (!empty($opt_hide_if_no_translation)) {
 		$args['hide_if_no_translation'] = absint($opt_hide_if_no_translation) ? 1 : 0;
 	}
+
+	// Parse option-based hidden language slugs (merged with shortcode exclude later)
 	$opt_hide_langs_raw = (string) frl_get_option('langswitcher_hide_languages');
+	$opt_exclude_slugs = [];
 	if (trim($opt_hide_langs_raw) !== '') {
-		// Parse using standard textlist helper. Each line becomes an array; take first element as slug.
 		$rows = frl_textlist_to_array($opt_hide_langs_raw);
-		$slugs = [];
 		if (is_array($rows)) {
 			foreach ($rows as $row) {
 				if (is_array($row) && isset($row[0])) {
 					$slug = sanitize_key(trim((string) $row[0]));
 					if ($slug !== '') {
-						$slugs[] = $slug;
+						$opt_exclude_slugs[] = $slug;
 					}
 				}
 			}
 		}
-		$slugs = array_values(array_unique($slugs));
-		if (!empty($slugs)) {
-			$args['hide_languages'] = implode(',', $slugs);
-		}
+		$opt_exclude_slugs = array_values(array_unique($opt_exclude_slugs));
 	}
 
-	// Optional exclusions
-	$a = shortcode_atts(['exclude' => $args['hide_languages']], $atts, 'frl_langswitcher');
+	// Optional shortcode-level exclusions
+	$a = shortcode_atts(['exclude' => !empty($opt_exclude_slugs) ? implode(',', $opt_exclude_slugs) : ''], $atts, 'frl_langswitcher');
 	$exclude_slugs = array_values(array_filter(array_map('sanitize_key', array_map('trim', explode(',', (string)$a['exclude'])))));
 
 	$dropdown_enabled = (bool) frl_get_option('langswitcher_dropdown');
-	$type = $dropdown_enabled ? 'dropdown' : 'flags';
-	$cache_key = 'langswitcher_' . $type . '_post_' . get_queried_object_id() . (empty($exclude_slugs) ? '' : '_x_' . md5(implode(',', $exclude_slugs)));
+	$cache_key = 'langswitcher_v2_' . ($dropdown_enabled ? 'dd' : 'fl') . '_post_' . get_queried_object_id() . (empty($exclude_slugs) ? '' : '_x_' . md5(implode(',', $exclude_slugs)));
 
-	// Build render args once based on mode to avoid per-branch duplication
-	$render_args = $args;
-	if ($dropdown_enabled) {
-		$render_args['dropdown'] = 1;
-		$render_args['show_flags'] = 0;
-		$render_args['show_names'] = 1;
-		$render_args['display_names_as'] = 'slug';
-	}
+	return frl_cache_remember('shortcodes', $cache_key, function () use ($args, $exclude_slugs, $dropdown_enabled) {
 
-	$langswitcher = frl_cache_remember('shortcodes', $cache_key, function () use ($args, $render_args, $exclude_slugs, $type) {
+		// Raw call: get all elements with native names for title attributes.
+		// hide_current and hide_if_no_translation are set to 0 — we filter manually below.
+		$raw_args = [
+			'show_flags'             => 1,
+			'show_names'             => 0,
+			'display_names_as'       => 'name',
+			'echo'                   => 0,
+			'raw'                    => 1,
+			'hide_current'           => 0,
+			'hide_if_no_translation' => 0,
+		];
 
-		// No exclusions: return native output unmodified
-		if (empty($exclude_slugs)) {
-			if ($type === 'flags') {
-				/** @disregard P1010 Undefined type */
-				return sprintf('<div class="widget_polylang"><ul>%s</ul></div>', pll_the_languages($render_args));
-			}
-			/** @disregard P1010 Undefined type */
-			return pll_the_languages($render_args);
-		}
-
-		// Exclusions requested: keep native markup, post-filter by slug
-		if ($type !== 'dropdown') {
-			/** @disregard P1010 Undefined type */
-			$list_items = pll_the_languages($render_args); // returns <li>…</li> items only
-			if (!is_string($list_items) || $list_items === '') {
-				return '';
-			}
-			// Split by </li> to process each item conservatively
-			$parts = preg_split('/(<\\/li>)/i', $list_items, -1, PREG_SPLIT_DELIM_CAPTURE);
-			$result = '';
-			for ($i = 0; $i < count($parts); $i += 2) {
-				$item = $parts[$i] ?? '';
-				$end = $parts[$i + 1] ?? '';
-				if ($item === '' && $end === '') continue;
-				$skip = false;
-				foreach ($exclude_slugs as $slug) {
-					if ($slug !== '' && str_contains($item, 'hreflang="' . $slug . '"')) {
-						$skip = true;
-						break;
-					}
-				}
-				if (!$skip) {
-					$result .= $item . $end;
-				}
-			}
-			return sprintf('<div class="widget_polylang"><ul>%s</ul></div>', $result);
-		}
-
-		// Dropdown mode: render native, then remove excluded <option>s
 		/** @disregard P1010 Undefined type */
-		$html = pll_the_languages($render_args); // full <select>…</select>
-		if (!is_string($html) || $html === '') {
+		$elements = pll_the_languages($raw_args);
+		if (!is_array($elements) || empty($elements)) {
 			return '';
 		}
 
-		// Build map slug->url from raw data to remove by value attribute
-		$raw_args = $args;
-		$raw_args['raw'] = 1;
-		/** @disregard P1010 Undefined type */
-		$raw_list = pll_the_languages($raw_args);
-		$slug_to_url = [];
-		if (is_array($raw_list)) {
-			foreach ($raw_list as $lang) {
-				$slug = isset($lang['slug']) ? sanitize_key($lang['slug']) : '';
-				$url = isset($lang['url']) ? (string)$lang['url'] : '';
-				if ($slug !== '' && $url !== '') {
-					$slug_to_url[$slug] = $url;
-				}
-			}
+		// Apply hide_current (not in dropdown mode — dropdown always shows current as selected)
+		if (!empty($args['hide_current']) && !$dropdown_enabled) {
+			$elements = array_filter($elements, function ($el) {
+				return empty($el['current_lang']);
+			});
 		}
 
-		// Remove options for excluded slugs by matching value (URL) and/or label (slug)
-		foreach ($exclude_slugs as $slug) {
-			if ($slug === '') continue;
-			$url = $slug_to_url[$slug] ?? '';
-			// Remove by value URL when available
-			if ($url !== '') {
-				$pattern = '/<option[^>]*\\bvalue="' . preg_quote(esc_url($url), '/') . '"[^>]*>.*?<\\/option>/is';
-				$html = preg_replace($pattern, '', $html);
-			}
-			// Fallback: remove by inner text equal to slug
-			$patternText = '/<option[^>]*>\\s*' . preg_quote($slug, '/') . '\\s*<\\/option>/is';
-			$html = preg_replace($patternText, '', $html);
+		// Apply hide_if_no_translation
+		if (!empty($args['hide_if_no_translation'])) {
+			$elements = array_filter($elements, function ($el) {
+				return empty($el['no_translation']);
+			});
 		}
-		return $html;
+
+		// Apply slug exclusions (from option + shortcode)
+		if (!empty($exclude_slugs)) {
+			$elements = array_filter($elements, function ($el) use ($exclude_slugs) {
+				return !in_array($el['slug'], $exclude_slugs, true);
+			});
+		}
+
+		if (empty($elements)) {
+			return '';
+		}
+
+		if ($dropdown_enabled) {
+			return frl_build_langswitcher_dropdown($elements);
+		}
+
+		return frl_build_langswitcher_list($elements);
 	});
+}
 
-	return $langswitcher;
+/**
+ * Builds language switcher list HTML from raw Polylang elements.
+ *
+ * Mirrors PLL_Walker_List output exactly, adding a title attribute to each <a> tag
+ * with the native language name for accessibility and SEO.
+ *
+ * @since 5.8.1
+ *
+ * @param array $elements Raw language elements from pll_the_languages( [ 'raw' => 1 ] ).
+ * @return string HTML <li> items wrapped in <div class="widget_polylang"><ul>…</ul></div>.
+ */
+function frl_build_langswitcher_list(array $elements): string
+{
+	$items = '';
+	foreach ($elements as $el) {
+		$link_atts = sprintf(
+			'lang="%1$s" hreflang="%1$s" href="%2$s"',
+			esc_attr($el['locale']),
+			esc_url($el['url'])
+		);
+
+		if (!empty($el['link_classes'])) {
+			$link_atts .= sprintf(' class="%s"', esc_attr(implode(' ', $el['link_classes'])));
+		}
+		if (!empty($el['current_lang'])) {
+			$link_atts .= ' aria-current="true"';
+		}
+		if (!empty($el['name'])) {
+			$link_atts .= sprintf(' title="%s"', esc_attr($el['name']));
+		}
+
+		$items .= sprintf(
+			"\t<li class=\"%1\$s\"><a %2\$s>%3\$s</a></li>\n",
+			esc_attr(implode(' ', $el['classes'])),
+			$link_atts,
+			$el['flag'] // Pre-rendered flag HTML from Polylang
+		);
+	}
+
+	return sprintf('<div class="widget_polylang"><ul>%s</ul></div>', $items);
+}
+
+/**
+ * Builds language switcher dropdown HTML from raw Polylang elements.
+ *
+ * Mirrors PLL_Walker_Dropdown output exactly, including the inline <script> for
+ * language switching. Option text displays the language slug (matching the current
+ * display_names_as='slug' behavior). Each <option> receives a title attribute
+ * with the native language name.
+ *
+ * @since 5.8.1
+ *
+ * @param array $elements Raw language elements from pll_the_languages( [ 'raw' => 1 ] ).
+ * @return string HTML <select> element with inline <script>.
+ */
+function frl_build_langswitcher_dropdown(array $elements): string
+{
+	$name = 'lang_choice_1';
+
+	$options = '';
+	foreach ($elements as $el) {
+		$data_lang = wp_json_encode([
+			'id'   => $el['id'],
+			'name' => $el['name'],
+			'slug' => $el['slug'],
+			'dir'  => $el['is_rtl'] ?? '',
+		]);
+
+		$selected   = !empty($el['current_lang']) ? ' selected="selected"' : '';
+		$lang_attr  = !empty($el['locale']) ? sprintf(' lang="%s"', esc_attr($el['locale'])) : '';
+
+		$options .= sprintf(
+			"\t" . '<option value="%1$s"%2$s%3$s data-lang="%4$s" title="%5$s">%6$s</option>' . "\n",
+			esc_url($el['url']),
+			$lang_attr,
+			$selected,
+			esc_html($data_lang),
+			esc_attr($el['name']),
+			esc_html($el['slug'])
+		);
+	}
+
+	$output = sprintf(
+		'<select name="%1$s" id="%1$s" class="pll-switcher-select">' . "\n" . '%2$s' . "\n" . '</select>' . "\n",
+		esc_attr($name),
+		$options
+	);
+
+	$output .= sprintf(
+		'<script%1$s>
+					document.getElementById( "%2$s" ).addEventListener( "change", function ( event ) { location.href = event.currentTarget.value; } )
+				</script>',
+		current_theme_supports('html5', 'script') ? '' : ' type="text/javascript"',
+		esc_js($name)
+	);
+
+	return $output;
 }
 
 /**

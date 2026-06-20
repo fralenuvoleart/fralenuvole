@@ -439,4 +439,32 @@ Two-phase migration module to convert ACPT custom fields to SCF/ACF, including c
 - **Subdomain adapter ruled out:** All 404-producing hooks gated behind `is_on_subdomain()`.
 - **Performance:** `get_page_by_path` is WP-core cached; filter only activates when native `about/([^/]+)/?$` rule matches.
 
-*Last Updated: 2026-06-08*
+## ✅ Langswitcher Title Attribute + Raw Data Refactor (2026-06-20)
+
+### Purpose
+Add `title` attribute with native language name to each `<a>` tag in `[frl_langswitcher]` shortcode output.
+
+### Approach — Build HTML from Polylang Raw Data
+Instead of post-processing `pll_the_languages()` HTML (regex-splitting `<li>` tags, regex-removing `<option>` elements), the shortcode now uses `pll_the_languages(['raw' => 1])` to get structured language element arrays, then builds identical HTML with `title` attributes added.
+
+### Changes
+- **New helper [`frl_build_langswitcher_list()`](public/shortcodes.php:298):** Builds `<div class="widget_polylang"><ul><li><a title="Name">...</a></li></ul></div>` from raw elements. Mirrors `PLL_Walker_List::start_el()` exactly (same classes, attributes, whitespace), adding `title="Native Name"` to `<a>` tags.
+- **New helper [`frl_build_langswitcher_dropdown()`](public/shortcodes.php:342):** Builds `<select class="pll-switcher-select"><option title="Name" data-lang="...">slug</option></select>` + inline `<script>`. Mirrors `PLL_Walker_Dropdown` exactly, adding `title` to `<option>` tags.
+- **Refactored [`frl_shortcode_langswitcher()`](public/shortcodes.php:189):** Single `pll_the_languages(['raw' => 1])` call replaces 5 separate calls. Exclusion/hide logic uses clean `array_filter` instead of `preg_split`, `str_contains`, and `preg_replace`. Cache key bumped to `v2` to avoid conflicts with stale cached HTML.
+- **New cache key:** `langswitcher_v2_{dd|fl}_post_{id}_x_{hash}`
+
+### Removed hacks
+- `preg_split('/(<\\/li>)/i', ...)` — fragile HTML parsing → `array_filter` by `slug`
+- `str_contains($item, 'hreflang="XX"')` — attribute matching → `array_filter` by `slug`
+- Regex `preg_replace` on `<option>` elements → `array_filter` by `slug`
+- `$slug_to_url` map → not needed; raw data has `url` for each element
+
+### Zero behavioral change
+- All CSS classes preserved: `lang-item`, `lang-item-X`, `lang-item-XX`, `current-lang`, `lang-item-first`, `no-translation`
+- `widget_polylang` wrapper, `pll-switcher-select` class, `data-lang` JSON, inline `<script>` all identical
+- `FRL_LANGSWITCHER_ARGS`, option overrides (`hide_current`, `hide_if_no_translation`, `hide_languages`, `dropdown`), and `frl_cache_remember` remain unchanged
+
+### Files modified
+- [`public/shortcodes.php`](public/shortcodes.php:189-384)
+
+*Last Updated: 2026-06-20*
