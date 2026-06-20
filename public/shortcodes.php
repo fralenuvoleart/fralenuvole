@@ -229,7 +229,7 @@ function frl_shortcode_langswitcher($atts = [])
 	$exclude_slugs = array_values(array_filter(array_map('sanitize_key', array_map('trim', explode(',', (string)$a['exclude'])))));
 
 	$dropdown_enabled = (bool) frl_get_option('langswitcher_dropdown');
-	$cache_key = 'langswitcher_v2_' . ($dropdown_enabled ? 'dd' : 'fl') . '_post_' . get_queried_object_id() . (empty($exclude_slugs) ? '' : '_x_' . md5(implode(',', $exclude_slugs)));
+	$cache_key = 'langswitcher_' . ($dropdown_enabled ? 'dd' : 'fl') . '_post_' . get_queried_object_id() . (empty($exclude_slugs) ? '' : '_x_' . md5(implode(',', $exclude_slugs)));
 
 	return frl_cache_remember('shortcodes', $cache_key, function () use ($args, $exclude_slugs, $dropdown_enabled) {
 

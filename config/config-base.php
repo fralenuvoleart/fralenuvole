@@ -64,6 +64,9 @@ const FRL_AB_CPT_LIST = [
 	],
 ];
 
+// Directory containing custom SVG flag files for the language switcher. `{slug}.svg` (e.g., en.svg, ru.svg).
+const FRL_LANGSWITCHER_FLAGS_DIR = __DIR__ . '/../assets/images/flags';
+
 // Arguments for default flags langswitcher
 const FRL_LANGSWITCHER_ARGS = [
 	'dropdown' 				=> 0,  		// default 0
@@ -76,10 +79,6 @@ const FRL_LANGSWITCHER_ARGS = [
 	'hide_if_no_translation'=> 0,  		// default 0, hide if no translation
 	'hide_languages' 		=> '', 		// comma-separated list of lang slugs
 ];
-
-// Directory containing custom SVG flag files for the language switcher.
-// Files are expected as `{slug}.svg` (e.g., en.svg, ru.svg).
-const FRL_LANGSWITCHER_FLAGS_DIR = __DIR__ . '/../assets/images/flags';
 
 // Email notifications
 const FRL_EMAIL_NOTIFICATIONS = [
