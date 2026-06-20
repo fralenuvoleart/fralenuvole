@@ -315,15 +315,62 @@ function frl_langswitcher_build_list(array $elements): string
 			$link_atts .= sprintf(' title="%s"', esc_attr($el['name']));
 		}
 
+		$flag = frl_langswitcher_inline_flag($el['slug'], $el['name']);
+
 		$items .= sprintf(
 			"\t<li class=\"%1\$s\"><a %2\$s>%3\$s</a></li>\n",
 			esc_attr(implode(' ', $el['classes'])),
 			$link_atts,
-			$el['flag'] // Pre-rendered flag HTML from Polylang
+			$flag
 		);
 	}
 
 	return sprintf('<div class="widget_polylang"><ul>%s</ul></div>', $items);
+}
+
+/**
+ * Returns an inline SVG flag for the given language slug.
+ *
+ * Reads the SVG file from FRL_LANGSWITCHER_FLAGS_DIR, injects accessibility
+ * attributes (role="img", <title>), and caches the result per-request.
+ *
+ * @since 5.8.1
+ *
+ * @param string $slug Language slug (e.g., 'en', 'ru').
+ * @param string $name Native language name for the SVG <title>.
+ * @return string Inline SVG markup, or empty string if the file doesn't exist.
+ */
+function frl_langswitcher_inline_flag(string $slug, string $name): string
+{
+	static $cache = [];
+
+	if (array_key_exists($slug, $cache)) {
+		return $cache[$slug];
+	}
+
+	$file = FRL_LANGSWITCHER_FLAGS_DIR . '/' . $slug . '.svg';
+	if (!is_readable($file)) {
+		$cache[$slug] = '';
+		return '';
+	}
+
+	$svg = file_get_contents($file);
+	if ($svg === false) {
+		$cache[$slug] = '';
+		return '';
+	}
+
+	// Inject accessibility: role for screen readers, <title> for the accessible name.
+	$title_id = 'fl-' . $slug;
+	$svg = str_replace('<svg', '<svg role="img" aria-labelledby="' . $title_id . '"', $svg);
+	if (str_contains($svg, '<title>')) {
+		$svg = preg_replace('/<title>.*?<\/title>/', '<title id="' . $title_id . '">' . esc_html($name) . '</title>', $svg);
+	} else {
+		$svg = str_replace('</svg>', '<title id="' . $title_id . '">' . esc_html($name) . '</title></svg>', $svg);
+	}
+
+	$cache[$slug] = $svg;
+	return $svg;
 }
 
 /**

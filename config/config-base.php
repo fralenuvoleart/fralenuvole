@@ -77,6 +77,10 @@ const FRL_LANGSWITCHER_ARGS = [
 	'hide_languages' 		=> '', 		// comma-separated list of lang slugs
 ];
 
+// Directory containing custom SVG flag files for the language switcher.
+// Files are expected as `{slug}.svg` (e.g., en.svg, ru.svg).
+const FRL_LANGSWITCHER_FLAGS_DIR = __DIR__ . '/../assets/images/flags';
+
 // Email notifications
 const FRL_EMAIL_NOTIFICATIONS = [
 	'rate_key' => 'email_rate_limit',
