@@ -29,6 +29,7 @@ if (frl_is_logged_in()) {
 
 add_action('init', 'frl_main_init', 10, 0);
 add_action('wp_head', 'frl_add_critical_css', -999, 1);
+add_action('wp_footer', 'frl_add_deferred_css', 1, 1);
 
 add_filter('pll_get_post_types', 'frl_making_wp_navigation_translatable', 10, 2);
 add_filter('block_type_metadata_settings', 'frl_render_block_core_navigation_translation', 10, 2);

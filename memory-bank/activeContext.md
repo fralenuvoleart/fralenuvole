@@ -7,7 +7,27 @@
 ## 🔄 Current Focus
 Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
 
-**Current session:** SASWP schema hook gate fix (2026-06-17)
+**Current session:** Deferred CSS loader (2026-06-21)
+
+## ✅ Deferred CSS — Non-Render-Blocking Theme Stylesheet (2026-06-21)
+- **Purpose:** Load non-critical theme CSS (`deferred.css`) as a deferred `<link>` in the footer instead of synchronously in `<head>`, improving PageSpeed LCP/FCP scores.
+- **Architecture:** Three-file change mirroring the existing `critical_css` pattern:
+  - **Option:** `deferred_css` checkbox in [`config/config-options.php:55-61`](config/config-options.php:55) — default: 1, `sanitize_callback: absint`
+  - **Hook:** `add_action('wp_footer', 'frl_add_deferred_css', 1, 1)` at [`includes/main.php:32`](includes/main.php:32) — fires before user footer HTML at priority 10
+  - **Function:** [`frl_add_deferred_css()`](includes/shared/website-features.php:52) placed after `frl_add_critical_css()` in `website-features.php`
+- **Mechanism:**
+  - Reads `deferred.css` from active theme's stylesheet directory
+  - Uses `frl_get_assets_versions()` for `filemtime`-based cache busting (same as critical CSS)
+  - Outputs `<link rel="stylesheet" media="print" onload="this.media='all'">` — the `media="print"` trick causes browsers to download asynchronously (non-render-blocking), then `onload` switches to `media="all"` for screen rendering
+  - Includes `<noscript><link rel="stylesheet" href="..."></noscript>` fallback for JS-disabled browsers
+  - Tagged with `data-parsing="deferred-css"` for existing tag validator compatibility
+- **Shared conventions (no code duplication needed):** `FRL_PREFIX`, `FRL_NAME`, `data-parsing` attribute pattern, `media="print" onload` trick (same pattern used by `frl_defer_css()` at [`public/public.php:150`](public/public.php:150) but via different mechanism — `frl_defer_css` does `str_replace` on WP-generated tags, while `frl_add_deferred_css` builds `<link>` from scratch)
+- **Zero theme changes needed:** Theme only needs a `deferred.css` file in its stylesheet directory; the plugin handles everything else
+- **Files modified:**
+  - [`config/config-options.php`](config/config-options.php:55) — added `deferred_css` option field
+  - [`includes/main.php`](includes/main.php:32) — added `wp_footer` hook
+  - [`includes/shared/website-features.php`](includes/shared/website-features.php:52) — added `frl_add_deferred_css()` function
+
 
 ## 🔧 SASWP Schema Hook Gate — Fatal Error Fix (2026-06-17)
 - **Bug:** `PHP Fatal error: Call to undefined function frl_schema_resolver_get()` at [`thirdparty.php:196`](modules/thirdparty/thirdparty.php:196) during REST/AJAX requests where SASWP fires `saswp_modify_schema_output` but schema subsystem isn't loaded.
@@ -467,4 +487,4 @@ Instead of post-processing `pll_the_languages()` HTML (regex-splitting `<li>` ta
 ### Files modified
 - [`public/shortcodes.php`](public/shortcodes.php:189-384)
 
-*Last Updated: 2026-06-20*
+*Last Updated: 2026-06-21*

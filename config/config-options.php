@@ -52,6 +52,13 @@ const FRL_DEFAULT_FIELDS = array(
 				'default' => 1,
 				'sanitize_callback' => 'absint',
 			),
+			'deferred_css' => array(
+				'label' => 'Defer theme CSS',
+				'description' => 'Load non-critical styles from "deferred.css" in the current theme directory as non-render-blocking in the footer',
+				'type' => 'checkbox',
+				'default' => 1,
+				'sanitize_callback' => 'absint',
+			),
 			'preload_featured' => array(
 				'label' => 'Preload featured images',
 				'description' => 'Preload featured images. Compatible with .webp format if available',

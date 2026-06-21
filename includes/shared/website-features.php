@@ -41,6 +41,42 @@ function frl_add_critical_css()
 }
 
 /**
+ * Outputs a deferred CSS link in the footer for non-critical styles.
+ *
+ * Reads 'deferred.css' from the active theme's stylesheet directory,
+ * outputs a <link> with media="print" onload pattern to avoid render-blocking.
+ *
+ * @hook wp_footer
+ * @priority 1
+ */
+function frl_add_deferred_css()
+{
+    if (!frl_get_option('deferred_css')) {
+        return;
+    }
+
+    $css_path = get_stylesheet_directory() . '/deferred.css';
+
+    if (!file_exists($css_path)) {
+        return;
+    }
+
+    $assets  = ['deferred-css' => $css_path];
+    $version = frl_get_assets_versions($assets, 'deferred_css', 'versions', false);
+
+    if (empty($version)) {
+        return;
+    }
+
+    $mtime = $version['deferred-css'];
+    $url   = esc_url(get_stylesheet_directory_uri() . '/deferred.css?ver=' . $mtime);
+
+    echo "<link rel='stylesheet' id='" . FRL_PREFIX . "-deferred-css' href='{$url}' media='print' onload=\"this.media='all'\" data-plugin='" . FRL_NAME . "' data-parsing='deferred-css'>\n";
+    
+    echo "<noscript><link rel='stylesheet' href='{$url}'></noscript>\n";
+}
+
+/**
  * Retrieves and caches minified critical CSS data.
  *
  * Reads 'critical.css' from the stylesheet directory, minifies the content,
