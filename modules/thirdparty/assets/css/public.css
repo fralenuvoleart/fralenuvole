@@ -54,10 +54,6 @@
     height: 110px;
 }
 
-p:empty:has(+.widget_polylang), .widget_polylang ul li a img+span {
-    display: none;
-}
-
 .gspbcssvisibilitycontent {
     display: flex;
 }

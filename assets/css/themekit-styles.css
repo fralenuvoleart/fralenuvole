@@ -84,8 +84,12 @@
 .widget_polylang {
     display: flex;
     margin-block: 0 !important; 
+}
+
+.lang-switcher-flags {
     opacity: 0.85;
     filter: saturate(0.85);
+    line-height: 1;
 }
 
 .widget_polylang+p:empty,
@@ -95,14 +99,17 @@ p:empty:has(+.widget_polylang) {
 
 .widget_polylang ul {
     display: flex;
-    gap: 1.3em;
     margin: 0;
     padding: 0;
     list-style: none;
     font-size: var(--wp--preset--font-size--x-small);
 }
 
-.widget_polylang a {
+.lang-switcher-flags ul {
+    gap: 1.3em;
+}
+
+.lang-switcher-flags a {
     display: inline-flex;
     width: 26px;
     height: 26px;
@@ -110,9 +117,17 @@ p:empty:has(+.widget_polylang) {
     overflow: hidden;
 }
 
-.widget_polylang a svg {
+.lang-switcher-flags a svg {
     width: 100%;
     height: 100%;
+}
+
+@media (max-width: 767.98px) {
+    /* Polylang */
+    .wp-block-navigation__responsive-close .lang-switcher-flags a {
+        width: 32px;
+        height: 32px;
+    }
 }
 
 .wp-site-blocks > main {
