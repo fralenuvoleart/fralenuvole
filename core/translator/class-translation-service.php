@@ -266,16 +266,27 @@ final class Frl_Translation_Service
             return $block_content;
         }
 
+        // Build mappings to check if any actual translations exist.
+        $mappings_data = $this->build_translation_mappings($patterns);
+
+        // If no actual translations were found, apply identity mappings and skip caching.
+        // This prevents transient bloat on sites where content is already in the default language.
+        if (!$this->has_actual_translations($mappings_data['mappings'])) {
+            $translated_html = $this->apply_translation_mappings($block_content, $mappings_data['mappings']);
+            $translated_html = apply_filters('frl_block_translation_filter', $translated_html);
+            return $translated_html ?: $block_content;
+        }
+
+        // Actual translations exist — cache the mappings for performance.
         $pattern_hash = md5(serialize($patterns));
         $cache_key = $this->generate_block_cache_key($block, $pattern_hash);
 
-        // This is the new architecture. All expensive work is inside the callback.
-        $cached_data = frl_cache_remember('blocks', $cache_key, function () use ($patterns) {
+        $cached_data = frl_cache_remember('blocks', $cache_key, function () use ($mappings_data) {
             // This logic now only runs ONCE per block version (a cache miss).
-            return $this->build_translation_mappings($patterns);
+            return $mappings_data;
         }, DAY_IN_SECONDS);
 
-        // Apply cached (or freshly built) mappings to the current request's HTML.
+        // Apply cached mappings to the current request's HTML.
         $translated_html = $this->apply_translation_mappings($block_content, $cached_data['mappings'] ?? []);
 
         // Apply any additional filters.
@@ -967,6 +978,28 @@ final class Frl_Translation_Service
             }
             return $match[0]; // Should not happen, but as a fallback.
         }, $content);
+    }
+
+    /**
+     * Check if any actual translations exist in the mappings.
+     *
+     * Returns true if at least one text mapping differs from the original
+     * or if any permalink mappings exist.
+     *
+     * @param array $mappings ['text' => [...], 'permalink' => [...]]
+     * @return bool
+     */
+    private function has_actual_translations(array $mappings): bool
+    {
+        $text_map = $mappings['text'] ?? [];
+        foreach ($text_map as $original => $translated) {
+            if ($translated !== $original) {
+                return true;
+            }
+        }
+
+        $permalink_map = $mappings['permalink'] ?? [];
+        return !empty($permalink_map);
     }
 
     /**
