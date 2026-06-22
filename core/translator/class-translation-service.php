@@ -223,9 +223,14 @@ final class Frl_Translation_Service
     {
         if (empty($string)) return '';
 
-        $this->queue_string_registration([$string]);
         $language = $lang ?: $this->get_language();
 
+        // Early return for source language — no translation needed, no cache needed.
+        if ($language === $this->get_source_language()) {
+            return $string;
+        }
+
+        $this->queue_string_registration([$string]);
         $version = $this->get_translation_version();
         $cache_key = substr(md5($string . '_' . $version), 0, 12);
 
@@ -304,16 +309,16 @@ final class Frl_Translation_Service
      */
     public function get_translation_permalink(int $id, string $lang): string
     {
-        // Include $lang in key because the target language may differ from request language added by cache manager.
+        $source_language = $this->get_source_language();
+
+        // Source language permalink is already the correct identity — no cache needed.
+        if (!$this->has_multilingual_plugin() || $lang === $source_language) {
+            return get_permalink($id) ?: '#';
+        }
+
         $cache_key = "post_{$id}_{$lang}";
 
         return frl_cache_remember('permalinks', $cache_key, function () use ($id, $lang) {
-            $source_language = $this->get_source_language();
-
-            // If no multilingual plugin or we want the source language, get direct permalink.
-            if (!$this->has_multilingual_plugin() || $lang === $source_language) {
-                return get_permalink($id) ?: '#';
-            }
 
             // Get the ID of the translated post.
             $translated_id = $this->adapter->get_post_translation($id, $lang);
@@ -338,24 +343,22 @@ final class Frl_Translation_Service
      */
     public function get_translation_term_permalink(string $slug, string $language, string $taxonomy = 'category'): string
     {
-            // Include $lang in key because the target language may differ from request language added by cache manager.
+        $source_language = $this->get_source_language();
+
+        if ($language === $source_language) {
+            $term = get_term_by('slug', $slug, $taxonomy);
+            if (!$term || is_wp_error($term)) {
+                return '#';
+            }
+            $link = get_term_link($term);
+            return is_wp_error($link) ? '#' : $link;
+        }
+
         $cache_key = "term_" . sanitize_key($slug) . "_{$taxonomy}_{$language}";
         return frl_cache_remember(
             'permalinks',
             $cache_key,
             function () use ($slug, $language, $taxonomy) {
-                $source_language = $this->get_source_language();
-
-                // For source language, try direct term lookup
-                if ($language === $source_language) {
-                    $term = get_term_by('slug', $slug, $taxonomy);
-                    if (!$term || is_wp_error($term)) {
-                        return '#';
-                    }
-
-                    $link = get_term_link($term);
-                    return is_wp_error($link) ? '#' : $link;
-                }
 
                 // For translations, use DB query to get base term ID by slug + taxonomy (bypass language filters)
                 global $wpdb;
@@ -1065,33 +1068,33 @@ final class Frl_Translation_Service
             return $content;
         }
 
-        $cache_key = 'pattern_' . md5($content);
+        $lStartQuoted = preg_quote($this->delimiter_link_start, '/');
+        $lEndQuoted   = preg_quote($this->delimiter_link_end, '/');
+        $link_pattern = "/{$lStartQuoted}(.*?){$lEndQuoted}/";
 
-        return frl_cache_remember('permalinks', $cache_key, function () use ($content) {
+        if (!preg_match_all($link_pattern, $content, $matches)) {
+            return $content;
+        }
+
+        $slugs_to_translate = array_unique(array_map('trim', $matches[1]));
+        if (empty($slugs_to_translate)) {
+            return $content;
+        }
+
+        // Build a stable cache key from the sorted slugs, not the full content.
+        // This avoids 0% hit rate when $content contains dynamic values.
+        sort($slugs_to_translate);
+        $slug_hash = md5(implode('|', $slugs_to_translate));
+        $cache_key = 'pattern_' . $slug_hash;
+
+        $translated_permalinks = frl_cache_remember('permalinks', $cache_key, function () use ($slugs_to_translate) {
             // This callback only runs on a cache miss.
-            $lStart = preg_quote($this->delimiter_link_start, '/');
-            $lEnd   = preg_quote($this->delimiter_link_end, '/');
-            $link_pattern = "/{$lStart}(.*?){$lEnd}/";
-
-            if (!preg_match_all($link_pattern, $content, $matches)) {
-                return $content;
-            }
-
-            $slugs_to_translate = array_unique(array_map('trim', $matches[1]));
-            if (empty($slugs_to_translate)) {
-                return $content;
-            }
-
-            $translated_permalinks = $this->get_translation_batch_permalinks($slugs_to_translate);
-
-            $lStart = preg_quote($this->delimiter_link_start, '/');
-            $lEnd   = preg_quote($this->delimiter_link_end, '/');
-            $link_pattern = "/{$lStart}(.*?){$lEnd}/";
-
-            return preg_replace_callback($link_pattern, function ($match) use ($translated_permalinks) {
-                $original = trim($match[1]);
-                return $translated_permalinks[$original] ?? '#';
-            }, $content);
+            return $this->get_translation_batch_permalinks($slugs_to_translate);
         });
+
+        return preg_replace_callback($link_pattern, function ($match) use ($translated_permalinks) {
+            $original = trim($match[1]);
+            return $translated_permalinks[$original] ?? '#';
+        }, $content);
     }
 }

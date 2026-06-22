@@ -124,21 +124,27 @@ function frl_get_translation_block(string $block_content, array $block): string
             return $block_content;
         }
 
-        $content_hash = md5($block_content);
+        // Request-level deduplication only. Persistent caching is intentionally omitted
+        // because $block_content may contain per-request dynamic values (e.g. GeoDirectory
+        // random IDs) that make md5-based keys unstable. A persistent cache with unstable
+        // keys produces 0% hit rate and transient bloat on sites without object cache.
+        static $safe_cache = [];
+        $sig = md5($block_content);
+        if (isset($safe_cache[$sig])) {
+            return $safe_cache[$sig];
+        }
 
-        // Leverage Cache Manager for both runtime (static) and persistent caching.
-        return frl_cache_remember('safe_blocks', $content_hash, function () use ($block_content) {
-            $t_start = preg_quote(FRL_TRANSLATOR_DELIMITER_TEXT['start'], '/');
-            $t_end   = preg_quote(FRL_TRANSLATOR_DELIMITER_TEXT['end'], '/');
-            $l_start = preg_quote(FRL_TRANSLATOR_DELIMITER_LINK['start'], '/');
-            $l_end   = preg_quote(FRL_TRANSLATOR_DELIMITER_LINK['end'], '/');
+        $t_start = preg_quote(FRL_TRANSLATOR_DELIMITER_TEXT['start'], '/');
+        $t_end   = preg_quote(FRL_TRANSLATOR_DELIMITER_TEXT['end'], '/');
+        $l_start = preg_quote(FRL_TRANSLATOR_DELIMITER_LINK['start'], '/');
+        $l_end   = preg_quote(FRL_TRANSLATOR_DELIMITER_LINK['end'], '/');
 
-            // 1. Strip {{String}} -> String
-            $content = preg_replace("/{$t_start}(.*?){$t_end}/", '$1', $block_content);
-            // 2. Replace ##slug## -> #
-            $content = preg_replace("/{$l_start}(.*?){$l_end}/", '#', $content);
-            return $content;
-        }, DAY_IN_SECONDS);
+        // 1. Strip {{String}} -> String
+        $content = preg_replace("/{$t_start}(.*?){$t_end}/", '$1', $block_content);
+        // 2. Replace ##slug## -> #
+        $content = preg_replace("/{$l_start}(.*?){$l_end}/", '#', $content);
+
+        return $safe_cache[$sig] = $content;
     }
 
     return Frl_Translation_Service::get_instance()->get_translation_block($block_content, $block);

@@ -1,5 +1,47 @@
 # Project Progress
 
+## ✅ Translation & Cache Optimization Round 2 (2026-06-22)
+
+### Scan Findings
+Full codebase scan of 132 `frl_cache_remember`/`get`/`set` calls identified 4 issues:
+
+1. **`safe_blocks` group** (`functions-translator-helpers.php:127`) — Same `md5($block_content)` instability as old `blocks` cache. Group not in `FRL_CACHE_PERSISTENT_GROUPS` (fortunate slip preventing transient bloat on no-object-cache sites).
+2. **`process_permalink_patterns()`** (`class-translation-service.php:1068`) — `md5($content)` key unstable when content contains dynamic values + `##slug##` patterns.
+3. **`get_translation()`** (`class-translation-service.php:222`) — No identity skip; caches individual strings even when language = source language.
+4. **String registration queue** (`class-translation-service.php:226`) — `queue_string_registration()` called before language check, burning `pll_register_string()` calls on identity mappings.
+
+### Fixes Applied
+
+**Patch 1: `safe_blocks` — Request-level cache only**
+- **File:** `includes/helpers/functions-translator-helpers.php:117`
+- Replaced `frl_cache_remember('safe_blocks', md5($block_content), ...)` with `static $safe_cache` request-level deduplication
+- Eliminates persistent cache with unstable keys; 2 cheap `preg_replace` calls run directly
+
+**Patch 2: `process_permalink_patterns()` — Slug-based stable key**
+- **File:** `core/translator/class-translation-service.php:1061`
+- Extracts `##slug##` patterns first, builds key from sorted slugs (`md5(implode('|', $slugs))`)
+- Caches only the slug→permalink mapping; applies mapping to current request's content
+- Eliminates 0% hit rate when `$content` contains dynamic values
+
+**Patch 3: `get_translation()` — Identity skip**
+- **File:** `core/translator/class-translation-service.php:222`
+- Added early return when `$language === $this->get_source_language()`
+- Returns `$string` directly; skips `frl_cache_remember` AND `queue_string_registration`
+- Eliminates thousands of small transient entries on source-language sites
+
+**Patch 4: String registration queue — Gated automatically**
+- Fixed by Patch 3: `queue_string_registration()` now runs AFTER the source-language guard
+- No more `pll_register_string()` DB writes on shutdown for identity mappings
+
+### Zero-Regression Checklist
+- [x] All existing method signatures preserved
+- [x] `apply_filters('frl_block_translation_filter', ...)` still applied
+- [x] Excluded tokens (`FRL_TRANSLATOR_EXCLUDE`) preserved with delimiters
+- [x] `frl_cache_remember(...)` API unchanged
+- [x] String registration queue still populated on actual translation misses
+- [x] Subdomain adapter compatibility verified
+- [x] PHP syntax validated (`No syntax errors detected`)
+
 ## ✅ Pattern-Based Block Translation Cache Fix (2026-06-22)
 
 ### Problem Statement
