@@ -260,53 +260,28 @@ final class Frl_Translation_Service
             return $block_content;
         }
 
-        // Normalize content for stable caching by removing dynamic values
-        $normalized_content = $this->normalize_block_content_for_caching($block_content);
-        $content_hash = md5($normalized_content);
-        $cache_key = $this->generate_block_cache_key($block, $content_hash);
+        // Extract translatable patterns for a stable cache key.
+        $patterns = $this->extract_translatable_patterns($block_content);
+        if (empty($patterns)) {
+            return $block_content;
+        }
+
+        $pattern_hash = md5(serialize($patterns));
+        $cache_key = $this->generate_block_cache_key($block, $pattern_hash);
 
         // This is the new architecture. All expensive work is inside the callback.
-        $cached_data = frl_cache_remember('blocks', $cache_key, function () use ($block_content) {
+        $cached_data = frl_cache_remember('blocks', $cache_key, function () use ($patterns) {
             // This logic now only runs ONCE per block version (a cache miss).
-
-            // 1. Gather all strings that need registration.
-            $strings_to_register = [];
-            $tStart = preg_quote($this->delimiter_text_start, '/');
-            $tEnd   = preg_quote($this->delimiter_text_end, '/');
-            $text_pattern = "/{$tStart}(.*?){$tEnd}/";
-
-            // Pre-load exclude map for O(1) lookup during registration gathering.
-            $exclude = defined('FRL_TRANSLATOR_EXCLUDE') ? FRL_TRANSLATOR_EXCLUDE : [];
-
-            if (preg_match_all($text_pattern, $block_content, $string_matches)) {
-                $all_tokens = array_unique(array_map('trim', $string_matches[1]));
-                foreach ($all_tokens as $token) {
-                    if (!isset($exclude[$token])) {
-                        $strings_to_register[] = $token;
-                    }
-                }
-            }
-
-            // 2. Perform all translations in one efficient pass.
-            $translated_html = $this->_process_all_patterns($block_content);
-
-            // Apply any additional filters.
-            $translated_html = apply_filters('frl_block_translation_filter', $translated_html);
-
-            // 3. Queue registration only on cache miss to reduce overhead under load.
-            if (!empty($strings_to_register)) {
-                $this->queue_string_registration($strings_to_register);
-            }
-
-            // 4. Store both the final HTML and the list of strings in the cache.
-            return [
-                'html'    => $translated_html ?: $block_content,
-                'strings' => $strings_to_register,
-            ];
+            return $this->build_translation_mappings($patterns);
         }, DAY_IN_SECONDS);
 
-        // Hyper-optimized cache-hit path: return cached HTML without re-queuing registrations.
-        return $cached_data['html'] ?? $block_content;
+        // Apply cached (or freshly built) mappings to the current request's HTML.
+        $translated_html = $this->apply_translation_mappings($block_content, $cached_data['mappings'] ?? []);
+
+        // Apply any additional filters.
+        $translated_html = apply_filters('frl_block_translation_filter', $translated_html);
+
+        return $translated_html ?: $block_content;
     }
 
     /**
@@ -844,39 +819,164 @@ final class Frl_Translation_Service
     }
 
     /**
-     * Normalize block content for stable caching by removing dynamic values.
+     * Extract translatable patterns from block content for stable cache keys.
      *
-     * This removes random values that change on every page load, which would
-     * otherwise prevent effective caching of translated blocks.
+     * Returns a sorted, deduplicated list of all {{...}} and [[...]] patterns.
+     * The cache key is derived from this list, not from the full HTML, making
+     * it immune to dynamic values injected by third-party plugins.
      *
      * @param string $content Original block content
-     * @return string Normalized content with dynamic values removed
+     * @return array List of ['type' => 'text'|'permalink', 'value' => string]
      */
-    private function normalize_block_content_for_caching(string $content): string
+    private function extract_translatable_patterns(string $content): array
     {
-        // Remove Greenshift random CSS custom properties that change on every request
-        $content = preg_replace('/--random:\s*[\d.]+;?/', '--random:NORMALIZED;', $content);
+        $tStart = preg_quote($this->delimiter_text_start, '/');
+        $tEnd   = preg_quote($this->delimiter_text_end, '/');
+        $lStart = preg_quote($this->delimiter_link_start, '/');
+        $lEnd   = preg_quote($this->delimiter_link_end, '/');
 
-        // Remove other dynamic values that might affect caching
-        // Note: Only remove values that don't affect the actual translation content
+        $combined_pattern = "/{$tStart}(.*?){$tEnd}|{$lStart}(.*?){$lEnd}/";
 
-        // Normalize timestamps or other time-based values if present
-        $content = preg_replace('/data-timestamp="\d+"/', 'data-timestamp="NORMALIZED"', $content);
+        if (!preg_match_all($combined_pattern, $content, $matches, PREG_SET_ORDER)) {
+            return [];
+        }
 
-        // Normalize any other random IDs that might be generated dynamically
-        // but preserve the structure for proper translation
+        $patterns = [];
+        foreach ($matches as $match) {
+            if (!empty($match[1])) {
+                $patterns[] = ['type' => 'text', 'value' => trim($match[1])];
+            } elseif (!empty($match[2])) {
+                $patterns[] = ['type' => 'permalink', 'value' => trim($match[2])];
+            }
+        }
 
-        return $content;
+        // Deduplicate and sort for a stable hash regardless of order or frequency.
+        $unique = [];
+        foreach ($patterns as $p) {
+            $key = $p['type'] . '|' . $p['value'];
+            $unique[$key] = $p;
+        }
+        usort($unique, function ($a, $b) {
+            $type_cmp = $a['type'] <=> $b['type'];
+            return $type_cmp !== 0 ? $type_cmp : ($a['value'] <=> $b['value']);
+        });
+
+        return array_values($unique);
+    }
+
+    /**
+     * Build translation mappings from extracted patterns.
+     *
+     * Calls the translation adapter once per pattern and returns the mappings
+     * plus the list of strings to register. This is the expensive work that
+     * gets cached.
+     *
+     * @param array $patterns Output of extract_translatable_patterns()
+     * @return array ['mappings' => ['text' => [...], 'permalink' => [...]], 'strings' => [...]]
+     */
+    private function build_translation_mappings(array $patterns): array
+    {
+        $text_tokens = [];
+        $permalink_tokens = [];
+        $strings_to_register = [];
+
+        $exclude = defined('FRL_TRANSLATOR_EXCLUDE') ? FRL_TRANSLATOR_EXCLUDE : [];
+
+        foreach ($patterns as $pattern) {
+            if ($pattern['type'] === 'text') {
+                $token = $pattern['value'];
+                if (!isset($exclude[$token])) {
+                    $text_tokens[] = $token;
+                    $strings_to_register[] = $token;
+                }
+            } elseif ($pattern['type'] === 'permalink') {
+                $permalink_tokens[] = $pattern['value'];
+            }
+        }
+
+        $text_map = [];
+        if (!empty($text_tokens)) {
+            $translated_strings = $this->get_translation_batch_strings(array_unique($text_tokens));
+            foreach (array_unique($text_tokens) as $token) {
+                $translation = $translated_strings[$token] ?? $token;
+                $translation = $this->process_permalink_patterns($translation);
+                $text_map[$token] = frl_validate_html_fragment($translation);
+            }
+        }
+
+        $permalink_map = [];
+        if (!empty($permalink_tokens)) {
+            $permalink_map = $this->get_translation_batch_permalinks(array_unique($permalink_tokens));
+        }
+
+        // Queue registration only on cache miss to reduce overhead under load.
+        if (!empty($strings_to_register)) {
+            $this->queue_string_registration($strings_to_register);
+        }
+
+        return [
+            'mappings' => [
+                'text'      => $text_map,
+                'permalink' => $permalink_map,
+            ],
+            'strings'  => $strings_to_register,
+        ];
+    }
+
+    /**
+     * Apply cached translation mappings to the current request's HTML.
+     *
+     * This preserves all dynamic values (carousel IDs, redirect_to URLs, etc.)
+     * from the current request while applying only the stable translations.
+     *
+     * @param string $content Current block content
+     * @param array $mappings ['text' => [...], 'permalink' => [...]]
+     * @return string Translated content
+     */
+    private function apply_translation_mappings(string $content, array $mappings): string
+    {
+        $text_map = $mappings['text'] ?? [];
+        $permalink_map = $mappings['permalink'] ?? [];
+
+        if (empty($text_map) && empty($permalink_map)) {
+            return $content;
+        }
+
+        $tStart = preg_quote($this->delimiter_text_start, '/');
+        $tEnd   = preg_quote($this->delimiter_text_end, '/');
+        $lStart = preg_quote($this->delimiter_link_start, '/');
+        $lEnd   = preg_quote($this->delimiter_link_end, '/');
+
+        $combined_pattern = "/{$tStart}(.*?){$tEnd}|{$lStart}(.*?){$lEnd}/";
+
+        $exclude = defined('FRL_TRANSLATOR_EXCLUDE') ? FRL_TRANSLATOR_EXCLUDE : [];
+
+        return preg_replace_callback($combined_pattern, function ($match) use ($text_map, $permalink_map, $exclude) {
+            if (!empty($match[1])) {
+                $original = trim($match[1]);
+                // Excluded tokens: pass through verbatim (including delimiters), no translation.
+                if (isset($exclude[$original])) {
+                    return $match[0];
+                }
+                // Fetch the translated string (or fall back to original).
+                return $text_map[$original] ?? $original;
+            }
+            if (!empty($match[2])) {
+                $original = trim($match[2]);
+                return $permalink_map[$original] ?? '#';
+            }
+            return $match[0]; // Should not happen, but as a fallback.
+        }, $content);
     }
 
     /**
      * Generates the cache key for block translation.
      *
      * @param array $block The block attributes and context.
-     * @param string $content_hash Hash of the normalized content.
+     * @param string $pattern_hash Hash of the extracted translatable patterns.
      * @return string
      */
-    private function generate_block_cache_key(array $block, string $content_hash): string
+    private function generate_block_cache_key(array $block, string $pattern_hash): string
     {
         static $mod_time_cache = [];
         global $post;
@@ -916,7 +1016,7 @@ final class Frl_Translation_Service
 
         $translation_version = $this->get_translation_version();
 
-        return "{$container_type}_{$container_id}_{$mod_timestamp}_{$translation_version}_{$content_hash}";
+        return "{$container_type}_{$container_id}_{$mod_timestamp}_{$translation_version}_{$pattern_hash}";
     }
 
     /**
