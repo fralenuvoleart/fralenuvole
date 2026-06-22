@@ -1,5 +1,52 @@
 # Project Progress
 
+## ✅ Pattern-Based Block Translation Cache Fix (2026-06-22)
+
+### Problem Statement
+pbproperty.ge (the only site without object cache) generated ~1.77 million transient rows per day in `wp_options` matching `frl_cache_block_*`. In one hour with little traffic, 6,000 new transient rows were created.
+
+### Root Cause
+Block translation cache stored full rendered HTML keyed by `md5($normalized_content)`. GeoDirectory injects per-request random values (carousel IDs like `geodir_images_6a38fe2a4eff8_4812` vs `geodir_images_6a38fe290ea33_4812`, and `redirect_to` URLs with filter parameters). Normalization only stripped `--random:` CSS and `data-timestamp`, leaving thousands of unique hashes for identical translatable content. Result: 0% cache hit rate, ~100KB HTML stored per miss, empty `strings` array (`a:0:{}`) — no translation work was actually occurring.
+
+### Fix Applied
+**File:** `core/translator/class-translation-service.php` — complete rewrite of block translation caching logic.
+
+1. **Pattern-based caching** — cache translation *mappings* (`original → translated`) instead of full HTML. Key by stable fingerprint of extracted `{{...}}` and `[[...]]` patterns. Dynamic values (carousel IDs, timestamps) are preserved from the current request's HTML.
+2. **Identity skip optimization** — skip caching entirely when `has_actual_translations()` returns false (all text mappings are identity, no permalink mappings). This leverages the existing guard in `get_translation_batch_strings()` line 408: `if ($language === $this->get_source_language()) { return array_combine($strings, $strings); }`.
+3. **Source language vs default language** — `get_source_language()` returns `FRL_TRANSLATOR_SOURCE_LANG` (constant `'en'`), NOT Polylang's default. On `ru.pbservices.ge`, subdomain adapter sets `PLL()->curlang = RU` → `get_language() = 'ru'` → guard bypassed → real translations cached.
+
+### Methods Added/Modified
+- `get_translation_block()` (line 248) — extracts patterns, checks `has_actual_translations()`, skips caching for identities, otherwise caches mappings
+- `extract_translatable_patterns()` (line 842) — extracts `{{...}}` and `[[...]]`, deduplicates, sorts for stable hash
+- `build_translation_mappings()` (line 888) — calls adapter once per pattern, builds `['text' => [...], 'permalink' => [...]]` mappings
+- `apply_translation_mappings()` (line 947) — applies cached mappings to current HTML via `preg_replace_callback`; excluded tokens pass through verbatim with delimiters preserved
+- `has_actual_translations()` (line 992) — returns true if any text mapping differs from original or permalink mappings exist
+- `generate_block_cache_key()` (line 1012) — uses `$pattern_hash` instead of `$content_hash`
+- **Removed:** `normalize_block_content_for_caching()` — no longer needed
+
+### Language Scenario Verification
+| Default | Current | Source | Guard Hit? | Cache? | Notes |
+|---------|---------|--------|------------|--------|-------|
+| EN | EN | EN | Yes | Skip | Identity skip — no transient bloat |
+| EN | RU | EN | No | Yes | Real translations cached |
+| RU | RU | EN | No | Yes | Real translations cached (RU ≠ EN source) |
+| RU | EN | EN | Yes | Skip | Identity skip — English content on English request |
+
+Subdomain adapter fully compatible: sets `PLL()->curlang` to subdomain language → `get_language()` returns correct value → guard behavior correct.
+
+### Impact on Redis Sites
+Yes, affected — 0% hit rate meant wasted adapter calls on every request. No visible bloat because Redis auto-evicts, but CPU overhead from `get_translation_batch_strings()` + `get_translation_batch_permalinks()` on every block render. Fix eliminates this entirely.
+
+### Zero-Regression Checklist
+- [x] All existing method signatures preserved
+- [x] `apply_filters('frl_block_translation_filter', ...)` still applied
+- [x] Excluded tokens (`FRL_TRANSLATOR_EXCLUDE`) preserved with delimiters
+- [x] `frl_cache_remember('blocks', ...)` API unchanged
+- [x] `get_translation_batch_strings()` / `get_translation_batch_permalinks()` still called (once per unique pattern set)
+- [x] String registration queue still populated on cache miss
+- [x] Subdomain adapter compatibility verified
+- [x] PHP syntax validated via `php -l`
+
 ## ✅ Post Edit Screen Optimization (2026-06-16)
 
 ### Changes Applied (7 files modified)

@@ -7,7 +7,7 @@
 ## 🔄 Current Focus
 Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
 
-**Current session:** Deferred CSS loader (2026-06-21)
+**Current session:** Pattern-based block translation cache fix + identity skip optimization (2026-06-22)
 
 ## ✅ Deferred CSS — Non-Render-Blocking Theme Stylesheet (2026-06-21)
 - **Purpose:** Load non-critical theme CSS (`deferred.css`) as a deferred `<link>` in the footer instead of synchronously in `<head>`, improving PageSpeed LCP/FCP scores.
@@ -93,6 +93,40 @@ Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewrit
   - **No critical flag:** All steps execute sequentially regardless of failure; caller inspects per-step results.
   - **`fn` supports callable arrays:** `[ 'Frl_Cache_Manager', 'hard_cache_reset' ]` for static method calls, checked via `is_callable()`.
   - **All existing helper functions preserved** (`frl_cache_clear`, `frl_flush_rewrite_rules` remain independently callable). `frl_cache_clear('hard'/'all'/'light'/'options'/'rewriter')` returns `$result['steps'][0]['result']` for backward compatibility with external callers.
+
+## ✅ Pattern-Based Block Translation Cache Fix (2026-06-22)
+
+### Problem
+pbproperty.ge (no object cache) generated ~1.77 million transient rows per day in `wp_options` matching `frl_cache_block_*`. Root cause: block translation cache stored full rendered HTML keyed by `md5($normalized_content)`, but GeoDirectory injects per-request random values (carousel IDs, `redirect_to` URLs with filter params). Normalization only stripped `--random:` CSS and `data-timestamp`, leaving thousands of unique hashes for identical translatable content. Result: 0% cache hit rate, 100KB HTML stored per miss, empty `strings` array (`a:0:{}`).
+
+### Fix Applied
+**File:** [`core/translator/class-translation-service.php`](core/translator/class-translation-service.php)
+
+1. **Pattern-based caching** — cache translation *mappings* (`original → translated`) instead of full HTML. Key by stable fingerprint of extracted `{{...}}` and `[[...]]` patterns.
+2. **Identity skip optimization** — skip caching entirely when `has_actual_translations()` returns false (all text mappings are identity, no permalink mappings). Leverages existing guard in [`get_translation_batch_strings()`](core/translator/class-translation-service.php:408): `if ($language === $this->get_source_language()) { return array_combine($strings, $strings); }`.
+3. **Source language vs default language** — `get_source_language()` returns `FRL_TRANSLATOR_SOURCE_LANG` (constant `'en'`), NOT Polylang's default. On `ru.pbservices.ge`, subdomain adapter sets `PLL()->curlang = RU` → `get_language() = 'ru'` → guard bypassed → real translations cached.
+
+### Methods Added/Modified
+- [`get_translation_block()`](core/translator/class-translation-service.php:248) — extracts patterns, checks `has_actual_translations()`, skips caching for identities, otherwise caches mappings
+- [`extract_translatable_patterns()`](core/translator/class-translation-service.php:842) — extracts `{{...}}` and `[[...]]`, deduplicates, sorts for stable hash
+- [`build_translation_mappings()`](core/translator/class-translation-service.php:888) — calls adapter once per pattern, builds `['text' => [...], 'permalink' => [...]]` mappings
+- [`apply_translation_mappings()`](core/translator/class-translation-service.php:947) — applies cached mappings to current HTML via `preg_replace_callback`; excluded tokens pass through verbatim with delimiters preserved
+- [`has_actual_translations()`](core/translator/class-translation-service.php:992) — returns true if any text mapping differs from original or permalink mappings exist
+- [`generate_block_cache_key()`](core/translator/class-translation-service.php:1012) — uses `$pattern_hash` instead of `$content_hash`
+- **Removed:** `normalize_block_content_for_caching()` — no longer needed
+
+### Language Scenario Verification
+| Default | Current | Source | Guard Hit? | Cache? | Notes |
+|---------|---------|--------|------------|--------|-------|
+| EN | EN | EN | Yes | Skip | Identity skip — no transient bloat |
+| EN | RU | EN | No | Yes | Real translations cached |
+| RU | RU | EN | No | Yes | Real translations cached (RU ≠ EN source) |
+| RU | EN | EN | Yes | Skip | Identity skip — English content on English request |
+
+Subdomain adapter fully compatible: sets `PLL()->curlang` to subdomain language → `get_language()` returns correct value → guard behavior correct.
+
+### Impact on Redis Sites
+Yes, affected — 0% hit rate meant wasted adapter calls on every request. No visible bloat because Redis auto-evicts, but CPU overhead from `get_translation_batch_strings()` + `get_translation_batch_permalinks()` on every block render. Fix eliminates this entirely.
 
 ## ⚠️ Active Considerations
 - **Exception handler added (2026-04-30):** `set_exception_handler('frl_errors_handle_exception')` installed at all three registration points — [`frl_errors_init()`](core/error-handler.php:27), `muplugins_loaded/PHP_INT_MAX` re-bind, and `plugins_loaded/PHP_INT_MAX` re-bind. Catches `TypeError`, `ValueError`, `DivisionByZeroError`, `ArgumentCountError` that previously bypassed `set_error_handler()`. Delegates to existing [`frl_errors_handle_error()`](core/error-handler.php:105) so all suppression rules (textlist, `@` operator, `error_reporting_plugin`) apply consistently. Each handler has an independent recursion guard.
