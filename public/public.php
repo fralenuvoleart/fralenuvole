@@ -85,19 +85,23 @@ function frl_preload_featured_image()
             }
 
             $src = $image[0];
-            $original_path = get_attached_file($thumbnail_id);
 
-            // Check for webp version
-            if ($src && $original_path) {
-                $webp_path = $original_path . '.webp';
+            // Add .webp extension if enabled
+            if ($src && frl_get_option('preload_featured_webp') ){
+                $original_path = get_attached_file($thumbnail_id);
 
-                if (file_exists($webp_path)) {
-                    $upload_dir = wp_upload_dir();
-                    $src = str_replace(
-                        $upload_dir['basedir'] ?? '',
-                        $upload_dir['baseurl'] ?? '',
-                        $webp_path
-                    );
+                // Check for webp version
+                if ($original_path) {
+                    $webp_path = $original_path . '.webp';
+
+                    if (file_exists($webp_path)) {
+                        $upload_dir = wp_upload_dir();
+                        $src = str_replace(
+                            $upload_dir['basedir'] ?? '',
+                            $upload_dir['baseurl'] ?? '',
+                            $webp_path
+                        );
+                    }
                 }
             }
 

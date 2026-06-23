@@ -66,6 +66,13 @@ const FRL_DEFAULT_FIELDS = array(
 				'default' => 1,
 				'sanitize_callback' => 'absint',
 			),
+			'preload_featured_webp' => array(
+				'label' => 'Add .webp extension to featured images',
+				'description' => 'Adds .webp extension to featured images if .webp file exists on server',
+				'type' => 'checkbox',
+				'default' => 1,
+				'sanitize_callback' => 'absint',
+			),
 			'defer_css' => array(
 				'label' => 'Defer CSS Styles',
 				'description' => 'Defer non-critical CSS Styles',
