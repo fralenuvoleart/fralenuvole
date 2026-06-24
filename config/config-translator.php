@@ -23,6 +23,10 @@ const FRL_TRANSLATOR_SOURCE_LANG = 'en';
 //   'TOKEN*' = prefix wildcard (e.g., 'CONTENT*' matches {{CONTENT}}, {{CONTENT_TITLE}}, etc.)
 const FRL_TRANSLATOR_EXCLUDE = [
     'CONTENT*' => true,
+    'TITLE*' => true,
+    'FEATURE*' => true,
+    'PRICE*' => true,
+    'BADGE*' => true,
 ];
 
 // Taxonomies to auto-translate (supports % wildcard). Empty = translate none.

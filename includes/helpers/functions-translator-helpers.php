@@ -139,10 +139,21 @@ function frl_get_translation_block(string $block_content, array $block): string
         $l_start = preg_quote(FRL_TRANSLATOR_DELIMITER_LINK['start'], '/');
         $l_end   = preg_quote(FRL_TRANSLATOR_DELIMITER_LINK['end'], '/');
 
-        // 1. Strip {{String}} -> String
-        $content = preg_replace("/{$t_start}(.*?){$t_end}/", '$1', $block_content);
-        // 2. Replace ##slug## -> #
-        $content = preg_replace("/{$l_start}(.*?){$l_end}/", '#', $content);
+        // Strip delimiters in a single pass, honouring FRL_TRANSLATOR_EXCLUDE
+        // so third-party placeholder syntax is left intact.
+        $combined = "/{$t_start}(.*?){$t_end}|{$l_start}(.*?){$l_end}/";
+        $content = preg_replace_callback($combined, function ($m) {
+            if (!empty($m[1])) {
+                $token = trim($m[1]);
+                // Excluded tokens: keep delimiters, leave untouched.
+                return frl_is_token_match($token) ? $m[0] : $token;
+            }
+            if (!empty($m[2])) {
+                // Permalink patterns: always strip to '#'.
+                return '#';
+            }
+            return $m[0];
+        }, $block_content);
 
         return $safe_cache[$sig] = $content;
     }
