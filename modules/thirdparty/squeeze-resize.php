@@ -119,25 +119,35 @@ final class Frl_Thirdparty_Squeeze_Resize {
 		return <<<JS
 (function(){
 	var d={$max_dim};
-	if(typeof squeezeHandlers==='undefined'||typeof squeezeHandlers.handleCompressBeforeUpload!=='function'){
-		console.warn('Fralenuvole: Squeeze resize wrapper — function not found, resize disabled.');
+	var S=window.Squeeze||{};
+	if(typeof S.compressBeforeUpload!=='function'){
+		console.warn('Fralenuvole: Squeeze resize wrapper — compressBeforeUpload not found, resize disabled.');
 		fetch('{$ajax_url}?action=frl_squeeze_resize_alert&_ajax_nonce={$nonce}');
 		return;
 	}
-	var orig=squeezeHandlers.handleCompressBeforeUpload;
-	squeezeHandlers.handleCompressBeforeUpload=async function(up,file,opts){
-		var n=file.getNative();
-		if(!n||!n.type||!n.type.startsWith('image/'))return orig.call(this,up,file,opts);
-		var bmp;try{bmp=await createImageBitmap(n);}catch(e){return orig.call(this,up,file,opts);}
-		if(bmp.width<=d&&bmp.height<=d){bmp.close();return orig.call(this,up,file,opts);}
+	var orig=S.compressBeforeUpload;
+
+	/**
+		* Resize a File to max-dimension canvas blob, preserving quality 0.92.
+		* Returns the original file if resize is not needed or fails.
+		*/
+	async function resizeIfNeeded(file){
+		if(!file||!file.type||!file.type.startsWith('image/'))return file;
+		var bmp;try{bmp=await createImageBitmap(file);}catch(e){return file;}
+		if(bmp.width<=d&&bmp.height<=d){bmp.close();return file;}
 		var s=Math.min(d/bmp.width,d/bmp.height);
 		var c=document.createElement('canvas');
 		c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);
 		c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
 		bmp.close();
-		var blob=await new Promise(function(r){c.toBlob(r,n.type,0.92);});
-		file.setNative(blob);file.size=blob.size;
-		return orig.call(this,up,file,opts);
+		return new Promise(function(r){c.toBlob(r,file.type,0.92);});
+	}
+
+	S.compressBeforeUpload=async function(file,compressSizes){
+		var resized=await resizeIfNeeded(file);
+		if(!(resized instanceof Blob))return orig.call(S,file,compressSizes);
+		var f=new File([resized],file.name||'image.jpg',{type:file.type,lastModified:Date.now()});
+		return orig.call(S,f,compressSizes);
 	};
 })();
 JS;
