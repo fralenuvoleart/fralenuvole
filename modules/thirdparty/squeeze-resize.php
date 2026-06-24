@@ -67,8 +67,21 @@ final class Frl_Thirdparty_Squeeze_Resize {
 	 * @return void
 	 */
 	public static function fix_format_jpeg(): void {
-		if (isset($_POST['format']) && $_POST['format'] === 'jpeg') {
-			$_POST['format'] = 'jpg';
+		if (isset($_POST['format'])) {
+			frl_log('Squeeze fix_format_jpeg: raw format={raw}, extension={ext}, filename={name}', [
+				'raw'  => $_POST['format'],
+				'ext'  => isset($_POST['extension']) ? $_POST['extension'] : 'n/a',
+				'name' => isset($_POST['filename']) ? $_POST['filename'] : 'n/a',
+			]);
+
+			if ($_POST['format'] === 'jpeg') {
+				$_POST['format'] = 'jpg';
+				frl_log('Squeeze fix_format_jpeg: normalised jpeg → jpg');
+			}
+		} else {
+			frl_log('Squeeze fix_format_jpeg: $_POST[format] not set. POST keys: {keys}', [
+				'keys' => implode(', ', array_keys($_POST)),
+			]);
 		}
 	}
 
