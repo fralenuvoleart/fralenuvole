@@ -347,6 +347,61 @@ function frl_string_matches_pattern($string, $patterns)
 }
 
 /**
+ * Check if a translator token matches the exclusion list.
+ *
+ * Reads FRL_TRANSLATOR_EXCLUDE constant once per request lifetime,
+ * pre-splitting entries into exact matches (O(1) isset) and prefix
+ * wildcards (O(P) str_starts_with loop, where P is typically 1-3).
+ *
+ * Convention in FRL_TRANSLATOR_EXCLUDE:
+ *   'TOKEN'   = exact match only
+ *   'TOKEN*'  = prefix wildcard (trailing '*' stripped before comparison)
+ *
+ * @param string $token The inner content of a {{...}} delimiter.
+ * @return bool True if the token should be excluded from translation.
+ */
+function frl_is_token_match(string $token): bool
+{
+    // Per-request memoization — the same token appears multiple times
+    // in a single page render (sort loop + preg_replace_callback per occurrence).
+    static $cache = [];
+    if (array_key_exists($token, $cache)) {
+        return $cache[$token];
+    }
+
+    static $exact = null, $prefixes = null;
+
+    if ($exact === null) {
+        $exact = [];
+        $prefixes = [];
+        if (defined('FRL_TRANSLATOR_EXCLUDE')) {
+            foreach (FRL_TRANSLATOR_EXCLUDE as $key => $_) {
+                $key = (string) $key;
+                if (str_ends_with($key, '*')) {
+                    $prefixes[] = rtrim($key, '*');
+                } else {
+                    $exact[$key] = true;
+                }
+            }
+        }
+    }
+
+    // Exact match: O(1) isset — same performance as today.
+    if (isset($exact[$token])) {
+        return $cache[$token] = true;
+    }
+
+    // Prefix wildcards: O(P) loop, P typically 1-3 entries.
+    foreach ($prefixes as $prefix) {
+        if (str_starts_with($token, $prefix)) {
+            return $cache[$token] = true;
+        }
+    }
+
+    return $cache[$token] = false;
+}
+
+/**
  * Normalize any input into a non-empty array.
  *
  * Converts arrays, objects, and JSON strings to arrays. Wraps scalar values

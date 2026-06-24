@@ -760,79 +760,6 @@ final class Frl_Translation_Service
     }
 
     /**
-     * Efficiently processes a string for all placeholder patterns ({{...}} and ##...##).
-     *
-     * @param string $content The content to process.
-     * @return string
-     */
-    private function _process_all_patterns(string $content): string
-    {
-        // Use a single regex to find all placeholder types in one pass.
-        $tStart = preg_quote($this->delimiter_text_start, '/');
-        $tEnd   = preg_quote($this->delimiter_text_end, '/');
-        $lStart = preg_quote($this->delimiter_link_start, '/');
-        $lEnd   = preg_quote($this->delimiter_link_end, '/');
-
-        $combined_pattern = "/{$tStart}(.*?){$tEnd}|{$lStart}(.*?){$lEnd}/";
-
-        if (!preg_match_all($combined_pattern, $content, $matches, PREG_SET_ORDER)) {
-            return $content;
-        }
-
-        $strings_to_translate = [];
-        $permalinks_to_translate = [];
-
-        // Pre-load exclude map for O(1) lookup.
-        $exclude = defined('FRL_TRANSLATOR_EXCLUDE') ? FRL_TRANSLATOR_EXCLUDE : [];
-
-        // Sort matches into batches for efficient lookup.
-        foreach ($matches as $match) {
-            if (!empty($match[1])) {
-                $token = trim($match[1]);
-                if (!isset($exclude[$token])) {
-                    $strings_to_translate[] = $token;
-                }
-            } elseif (!empty($match[2])) {
-                $permalinks_to_translate[] = trim($match[2]);
-            }
-        }
-
-        // Fetch all translations up front.
-        $translated_strings = !empty($strings_to_translate) ? $this->get_translation_batch_strings(array_unique($strings_to_translate)) : [];
-        $translated_permalinks = !empty($permalinks_to_translate) ? $this->get_translation_batch_permalinks(array_unique($permalinks_to_translate)) : [];
-
-        // Use a single replace callback for performance.
-        $tStart = preg_quote($this->delimiter_text_start, '/');
-        $tEnd   = preg_quote($this->delimiter_text_end, '/');
-        $lStart = preg_quote($this->delimiter_link_start, '/');
-        $lEnd   = preg_quote($this->delimiter_link_end, '/');
-        $combined_pattern = "/{$tStart}(.*?){$tEnd}|{$lStart}(.*?){$lEnd}/";
-
-        return preg_replace_callback($combined_pattern, function ($match) use ($translated_strings, $translated_permalinks, $exclude) {
-            if (!empty($match[1])) {
-                $original = trim($match[1]);
-                // Excluded tokens: pass through verbatim (including delimiters), no translation.
-                if (isset($exclude[$original])) {
-                    return $match[0];
-                }
-                // Fetch the translated string (or fall back to original).
-                $translated = $translated_strings[$original] ?? $original;
-
-                // Process any ##slug## placeholders that might be nested inside
-                // the translated string (e.g. translations containing links).
-                $translated = $this->process_permalink_patterns($translated);
-
-                return $translated;
-            }
-            if (!empty($match[2])) {
-                $original = trim($match[2]);
-                return $translated_permalinks[$original] ?? '#';
-            }
-            return $match[0]; // Should not happen, but as a fallback.
-        }, $content);
-    }
-
-    /**
      * Extract translatable patterns from block content for stable cache keys.
      *
      * Returns a sorted, deduplicated list of all {{...}} and [[...]] patterns.
@@ -894,12 +821,10 @@ final class Frl_Translation_Service
         $permalink_tokens = [];
         $strings_to_register = [];
 
-        $exclude = defined('FRL_TRANSLATOR_EXCLUDE') ? FRL_TRANSLATOR_EXCLUDE : [];
-
         foreach ($patterns as $pattern) {
             if ($pattern['type'] === 'text') {
                 $token = $pattern['value'];
-                if (!isset($exclude[$token])) {
+                if (!frl_is_token_match($token)) {
                     $text_tokens[] = $token;
                     $strings_to_register[] = $token;
                 }
@@ -963,13 +888,11 @@ final class Frl_Translation_Service
 
         $combined_pattern = "/{$tStart}(.*?){$tEnd}|{$lStart}(.*?){$lEnd}/";
 
-        $exclude = defined('FRL_TRANSLATOR_EXCLUDE') ? FRL_TRANSLATOR_EXCLUDE : [];
-
-        return preg_replace_callback($combined_pattern, function ($match) use ($text_map, $permalink_map, $exclude) {
+        return preg_replace_callback($combined_pattern, function ($match) use ($text_map, $permalink_map) {
             if (!empty($match[1])) {
                 $original = trim($match[1]);
                 // Excluded tokens: pass through verbatim (including delimiters), no translation.
-                if (isset($exclude[$original])) {
+                if (frl_is_token_match($original)) {
                     return $match[0];
                 }
                 // Fetch the translated string (or fall back to original).

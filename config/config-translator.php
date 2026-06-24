@@ -16,10 +16,13 @@ const FRL_TRANSLATOR_DEFAULT_LANG = 'en';
 // The source language remains 'en' even if Polylang's default changes on subdomains for clean URLs.
 const FRL_TRANSLATOR_SOURCE_LANG = 'en';
 
-// Strings that should NOT be translated or registered. 
+// Strings that should NOT be translated or registered.
 // Matched against the inner content of {{...}} delimiters.
+// Format:
+//   'TOKEN'  = exact match only (e.g., excludes only {{TOKEN}})
+//   'TOKEN*' = prefix wildcard (e.g., 'CONTENT*' matches {{CONTENT}}, {{CONTENT_TITLE}}, etc.)
 const FRL_TRANSLATOR_EXCLUDE = [
-    'CONTENT' => true,
+    'CONTENT*' => true,
 ];
 
 // Taxonomies to auto-translate (supports % wildcard). Empty = translate none.
