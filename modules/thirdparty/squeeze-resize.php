@@ -48,8 +48,28 @@ final class Frl_Thirdparty_Squeeze_Resize {
 		// Admin: media uploader + bulk page
 		add_action('admin_enqueue_scripts', [self::class, 'enqueue_resize_script'], 10, 0);
 
+		// Squeeze bug fix: normalise $_POST['format'] from 'jpeg' to 'jpg'
+		// before Squeeze's update_attachment handler (p10). Squeeze's
+		// ALLOWED_IMAGE_FORMATS uses key 'jpg' but the browser sends 'jpeg'.
+		add_action('wp_ajax_squeeze_update_attachment', [self::class, 'fix_format_jpeg'], 1, 0);
+
 		// AJAX handler for missing-function alert
 		add_action('wp_ajax_frl_squeeze_resize_alert', [self::class, 'handle_alert'], 10, 0);
+	}
+
+	/**
+	 * Normalise Squeeze's $_POST['format'] from 'jpeg' to 'jpg'.
+	 *
+	 * Squeeze's ALLOWED_IMAGE_FORMATS uses key 'jpg' but browsers report
+	 * MIME type 'image/jpeg', which Squeeze's JS sends as format=jpeg.
+	 * This hook runs at priority 1, before Squeeze's update_attachment at 10.
+	 *
+	 * @return void
+	 */
+	public static function fix_format_jpeg(): void {
+		if (isset($_POST['format']) && $_POST['format'] === 'jpeg') {
+			$_POST['format'] = 'jpg';
+		}
 	}
 
 	/**

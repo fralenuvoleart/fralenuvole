@@ -109,4 +109,4 @@ const FRL_THIRDPARTY_OUTBOUND_HOOKS = [
  * compression, so the compressed output is already at the target size.
  * Set to 0 to disable resize.
  */
-const FRL_THIRDPARTY_SQUEEZE_MAX_DIM = 2560;
+const FRL_THIRDPARTY_SQUEEZE_MAX_DIM = 1920;
