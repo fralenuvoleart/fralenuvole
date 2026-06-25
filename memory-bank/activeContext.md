@@ -7,7 +7,12 @@
 ## 🔄 Current Focus
 Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
 
-**Current session:** Pattern-based block translation cache fix + identity skip optimization (2026-06-22)
+**Current session:** Preload featured image extension abstraction (2026-06-25)
+
+## ✅ Preload Featured Image — Generic Extension Abstraction (2026-06-25)
+- **Problem:** `frl_preload_featured_image()` hardcoded `.webp` extension. After switching to AVIF images (via Imagify), the preload link needed `.avif` URLs.
+- **Fix:** Replaced `preload_featured_webp` checkbox with `preload_featured_extension` text field in [`config/config-options.php:69`](config/config-options.php:69). Abstracted hardcoded logic in [`frl_preload_featured_image()`](public/public.php:55). Cache key now includes extension. Empty extension → original URL (backward compatible).
+- **Files:** [`config/config-options.php`](config/config-options.php:69), [`public/public.php`](public/public.php:55)
 
 ## ✅ Deferred CSS — Non-Render-Blocking Theme Stylesheet (2026-06-21)
 - **Purpose:** Load non-critical theme CSS (`deferred.css`) as a deferred `<link>` in the footer instead of synchronously in `<head>`, improving PageSpeed LCP/FCP scores.

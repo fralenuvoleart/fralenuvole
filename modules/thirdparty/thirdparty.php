@@ -29,14 +29,6 @@ if (frl_is_valid_frontend_page_request()) {
     add_filter('saswp_modify_schema_output', 'frl_thirdparty_sanitize_schemas', 9999, 1);
 }
 
-// Squeeze: client-side image resize before browser compression.
-// Wraps Squeeze's handleCompressBeforeUpload to cap images at 2560px
-// before compression, preserving optimization quality.
-if (frl_is_thirdparty_plugin_active('squeeze/squeeze.php')) {
-    require_once __DIR__ . '/squeeze-resize.php';
-    Frl_Thirdparty_Squeeze_Resize::init();
-}
-
 /**
  * Enqueue thirdparty-specific styles and scripts
  */

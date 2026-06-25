@@ -1,5 +1,13 @@
 # Project Progress
 
+## ✅ Preload Featured Image — Generic Extension Abstraction (2026-06-25)
+- Replaced `preload_featured_webp` checkbox with `preload_featured_extension` text field
+- Abstracted hardcoded `.webp` logic in `frl_preload_featured_image()` to use configurable extension
+- Cache key now includes extension to prevent stale URLs
+- Empty extension → original image URL (backward compatible)
+- Files: [`config/config-options.php`](config/config-options.php:69), [`public/public.php`](public/public.php:55)
+
+
 ## ✅ Translation & Cache Optimization Round 2 (2026-06-22)
 
 ### Scan Findings

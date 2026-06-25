@@ -50,7 +50,7 @@ function frl_public_scripts()
 }
 
 /**
- * Preload the featured image of a singular post, prioritizing WebP if available.
+ * Preload the featured image of a singular post, using an optional file extension (e.g., .avif, .webp).
  */
 function frl_preload_featured_image()
 {
@@ -70,10 +70,11 @@ function frl_preload_featured_image()
     } else {
         $image_size = frl_get_featured_image_size($post);
 
-        // Cache key includes post ID and image size
-        $cache_key = "featured_img_post_{$post->ID}_{$image_size}";
+        // Cache key includes post ID, image size, and extension
+        $extension = frl_get_option('preload_featured_extension');
+        $cache_key = "featured_img_post_{$post->ID}_{$image_size}" . (!empty($extension) ? "_{$extension}" : '');
 
-        $src = frl_cache_remember('postdata', $cache_key, function () use ($post, $image_size) {
+        $src = frl_cache_remember('postdata', $cache_key, function () use ($post, $image_size, $extension) {
             $thumbnail_id = get_post_thumbnail_id($post->ID);
             if (!$thumbnail_id) {
                 return '';
@@ -86,20 +87,19 @@ function frl_preload_featured_image()
 
             $src = $image[0];
 
-            // Add .webp extension if enabled
-            if ($src && frl_get_option('preload_featured_webp') ){
+            // Add image format extension if configured (e.g., .avif, .webp)
+            if ($src && !empty($extension)) {
                 $original_path = get_attached_file($thumbnail_id);
 
-                // Check for webp version
                 if ($original_path) {
-                    $webp_path = $original_path . '.webp';
+                    $extended_path = $original_path . $extension;
 
-                    if (file_exists($webp_path)) {
+                    if (file_exists($extended_path)) {
                         $upload_dir = wp_upload_dir();
                         $src = str_replace(
                             $upload_dir['basedir'] ?? '',
                             $upload_dir['baseurl'] ?? '',
-                            $webp_path
+                            $extended_path
                         );
                     }
                 }
