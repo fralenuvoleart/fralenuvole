@@ -54,14 +54,8 @@ function frl_clear_post_cache($post_id)
         return;
     }
 
-    $translations_key = "post_{$post_id}_translations";
-    frl_cache_clear('postdata', $translations_key);
-
-    $generated_schemas_key = "post_{$post_id}_schema";
-    frl_cache_clear('postdata', $generated_schemas_key);
-
-    $permalinks_key = "post_{$post_id}";
-    frl_cache_clear('permalinks', $permalinks_key);
+    frl_cache_clear('postdata', frl_generate_cache_key('post', (string)$post_id, 'translations'));
+    frl_cache_clear('postdata', frl_generate_cache_key('post', (string)$post_id, 'schema'));
 
     // Clear all tracked translated meta fields for this post
     frl_clear_tracked_meta_cache('post', $post_id);
@@ -70,20 +64,31 @@ function frl_clear_post_cache($post_id)
     $type = frl_get_option('langswitcher_dropdown') ? 'dd' : 'fl';
     $langswitch_key = 'langswitcher_' . $type . '_post_' . $post_id;
 
-    frl_cache_clear('shortcodes', $langswitch_key);
+    // Clear both dropdown and flag-list langswitcher variants
+    frl_cache_clear('shortcodes', frl_generate_cache_key('langswitcher_dd', 'post', (string)$post_id));
+    frl_cache_clear('shortcodes', frl_generate_cache_key('langswitcher_fl', 'post', (string)$post_id));
 
-    // Clear featured image cache for this post using centralized size logic
-    $cache_key = "featured_img_post_{$post_id}_";
-
+    // Clear featured image cache for this post using centralized cache key helper.
+    // The extension is included in the key, so we clear all extension variants too.
     $image_size = frl_get_featured_image_size($post_id);
-    frl_cache_clear('postdata', $cache_key . $image_size);
+    $extensions = ['']; // Always clear the no-extension variant
+    $configured_extension = frl_get_option('preload_featured_extension');
+    if (!empty($configured_extension)) {
+        $extensions[] = $configured_extension;
+    }
 
-    // Also clear any potential other sizes that might have been cached
-    // This covers edge cases where the preload logic might have changed
-    $common_sizes = ['thumbnail', 'medium', 'large', 'full'];
-    foreach ($common_sizes as $size) {
-        if ($size !== $image_size) {
-            frl_cache_clear('postdata', $cache_key . $size);
+    foreach ($extensions as $ext) {
+        $cache_key = frl_generate_cache_key('featured_img', (string)$post_id, $image_size, $ext);
+        frl_cache_clear('postdata', $cache_key);
+
+        // Also clear any potential other sizes that might have been cached
+        // This covers edge cases where the preload logic might have changed
+        $common_sizes = ['thumbnail', 'medium', 'large', 'full'];
+        foreach ($common_sizes as $size) {
+            if ($size !== $image_size) {
+                $alt_key = frl_generate_cache_key('featured_img', (string)$post_id, $size, $ext);
+                frl_cache_clear('postdata', $alt_key);
+            }
         }
     }
 }

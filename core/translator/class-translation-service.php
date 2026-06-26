@@ -660,7 +660,7 @@ final class Frl_Translation_Service
     public function get_post_translations(int $post_id): array
     {
         if ($post_id <= 0) return [];
-        return frl_cache_remember('postdata', "post_{$post_id}_translations", function () use ($post_id) {
+        return frl_cache_remember('postdata', frl_generate_cache_key('post', (string)$post_id, 'translations'), function () use ($post_id) {
             $translations = $this->adapter->get_post_translations($post_id);
             return $translations;
         });

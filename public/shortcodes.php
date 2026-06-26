@@ -25,6 +25,8 @@ if (!defined('ABSPATH')) {
  * - [frl_slug id=slug|123] or [frl_slug]  Translated slug (from URL, post ID or current post)
  * - [frl_meta field=key select=":first" default=""]
  *   Current post meta value. For complex values (arrays/objects), select allows keys separated by '|'.
+ * - [frl_repeater field=key index=0 subfield=key default=""]
+ *   Repeater subfield value. index selects the row (0-based), subfield the column.
  *   Special ':first' returns the first scalar found. default provides a fallback if empty/not found.
  * - [frl_meta_rel field=key output=title|id|permalink|slug index=0|all anchor=#]
  * - [frl_user_meta field=key]     Current author meta (content can provide field)
@@ -78,6 +80,7 @@ function frl_shortcodes_init()
     add_shortcode('frl', 'frl_shortcode_translation');
     add_shortcode('frl_lang', 'frl_shortcode_language');
     add_shortcode('frl_meta', 'frl_shortcode_meta');
+    add_shortcode('frl_repeater', 'frl_shortcode_repeater');
     add_shortcode('frl_meta_rel', 'frl_shortcode_meta_rel');
     add_shortcode('frl_permalink', 'frl_shortcode_permalink');
     add_shortcode('frl_slug', 'frl_shortcode_slug');
@@ -231,56 +234,61 @@ function frl_shortcode_langswitcher($atts = [])
 	], $atts, 'frl_langswitcher');
 	$exclude_slugs = array_values(array_filter(array_map('sanitize_key', array_map('trim', explode(',', (string)$a['exclude'])))));
 
+	$post_id       = get_queried_object_id();
 	$dropdown_enabled = $a['dropdown'] !== ''
 		? (bool) $a['dropdown']
 		: (bool) ($args['dropdown'] ?? frl_get_option('langswitcher_dropdown'));
-	$cache_key = 'langswitcher_' . ($dropdown_enabled ? 'dd' : 'fl') . '_post_' . get_queried_object_id() . (empty($exclude_slugs) ? '' : '_x_' . md5(implode(',', $exclude_slugs)));
+	$cache_key = frl_generate_cache_key('langswitcher_' . ($dropdown_enabled ? 'dd' : 'fl'), 'post', (string)$post_id);
 
-	return frl_cache_remember('shortcodes', $cache_key, function () use ($args, $exclude_slugs, $dropdown_enabled) {
+	// show_flags=0 avoids Polylang rendering unused base64 PNGs.
+	$raw_args = array_merge(FRL_LANGSWITCHER_ARGS, [
+		'raw'        => 1,
+		'show_flags' => 0,
+	]);
 
-		// show_flags=0 avoids Polylang rendering unused base64 PNGs.
-		$raw_args = array_merge(FRL_LANGSWITCHER_ARGS, [
-			'raw'        => 1,
-			'show_flags' => 0,
-		]);
-
+	$elements = frl_cache_remember('shortcodes', $cache_key, function () use ($raw_args) {
 		/** @disregard P1010 Undefined type */
 		$elements = pll_the_languages($raw_args);
 		if (!is_array($elements) || empty($elements)) {
-			return '';
+			return null;
 		}
-
-		// Apply hide_current (not in dropdown mode — dropdown always shows current as selected)
-		if (!empty($args['hide_current']) && !$dropdown_enabled) {
-			$elements = array_filter($elements, function ($el) {
-				return empty($el['current_lang']);
-			});
-		}
-
-		// Apply hide_if_no_translation
-		if (!empty($args['hide_if_no_translation'])) {
-			$elements = array_filter($elements, function ($el) {
-				return empty($el['no_translation']);
-			});
-		}
-
-		// Apply slug exclusions (from option + shortcode)
-		if (!empty($exclude_slugs)) {
-			$elements = array_filter($elements, function ($el) use ($exclude_slugs) {
-				return !in_array($el['slug'], $exclude_slugs, true);
-			});
-		}
-
-		if (empty($elements)) {
-			return '';
-		}
-
-		if ($dropdown_enabled) {
-			return frl_langswitcher_build_dropdown($elements);
-		}
-
-		return frl_langswitcher_build_list($elements);
+		return $elements;
 	});
+
+	if (empty($elements)) {
+		return '';
+	}
+
+	// Apply hide_current (not in dropdown mode — dropdown always shows current as selected)
+	if (!empty($args['hide_current']) && !$dropdown_enabled) {
+		$elements = array_filter($elements, function ($el) {
+			return empty($el['current_lang']);
+		});
+	}
+
+	// Apply hide_if_no_translation
+	if (!empty($args['hide_if_no_translation'])) {
+		$elements = array_filter($elements, function ($el) {
+			return empty($el['no_translation']);
+		});
+	}
+
+	// Apply slug exclusions (from option + shortcode)
+	if (!empty($exclude_slugs)) {
+		$elements = array_filter($elements, function ($el) use ($exclude_slugs) {
+			return !in_array($el['slug'], $exclude_slugs, true);
+		});
+	}
+
+	if (empty($elements)) {
+		return '';
+	}
+
+	if ($dropdown_enabled) {
+		return frl_langswitcher_build_dropdown($elements);
+	}
+
+	return frl_langswitcher_build_list($elements);
 }
 
 /**
@@ -486,6 +494,51 @@ function frl_shortcode_meta($atts)
             return $default_value;
         }
         return do_shortcode($value);
+    });
+}
+
+/**
+ * [frl_repeater] - Displays a subfield value from a repeater row.
+ *
+ * @param array $atts Attributes: field (required), index (required), subfield (required), default (fallback).
+ * @return string Subfield value or default.
+ */
+function frl_shortcode_repeater($atts)
+{
+    global $post;
+    if (!$post || !is_a($post, 'WP_Post')) {
+        return '';
+    }
+
+    $a = shortcode_atts([
+        'field'    => '',
+        'index'    => '0',
+        'subfield' => '',
+        'default'  => '',
+    ], $atts, 'frl_repeater');
+
+    $field    = sanitize_key($a['field']);
+    $index    = (int) $a['index'];
+    $subfield = sanitize_key($a['subfield']);
+    $default  = (string) $a['default'];
+
+    if (empty($field) || $index < 0 || empty($subfield)) {
+        return '';
+    }
+
+    $cache_key = frl_generate_cache_key('repeater', (string)$post->ID, $field, (string)$index, $subfield);
+    return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $field, $index, $subfield, $default) {
+        $rows = frl_get_post_meta($post->ID, $field, true);
+        // ACF repeaters: get_post_meta returns row count string, get_field handles array unpacking.
+        if (!is_array($rows) && function_exists('get_field')) {
+            $rows = get_field($field, $post->ID, false);
+        }
+        if (!is_array($rows) || !isset($rows[$index]) || !is_array($rows[$index])) {
+            return $default;
+        }
+
+        $value = $rows[$index][$subfield] ?? '';
+        return ($value !== '') ? (string) $value : $default;
     });
 }
 

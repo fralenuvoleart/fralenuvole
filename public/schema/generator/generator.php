@@ -66,9 +66,7 @@ function frl_schema_generator_output(): void
  */
 function frl_schema_generator_get(int $post_id): array
 {
-    $cache_key = "post_{$post_id}_schema";
-
-    return frl_cache_remember('postdata', $cache_key, function () use ($post_id) {
+    return frl_cache_remember('postdata', frl_generate_cache_key('post', (string)$post_id, 'schema'), function () use ($post_id) {
         $schemas = [];
         $definitions = frl_schema_generator_get_definitions($post_id);
 

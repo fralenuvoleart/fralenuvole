@@ -50,6 +50,59 @@ function frl_public_scripts()
 }
 
 /**
+ * Build responsive imagesrcset from attachment metadata. Skips sizes where the format variant doesn't exist on disk.
+ *
+ * @param int    $thumbnail_id Attachment ID.
+ * @param string $extension    File extension (e.g., '.avif'), empty for original format.
+ * @param string $upload_dir   Upload base directory.
+ * @param string $upload_url   Upload base URL.
+ * @return string Srcset string, or empty on failure.
+ */
+function frl_build_featured_image_srcset(int $thumbnail_id, string $extension, string $upload_dir, string $upload_url): string
+{
+    $metadata = wp_get_attachment_metadata($thumbnail_id);
+    if (!$metadata || empty($metadata['file'])) {
+        return '';
+    }
+
+    $dirname = trailingslashit(dirname($metadata['file']));
+    $entries = [];
+
+    // Include full-size original
+    $full_file = $upload_dir . '/' . $metadata['file'];
+    $full_width = $metadata['width'] ?? 0;
+    if ($full_width && (!$extension || file_exists($full_file . $extension))) {
+        $entries[$full_width] = $upload_url . '/' . $metadata['file'] . $extension;
+    }
+
+    // Include intermediate sizes
+    $sizes = $metadata['sizes'] ?? [];
+    foreach ($sizes as $size_data) {
+        if (empty($size_data['file']) || empty($size_data['width'])) {
+            continue;
+        }
+        $sized_path = $upload_dir . '/' . $dirname . $size_data['file'];
+        if ($extension && !file_exists($sized_path . $extension)) {
+            continue; // Format variant doesn't exist for this size, skip it
+        }
+        $entries[(int)$size_data['width']] = $upload_url . '/' . $dirname . $size_data['file'] . $extension;
+    }
+
+    if (empty($entries)) {
+        return '';
+    }
+
+    // Sort by width ascending, build srcset string
+    ksort($entries, SORT_NUMERIC);
+    $parts = [];
+    foreach ($entries as $width => $url) {
+        $parts[] = "{$url} {$width}w";
+    }
+
+    return implode(', ', $parts);
+}
+
+/**
  * Preload the featured image of a singular post, using an optional file extension (e.g., .avif, .webp).
  */
 function frl_preload_featured_image()
@@ -64,60 +117,59 @@ function frl_preload_featured_image()
     }
 
     // Cache processed images within a request
-    static $src_cache = [];
-    if (isset($src_cache[$post->ID])) {
-        $src = $src_cache[$post->ID];
+    static $preload_cache = [];
+    if (isset($preload_cache[$post->ID])) {
+        $preload_data = $preload_cache[$post->ID];
     } else {
         $image_size = frl_get_featured_image_size($post);
+        $extension  = frl_get_option('preload_featured_extension');
 
-        // Cache key includes post ID, image size, and extension
-        $extension = frl_get_option('preload_featured_extension');
-        $cache_key = "featured_img_post_{$post->ID}_{$image_size}" . (!empty($extension) ? "_{$extension}" : '');
+        $cache_key = frl_generate_cache_key('featured_img', (string)$post->ID, $image_size, $extension);
 
-        $src = frl_cache_remember('postdata', $cache_key, function () use ($post, $image_size, $extension) {
+        $preload_data = frl_cache_remember('postdata', $cache_key, function () use ($post, $image_size, $extension) {
             $thumbnail_id = get_post_thumbnail_id($post->ID);
             if (!$thumbnail_id) {
-                return '';
+                return null;
             }
 
-            $image = wp_get_attachment_image_src($thumbnail_id, $image_size);
-            if (!$image || !isset($image[0])) {
-                return '';
-            }
-
-            $src = $image[0];
-
-            // Add image format extension if configured (e.g., .avif, .webp)
-            if ($src && !empty($extension)) {
+            // If extension is set but no variant files exist, fall back to original format
+            if (!empty($extension)) {
                 $original_path = get_attached_file($thumbnail_id);
-
-                if ($original_path) {
-                    $extended_path = $original_path . $extension;
-
-                    if (file_exists($extended_path)) {
-                        $upload_dir = wp_upload_dir();
-                        $src = str_replace(
-                            $upload_dir['basedir'] ?? '',
-                            $upload_dir['baseurl'] ?? '',
-                            $extended_path
-                        );
-                    }
+                if (!$original_path || !file_exists($original_path . $extension)) {
+                    $extension = '';
                 }
             }
 
-            return $src;
+            $upload_dir = wp_upload_dir();
+            $srcset     = frl_build_featured_image_srcset(
+                $thumbnail_id,
+                $extension,
+                $upload_dir['basedir'],
+                $upload_dir['baseurl']
+            );
+
+            if (empty($srcset)) {
+                return null;
+            }
+
+            $sizes = wp_get_attachment_image_sizes($thumbnail_id, $image_size);
+
+            return [
+                'srcset' => $srcset,
+                'sizes'  => $sizes,
+            ];
         });
 
-        // Store in request cache
-        $src_cache[$post->ID] = $src;
+        $preload_cache[$post->ID] = $preload_data;
     }
 
-    if ($src) {
+    if ($preload_data && !empty($preload_data['srcset'])) {
         printf(
-            '<link id="%s-preload-img" data-plugin="%s" rel="preload" fetchPriority="high" href="%s" as="image" />',
+            '<link id="%s-preload-img" data-plugin="%s" rel="preload" fetchPriority="high" imagesrcset="%s" imagesizes="%s" as="image" />',
             FRL_PREFIX,
             FRL_NAME,
-            esc_url($src)
+            esc_attr($preload_data['srcset']),
+            esc_attr($preload_data['sizes'])
         );
     }
 }

@@ -61,14 +61,14 @@ const FRL_DEFAULT_FIELDS = array(
 			),
 			'preload_featured' => array(
 				'label' => 'Preload featured images',
-				'description' => 'Preload featured images. Use the "Preload image format extension" option below to add format variants (e.g., .avif, .webp)',
+				'description' => 'Preload featured images with responsive srcset.',
 				'type' => 'checkbox',
 				'default' => 1,
 				'sanitize_callback' => 'absint',
 			),
 			'preload_featured_extension' => array(
-				'label' => 'Preload image format extension',
-				'description' => 'Add a file extension to the preloaded featured image URL if the file exists (e.g., .avif, .webp). Leave blank to use the original image URL.',
+				'label' => 'Add extension to preloaded image',
+				'description' => 'Add a file extension to the preloaded featured image URL if the file exists (e.g. .avif). Leave blank to use the original image URL.',
 				'type' => 'text',
 				'default' => '',
 				'sanitize_callback' => 'sanitize_text_field',

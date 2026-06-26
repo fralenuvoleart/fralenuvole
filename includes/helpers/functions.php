@@ -278,6 +278,19 @@ function frl_get_featured_image_size($post)
 }
 
 /**
+ * Build a cache key from prefix + segments joined by '_'. Empty segments are ignored.
+ *
+ * @param string $prefix      Key prefix (without trailing '_').
+ * @param string ...$segments Segments to join.
+ * @return string Cache key.
+ */
+function frl_generate_cache_key(string $prefix, string ...$segments): string
+{
+    $filtered = array_filter($segments, fn(string $s) => $s !== '');
+    return $prefix . ($filtered ? '_' . implode('_', $filtered) : '');
+}
+
+/**
  * Returns the current post ID, working both inside and outside the loop.
  *
  * @return int The current post ID, or 0 if not found.

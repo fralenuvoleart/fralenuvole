@@ -1,11 +1,14 @@
 # Project Progress
 
-## ✅ Preload Featured Image — Generic Extension Abstraction (2026-06-25)
+## ✅ Preload Featured Image — Responsive Srcset + Extension Abstraction (2026-06-25/26)
 - Replaced `preload_featured_webp` checkbox with `preload_featured_extension` text field
-- Abstracted hardcoded `.webp` logic in `frl_preload_featured_image()` to use configurable extension
-- Cache key now includes extension to prevent stale URLs
-- Empty extension → original image URL (backward compatible)
-- Files: [`config/config-options.php`](config/config-options.php:69), [`public/public.php`](public/public.php:55)
+- `frl_preload_featured_image()` now outputs responsive `<link imagesrcset imagesizes>` instead of single `href`
+- New helper `frl_get_featured_image_cache_key()` ensures identical keys in cache remember() and cleanup
+- New helper `frl_build_featured_image_srcset()` iterates wp_get_attachment_metadata() sizes, file_exists() per size
+- `frl_clear_post_cache()` uses helper to clear both empty-extension and configured-extension variants
+- When `preload_featured_extension` is `.avif`: only sizes where `.avif` file exists are included in srcset
+- When empty: original format URLs used verbatim, no file_exists() checks
+- Files: [`config/config-options.php`](config/config-options.php:62-75), [`public/public.php`](public/public.php:52-115), [`includes/helpers/functions.php`](includes/helpers/functions.php:279-354), [`core/cache/cache-cleanup.php`](core/cache/cache-cleanup.php:75-97)
 
 
 ## ✅ Translation & Cache Optimization Round 2 (2026-06-22)
