@@ -100,6 +100,9 @@
     border-radius: 999px;
 }
 
+#wp-admin-bar-my-account.with-avatar>a picture {
+    display: inline;
+}
 #wp-toolbar,
 #wp-toolbar #wp-admin-bar-top-secondary {
     background-color: inherit;
