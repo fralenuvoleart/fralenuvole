@@ -1,5 +1,36 @@
 # Active Context
 
+## ✅ Repeater Field Format Abstraction — ACPT/SCF/ACF Transparency (2026-06-27)
+
+### Problem
+`[frl_repeater field=service-prices_price-options index=0 subfield=option-title]` returned empty because ACPT stores repeaters in **columnar** format, but [`frl_shortcode_repeater()`](public/shortcodes.php:506) expected **row-indexed** (SCF/ACF) format. The `get_field()` fallback never fired because ACPT's `get_post_meta()` returns a valid PHP array — just in the wrong shape.
+
+### Fix Applied
+
+**New helper [`frl_get_repeater_field()`](includes/helpers/functions.php:947)** — placed after [`frl_get_post_meta()`](includes/helpers/functions.php:916):
+- Dual-purpose: `frl_get_repeater_field($post_id, $field)` → normalized row-indexed array `[{sub: val}, ...]`; `frl_get_repeater_field($post_id, $field, $index, $subfield)` → scalar subfield value
+- Detects ACPT format via `original_name` data-envelope key on `reset($rows)` — never present in SCF/ACF rows
+- Transposes ACPT columnar: `{sub: [{value}, ...]}` → `[{sub: val}, ...]`
+- SCF/ACF already row-indexed: passthrough
+- ACF row count int: calls `get_field($field, $post_id, false)` to resolve
+
+**Shortcode simplified:** [`frl_shortcode_repeater()`](public/shortcodes.php:508) delegates to helper — one function call, `$value ?? $default`.
+
+### Files Modified
+- [`includes/helpers/functions.php`](includes/helpers/functions.php:947-994) — new 48-line helper
+- [`public/shortcodes.php`](public/shortcodes.php:506-538) — simplified from 38 lines to 33 lines
+
+### Compat Shim Interaction Verified
+| Scenario | Helper behavior | Result |
+|----------|----------------|--------|
+| Pure ACPT | Columnar → transpose | ✅ |
+| Pure SCF/ACF | Row-indexed passthrough | ✅ |
+| Migrated SCF, shim OFF | `get_field()` fallback | ✅ |
+| Migrated SCF, shim ON | Shim rebuilds ACPT → helper transposes back | ✅ |
+
+Shim recursion guard (`$rebuilding` flag) prevents infinite loop.
+
+
 ## 📚 Memory Configuration
 - Rules loaded from: `memory-bank/mandatory-rules.md`
 - Design principles stored in memory-mcp entity: UserDesignPrinciples

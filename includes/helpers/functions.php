@@ -929,3 +929,63 @@ function frl_get_post_meta(int $post_id, string $key, bool $single = true)
     }
     return $value;
 }
+
+/**
+ * Retrieves a repeater field, normalizing ACPT columnar and SCF/ACF row-indexed formats.
+ *
+ * Without $index and $subfield, returns the entire repeater as a row-indexed array
+ * [{subfield: value}, ...]. With both specified, drills down to the scalar subfield value.
+ *
+ * @since 5.9.0
+ *
+ * @param int         $post_id  Post ID.
+ * @param string      $field    Repeater meta key.
+ * @param int|null    $index    Optional row index (0-based). Requires $subfield.
+ * @param string|null $subfield Optional subfield key. Requires $index.
+ * @return mixed Row-indexed array, scalar string, or null if not found.
+ */
+function frl_get_repeater_field(int $post_id, string $field, ?int $index = null, ?string $subfield = null)
+{
+    $raw = get_post_meta($post_id, $field, true);
+
+    // ACF/SCF: get_post_meta returns row count (int), get_field returns the array
+    if (!is_array($raw) && function_exists('get_field')) {
+        $raw = get_field($field, $post_id, false);
+    }
+
+    if (!is_array($raw) || empty($raw)) {
+        return null;
+    }
+
+    // Detect ACPT columnar format: first column's first row has 'original_name' envelope key.
+    // ACPT: {subfield_name: [{original_name, type, value}, ...]}
+    // SCF:  already [{subfield: val}, ...] — passthrough.
+    $first_col = reset($raw);
+    $first_cell = is_array($first_col) ? reset($first_col) : null;
+    if (is_array($first_cell) && array_key_exists('original_name', $first_cell)) {
+        $max = 0;
+        foreach ($raw as $col) {
+            if (is_array($col)) {
+                $max = max($max, count($col));
+            }
+        }
+        $rows = [];
+        for ($i = 0; $i < $max; $i++) {
+            $row = [];
+            foreach ($raw as $sub_name => $col) {
+                if (isset($col[$i]['value'])) {
+                    $row[$sub_name] = (string) $col[$i]['value'];
+                }
+            }
+            $rows[] = $row;
+        }
+        $raw = $rows;
+    }
+
+    // Drill down to subfield if requested
+    if ($index !== null && $subfield !== null) {
+        return isset($raw[$index][$subfield]) ? (string) $raw[$index][$subfield] : null;
+    }
+
+    return $raw;
+}

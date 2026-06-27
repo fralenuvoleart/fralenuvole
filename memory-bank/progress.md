@@ -1,5 +1,19 @@
 # Project Progress
 
+## ✅ Repeater Field Format Abstraction — ACPT/SCF/ACF Transparency (2026-06-27)
+
+### Problem
+`[frl_repeater]` shortcode returned empty for ACPT repeater fields because ACPT stores data in columnar format (`{subfield: [{value}, ...]}`) while the shortcode expected row-indexed format (`[{subfield: val}, ...]`). The `get_field()` fallback never triggered because ACPT's `get_post_meta()` returns a valid PHP array — just in the wrong shape.
+
+### Fix
+- **New helper:** [`frl_get_repeater_field()`](includes/helpers/functions.php:947) — dual-purpose (full array or scalar subfield), detects ACPT columnar format via `original_name` envelope key, transposes to row-indexed, passes SCF/ACF through. Placed after [`frl_get_post_meta()`](includes/helpers/functions.php:916).
+- **Shortcode simplified:** [`frl_shortcode_repeater()`](public/shortcodes.php:508) delegates to helper.
+- **Zero regression:** SCF/ACF path unchanged. ACPT detection gate (`original_name`) is never present in SCF rows. Compat shim interaction verified.
+
+### Files Modified
+- [`includes/helpers/functions.php`](includes/helpers/functions.php:947-994) — new 48-line helper
+- [`public/shortcodes.php`](public/shortcodes.php:506-538) — simplified shortcode
+
 ## ✅ Preload Featured Image — Responsive Srcset + Extension Abstraction (2026-06-25/26)
 - Replaced `preload_featured_webp` checkbox with `preload_featured_extension` text field
 - `frl_preload_featured_image()` now outputs responsive `<link imagesrcset imagesizes>` instead of single `href`

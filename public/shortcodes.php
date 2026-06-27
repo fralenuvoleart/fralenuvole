@@ -500,6 +500,8 @@ function frl_shortcode_meta($atts)
 /**
  * [frl_repeater] - Displays a subfield value from a repeater row.
  *
+ * Works with ACPT (columnar) and SCF/ACF (row-indexed) repeater formats transparently.
+ *
  * @param array $atts Attributes: field (required), index (required), subfield (required), default (fallback).
  * @return string Subfield value or default.
  */
@@ -528,17 +530,11 @@ function frl_shortcode_repeater($atts)
 
     $cache_key = frl_generate_cache_key('repeater', (string)$post->ID, $field, (string)$index, $subfield);
     return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $field, $index, $subfield, $default) {
-        $rows = frl_get_post_meta($post->ID, $field, true);
-        // ACF repeaters: get_post_meta returns row count string, get_field handles array unpacking.
-        if (!is_array($rows) && function_exists('get_field')) {
-            $rows = get_field($field, $post->ID, false);
-        }
-        if (!is_array($rows) || !isset($rows[$index]) || !is_array($rows[$index])) {
+        $value = frl_get_repeater_field($post->ID, $field, $index, $subfield);
+        if ($value === null || $value === '') {
             return $default;
         }
-
-        $value = $rows[$index][$subfield] ?? '';
-        return ($value !== '') ? (string) $value : $default;
+        return $value;
     });
 }
 
