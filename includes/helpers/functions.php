@@ -984,7 +984,11 @@ function frl_get_repeater_field(int $post_id, string $field, ?int $index = null,
 
     // Drill down to subfield if requested
     if ($index !== null && $subfield !== null) {
-        return isset($raw[$index][$subfield]) ? (string) $raw[$index][$subfield] : null;
+        if (!isset($raw[$index][$subfield])) {
+            return null;
+        }
+        $val = $raw[$index][$subfield];
+        return is_scalar($val) ? (string) $val : $val;
     }
 
     return $raw;
