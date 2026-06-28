@@ -576,7 +576,7 @@ function frl_format_repeater_list(array $value, string $format): string
         $lis = '';
         foreach ($items as $i => $item) {
             $lis .= sprintf(
-                '<li class="frl-repeater-item frl-repeater-item-%d">%s</li>',
+                '<li class="frl-repeater-item frl-repeater-item-%d"><span></span>%s</li>',
                 $i,
                 $item
             );
