@@ -1,5 +1,40 @@
 # Active Context
 
+## ✅ Repeater Array-to-List Formatting — `format` Attribute (2026-06-28)
+
+### Problem
+[`frl_shortcode_repeater()`](public/shortcodes.php:508) unconditionally cast subfield values to `(string)` at [`frl_get_repeater_field():987`](includes/helpers/functions.php:987). When the subfield was an array (checkbox group, multi-select), PHP returned the literal `"Array"` — a silent data loss.
+
+### Fix Applied
+
+**1. [`frl_get_repeater_field()`](includes/helpers/functions.php:987) — Conditional cast**
+- Scalars: `(string)` cast (unchanged behavior)
+- Arrays: returned as-is (no longer destroyed)
+
+**2. [`frl_shortcode_repeater()`](public/shortcodes.php:515-543) — New `format` attribute**
+- `format=""` (default): arrays auto-render as comma-separated (`a, b, c`)
+- `format="comma"`: explicit comma-separated in `<span class="frl-repeater-comma">`
+- `format="list"`: unordered list `<ul class="frl-repeater-list"><li class="frl-repeater-item frl-repeater-item-0">...</li></ul>`
+- Scalar values ignore format — returned as-is
+
+**3. New helper [`frl_format_repeater_list()`](public/shortcodes.php:559)**
+- `array_walk_recursive` flattens nested arrays
+- Filters null/empty values
+- Escapes all output via `esc_html()`
+
+### Files Modified
+- [`includes/helpers/functions.php`](includes/helpers/functions.php:987-991) — 3-line conditional cast
+- [`public/shortcodes.php`](public/shortcodes.php:515-587) — format attribute + new helper
+
+### Behavior Matrix
+| Subfield value | `format` | Output |
+|---|---|---|
+| `"hello"` | `""` | `hello` |
+| `["a","b","c"]` | `""` | `<span class="frl-repeater-comma">a, b, c</span>` |
+| `["a","b","c"]` | `comma` | `<span class="frl-repeater-comma">a, b, c</span>` |
+| `["a","b","c"]` | `list` | `<ul class="frl-repeater-list"><li class="frl-repeater-item frl-repeater-item-0">a</li>...</ul>` |
+| `[]` | any | `default` (empty after filter) |
+
 ## ✅ Repeater Field Format Abstraction — ACPT/SCF/ACF Transparency (2026-06-27)
 
 ### Problem

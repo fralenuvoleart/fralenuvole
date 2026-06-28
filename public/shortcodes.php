@@ -25,9 +25,11 @@ if (!defined('ABSPATH')) {
  * - [frl_slug id=slug|123] or [frl_slug]  Translated slug (from URL, post ID or current post)
  * - [frl_meta field=key select=":first" default=""]
  *   Current post meta value. For complex values (arrays/objects), select allows keys separated by '|'.
- * - [frl_repeater field=key index=0 subfield=key default=""]
+ * - [frl_repeater field=key index=0 subfield=key default="" format="comma|list"]
  *   Repeater subfield value. index selects the row (0-based), subfield the column.
- *   Special ':first' returns the first scalar found. default provides a fallback if empty/not found.
+ *   For array subfields: format="comma" wraps in <span class="frl-repeater-comma">;
+ *   format="list" uses <ul class="frl-repeater-list"> with indexed <li> items.
+ *   Default (no format): array values auto-render comma-separated. default provides a fallback if empty/not found.
  * - [frl_meta_rel field=key output=title|id|permalink|slug index=0|all anchor=#]
  * - [frl_user_meta field=key]     Current author meta (content can provide field)
  * - [frl_category_link]slug|id[/frl_category_link]  Category link
@@ -517,25 +519,73 @@ function frl_shortcode_repeater($atts)
         'index'    => '0',
         'subfield' => '',
         'default'  => '',
+        'format'   => '',
     ], $atts, 'frl_repeater');
 
     $field    = sanitize_key($a['field']);
     $index    = (int) $a['index'];
     $subfield = sanitize_key($a['subfield']);
     $default  = (string) $a['default'];
+    $format   = sanitize_key($a['format']);
 
     if (empty($field) || $index < 0 || empty($subfield)) {
         return '';
     }
 
-    $cache_key = frl_generate_cache_key('repeater', (string)$post->ID, $field, (string)$index, $subfield);
-    return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $field, $index, $subfield, $default) {
+    $cache_key = frl_generate_cache_key('repeater', (string)$post->ID, $field, (string)$index, $subfield, $format);
+    return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $field, $index, $subfield, $default, $format) {
         $value = frl_get_repeater_field($post->ID, $field, $index, $subfield);
         if ($value === null || $value === '') {
             return $default;
         }
+        if (is_array($value)) {
+            return frl_format_repeater_list($value, $format !== '' ? $format : 'comma');
+        }
         return $value;
     });
+}
+
+/**
+ * Formats a repeater subfield array as HTML with CSS classes.
+ *
+ * When $format is 'list', outputs a <ul> with frl-repeater-list class
+ * and indexed frl-repeater-item-N classes on each <li>.
+ * Otherwise outputs a <span> with frl-repeater-comma class and comma-separated items.
+ *
+ * @since 5.8.2
+ *
+ * @param array  $value  The array value to format.
+ * @param string $format 'comma' (default) or 'list'.
+ * @return string Formatted HTML, or empty string if no items.
+ */
+function frl_format_repeater_list(array $value, string $format): string
+{
+    // Flatten nested arrays and filter empty values
+    $items = [];
+    array_walk_recursive($value, function ($v) use (&$items) {
+        if ($v !== null && $v !== '') {
+            $items[] = esc_html((string) $v);
+        }
+    });
+
+    if (empty($items)) {
+        return '';
+    }
+
+    if ($format === 'list') {
+        $lis = '';
+        foreach ($items as $i => $item) {
+            $lis .= sprintf(
+                '<li class="frl-repeater-item frl-repeater-item-%d">%s</li>',
+                $i,
+                $item
+            );
+        }
+        return '<ul class="frl-repeater-list">' . $lis . '</ul>';
+    }
+
+    // Default: comma-separated
+    return '<span class="frl-repeater-comma">' . implode(', ', $items) . '</span>';
 }
 
 /**
