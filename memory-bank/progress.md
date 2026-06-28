@@ -6,13 +6,13 @@
 `[frl_repeater]` returned `"Array"` when subfield value was an array — the `(string)` cast at [`frl_get_repeater_field():987`](includes/helpers/functions.php:987) silently destroyed array data.
 
 ### Fix
-- **Conditional cast:** [`frl_get_repeater_field()`](includes/helpers/functions.php:987-991) — scalars still cast to string, arrays preserved
+- **Two conditional casts:** [`frl_get_repeater_field()`](includes/helpers/functions.php:977-978, 987-992) — both ACPT transposition (line 977) and subfield extraction (line 991) now use `is_scalar()` guard. Scalar values still cast to string, arrays preserved through entire pipeline.
 - **New `format` attribute:** [`frl_shortcode_repeater()`](public/shortcodes.php:515) accepts `format="comma"` or `format="list"`; defaults to comma when omitted and value is array
 - **New helper:** [`frl_format_repeater_list()`](public/shortcodes.php:559) — flattens with `array_walk_recursive`, wraps in CSS-classed markup (`frl-repeater-comma`, `frl-repeater-list`, `frl-repeater-item`, `frl-repeater-item-N`)
 - **Zero regression:** Scalar subfields unchanged. Cache key includes format. Only caller of `frl_get_repeater_field()` with index+subfield is the shortcode.
 
 ### Files Modified
-- [`includes/helpers/functions.php`](includes/helpers/functions.php:987-991) — conditional cast (3 lines)
+- [`includes/helpers/functions.php`](includes/helpers/functions.php:977-978, 987-992) — two conditional casts (ACPT transposition + subfield extraction)
 - [`public/shortcodes.php`](public/shortcodes.php:515-587) — format attr + helper (73 lines)
 
 ## ✅ Repeater Field Format Abstraction — ACPT/SCF/ACF Transparency (2026-06-27)

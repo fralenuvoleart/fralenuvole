@@ -974,7 +974,8 @@ function frl_get_repeater_field(int $post_id, string $field, ?int $index = null,
             $row = [];
             foreach ($raw as $sub_name => $col) {
                 if (isset($col[$i]['value'])) {
-                    $row[$sub_name] = (string) $col[$i]['value'];
+                    $val = $col[$i]['value'];
+                    $row[$sub_name] = is_scalar($val) ? (string) $val : $val;
                 }
             }
             $rows[] = $row;

@@ -7,9 +7,10 @@
 
 ### Fix Applied
 
-**1. [`frl_get_repeater_field()`](includes/helpers/functions.php:987) — Conditional cast**
-- Scalars: `(string)` cast (unchanged behavior)
-- Arrays: returned as-is (no longer destroyed)
+**1. [`frl_get_repeater_field()`](includes/helpers/functions.php) — Two conditional casts**
+- Line 977 (ACPT transposition): `(string)` cast replaced with `is_scalar()` guard — arrays survive ACPT columnar→row-indexed transform
+- Line 991 (subfield extraction): `(string)` cast replaced with `is_scalar()` guard — arrays returned as-is to shortcode
+- Both casts were silently destroying array subfields to `"Array"` before the shortcode ever saw them
 
 **2. [`frl_shortcode_repeater()`](public/shortcodes.php:515-543) — New `format` attribute**
 - `format=""` (default): arrays auto-render as comma-separated (`a, b, c`)
@@ -23,7 +24,7 @@
 - Escapes all output via `esc_html()`
 
 ### Files Modified
-- [`includes/helpers/functions.php`](includes/helpers/functions.php:987-991) — 3-line conditional cast
+- [`includes/helpers/functions.php`](includes/helpers/functions.php:977-978, 987-992) — two conditional casts (ACPT transposition + subfield extraction)
 - [`public/shortcodes.php`](public/shortcodes.php:515-587) — format attribute + new helper
 
 ### Behavior Matrix
