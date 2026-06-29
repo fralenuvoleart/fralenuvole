@@ -68,6 +68,9 @@ function frl_clear_post_cache($post_id)
     frl_cache_clear('shortcodes', frl_generate_cache_key('langswitcher_dd', 'post', (string)$post_id));
     frl_cache_clear('shortcodes', frl_generate_cache_key('langswitcher_fl', 'post', (string)$post_id));
 
+    // Bump post cache version to auto-invalidate all post-specific shortcode caches
+    update_post_meta($post_id, '_frl_post_version', time());
+
     // Clear featured image cache for this post using centralized cache key helper.
     // The extension is included in the key, so we clear all extension variants too.
     $image_size = frl_get_featured_image_size($post_id);

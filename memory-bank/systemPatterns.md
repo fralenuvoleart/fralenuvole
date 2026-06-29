@@ -36,8 +36,30 @@
 - **Verification:** Double-verify for regressions; No "Opinion as Fact."
 - **Integrity:** Failing to follow = **LYING/GASLIGHTING**.
 
+## 🔄 Post Cache Versioning Pattern (2026-06-29)
+
+### Pattern: Version-Based Cache Invalidation
+When data originates from a mutable source (post meta, post fields) and the cache key contains dynamic/unknown segments (e.g., field names from shortcode attributes), use a per-object version number to auto-invalidate all cache keys on update.
+
+**Implementation:**
+1. Store a version number in post meta (`_frl_post_version`)
+2. Read it via a statically-cached helper: [`frl_get_post_cache_version()`](includes/helpers/functions.php:297)
+3. Append `'_v' . $version` to any cache key that depends on post data
+4. Bump the version in `frl_clear_post_cache()` on `save_post` via `update_post_meta($post_id, '_frl_post_version', time())`
+
+**Advantages:**
+- No explicit key enumeration — version bump invalidates all keys
+- Surgical scope — only the edited post affected
+- Old keys expire naturally (24h TTL) — no cleanup needed
+- Zero signature changes — `frl_generate_cache_key()` unchanged
+
+**When to apply:**
+- Cache key contains post-specific data (meta, fields, title, slug)
+- Cache key segments are dynamic (unknown at save time)
+- NOT for slug-based keys (slug changes produce different key naturally)
+
 ## 🔒 Rule Integrity Notice
 The mandatory-rules.md in `memory-bank/` is the source of truth.
 
 ---
-*Last Updated: 2026-05-25*
+*Last Updated: 2026-06-29*

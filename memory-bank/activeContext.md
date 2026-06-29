@@ -72,9 +72,9 @@ Shim recursion guard (`$rebuilding` flag) prevents infinite loop.
 - Design principles stored in memory-mcp entity: UserDesignPrinciples
 
 ## 🔄 Current Focus
-Fralenuvole v5.8.0 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
+Fralenuvole v5.8.3 - WordPress multilingual administrator plugin with URL rewriting, multilingual support, multi-backend caching, environment-based configuration, and subdomain adapter.
 
-**Current session:** Preload featured image extension abstraction (2026-06-25)
+**Current session:** Post cache versioning for shortcode invalidation (2026-06-29)
 
 ## ✅ Preload Featured Image — Responsive Srcset + Extension Abstraction (2026-06-25/26)
 
@@ -420,7 +420,48 @@ Yes, affected — 0% hit rate meant wasted adapter calls on every request. No vi
 - `[frl]` shortcode uses individual per-string adapter calls — less efficient but correct for selective/no-class use
 - `blocks` cache group uses object cache (not autoloaded options) — single large entry is fine
 
-*Last Updated: 2026-06-19*
+## ✅ Post Cache Versioning — Shortcode Cache Invalidation on Save (2026-06-29)
+
+### Problem
+When a post is edited and field values change (ACF/SCF repeater fields, meta fields, title, slug, featured image), shortcodes like `[frl_repeater]`, `[frl_meta]`, `[frl_readtime]`, `[frl_featured]`, `[frl_excerpt]`, `[frl_meta_rel]`, `[frl_permalink]`, `[frl_slug]`, and `[frl_breadcrumbs]` returned stale cached values for up to 24 hours because `frl_clear_post_cache()` on `save_post` never invalidated their shortcode cache keys.
+
+### Fix Applied — Per-Post Version Bump
+Instead of enumerating individual cache keys (impossible for dynamic keys like `repeater_{post_id}_{field}_{index}_{subfield}` with unknown attribute values), a per-post version number is stored in `_frl_post_version` meta and embedded in every post-specific cache key.
+
+1. **New helper [`frl_get_post_cache_version()`](includes/helpers/functions.php:297)** — Returns `_frl_post_version` post meta (default 1), cached statically per-request.
+2. **Version bump on save** — [`frl_clear_post_cache()`](core/cache/cache-cleanup.php:72) calls `update_post_meta($post_id, '_frl_post_version', time())`.
+3. **10 shortcodes updated** — All post-specific cache keys now append `_v{version}`:
+   - `[frl_readtime]` — [`readtime_{id}_..._v{N}`](public/shortcodes.php:140)
+   - `[frl_featured]` — [`featured_{id}_{size}_v{N}`](public/shortcodes.php:460)
+   - `[frl_meta]` — [`meta_{id}_{field}_..._v{N}`](public/shortcodes.php:491)
+   - `[frl_repeater]` — [`repeater_{id}_{field}_{idx}_{sub}_{format}_v{N}`](public/shortcodes.php:535)
+   - `[frl_meta_rel]` — [`meta_rel_{target_id}_{field}_..._v{N}`](public/shortcodes.php:626) (uses `$target_post_id`, not current post)
+   - `[frl_excerpt]` — [`excerpt_post_{id}_v{N}`](public/shortcodes.php:765)
+   - `[frl_permalink]` (2 ID paths) — [`permalink_{slug}_v{N}`](public/shortcodes.php:797, 815)
+   - `[frl_slug]` (2 ID paths) — [`slug_{md5}_v{N}`](public/shortcodes.php:865, 879)
+   - `[frl_breadcrumbs]` — [`breadcrumbs_{id}_..._v{N}`](public/shortcodes.php:1009) (when `$object_id > 0`)
+4. **Removed ACF band-aid** — [`frl_acf_flush_shortcodes_cache_on_acf_save()`](modules/acf/acf.php:252) and its hook at L32-36 deleted. No longer needed — the `save_post` version bump covers ACF saves.
+
+### Design Decisions
+- **No new function signature changes** — [`frl_generate_cache_key()`](includes/helpers/functions.php:313) unchanged. Version appended as last segment via `'v' . frl_get_post_cache_version($id)`.
+- **Slug-based keys skipped** — `[frl_permalink]` slug variant and `[frl_slug]` slug variant don't embed a post ID; slug changes on edit naturally produce a different cache key.
+- **`[frl_langswitcher]` skipped** — Already explicitly cleared in `frl_clear_post_cache()` at L68-69.
+- **Old keys expire naturally** — TTL is 24h (`DAY_IN_SECONDS` for `shortcodes` group).
+
+### Files Modified (4)
+- [`includes/helpers/functions.php`](includes/helpers/functions.php:287-304) — Added `frl_get_post_cache_version()`
+- [`core/cache/cache-cleanup.php`](core/cache/cache-cleanup.php:72) — Added `update_post_meta` version bump
+- [`public/shortcodes.php`](public/shortcodes.php) — 10 cache key lines updated
+- [`modules/acf/acf.php`](modules/acf/acf.php:32-36, 252-264) — Removed 1 hook + 1 function
+
+### Zero Regression Verification
+- All existing function signatures preserved
+- `frl_generate_cache_key()` unchanged (still strips empty segments, single-underscore join)
+- New posts (no `_frl_post_version`) default to version `1` — backward compatible
+- Old cache keys (without version) expire naturally after 24h TTL
+- `frl_acf_flush_shortcodes_cache_on_acf_save` fully removed — grep confirms zero references
+
+*Last Updated: 2026-06-29*
 
 ## 🔧 Subdomain Adapter — Homepage Language Switcher URL Fix (2026-05-12)
 - **Bug:** On `staging.pbservices.ge` EN homepage, Polylang language switcher generated `https://staging.pbservices.ge/ru/` instead of `https://ru.pbservices.ge/` for the RU link. Non-homepage links worked correctly.
@@ -660,4 +701,4 @@ Instead of post-processing `pll_the_languages()` HTML (regex-splitting `<li>` ta
 ### Files modified
 - [`public/shortcodes.php`](public/shortcodes.php:189-384)
 
-*Last Updated: 2026-06-21*
+*Last Updated: 2026-06-29*

@@ -29,12 +29,6 @@ add_action('acf/save_post',
     1
 );
 
-add_action('acf/save_post',
-    'frl_acf_flush_shortcodes_cache_on_acf_save',
-    99,
-    1
-);
-
 /**
  * Compute configured calculated ACF fields when saving ACF Options.
  *
@@ -246,19 +240,3 @@ function frl_acf_render_template(string $template, string $source = 'option', in
     return preg_replace_callback('/\{([a-zA-Z0-9_\-]+)\}/', $cb, $template);
 }
 
-/**
- * Flush shortcode cache when ACF saves any post/options.
- */
-function frl_acf_flush_shortcodes_cache_on_acf_save($post_id)
-{
-    // Clear only keys with our prefix
-    $keys = frl_cache_get_multi('shortcodes');
-    if ( empty($keys) ) {
-        return;
-    }
-    foreach (array_keys($keys) as $key) {
-        if (str_starts_with($key, 'acf_calc_')) {
-            frl_cache_clear('shortcodes', $key, false);
-        }
-    }
-}

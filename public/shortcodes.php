@@ -137,7 +137,7 @@ function frl_shortcode_readtime($atts)
         return '';
     }
 
-    $cache_key = "readtime_{$post->ID}_" . md5(serialize($atts));
+    $cache_key = "readtime_{$post->ID}_" . md5(serialize($atts)) . '_v' . frl_get_post_cache_version($post->ID);
 
     return frl_cache_remember('shortcodes', $cache_key, function() use ($post, $atts) {
         $a = shortcode_atts(
@@ -457,7 +457,7 @@ function frl_shortcode_featured_image($atts)
     }
 
     $size = shortcode_atts(['size' => 'full'], $atts)['size'];
-    $cache_key = "featured_{$post->ID}_{$size}";
+    $cache_key = "featured_{$post->ID}_{$size}_v" . frl_get_post_cache_version($post->ID);
 
     return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $size) {
         $url = get_the_post_thumbnail_url($post->ID, $size);
@@ -488,7 +488,7 @@ function frl_shortcode_meta($atts)
     if (empty($selectors)) { $selectors = [':first']; }
 
     $default_value = (string) $a['default'];
-    $cache_key = 'meta_' . $post->ID . '_' . $meta_key . '_' . md5(implode('|', $selectors) . '|' . $default_value);
+    $cache_key = 'meta_' . $post->ID . '_' . $meta_key . '_' . md5(implode('|', $selectors) . '|' . $default_value) . '_v' . frl_get_post_cache_version($post->ID);
     return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $meta_key, $selectors, $default_value) {
         $raw = frl_get_post_meta($post->ID, $meta_key, true);
         $value = frl_coerce_to_string($raw, $selectors);
@@ -532,7 +532,7 @@ function frl_shortcode_repeater($atts)
         return '';
     }
 
-    $cache_key = frl_generate_cache_key('repeater', (string)$post->ID, $field, (string)$index, $subfield, $format);
+    $cache_key = frl_generate_cache_key('repeater', (string)$post->ID, $field, (string)$index, $subfield, $format, 'v' . frl_get_post_cache_version($post->ID));
     return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $field, $index, $subfield, $default, $format) {
         $value = frl_get_repeater_field($post->ID, $field, $index, $subfield);
         if ($value === null || $value === '') {
@@ -625,7 +625,7 @@ function frl_shortcode_meta_rel($atts)
 
     $cache_key = 'meta_rel_' . $target_post_id . '_' . $field . '_' . md5(serialize([
         (string) $a['index'], (string) $a['output'], (string) $a['sep'], (string) $a['anchor']
-    ]));
+    ])) . '_v' . frl_get_post_cache_version($target_post_id);
 
     return frl_cache_remember('shortcodes', $cache_key, function () use ($target_post_id, $field, $a, $post) {
         $raw = frl_get_post_meta($target_post_id, $field, true);
@@ -762,7 +762,7 @@ function frl_shortcode_excerpt($atts)
         return '';
     }
 
-    $cache_key = "excerpt_post_{$post_id}";
+    $cache_key = "excerpt_post_{$post_id}_v" . frl_get_post_cache_version($post_id);
 
     return frl_cache_remember('shortcodes', $cache_key, function () use ($post_id) {
         $excerpt = trim(get_the_excerpt($post_id));
@@ -794,7 +794,7 @@ function frl_shortcode_permalink($atts, $content = null)
 		}
 		$slug = (string) get_post_field('post_name', $post_id);
 		$key_slug = $slug !== '' ? $slug : ('post-' . $post_id);
-		$curr_cache_key = 'permalink_' . sanitize_key($key_slug);
+		$curr_cache_key = 'permalink_' . sanitize_key($key_slug) . '_v' . frl_get_post_cache_version($post_id);
 		$permalink = frl_cache_remember('shortcodes', $curr_cache_key, function () use ($post_id) {
 			$url = get_permalink($post_id);
 			return $url ? $url : '#';
@@ -812,7 +812,7 @@ function frl_shortcode_permalink($atts, $content = null)
 		// Unify cache key naming with slug-based lookups: use slug when available
 		$slug = (string) get_post_field('post_name', $post_id);
 		$key_slug = $slug !== '' ? $slug : ('post-' . $post_id);
-		$curr_cache_key = 'permalink_' . sanitize_key($key_slug);
+		$curr_cache_key = 'permalink_' . sanitize_key($key_slug) . '_v' . frl_get_post_cache_version($post_id);
 		$permalink = frl_cache_remember('shortcodes', $curr_cache_key, function () use ($post_id) {
 			$url = get_permalink($post_id);
 			return $url ? $url : '#';
@@ -862,7 +862,7 @@ function frl_shortcode_slug($atts)
         if ($slug === '') {
             return '';
         }
-        $curr_cache_key = frl_build_cache_key($slug, 'slug');
+        $curr_cache_key = frl_build_cache_key($slug, 'slug') . '_v' . frl_get_post_cache_version($pid_attr);
         return frl_cache_remember('shortcodes', $curr_cache_key, function () use ($slug) {
             return esc_html($slug);
         });
@@ -876,7 +876,7 @@ function frl_shortcode_slug($atts)
             if ($slug === '') {
                 return '';
             }
-            $curr_cache_key = frl_build_cache_key($slug, 'slug');
+            $curr_cache_key = frl_build_cache_key($slug, 'slug') . '_v' . frl_get_post_cache_version($post_id);
             return frl_cache_remember('shortcodes', $curr_cache_key, function () use ($slug) {
                 return esc_html($slug);
             });
@@ -1006,8 +1006,9 @@ function frl_shortcode_breadcrumbs($atts)
     // Cache key must vary with object + language.
     $object_id = get_queried_object_id();
 
+    $version = ($object_id > 0) ? '_v' . frl_get_post_cache_version($object_id) : '';
     $cache_key = 'breadcrumbs_' . $object_id . '_' .
-             md5( serialize( [ $a['separator'], $a['class'], $show_home, $show_current ] ) );
+             md5( serialize( [ $a['separator'], $a['class'], $show_home, $show_current ] ) ) . $version;
 
     return frl_cache_remember('shortcodes', $cache_key, function () use ($a, $show_home, $show_current) {
         $links = [];

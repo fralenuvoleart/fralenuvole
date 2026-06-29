@@ -284,6 +284,32 @@ function frl_get_featured_image_size($post)
  * @param string ...$segments Segments to join.
  * @return string Cache key.
  */
+/**
+ * Returns the post cache version for shortcode invalidation.
+ *
+ * Cached statically per-request. Defaults to 1 for posts without a version.
+ *
+ * @since 5.8.3
+ *
+ * @param int $post_id Post ID.
+ * @return int Cache version.
+ */
+function frl_get_post_cache_version(int $post_id): int
+{
+    static $versions = [];
+    if (!isset($versions[$post_id])) {
+        $versions[$post_id] = (int) get_post_meta($post_id, '_frl_post_version', true) ?: 1;
+    }
+    return $versions[$post_id];
+}
+
+/**
+ * Generates a standardized cache key by joining a prefix with non-empty segments.
+ *
+ * @param string $prefix   Key prefix.
+ * @param string ...$segments Additional segments to append.
+ * @return string Formatted cache key.
+ */
 function frl_generate_cache_key(string $prefix, string ...$segments): string
 {
     $filtered = array_filter($segments, fn(string $s) => $s !== '');
