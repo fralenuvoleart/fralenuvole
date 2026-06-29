@@ -303,10 +303,6 @@ function frl_handle_action_clear_cache_hard()
         $message_parts[] = __('- Plugin Internal Caches: Purged (details unavailable).', FRL_PREFIX);
     }
 
-    // Global WP Object Cache Flush
-    $oc_flush_status = $stats['wp_object_cache_global_flush'] ?? 'unknown';
-    $message_parts[] = __('- Global WP Object Cache Flush:', FRL_PREFIX) . ' ' . esc_html(ucfirst(str_replace('_', ' ', $oc_flush_status)));
-
     // All Website Transients
     if (isset($stats['all_website_transients_deleted']['transients'])) {
         $message_parts[] = sprintf(__('- All Website Transients: %d deleted.', FRL_PREFIX), $stats['all_website_transients_deleted']['transients']);

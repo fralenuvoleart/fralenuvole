@@ -1740,7 +1740,7 @@ class Frl_Cache_Manager
     /**
      * Perform the most comprehensive cache reset possible by this plugin.
      *
-     * @return array{plugin_internal_purge: array, wp_object_cache_global_flush: string, all_website_transients_deleted: array, browser_cache_headers_sent_via_purge_all: string} Statistics about the cache clearing operations.
+     * @return array{plugin_internal_purge: array, all_website_transients_deleted: array, browser_cache_headers_sent_via_purge_all: string} Statistics about the cache clearing operations.
      */
     public static function hard_cache_reset()
     {
@@ -1751,23 +1751,15 @@ class Frl_Cache_Manager
         // browser cache (per group config), and its own persistent items.
         $stats['plugin_internal_purge'] = self::purge_all();
 
-        // 2. Global WordPress Object Cache Flush.
-        if (function_exists('wp_cache_flush')) {
-            $flush_result = wp_cache_flush();
-            $stats['wp_object_cache_global_flush'] = ($flush_result === true) ? 'success' : 'failed_or_not_applicable';
-        } else {
-            $stats['wp_object_cache_global_flush'] = 'wp_cache_flush_not_available';
-        }
-
-        // 3. Clear ALL website transients from the database.
+        // 2. Clear ALL website transients from the database.
         $stats['all_website_transients_deleted'] = self::clear_all_website_transients();
 
-        // 4. Reset PHP OPcache if available and enabled.
+        // 3. Reset PHP OPcache if available and enabled.
         //$stats['opcache_reset'] = self::opcache_reset();
 
         $stats['browser_cache_headers_sent_via_purge_all'] = 'dependent_on_group_config';
 
-        // 5. Action hook for other plugins/themes to hook into.
+        // 4. Action hook for other plugins/themes to hook into.
         // Use the defined PREFIX to make the hook unique and discoverable.
         do_action(self::PREFIX . '_after_hard_cache_reset', $stats);
 
