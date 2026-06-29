@@ -199,7 +199,8 @@ class Frl_Cache_Manager
         }
 
         // Use core WP transient to avoid recursion with self::get()
-        $transient_key = self::PREFIX . 'object_cache_provider_details';
+        // v2: live connectivity test added for Kinsta-style WP_Object_Cache wrappers.
+        $transient_key = self::PREFIX . 'object_cache_provider_details_v2';
         $cached = get_transient($transient_key);
         if ($cached !== false && is_array($cached)) {
             self::$cached_provider_details = $cached;
