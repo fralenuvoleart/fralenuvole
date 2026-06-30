@@ -196,3 +196,11 @@ div.postbox[id^=fd_] .hndle.ui-sortable-handle {
     content: "Re-optimise";
     text-indent: 0;
 }
+
+.imagify-datas-more-action a {
+    background: #fff;
+    color: #555;
+    display: inline-flex;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
