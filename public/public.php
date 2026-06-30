@@ -124,7 +124,7 @@ function frl_preload_featured_image()
         $image_size = frl_get_featured_image_size($post);
         $extension  = frl_get_option('preload_featured_extension');
 
-        $cache_key = frl_generate_cache_key('featured_img', (string)$post->ID, $image_size, $extension);
+        $cache_key = frl_generate_cache_key('featured_img', (string)$post->ID, $image_size, (string)$extension);
 
         $preload_data = frl_cache_remember('postdata', $cache_key, function () use ($post, $image_size, $extension) {
             $thumbnail_id = get_post_thumbnail_id($post->ID);
