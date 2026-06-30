@@ -198,9 +198,9 @@ div.postbox[id^=fd_] .hndle.ui-sortable-handle {
 }
 
 .imagify-datas-more-action a {
-    background: #fff;
-    color: #555;
-    display: inline-flex;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    background: #fff !important;
+    color: #555 !important;
+    display: inline-flex !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
 }
