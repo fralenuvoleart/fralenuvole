@@ -204,5 +204,13 @@ div.postbox[id^=fd_] .hndle.ui-sortable-handle {
     border: 1px solid #ddd !important;
     border-radius: 4px !important;
     padding-top: 5px !important;
-    font-weight: 400 !important;
+    font-weight: normal !important;
+}
+
+.imagify-datas-actions-links a {
+    font-weight: normal !important;
+}
+
+.ul.imagify-datas-list .big {
+    color: inherit !important;
 }
