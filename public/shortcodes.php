@@ -257,7 +257,7 @@ function frl_shortcode_langswitcher($atts = [])
 		return $elements;
 	});
 
-	if (empty($elements)) {
+	if (empty($elements) || !is_array($elements)) {
 		return '';
 	}
 
