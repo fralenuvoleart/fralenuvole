@@ -345,7 +345,7 @@ class Frl_Cache_Manager
             if (function_exists('wp_cache_set') && wp_cache_set('_frl_redis_test', 1, 'default', 10)) {
                 wp_cache_delete('_frl_redis_test', 'default');
                 $provider_info['slug'] = 'redis_active';
-                $provider_info['label'] = 'Redis (via WP_Object_Cache)';
+                $provider_info['label'] = 'Redis (WP_Object_Cache)';
                 $provider_info['is_effectively_functional'] = true;
             } else {
                 $provider_info['slug'] = 'wp_object_cache_dropin';

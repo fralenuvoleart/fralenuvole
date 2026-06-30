@@ -427,7 +427,7 @@
    Conditional Field Visibility (:has)
    ========================================================================== */
 
-.form-table:has(#frl_preload_featured:not(:checked)) tr:has([name*="preload_featured_webp"]),
+.form-table:has(#frl_image_preload_featured:not(:checked)) tr:has([name*="image_preload_featured_ext"]),
 .form-table:has(#frl_defer_css:not(:checked)) tr:has([name*="defer_css_handles"]),
 .form-table:has(#frl_image_sizes:not(:checked)) tr:has([name*="image_sizes_list"]),
 .form-table:has(#frl_ab_remove_links:not(:checked)) tr:has([name*="ab_remove_links_handles"]),

@@ -405,11 +405,8 @@ function frl_maybe_load_metabox_class($screen)
  */
 function frl_enable_mime_support(array $mimes): array
 {
-    if (frl_get_option('webp_support')) {
+    if (frl_get_option('image_mime_support')) {
         $mimes['webp'] = 'image/webp';
-    }
-
-    if (frl_get_option('svg_support')) {
         $mimes['svg'] = 'image/svg+xml';
     }
 
@@ -428,7 +425,7 @@ function frl_enable_mime_support(array $mimes): array
  */
 function frl_get_file_nicename($filename, $as_title = false)
 {
-    if (!frl_get_option('sanitize_filename')) {
+    if (!frl_get_option('image_filename_sanitize')) {
         return $filename;
     }
 

@@ -75,7 +75,7 @@ function frl_clear_post_cache($post_id)
     // The extension is included in the key, so we clear all extension variants too.
     $image_size = frl_get_featured_image_size($post_id);
     $extensions = ['']; // Always clear the no-extension variant
-    $configured_extension = frl_get_option('preload_featured_extension');
+    $configured_extension = frl_get_option('image_preload_featured_ext');
     if (!empty($configured_extension)) {
         $extensions[] = $configured_extension;
     }

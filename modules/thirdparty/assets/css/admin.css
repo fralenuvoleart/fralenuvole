@@ -182,3 +182,17 @@ h1:has(.fd-title-info) {
 div.postbox[id^=fd_] .hndle.ui-sortable-handle {
     color: inherit;
 }
+
+.imagify-data-actions-container > strong {
+    display: none;
+}
+
+.imagify-data-actions-container .button-imagify-optimize{
+    display: inline-flex;
+    text-indent: -999px;
+    overflow: hidden;
+}
+.imagify-data-actions-container .button-imagify-optimize:before {
+    content: "Re-optimise";
+    text-indent: 0;
+}
