@@ -82,7 +82,6 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         if ($rescued) {
             return;
         }
-        $rescued = true;
 
         $request_uri = $_SERVER['REQUEST_URI'] ?? '';
         if (!$this->applies_to_request($request_uri)) {
@@ -97,6 +96,11 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         foreach ($vars as $k => $v) {
             $query->set($k, $v);
         }
+
+        // Only mark as rescued after successful resolution, so a transient failure
+        // (e.g. DB hiccup in applies_to_request) can be retried on a subsequent
+        // parse_query() call during the same request.
+        $rescued = true;
     }
 
     /**

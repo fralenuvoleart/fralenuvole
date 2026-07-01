@@ -69,7 +69,6 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
         if ($rescued) {
             return;
         }
-        $rescued = true;
 
         // The previous guard compared the first URL segment against $this->cpt_slugs (CPT type
         // names, e.g. 'service'). For base-removed URLs like /my-post-slug/, the first segment
@@ -98,7 +97,7 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
             $query->set('page_id', 0);
         }
 
-        // Ensure any previous error flag is removed so WP doesn’t force 404 later.
+        // Ensure any previous error flag is removed so WP doesn't force 404 later.
         $query->set( 'error', '' );
 
         // Polylang adds a language tax_query that forces is_tax=true; remove it so WP treats this as singular.
@@ -115,6 +114,11 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base
 
         // Clear 404 state; WP_Query will set proper flags during get_posts().
         $query->is_404 = false;
+
+        // Only mark as rescued after successful resolution, so a transient failure
+        // (e.g. DB hiccup in applies_to_request) can be retried on a subsequent
+        // parse_query() call during the same request.
+        $rescued = true;
     }
 
     /**

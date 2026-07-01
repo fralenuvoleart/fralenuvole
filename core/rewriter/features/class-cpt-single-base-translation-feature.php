@@ -104,10 +104,10 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
             $rules["^{$lang_esc}/{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$"] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&cpage=\$matches[2]&lang={$lang}";
 
             // Post single-item rules without language prefix (only add if no multilingual plugin manages lang roots)
-            $rules["^{$base_esc}/(.+?)/?$"] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]";
-            $rules["^{$base_esc}/(.+?)/feed/?$"] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&feed=feed";
-            $rules["^{$base_esc}/(.+?)/embed/?$"] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&embed=true";
-            $rules["^{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$"] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&cpage=\$matches[2]";
+            $rules["^{$base_esc}/(.+?)/?$"] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&lang={$lang}";
+            $rules["^{$base_esc}/(.+?)/feed/?$"] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&feed=feed&lang={$lang}";
+            $rules["^{$base_esc}/(.+?)/embed/?$"] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&embed=true&lang={$lang}";
+            $rules["^{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$"] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&cpage=\$matches[2]&lang={$lang}";
         }
 
 
@@ -226,12 +226,14 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
                     return $cache[$this->cpt_slug][$request_uri] = [
                         'post_type' => $this->cpt_slug,
                         'pagename'  => $slug,
+                        'lang'      => $lang,
                     ];
                 }
                 return $cache[$this->cpt_slug][$request_uri] = [
                     'post_type'    => $this->cpt_slug,
                     'name'         => $slug,
                     $cpt_query_var => $slug,
+                    'lang'         => $lang,
                 ];
             }
         }

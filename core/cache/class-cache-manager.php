@@ -1268,7 +1268,7 @@ class Frl_Cache_Manager
                 $stats['dependencies'][$dependent_group] = self::clear_group_with_dependencies(
                     $dependent_group,
                     null,
-                    false
+                    true
                 );
             }
         }
