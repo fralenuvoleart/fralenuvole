@@ -1175,14 +1175,17 @@ class Frl_Subdomain_Adapter {
         // set_default_language() writes to the DB synchronously, but the
         // translation plugin's model cache may not reflect the change yet.
         $adapter->flush_cache();
-        if ($adapter->get_default_language() !== $this->current_subdomain_lang) {
+        $actual_default = $adapter->get_default_language();
+        if ($actual_default !== $this->current_subdomain_lang) {
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 frl_log('Subdomain Adapter: default language sync failed — expected {expected}, got {actual}. Skipping rewrite flush to avoid corrupting rules.', [
                     'expected' => $this->current_subdomain_lang,
-                    'actual'   => $adapter->get_default_language(),
+                    'actual'   => $actual_default,
                 ]);
             }
-            $results['cache_cleared'] = true;
+            // Do NOT set cache_cleared here — we skipped frl_flush_rewrite_rules()
+            // so no cache was actually cleared. EM must fall through to its own
+            // cache-clearing logic to ensure a consistent state.
             return;
         }
 
