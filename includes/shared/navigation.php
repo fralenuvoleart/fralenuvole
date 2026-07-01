@@ -41,6 +41,12 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
         return $settings;
     }
 
+    // Guard: Skip custom render callback in REST API and admin context. Using the default renderer
+    // prevents navigation block preview issues in the editor.
+    if (frl_is_rest_api_request() || is_admin()) {
+        return $settings;
+    }
+
     // Retrieve current language code
     $current_lang = frl_get_language();
 
@@ -109,6 +115,12 @@ function frl_nav_menu_custom_urls_init()
  */
 function frl_process_nav_menu_url_transforms($block_content, $block)
 {
+    // Guard: Skip URL transforms in REST API and admin contexts to prevent
+    // modifying block content in responses consumed by the block editor.
+    if (frl_is_rest_api_request() || is_admin()) {
+        return $block_content;
+    }
+
     // Only target navigation-link and navigation-submenu blocks
     if (!in_array($block['blockName'], ['core/navigation-link', 'core/navigation-submenu'], true)) {
         return $block_content;

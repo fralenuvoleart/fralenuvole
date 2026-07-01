@@ -1,5 +1,33 @@
 # Active Context
 
+## 🔍 Block Editor Interference Audit (2026-07-01)
+
+### Scope
+Full codebase scan for plugin features/hooks that could throttle, block, or interfere with WordPress block editor (Gutenberg) and block-based template editing. pbnova module excluded (deactivated).
+
+### Findings — 6 Confirmed Issues + 2 Potential Concerns
+
+**🔴 CRITICAL:**
+1. **[`frl_alter_query()`](public/public.php:433)** — `pre_get_posts/10` registered **unguarded**. Strips `update_post_meta_cache`, `update_post_term_cache`, `no_found_rows`, sets `post_status='publish'` on ALL non-main queries including block editor REST queries. Breaks Query Loop block, term resolution, draft preview, pagination.
+2. **[`frl_disable_rest_endpoints()`](public/public.php:409)** — `rest_endpoints/10` removes `/wp/v2/media`, `/wp/v2/settings`, `/wp/v2/themes`, `/wp/v2/types`, `/wp/v2/taxonomies`, `/wp/v2/categories`, `/wp/v2/tags` from REST. Guarded by `frl_is_logged_in()` which is fragile (relies on `frl_get_current_user()` cache — known past bug where corrupted cache returns `WP_User(0)`). If guard fails, block editor loses Media Library, Site Editor settings, taxonomy panels.
+
+**🔴 HIGH:**
+3. **[`frl_disable_comments()`](includes/shared/website-features.php:234)** — `remove_post_type_support($post_type, 'comments')` on ALL post types at `init/10`. Removes Comments panel from block editor, breaks Comments block in block themes. REST endpoint removal at lines 271-275 is **unguarded** (no `frl_is_logged_in()` check unlike `frl_disable_rest_endpoints`).
+
+**🟡 MEDIUM:**
+4. **[`frl_disable_oembed()`](includes/shared/website-features.php:155)** — `remove_action('rest_api_init', 'wp_oembed_register_route')` removes oEmbed REST proxy. Block editor Embed block cannot preview YouTube/Twitter/Instagram embeds.
+5. **[`frl_render_block_core_navigation_translation()`](includes/shared/navigation.php:37)** — `block_type_metadata_settings/10` replaces Navigation block `render_callback` globally (not frontend-only). Editor shows translated navigation menu instead of the one being edited.
+6. **`render_block` filters** — [`frl_shortcode_render_block_translation`](public/shortcodes.php:50) (p10) + [`apply_shortcodes`](public/shortcodes.php:55) (p20) + [`frl_process_nav_menu_url_transforms`](includes/shared/navigation.php:97) (p10) registered **without** `is_admin()`/`frl_is_rest_api_request()` guard. Editor preview shows translated/shortcode-processed content.
+
+**🟢 LOW:**
+7. **Log capture hooks** ([`includes/main.php`](includes/main.php:42)) — Correctly gated behind `!frl_is_rest_api_request()`. Only concern with non-standard REST prefix.
+8. **Comments DB bulk update** ([`website-features.php:245`](includes/shared/website-features.php:245)) — `UPDATE wp_posts` on cache miss, YEAR_IN_SECONDS TTL. Momentary delay if cache flush occurs during editing.
+
+### Report
+Full report with file/line references and recommended fixes: [`plans/block-editor-interference-report.md`](plans/block-editor-interference-report.md)
+
+---
+
 ## ✅ Repeater Array-to-List Formatting — `format` Attribute (2026-06-28)
 
 ### Problem
