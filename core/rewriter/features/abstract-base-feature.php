@@ -278,7 +278,7 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
             // deduplication memory, so it must never happen in normal operation.
             if (count($global_patterns) > 50000) {
                 frl_log('Rewriter: global_patterns guard exceeded 50 000 entries — resetting. Check for runaway rule generation.', [], true);
-                 $global_patterns = [];
+                $global_patterns = [];
             }
         }
     }

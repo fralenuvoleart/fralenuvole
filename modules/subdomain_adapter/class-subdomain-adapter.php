@@ -1168,26 +1168,23 @@ class Frl_Subdomain_Adapter {
             return; // Already correct.
         }
 
+        // Report the change so the classifier knows something changed.
+        $results['wp_options']['updated'][] = 'polylang';
+
         // Verify the default language was actually applied before flushing.
         // set_default_language() writes to the DB synchronously, but the
-        // Polylang model cache may not reflect the change yet. Force a cache
-        // rebuild and confirm the default matches the subdomain language.
-        if (method_exists(PLL()->model, 'clean_languages_cache')) {
-            PLL()->model->clean_languages_cache();
-        }
-        $actual_default = pll_default_language();
-        if ($actual_default !== $this->current_subdomain_lang) {
+        // translation plugin's model cache may not reflect the change yet.
+        $adapter->flush_cache();
+        if ($adapter->get_default_language() !== $this->current_subdomain_lang) {
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 frl_log('Subdomain Adapter: default language sync failed — expected {expected}, got {actual}. Skipping rewrite flush to avoid corrupting rules.', [
                     'expected' => $this->current_subdomain_lang,
-                    'actual'   => $actual_default,
+                    'actual'   => $adapter->get_default_language(),
                 ]);
             }
+            $results['cache_cleared'] = true;
             return;
         }
-
-        // Report the change so the classifier knows something changed.
-        $results['wp_options']['updated'][] = 'polylang';
 
         // Flush rewrite rules. This triggers:
         // 1. update_option_permalink_structure → clear_rewriter_caches() (options→rewriter→permalinks)

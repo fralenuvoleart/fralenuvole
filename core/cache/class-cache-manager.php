@@ -1364,10 +1364,11 @@ class Frl_Cache_Manager
         $stats['runtime']++;
 
         // Clear any filters that might override option values.
-        // Only remove the plugin's own pre_option filters (registered by
-        // frl_update_option() and frl_delete_option() at priority 10).
-        // Using remove_all_filters() would also strip third-party callbacks
-        // that legitimately hook pre_option_frl_* hooks.
+        // Scoped to pre_option_{frl_prefix}_* hooks — only the plugin's own
+        // options namespace. Third-party code does not hook into this namespace
+        // so remove_all_filters() is safe. The anonymous closures registered by
+        // frl_update_option() and frl_delete_option() cannot be referenced by
+        // name, making targeted remove_filter() infeasible.
         global $wp_filter;
         if (!empty($wp_filter)) {
             $prefix = frl_prefix();
@@ -1375,10 +1376,7 @@ class Frl_Cache_Manager
 
             foreach (array_keys($wp_filter) as $filter_name) {
                 if (str_starts_with($filter_name, 'pre_option_' . $prefix)) {
-                    // Remove only the known plugin callbacks (priority 10).
-                    // remove_filter() is safe even if the hook has no callbacks
-                    // at that priority.
-                    remove_filter($filter_name, false, 10);
+                    remove_all_filters($filter_name);
                     $cleared++;
                 }
             }

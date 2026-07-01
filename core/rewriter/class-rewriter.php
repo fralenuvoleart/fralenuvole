@@ -476,27 +476,41 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
             }
 
             // Invalidate cached exclusion patterns when Polylang languages are
-            // added, deleted, or updated. Without these hooks, rewrite rules
-            // referencing removed languages or missing rules for new languages
-            // persist until the next permalink structure change.
-            add_action('pll_add_language',    [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('pll_delete_language', [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('pll_update_language', [self::class, 'clear_rewriter_caches'], 10, 1);
+            // added, updated, or when the default language changes. Without these
+            // hooks, rewrite rules referencing removed languages or missing rules
+            // for new languages persist until the next permalink structure change.
+            // Language deletion is covered by the 'deleted_term' hook below
+            // (Polylang calls wp_delete_term() which fires 'deleted_term').
+            add_action('pll_add_language',        [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('pll_update_language',     [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('pll_update_default_lang', [self::class, 'clear_rewriter_caches'], 10, 1);
 
             // Invalidate exclusion patterns when content changes that could
             // introduce new slugs captured by catch-all rewrite rules.
             // Without persistent object cache, exclusion patterns have a 1-hour
             // TTL — these hooks ensure new pages/CPTs/terms don't cause routing
             // conflicts during that window.
-            add_action('save_post', function () {
+            add_action('save_post', function ($post_id) {
+                // Use the existing helper — covers autosave, revision, auto-draft,
+                // trash, and inherit statuses.
+                if (!frl_is_post_save_action($post_id)) {
+                    return;
+                }
                 frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
             });
             add_action('created_term', function () {
                 frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
             });
-            add_action('deleted_term', function () {
-                frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
-            });
+            add_action('deleted_term', function ($term_id, $tt_id, $taxonomy) {
+                if ($taxonomy === 'language') {
+                    // Language deletion invalidates all cached language-dependent
+                    // rewrite rules. A full flush is required — merely deleting
+                    // the exclusion patterns transient is insufficient.
+                    self::clear_rewriter_caches();
+                } else {
+                    frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
+                }
+            }, 10, 3);
 
             // Repair absent rewrite_rules (normal WP state during any flush cycle).
             // Exponential backoff prevents log flooding on persistent failure.
