@@ -211,6 +211,6 @@ div.postbox[id^=fd_] .hndle.ui-sortable-handle {
     font-weight: normal !important;
 }
 
-.ul.imagify-datas-list .big {
+ul.imagify-datas-list .big {
     color: inherit !important;
 }
