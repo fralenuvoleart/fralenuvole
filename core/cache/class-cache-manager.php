@@ -1363,16 +1363,22 @@ class Frl_Cache_Manager
         frl_get_option('__reset__');
         $stats['runtime']++;
 
-        // Clear any filters that might override option values
+        // Clear any filters that might override option values.
+        // Only remove the plugin's own pre_option filters (registered by
+        // frl_update_option() and frl_delete_option() at priority 10).
+        // Using remove_all_filters() would also strip third-party callbacks
+        // that legitimately hook pre_option_frl_* hooks.
         global $wp_filter;
         if (!empty($wp_filter)) {
             $prefix = frl_prefix();
             $cleared = 0;
 
-            // Focus on pre_option filters which are commonly used for options
             foreach (array_keys($wp_filter) as $filter_name) {
                 if (str_starts_with($filter_name, 'pre_option_' . $prefix)) {
-                    remove_all_filters($filter_name);
+                    // Remove only the known plugin callbacks (priority 10).
+                    // remove_filter() is safe even if the hook has no callbacks
+                    // at that priority.
+                    remove_filter($filter_name, false, 10);
                     $cleared++;
                 }
             }

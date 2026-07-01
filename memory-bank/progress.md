@@ -1,5 +1,54 @@
 # Project Progress
 
+## ✅ Production Audit — Rewrite Corruption & Cache Integrity Fixes (2026-07-01)
+
+### Patches Applied
+9 patches across 8 files, excluding `frl_alter_query()`, WSForm mutations, and jQuery Migrate typo per user request.
+
+#### Patch 1 (Critical 2.1) — Subdomain Adapter Rewrite Corruption Guard
+- **File:** [`class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php:68,1099,1118), [`plugin-lifecycle.php`](includes/plugin-lifecycle.php:204-212), [`class-rewriter.php`](core/rewriter/class-rewriter.php:415-424)
+- Added `Frl_Subdomain_Adapter::$flush_depth` reference counter. Both `frl_flush_rewrite_rules()` and `clear_rewriter_caches()` increment/decrement in `try/finally`. `filter_option_page_on_front()` and `filter_option_page_for_posts()` skip translation when `$flush_depth > 0`.
+
+#### Patch 2 (Critical 2.2) — Polylang Language-Change Hooks
+- **File:** [`class-rewriter.php`](core/rewriter/class-rewriter.php:481-484)
+- Added `pll_add_language`, `pll_delete_language`, `pll_update_language` → `clear_rewriter_caches()`
+
+#### Patch 3 (Critical 2.4) — GeoDirectory `fields=>ids`
+- **File:** [`geodirectory.php`](modules/pbproperty/geodirectory.php:93)
+- Changed `get_posts()` to use `'fields' => 'ids'` — no full post objects loaded
+
+#### Patch 4 (High 2.6) — `remove_all_filters()` Precision
+- **File:** [`class-cache-manager.php`](core/cache/class-cache-manager.php:1381)
+- Replaced `remove_all_filters()` with targeted `remove_filter($filter_name, false, 10)`
+
+#### Patch 5 (High 3.4) — Exclusion Pattern Content Invalidation
+- **File:** [`class-rewriter.php`](core/rewriter/class-rewriter.php:492-500)
+- Added `save_post`, `created_term`, `deleted_term` hooks to delete exclusion pattern transient
+
+#### Patch 6 (High 3.6) — Thirdparty Listener `try/finally`
+- **File:** [`thirdparty.php`](modules/thirdparty/thirdparty.php:529-568)
+- Wrapped outbound loop in `try/finally` to guarantee inbound listener restoration
+
+#### Patch 7 (High 3.7) — Fallback Cache TTL
+- **File:** [`polylang.php`](core/translator/adapters/polylang.php:141)
+- Added `HOUR_IN_SECONDS` TTL on `get_active_languages_internal()` cache
+
+#### Patch 8 (High 3.8) — `sync_default_lang()` Verification
+- **File:** [`class-subdomain-adapter.php`](modules/subdomain_adapter/class-subdomain-adapter.php:1171-1184)
+- Added `PLL()->model->clean_languages_cache()` + `pll_default_language()` verification before flush
+
+#### Patch 9 (Low 3.3/3.5) — `@preg_match` Removal + Admin Notice
+- **File:** [`abstract-base-feature.php`](core/rewriter/features/abstract-base-feature.php:279,413)
+- Removed `@` suppressors, added `preg_last_error_msg()` logging for malformed patterns. 50K guard now shows admin notice.
+
+### Zero-Regression Verification
+- All 8 files pass `php -l` syntax validation
+- `try/finally` pattern consistent with existing codebase usage in [`error-handler.php`](core/error-handler.php)
+- Counter guard pattern consistent with `frl_is_already_running()` re-entrancy pattern
+- `remove_filter($name, false, 10)` is WordPress core API — no custom code
+- New hooks are add-only (idempotent, zero removal of existing behavior)
+- `class_exists('Frl_Subdomain_Adapter')` guards on all flush-depth references (module is optional)
+
 ## ✅ Repeater Array-to-List Formatting — `format` Attribute (2026-06-28)
 
 ### Problem

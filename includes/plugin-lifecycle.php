@@ -198,9 +198,21 @@ function frl_flush_rewrite_rules(): void
     // hooks (registered in register_cache_invalidation_hooks()) are not yet set
     // up. Run flush_rewrite_rules(true) and third-party notification directly.
     if (!did_action('wp_loaded')) {
-        flush_rewrite_rules(true);
-        if (function_exists('frl_thirdparty_maybe_notify')) {
-            frl_thirdparty_maybe_notify('rewrite_flush');
+        // Prevent the Subdomain Adapter from translating page_on_front /
+        // page_for_posts during rule generation. On a subdomain request,
+        // translated IDs would be baked into the global rewrite_rules option.
+        if (class_exists('Frl_Subdomain_Adapter')) {
+            Frl_Subdomain_Adapter::$flush_depth++;
+        }
+        try {
+            flush_rewrite_rules(true);
+            if (function_exists('frl_thirdparty_maybe_notify')) {
+                frl_thirdparty_maybe_notify('rewrite_flush');
+            }
+        } finally {
+            if (class_exists('Frl_Subdomain_Adapter')) {
+                Frl_Subdomain_Adapter::$flush_depth--;
+            }
         }
     }
 }

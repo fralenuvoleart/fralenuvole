@@ -408,7 +408,20 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
         frl_cache_clear('options');
         frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
 
-        flush_rewrite_rules(true);
+        // Prevent the Subdomain Adapter from translating page_on_front /
+        // page_for_posts during rule generation. Reference counter because
+        // frl_flush_rewrite_rules() also increments via its own codepath,
+        // and the two can nest via do_action('update_option_permalink_structure').
+        if (class_exists('Frl_Subdomain_Adapter')) {
+            Frl_Subdomain_Adapter::$flush_depth++;
+        }
+        try {
+            flush_rewrite_rules(true);
+        } finally {
+            if (class_exists('Frl_Subdomain_Adapter')) {
+                Frl_Subdomain_Adapter::$flush_depth--;
+            }
+        }
 
         // Notify configured third-party cache plugins to purge stale pages.
         if (function_exists('frl_thirdparty_maybe_notify')) {
@@ -461,6 +474,29 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
                     add_action("update_option_translate_cpt_slugs_{$cpt_slug}", [self::class, 'clear_rewriter_caches'], 10, 1);
                 }
             }
+
+            // Invalidate cached exclusion patterns when Polylang languages are
+            // added, deleted, or updated. Without these hooks, rewrite rules
+            // referencing removed languages or missing rules for new languages
+            // persist until the next permalink structure change.
+            add_action('pll_add_language',    [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('pll_delete_language', [self::class, 'clear_rewriter_caches'], 10, 1);
+            add_action('pll_update_language', [self::class, 'clear_rewriter_caches'], 10, 1);
+
+            // Invalidate exclusion patterns when content changes that could
+            // introduce new slugs captured by catch-all rewrite rules.
+            // Without persistent object cache, exclusion patterns have a 1-hour
+            // TTL — these hooks ensure new pages/CPTs/terms don't cause routing
+            // conflicts during that window.
+            add_action('save_post', function () {
+                frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
+            });
+            add_action('created_term', function () {
+                frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
+            });
+            add_action('deleted_term', function () {
+                frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
+            });
 
             // Repair absent rewrite_rules (normal WP state during any flush cycle).
             // Exponential backoff prevents log flooding on persistent failure.

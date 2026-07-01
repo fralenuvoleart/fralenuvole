@@ -278,7 +278,7 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
             // deduplication memory, so it must never happen in normal operation.
             if (count($global_patterns) > 50000) {
                 frl_log('Rewriter: global_patterns guard exceeded 50 000 entries — resetting. Check for runaway rule generation.', [], true);
-                $global_patterns = [];
+                 $global_patterns = [];
             }
         }
     }
@@ -410,10 +410,23 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
         $delim = '!'; // unlikely delimiter
 
-        $p1_valid = @preg_match("{$delim}{$p1}{$delim}", '') !== false;
-        $p2_valid = @preg_match("{$delim}{$p2}{$delim}", '') !== false;
+        $p1_valid = preg_match("{$delim}{$p1}{$delim}", '') !== false;
+        $p2_valid = preg_match("{$delim}{$p2}{$delim}", '') !== false;
 
-        if (!$p1_valid || !$p2_valid) {
+        if (!$p1_valid) {
+            $p1_error = preg_last_error_msg();
+            frl_log('Rewriter: Invalid regex pattern in feature {feature} (pattern 1): {error}', [
+                'feature' => $this->get_name(),
+                'error'   => $p1_error,
+            ], true);
+            return true; // Invalidate bad patterns
+        }
+        if (!$p2_valid) {
+            $p2_error = preg_last_error_msg();
+            frl_log('Rewriter: Invalid regex pattern in feature {feature} (pattern 2): {error}', [
+                'feature' => $this->get_name(),
+                'error'   => $p2_error,
+            ], true);
             return true; // Invalidate bad patterns
         }
 

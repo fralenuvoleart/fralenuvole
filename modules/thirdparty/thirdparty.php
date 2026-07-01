@@ -526,47 +526,51 @@ function frl_thirdparty_maybe_notify(string $trigger): array
         remove_action($inbound_hook, 'frl_thirdparty_inbound_cache_clear', 10);
     }
 
-    foreach ($outbound_hooks as $key => $entry) {
-        $triggers = $entry['triggers'] ?? [];
-        if (!in_array($trigger, $triggers, true)) {
-            continue;
-        }
+    try {
+        foreach ($outbound_hooks as $key => $entry) {
+            $triggers = $entry['triggers'] ?? [];
+            if (!in_array($trigger, $triggers, true)) {
+                continue;
+            }
 
-        $check = $entry['check'] ?? '';
-        $label = $entry['label'] ?? $key;
+            $check = $entry['check'] ?? '';
+            $label = $entry['label'] ?? $key;
 
-        $has_handler =
-            (!empty($check) && (function_exists($check) || class_exists($check))) ||
-            ($entry['type'] === 'action' && has_action($entry['target']));
+            $has_handler =
+                (!empty($check) && (function_exists($check) || class_exists($check))) ||
+                ($entry['type'] === 'action' && has_action($entry['target']));
 
-        if (!$has_handler) {
-            continue;
-        }
+            if (!$has_handler) {
+                continue;
+            }
 
-        if ($entry['type'] === 'action') {
-            $callback_count = has_action($entry['target']);
-            if ($callback_count !== false) {
-                do_action($entry['target']);
+            if ($entry['type'] === 'action') {
+                $callback_count = has_action($entry['target']);
+                if ($callback_count !== false) {
+                    do_action($entry['target']);
+                    $notified[] = [
+                        'label'    => $label,
+                        'status'   => 'notified',
+                        'handlers' => $callback_count,
+                        'target'   => $entry['target'],
+                    ];
+                }
+            } elseif ($entry['type'] === 'function' && function_exists($entry['target'])) {
+                call_user_func($entry['target']);
                 $notified[] = [
-                    'label'    => $label,
-                    'status'   => 'notified',
-                    'handlers' => $callback_count,
-                    'target'   => $entry['target'],
+                    'label'  => $label,
+                    'status' => 'called',
+                    'target' => $entry['target'],
                 ];
             }
-        } elseif ($entry['type'] === 'function' && function_exists($entry['target'])) {
-            call_user_func($entry['target']);
-            $notified[] = [
-                'label'  => $label,
-                'status' => 'called',
-                'target' => $entry['target'],
-            ];
         }
-    }
-
-    // Restore inbound listeners for any subsequent genuine third-party purges.
-    foreach (array_keys($inbound_hooks) as $inbound_hook) {
-        add_action($inbound_hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
+    } finally {
+        // Guarantee restoration of inbound listeners even if an outbound
+        // handler throws an exception. Without this, listeners remain
+        // removed for the rest of the request, breaking cache sync.
+        foreach (array_keys($inbound_hooks) as $inbound_hook) {
+            add_action($inbound_hook, 'frl_thirdparty_inbound_cache_clear', 10, 0);
+        }
     }
 
     frl_is_already_running(__FUNCTION__, true);

@@ -1,5 +1,39 @@
 # Active Context
 
+## 🛡️ Production Audit — Rewrite Corruption & Cache Integrity Fixes (2026-07-01)
+
+### Patches Applied (9 patches, 8 files)
+
+**Patch 1 (Critical 2.1) — Subdomain Adapter Rewrite Corruption Guard:**
+Added `public static int $flush_depth = 0` reference counter on [`Frl_Subdomain_Adapter`](modules/subdomain_adapter/class-subdomain-adapter.php:68). During any `flush_rewrite_rules(true)` call, [`frl_flush_rewrite_rules()`](includes/plugin-lifecycle.php:204) and [`clear_rewriter_caches()`](core/rewriter/class-rewriter.php:415) increment the counter before flush, decrement in `try/finally`. [`filter_option_page_on_front()`](modules/subdomain_adapter/class-subdomain-adapter.php:1099) and [`filter_option_page_for_posts()`](modules/subdomain_adapter/class-subdomain-adapter.php:1118) skip translation when `self::$flush_depth > 0` — raw DB values are stored in `rewrite_rules` instead of subdomain-translated IDs.
+
+**Patch 2 (Critical 2.2) — Polylang Language-Change Hooks:**
+Added `pll_add_language`, `pll_delete_language`, `pll_update_language` hooks to [`register_cache_invalidation_hooks()`](core/rewriter/class-rewriter.php:481-484), calling `clear_rewriter_caches()`.
+
+**Patch 3 (Critical 2.4) — GeoDirectory Query Optimization:**
+[`frl_pbproperty_get_properties_ids()`](modules/pbproperty/geodirectory.php:93) changed from `get_posts()` loading full `WP_Post` objects to `'fields' => 'ids'` — returns only post IDs on cache miss.
+
+**Patch 4 (High 2.6) — `remove_all_filters()` Precision:**
+[`reset_options_caches()`](core/cache/class-cache-manager.php:1381) replaced `remove_all_filters()` with `remove_filter($filter_name, false, 10)` — only strips priority-10 callbacks (the plugin's own anonymous closure from `frl_update_option()`), leaving third-party `pre_option_frl_*` hooks intact.
+
+**Patch 5 (High 3.4) — Exclusion Pattern Content-Change Invalidation:**
+Added `save_post`, `created_term`, `deleted_term` hooks to [`register_cache_invalidation_hooks()`](core/rewriter/class-rewriter.php:492-500) — delete the exclusion patterns transient when content changes, preventing catch-all rewrite rules from intercepting new slugs during the 1-hour TTL window.
+
+**Patch 6 (High 3.6) — Thirdparty Listener Restoration:**
+[`frl_thirdparty_maybe_notify()`](modules/thirdparty/thirdparty.php:529-568) outbound loop wrapped in `try { ... } finally { // restore listeners }` — guarantees inbound cache sync is restored even if an outbound handler throws.
+
+**Patch 7 (High 3.7) — Fallback Cache TTL:**
+[`get_active_languages_internal()`](core/translator/adapters/polylang.php:141) added `HOUR_IN_SECONDS` TTL plus `pll_*_language` hook invalidation via Patch 2.
+
+**Patch 8 (High 3.8) — `sync_default_lang()` Verification:**
+[`sync_default_lang()`](modules/subdomain_adapter/class-subdomain-adapter.php:1171-1184) now calls `PLL()->model->clean_languages_cache()` after `set_default_language()`, verifies `pll_default_language()` matches subdomain language, and skips rewrite flush if mismatch — preventing flush against inconsistent Polylang state.
+
+**Patch 9 (Low 3.3/3.5) — `@preg_match` Removal + Admin Notice:**
+[`patterns_conflict()`](core/rewriter/features/abstract-base-feature.php:413-427) removed `@` suppressors, added `preg_last_error_msg()` logging. 50K safety valve at [line 279](core/rewriter/features/abstract-base-feature.php:279) now fires an admin notice.
+
+### Skipped (User Request)
+- `frl_alter_query()` (Critical 2.3), WSForm mutations (2.5), WSForm unescaped CSS (3.1), jQuery Migrate typo (4.1)
+
 ## 🔍 Block Editor Interference Audit (2026-07-01)
 
 ### Scope

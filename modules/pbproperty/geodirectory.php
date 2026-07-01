@@ -92,18 +92,19 @@ function frl_pbproperty_get_properties_ids()
         function () {
             $posts = get_posts(
                 array(
-                    'post_type' => 'gd_place',
-                    'posts_per_page' => -1
+                    'post_type'      => 'gd_place',
+                    'posts_per_page' => -1,
+                    'fields'         => 'ids',
                 )
             );
 
             $post_ids = array();
 
-            foreach ($posts as $post) {
-                $post_language = pll_get_post_language($post->ID);
+            foreach ($posts as $post_id) {
+                $post_language = pll_get_post_language($post_id);
 
                 if ($post_language && $post_language === frl_get_language()) {
-                    $post_ids[] = $post->ID;
+                    $post_ids[] = $post_id;
                 }
             }
             return $post_ids;

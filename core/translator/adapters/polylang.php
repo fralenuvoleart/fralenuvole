@@ -138,7 +138,7 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface
             // Query language terms directly, filtering by 2-character slugs to exclude pll_en style terms
             $langs = $wpdb->get_col("SELECT t.slug FROM {$wpdb->terms} t INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id WHERE tt.taxonomy = 'language' AND CHAR_LENGTH(t.slug) = 2");
             return !empty($langs) ? $langs : [$this->get_default_language_internal()];
-        });
+        }, HOUR_IN_SECONDS); // TTL bounds staleness; also invalidated by pll_*_language hooks
     }
 
     /**

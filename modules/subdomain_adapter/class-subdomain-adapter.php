@@ -64,6 +64,22 @@ class Frl_Subdomain_Adapter {
     /** @var self|null */
     private static ?self $instance = null;
 
+    /**
+     * Depth counter tracking active flush_rewrite_rules(true) calls.
+     *
+     * When > 0, filter_option_page_on_front() and filter_option_page_for_posts()
+     * skip language translation and return raw DB values. This prevents translated
+     * page IDs from being baked into the global rewrite_rules option when a flush
+     * happens while serving a language subdomain request.
+     *
+     * Reference counter (not boolean) because frl_flush_rewrite_rules() fires
+     * do_action('update_option_permalink_structure') which cascades to
+     * clear_rewriter_caches() → flush_rewrite_rules(true), nesting the flush.
+     *
+     * @var int
+     */
+    public static int $flush_depth = 0;
+
     // -------------------------------------------------------------------------
     // Configuration (set once from constants in detect())
     // -------------------------------------------------------------------------
@@ -1083,7 +1099,11 @@ class Frl_Subdomain_Adapter {
      * @return int Translated page ID in the subdomain's language, or the original.
      */
     public function filter_option_page_on_front($page_id): int {
-        if (!$this->is_on_subdomain()) {
+        // During rewrite-rule generation, return raw DB values unconditionally.
+        // Translating page_on_front on a subdomain request would bake the
+        // subdomain's translated page ID into the global rewrite_rules option,
+        // corrupting routing for all other languages.
+        if (self::$flush_depth > 0 || !$this->is_on_subdomain()) {
             return (int) $page_id;
         }
         $translation = pll_get_post((int) $page_id, $this->current_subdomain_lang);
@@ -1099,7 +1119,7 @@ class Frl_Subdomain_Adapter {
      * @return int Translated page ID in the subdomain's language, or the original.
      */
     public function filter_option_page_for_posts($page_id): int {
-        if (!$this->is_on_subdomain()) {
+        if (self::$flush_depth > 0 || !$this->is_on_subdomain()) {
             return (int) $page_id;
         }
         $translation = pll_get_post((int) $page_id, $this->current_subdomain_lang);
@@ -1146,6 +1166,24 @@ class Frl_Subdomain_Adapter {
         $updated = $adapter->set_default_language($this->current_subdomain_lang);
         if (!$updated) {
             return; // Already correct.
+        }
+
+        // Verify the default language was actually applied before flushing.
+        // set_default_language() writes to the DB synchronously, but the
+        // Polylang model cache may not reflect the change yet. Force a cache
+        // rebuild and confirm the default matches the subdomain language.
+        if (method_exists(PLL()->model, 'clean_languages_cache')) {
+            PLL()->model->clean_languages_cache();
+        }
+        $actual_default = pll_default_language();
+        if ($actual_default !== $this->current_subdomain_lang) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                frl_log('Subdomain Adapter: default language sync failed — expected {expected}, got {actual}. Skipping rewrite flush to avoid corrupting rules.', [
+                    'expected' => $this->current_subdomain_lang,
+                    'actual'   => $actual_default,
+                ]);
+            }
+            return;
         }
 
         // Report the change so the classifier knows something changed.
