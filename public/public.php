@@ -385,7 +385,7 @@ function frl_login_headerurl($url)
  */
 function frl_remove_jquery_migrate($scripts)
 {
-    if (!frl_get_option('remove_jqery_mig')) {
+    if (!frl_get_option('remove_jquery_mig')) {
         return;
     }
 

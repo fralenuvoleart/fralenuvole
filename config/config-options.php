@@ -78,7 +78,7 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'remove_jqery_mig' => array(
+			'remove_jquery_mig' => array(
 				'label' => 'Remove jQuery Migrate',
 				'description' => 'Remove jQuery Migrate compatibility script',
 				'type' => 'checkbox',
