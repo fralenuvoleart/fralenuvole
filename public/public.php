@@ -205,7 +205,7 @@ function frl_preload_featured_image()
         $allowed_types = array_column($hero_mobile_list, 0);
         if (in_array($post->post_type, $allowed_types, true)) {
             $has_mobile = true;
-        } elseif (in_array('home', $allowed_types, true) && is_front_page() && is_home()) {
+        } elseif (in_array('home', $allowed_types, true) && is_front_page()) {
             $has_mobile = true;
         }
     }

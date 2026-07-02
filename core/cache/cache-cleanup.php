@@ -99,13 +99,11 @@ function frl_clear_post_cache($post_id)
         if (empty($mobile_size)) {
             $mobile_size = 'full';
         }
-        $mobile_key = frl_generate_cache_key('featured_img_mobile', (string)$post_id, $mobile_size, $ext);
-        frl_cache_clear('postdata', $mobile_key);
 
-        // Also clear common fallback sizes for mobile preload
-        foreach (['full', $mobile_size] as $m_size) {
-            $alt_mobile_key = frl_generate_cache_key('featured_img_mobile', (string)$post_id, $m_size, $ext);
-            frl_cache_clear('postdata', $alt_mobile_key);
+        // Clear configured size and 'full' fallback (deduplicated)
+        foreach (array_unique(['full', $mobile_size]) as $m_size) {
+            $mobile_key = frl_generate_cache_key('featured_img_mobile', (string)$post_id, $m_size, $ext);
+            frl_cache_clear('postdata', $mobile_key);
         }
     }
 }
