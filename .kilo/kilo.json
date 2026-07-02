@@ -42,7 +42,7 @@
     }
   },
   "indexing": {
-    "enabled": false,
+    "enabled": true,
     "provider": "openrouter"
   }
 }
