@@ -197,7 +197,19 @@ function frl_preload_featured_image()
         $preload_cache[$post->ID] = $preload_data;
     }
 
-    $has_mobile    = (bool) frl_get_option('image_preload_hero_mobile');
+    $hero_mobile_raw  = frl_get_option('image_preload_hero_mobile');
+    $hero_mobile_list = frl_textlist_to_array($hero_mobile_raw);
+    $has_mobile       = false;
+
+    if (!empty($hero_mobile_list)) {
+        $allowed_types = array_column($hero_mobile_list, 0);
+        if (in_array($post->post_type, $allowed_types, true)) {
+            $has_mobile = true;
+        } elseif (in_array('home', $allowed_types, true) && is_front_page() && is_home()) {
+            $has_mobile = true;
+        }
+    }
+
     $desktop_media = $has_mobile ? '(min-width: 768px)' : '';
 
     if ($preload_data && !empty($preload_data['srcset'])) {

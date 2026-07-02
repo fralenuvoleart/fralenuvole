@@ -9,7 +9,7 @@
 
 1. **New helper [`frl_output_preload_link()`](public/public.php:111)** — Extracted link output into a reusable function accepting `$preload_data` array (`'href'` for single URL, `'srcset'`/`'sizes'` for responsive) and optional `$media` string. DRY output for both desktop and mobile links.
 
-2. **Mobile hero preload** — When [`image_preload_hero_mobile`](config/config-options.php:121) is ON, a second `<link>` tag is output with:
+2. **Mobile hero preload** — [`image_preload_hero_mobile`](config/config-options.php:121) is a **textlist** of post-type slugs (one per line, `home` for homepage). Empty = disabled. When a matching post type or homepage is detected, a second `<link>` tag is output with:
    - `href="..."` — single URL targeting `image_preload_hero_mobile_size` (default `1536x1536`)
    - `media="(max-width: 767px)"` — only preloaded by mobile viewports
    - Uses `wp_get_attachment_image_src($thumbnail_id, $mobile_size)` for thumbnail resolution with WP's built-in fallback
@@ -27,13 +27,13 @@
 - [`core/cache/cache-cleanup.php`](core/cache/cache-cleanup.php:74-101) — Added mobile cache key clearing
 
 ### Behavior Matrix
-| `preload_featured` | `hero_mobile` | Extension | Desktop link | Mobile link |
-|---|---|---|---|---|
-| OFF | any | any | — | — |
-| ON | OFF | `""` | `<link imagesrcset imagesizes>` (no media) | — |
-| ON | OFF | `.avif` | `<link imagesrcset imagesizes>` (no media) | — |
-| ON | ON | `""` | `<link imagesrcset imagesizes media="(min-width: 768px)">` | `<link href="mobile-url" media="(max-width: 767px)">` |
-| ON | ON | `.avif` | `<link imagesrcset imagesizes media="(min-width: 768px)">` | `<link href="mobile-url.avif" media="(max-width: 767px)">` |
+| `preload_featured` | `hero_mobile` textlist | Post type match | Extension | Desktop link | Mobile link |
+|---|---|---|---|---|---|
+| OFF | any | any | any | — | — |
+| ON | empty | — | `""` | `<link imagesrcset imagesizes>` (no media) | — |
+| ON | `service` | `post` | `.avif` | `<link imagesrcset imagesizes>` (no media) | — |
+| ON | `service` | `service` | `""` | `<link imagesrcset imagesizes media="(min-width: 768px)">` | `<link href="mobile-url" media="(max-width: 767px)">` |
+| ON | `home\nservice` | `home` (front page) | `.avif` | `<link imagesrcset imagesizes media="(min-width: 768px)">` | `<link href="mobile-url.avif" media="(max-width: 767px)">` |
 
 ### Zero Regression
 - When `image_preload_hero_mobile` is OFF → behavior byte-identical to prior version
