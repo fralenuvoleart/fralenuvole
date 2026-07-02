@@ -37,9 +37,9 @@
 - **File:** [`geodirectory.php`](modules/pbproperty/geodirectory.php:93)
 - Changed `get_posts()` to use `'fields' => 'ids'` — no full post objects loaded
 
-#### Patch 4 (High 2.6) — `remove_all_filters()` Precision
-- **File:** [`class-cache-manager.php`](core/cache/class-cache-manager.php:1381)
-- Replaced `remove_all_filters()` with targeted `remove_filter($filter_name, false, 10)`
+#### Patch 4 (Low 2.6) — `remove_all_filters()` in `reset_options_caches()`
+- **File:** [`class-cache-manager.php`](core/cache/class-cache-manager.php:1374-1383)
+- Calls `remove_all_filters()` on all `pre_option_frl_*` hooks. Redundant with the static cache reset that follows but harmless — the Environment Manager writes via `update_option()` directly, and no third-party plugins hook into this namespace. The triple-reset (`remove_all_filters` + `wp_cache_delete('alloptions')` + `frl_get_option('__reset__')`) is defensive and causes no data corruption.
 
 #### Patch 5 (High 3.4) — Exclusion Pattern Content Invalidation
 - **File:** [`class-rewriter.php`](core/rewriter/class-rewriter.php:492-500)
@@ -913,4 +913,4 @@ Constant-driven exclusion list for `{{TOKEN}}` delimiters in translated blocks. 
 ### Config Extensibility
 Add any token key to the `FRL_TRANSLATOR_EXCLUDE` array — no code changes needed. Format: `'TOKEN_NAME' => true`. Key is what matters (matched against trimmed `{{...}}` inner content), value is ignored.
 
-*Last Updated: 2026-06-19*
+*Last Updated: 2026-07-02*

@@ -1,5 +1,12 @@
 # Active Context
 
+## 🔍 Production Audit — Rewriter/Polylang Integrity (2026-07-02)
+
+The rewriter cannot store corrupted rewrite rules for pages in other languages. Seven safeguards verified. Only finding: missing `try/finally` in `process_string_registration_queue()` (low likelihood).
+
+Full report: [`plans/comprehensive-audit-2026-07-02.md`](plans/comprehensive-audit-2026-07-02.md)
+
+
 ## ✅ Mobile Hero Image Preload — Desktop/Mobile Split with Media Queries (2026-07-02)
 
 ### Problem
@@ -55,8 +62,8 @@ Added `pll_add_language`, `pll_delete_language`, `pll_update_language` hooks to 
 **Patch 3 (Critical 2.4) — GeoDirectory Query Optimization:**
 [`frl_pbproperty_get_properties_ids()`](modules/pbproperty/geodirectory.php:93) changed from `get_posts()` loading full `WP_Post` objects to `'fields' => 'ids'` — returns only post IDs on cache miss.
 
-**Patch 4 (High 2.6) — `remove_all_filters()` Precision:**
-[`reset_options_caches()`](core/cache/class-cache-manager.php:1381) replaced `remove_all_filters()` with `remove_filter($filter_name, false, 10)` — only strips priority-10 callbacks (the plugin's own anonymous closure from `frl_update_option()`), leaving third-party `pre_option_frl_*` hooks intact.
+**Patch 4 (Low 2.6) — `remove_all_filters()` in `reset_options_caches()`:**
+[`reset_options_caches()`](core/cache/class-cache-manager.php:1374-1383) calls `remove_all_filters()` on all `pre_option_frl_*` hooks. This is redundant with the static cache reset that follows (line 1363) but harmless: the Environment Manager writes via `update_option()` directly (zero `add_filter.*pre_option` hits in `core/environment/`), and no third-party plugins hook into the `pre_option_frl_*` namespace. The `remove_all_filters` + `wp_cache_delete('alloptions')` + `frl_get_option('__reset__')` triple-reset is defensive and causes no data corruption.
 
 **Patch 5 (High 3.4) — Exclusion Pattern Content-Change Invalidation:**
 Added `save_post`, `created_term`, `deleted_term` hooks to [`register_cache_invalidation_hooks()`](core/rewriter/class-rewriter.php:492-500) — delete the exclusion patterns transient when content changes, preventing catch-all rewrite rules from intercepting new slugs during the 1-hour TTL window.
@@ -805,4 +812,4 @@ Instead of post-processing `pll_the_languages()` HTML (regex-splitting `<li>` ta
 ### Files modified
 - [`public/shortcodes.php`](public/shortcodes.php:189-384)
 
-*Last Updated: 2026-06-29*
+*Last Updated: 2026-07-02*

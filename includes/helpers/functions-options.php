@@ -116,6 +116,10 @@ function frl_update_option($key, $value_param, $clear_cache = true, $autoload_pa
     $prefixed_key = frl_prefix($key);
     $autoload = frl_normalize_autoload($autoload_param);
 
+    // Strip stale anonymous closures from prior writes to the same key in this request.
+    // Without this, multiple frl_update_option() calls accumulate priority-9999 filters
+    // returning old values, overriding the latest write. Closures are anonymous and cannot
+    // be referenced by name for targeted remove_filter().
     remove_all_filters('pre_option_' . $prefixed_key);
     $result = update_option($prefixed_key, $normalized_value, $autoload);
 
@@ -149,7 +153,8 @@ function frl_delete_option($key, $cache_group = '')
 
     $prefixed_key = frl_prefix($key);
 
-    // Remove existing runtime filters
+    // Same stale-closure rationale as frl_update_option() — prevents a previously-written
+    // priority-9999 filter from resurrecting a deleted option's value via pre_option_*.
     remove_all_filters('pre_option_' . $prefixed_key);
 
     // Update option and capture result
