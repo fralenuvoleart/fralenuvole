@@ -87,8 +87,8 @@
 }
 
 .lang-switcher-flags {
-    opacity: 0.85;
-    filter: saturate(0.85);
+    opacity: 0.80;
+    filter: saturate(0.75);
     line-height: 1;
 }
 
@@ -109,10 +109,14 @@ p:empty:has(+.widget_polylang) {
     gap: 1.3em;
 }
 
+.lang-switcher-flags li,
 .lang-switcher-flags a {
     display: inline-flex;
-    width: 26px;
-    height: 26px;
+}
+
+.lang-switcher-flags a {
+    width: 25px;
+    height: 25px;
     border-radius: 999px;
     overflow: hidden;
 }
@@ -125,8 +129,8 @@ p:empty:has(+.widget_polylang) {
 @media (max-width: 767.98px) {
     /* Polylang */
     .wp-block-navigation__responsive-close .lang-switcher-flags a {
-        width: 32px;
-        height: 32px;
+        width: 30px;
+        height: 30px;
     }
 }
 

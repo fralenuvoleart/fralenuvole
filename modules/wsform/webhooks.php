@@ -259,32 +259,39 @@ function frl_wsf_execute_webhook_submission($args)
     // Initialize cURL session with Webhook URL
     $ch = curl_init($webhook_url);
 
-    // Set cURL options
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Accept: application/json',
-        'Content-Type: application/json',
-    ]);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $json_payload);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    try {
+        // Set cURL options
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Accept: application/json',
+            'Content-Type: application/json',
+        ]);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json_payload);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_NOSIGNAL, true);
+        curl_setopt($ch, CURLOPT_ENCODING, '');
 
-    // Execute the request and get the response
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        // Execute the request and get the response
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-    // Check for errors
-    if ($response === false) {
-        $error = curl_error($ch);
-        frl_log(
-            'WEBHOOK ERROR: cURL execution failed for frl_wsf_execute_webhook_submission(). Error: {error}. Payload: {payload}',
-            ['error' => $error, 'payload' => $json_payload]
-        );
-    } elseif ($http_code < 200 || $http_code >= 300) {
-        frl_log(
-            'WEBHOOK ERROR: Received non-2xx HTTP status code ({status}) in frl_wsf_execute_webhook_submission(). Response: {response}. Payload: {payload}',
-            ['status' => $http_code, 'response' => $response, 'payload' => $json_payload]
-        );
+        // Check for errors
+        if ($response === false) {
+            $error = curl_error($ch);
+            frl_log(
+                'WEBHOOK ERROR: cURL execution failed for frl_wsf_execute_webhook_submission(). Error: {error}. Payload: {payload}',
+                ['error' => $error, 'payload' => $json_payload]
+            );
+        } elseif ($http_code < 200 || $http_code >= 300) {
+            frl_log(
+                'WEBHOOK ERROR: Received non-2xx HTTP status code ({status}) in frl_wsf_execute_webhook_submission(). Response: {response}. Payload: {payload}',
+                ['status' => $http_code, 'response' => $response, 'payload' => $json_payload]
+            );
+        }
+    } finally {
+        curl_close($ch);
     }
 }
 
