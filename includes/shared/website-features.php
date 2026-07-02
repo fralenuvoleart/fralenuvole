@@ -241,22 +241,24 @@ function frl_disable_comments()
         }
     }
 
-    // Perform a one-time DB update to close comments on all published posts
-    frl_cache_remember(
-        'options',
-        'disable_comments',
-        function () {
-            global $wpdb;
-            $wpdb->update(
-                $wpdb->posts,
-                ['comment_status' => 'closed', 'ping_status' => 'closed'],
-                ['post_status' => 'publish', 'comment_status' => 'open'] // WHERE condition: only affect posts with open comments
-            );
-            // Return '1' to mark the operation as completed in cache
-            return '1';
-        },
-        YEAR_IN_SECONDS,
-    );
+    // Perform a one-time DB update to close comments on all published posts (admin only)
+    if (frl_is_admin()) {
+        frl_cache_remember(
+            'options',
+            'disable_comments',
+            function () {
+                global $wpdb;
+                $wpdb->update(
+                    $wpdb->posts,
+                    ['comment_status' => 'closed', 'ping_status' => 'closed'],
+                    ['post_status' => 'publish', 'comment_status' => 'open'] // WHERE condition: only affect posts with open comments
+                );
+                // Return '1' to mark the operation as completed in cache
+                return '1';
+            },
+            YEAR_IN_SECONDS,
+        );
+    }
 
     // Hide existing comments menu and admin bar items
     add_action('admin_menu', function () {
