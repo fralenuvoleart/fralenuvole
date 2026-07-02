@@ -47,6 +47,13 @@ function frl_render_block_core_navigation_translation($settings, $metadata)
         return $settings;
     }
 
+    // Compatibility check: if another plugin has already replaced the render_callback,
+    // log a warning but proceed with our replacement anyway (navigation translation
+    // is critical for correct multilingual URLs).
+    if (isset($settings['render_callback'])) {
+        frl_log('Navigation block render_callback already set by another plugin; replacing for multilingual translation.');
+    }
+
     // Retrieve current language code
     $current_lang = frl_get_language();
 

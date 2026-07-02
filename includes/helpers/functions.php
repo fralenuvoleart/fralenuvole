@@ -893,8 +893,7 @@ function frl_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' )
         // safely cacheable across requests. get_the_terms() returns false
         // when no terms exist, but caching 'false' via transient fallback
         // is unreliable (get_transient returns false for both "key missing"
-        // and "stored value is false"). WP_Error should not be cached
-        // because it may represent a transient database issue.
+        // and "stored value is false").
         if ( ! $terms || is_wp_error( $terms ) ) {
             return [];
         }

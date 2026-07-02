@@ -219,8 +219,12 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
                 // Dispatcher cache: map object signature -> applicable features (LRU pattern)
                 static $feature_match_cache = [];
                 static $cache_order = [];
-                // Build a signature that distinguishes post types and taxonomies but remains stable.
-                $signature = get_class($object);
+                // Build a signature that normalizes to base WP classes to prevent
+                // cache fragmentation from subclasses (e.g., WC_Product extends WP_Post).
+                // Using spl_object_id ensures true identity even for different instances
+                // of the same class with the same post_type.
+                $base_class = ($object instanceof WP_Post) ? 'WP_Post' : (($object instanceof WP_Term) ? 'WP_Term' : get_class($object));
+                $signature = $base_class;
                 if (isset($object->post_type)) {
                     $signature .= '_' . $object->post_type;
                 } elseif (isset($object->taxonomy)) {

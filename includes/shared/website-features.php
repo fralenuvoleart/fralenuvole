@@ -241,23 +241,21 @@ function frl_disable_comments()
         }
     }
 
-    // Perform a one-time DB update to close comments on all published posts (admin only)
-    if (frl_is_admin()) {
-        frl_cache_remember(
-            'options',
-            'disable_comments',
-            function () {
-                global $wpdb;
-                $wpdb->update(
-                    $wpdb->posts,
-                    ['comment_status' => 'closed', 'ping_status' => 'closed'],
-                    ['post_status' => 'publish', 'comment_status' => 'open'] // WHERE condition: only affect posts with open comments
-                );
-                // Return '1' to mark the operation as completed in cache
-                return '1';
-            },
-            YEAR_IN_SECONDS,
-        );
+    // Schedule a one-time cron to close comments on all published posts.
+    // This avoids running a potentially expensive UPDATE across the entire
+    // wp_posts table synchronously on admin_init, which can lock the table
+    // for seconds on sites with millions of posts.
+    if (frl_is_admin() && !wp_next_scheduled('frl_disable_comments_batch')) {
+        // Check if the operation is already marked as completed
+        $completed = frl_cache_get('options', 'disable_comments');
+        if ($completed !== '1') {
+            wp_schedule_single_event(time() + 5, 'frl_disable_comments_batch');
+        }
+    }
+
+    // Handle the scheduled batch update
+    if (!has_action('frl_disable_comments_batch', 'frl_run_disable_comments_batch')) {
+        add_action('frl_disable_comments_batch', 'frl_run_disable_comments_batch');
     }
 
     // Hide existing comments menu and admin bar items
@@ -302,4 +300,27 @@ function frl_disable_comments()
     add_action('admin_init', function () {
         remove_meta_box('dashboard_recent_comments', 'dashboard', 'normal');
     }, 10, 0);
+}
+
+/**
+ * Cron handler: batch-close comments on all published posts.
+ *
+ * Runs as a scheduled background task to avoid synchronous table locks
+ * on admin_init for sites with large wp_posts tables. Marks completion
+ * in the cache so the schedule is never re-queued.
+ *
+ * @return void
+ */
+function frl_run_disable_comments_batch(): void
+{
+    global $wpdb;
+
+    $wpdb->update(
+        $wpdb->posts,
+        ['comment_status' => 'closed', 'ping_status' => 'closed'],
+        ['post_status' => 'publish', 'comment_status' => 'open']
+    );
+
+    // Mark as completed so frl_disable_comments() never schedules this again.
+    frl_cache_set('options', 'disable_comments', '1', YEAR_IN_SECONDS);
 }

@@ -413,9 +413,21 @@ function frl_get_debug_log_count()
         $log_file = WP_CONTENT_DIR . '/debug.log';
 
         if (file_exists($log_file)) {
-            // Faster than loading entire file into memory
+            $file_size = filesize($log_file);
+            // Cap read to last 100KB to avoid scanning huge log files.
+            // For files over 1MB, only the most recent portion is counted,
+            // which is what admins care about in the toolbar anyway.
+            $max_read = 100 * 1024; // 100KB
+            $offset = ($file_size > $max_read) ? $file_size - $max_read : 0;
+
             $handle = @fopen($log_file, 'r');
             if ($handle) {
+                if ($offset > 0) {
+                    // Seek to near the end of the file, then align to next newline
+                    fseek($handle, $offset);
+                    fgets($handle); // Discard partial first line
+                }
+
                 $ignore_list = defined('FRL_LOG_COUNT_IGNORE') && is_array(FRL_LOG_COUNT_IGNORE) ? FRL_LOG_COUNT_IGNORE : [];
 
                 while (($line = fgets($handle)) !== false) {
@@ -464,6 +476,18 @@ function frl_get_debug_log_count()
  */
 function frl_trace_logged_user_visits()
 {
+    // Fast-path transient deduplication before any heavy work.
+    // This avoids fetching user meta and iterating stored visits on every
+    // page load when the same user visits the same URL within 5 minutes.
+    $user_id = get_current_user_id();
+    if ($user_id && !empty($_SERVER['REQUEST_URI'])) {
+        $request_hash = md5(($_SERVER['HTTP_HOST'] ?? '') . $_SERVER['REQUEST_URI']);
+        $dedup_key = 'visit_dedup_' . $user_id . '_' . $request_hash;
+        if (frl_cache_get('visits', $dedup_key)) {
+            return;
+        }
+    }
+
     // Check for specific actions FIRST
     // Note: clear_visits is now handled by frl_post_clear_visits via admin-post.php
     if (isset($_GET['refresh_visits'])) {
@@ -531,4 +555,9 @@ function frl_trace_logged_user_visits()
 
     // Store in user meta
     frl_update_user_meta($user_id, 'user_visits', $visits);
+
+    // Set transient deduplication flag for fast-path on next request (5 min TTL)
+    if (isset($dedup_key)) {
+        frl_cache_set('visits', $dedup_key, true, 300);
+    }
 }
