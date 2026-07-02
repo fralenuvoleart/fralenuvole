@@ -640,15 +640,16 @@ final class Frl_Translation_Service
             pll_set_current_language($source_lang);
         }
 
-        foreach (array_keys($this->string_registration_queue) as $string) {
-            $this->register_translation($string);
+        try {
+            foreach (array_keys($this->string_registration_queue) as $string) {
+                $this->register_translation($string);
+            }
+        } finally {
+            if (function_exists('pll_set_current_language')) {
+                pll_set_current_language($original_lang);
+            }
+            $this->string_registration_queue = [];
         }
-
-        if (function_exists('pll_set_current_language')) {
-            pll_set_current_language($original_lang);
-        }
-
-        $this->string_registration_queue = [];
     }
 
     /**
