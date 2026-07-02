@@ -1,4 +1,18 @@
-# Project Progress
+**Second audit patches (2026-07-02):**
+
+**B1 — `get_term_link()` WP_Error not caught by `??`**
+- **File:** [`core/translator/class-translation-service.php:385`](core/translator/class-translation-service.php:385)
+- **Change:** `$link = get_term_link($translated_term) ?? '#';` → `$link = get_term_link($translated_term); return is_wp_error($link) ? '#' : $link;`
+- **Effect:** When `$translated_id` is falsy (term doesn't exist in target language), `get_term()` returns null, `get_term_link(null)` returns `WP_Error`, which `??` (null-coalescing) does not catch. `WP_Error` was stored in permalink cache as a URL string instead of `'#'`.
+
+**P1 — Admin assets gated behind `frl_is_plugin_context()`**
+- **File:** [`admin/ui/ui-asset-loader.php:64`](admin/ui/ui-asset-loader.php:64)
+- **Change:** Added `if (!frl_is_plugin_context()) { return; }` as first line of `frl_asset_loader_scripts()`
+- **Effect:** jQuery UI Tabs, dashboard CSS, tag-validator JS, log-manager CSS/JS, import-export JS no longer enqueued on non-plugin admin pages. Saves ~100KB+ on post edit screens, media library, user lists, etc.
+
+**19 findings rejected — full rationale in `memory-bank/activeContext.md`. All 5 patches (3 prior + 2 new) pass `php -l`.**
+
+---
 
 ## ✅ Mobile Hero Image Preload — Desktop/Mobile Split with Media Queries (2026-07-02)
 

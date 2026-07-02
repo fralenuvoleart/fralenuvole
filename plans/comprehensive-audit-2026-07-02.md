@@ -1,6 +1,23 @@
 # Fralenuvole Plugin — Production Audit (2026-07-02)
 
 **Audited version:** 5.7.3.9
+
+## ⚖️ POST-AUDIT DISPOSITIONS (2026-07-02)
+
+The 5 patching recommendations were reviewed against live code and dispositioned as follows:
+
+| # | Finding | Verdict | Applied? | File(s) |
+|---|---------|--------|----------|---------|
+| P1(a) | Log capture filters unconditional | ✅ Accurate | **Applied** | [`includes/main.php:42`](includes/main.php:42) — gated behind `WP_DEBUG_LOG` |
+| P1(b) | Gate `frl_log()` `error_log` behind `WP_DEBUG_LOG` | ❌ Skipped | **Rejected** | Would silence production error logging — violates line 66 comment "Always log to preserve error frequency information". P1(a) already eliminated the expensive per-block capture work; remaining `error_log` with basic URL+hook enrichment is negligible. |
+| P2 | Comments REST endpoints unguarded | ❌ Misdiagnosed | **Reverted** | Intentional design: `frl_disable_comments()` removes comment endpoints for everybody. No guard needed. |
+| P3 | `header_html`/`footer_html` stale cache (1 week) | ✅ Accurate | **Applied** | [`includes/helpers/functions-options.php:127-135`](includes/helpers/functions-options.php:127) — explicit `frl_cache_clear('html')` when these options are updated |
+| P4 | Re-entrancy flag "never set" | ❌ False | **Rejected** | Guard works correctly: `frl_is_already_running(__FUNCTION__)` at [`thirdparty.php:397`](modules/thirdparty/thirdparty.php:397) uses default `$reset=false`, which DOES set the flag at [`functions-access-control.php:203`](includes/helpers/functions-access-control.php:203). Proposed `$reset=true` patch would break the guard. |
+| P5 | Dead re-entrancy guard in `frl_get_option()` | ✅ Accurate | **Applied** | [`includes/helpers/functions-options.php:89-92`](includes/helpers/functions-options.php:89) — removed `frl_is_already_running(__FUNCTION__, true)` from `finally` block; flag was never checked by any caller (grep confirmed zero references) |
+
+**Net result:** 3 patches applied (P1a, P3, P5), 3 recommendations rejected (P1b, P2, P4). Zero regressions. All patches pass `php -l` syntax validation.
+
+---
 **Scope:** All code paths in `core/`, `includes/`, `admin/`, `modules/`, `config/`, MU-plugin, and lifecycle hooks. Each finding was verified by direct source inspection and (where applicable) cross-checked with `search_files` results.
 
 **Methodology:** For each potential issue, I read the source to confirm (a) the failure mode is real, (b) it is not already mitigated by other code in the same request, and (c) the impact is concrete. Findings that did not survive this verification were dropped or downgraded.

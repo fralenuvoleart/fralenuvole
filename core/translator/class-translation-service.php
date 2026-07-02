@@ -382,8 +382,8 @@ final class Frl_Translation_Service
                 $translated_id = $this->adapter->get_object_id($term_id, $taxonomy, true, $language);
                 $translated_term = get_term($translated_id);
 
-                $link = get_term_link($translated_term) ?? '#';
-                return $link;
+                $link = get_term_link($translated_term);
+                return is_wp_error($link) ? '#' : $link;
             }
         );
     }
