@@ -121,9 +121,9 @@ const FRL_DEFAULT_FIELDS = array(
 			'image_preload_hero_mobile' => array(
 				'label' => 'Force Hero Image on Mobile',
 				'description' => 'Adds a separate preload link to force full-size image preload on mobile.',
-				'type' => 'checkbox',
+				'type' => 'textlist',
 				'default' => 1,
-				'sanitize_callback' => 'absint',
+				'sanitize_callback' => 'sanitize_textarea_field',
 			),
 			'image_preload_hero_mobile_size' => array(
 				'label' => 'Size of Preloaded Hero Image on Mobile',
