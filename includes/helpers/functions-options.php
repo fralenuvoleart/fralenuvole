@@ -87,7 +87,8 @@ function frl_get_option($key, $bypass_cache = false)
             return $default !== null ? $default['value'] : null;
         }
     } finally {
-        frl_is_already_running(__FUNCTION__, true);
+        // Re-entrancy guard intentionally omitted: the $loaded static (line 32)
+        // and $write_attempted array (line 33) provide the actual protection.
     }
 }
 
@@ -126,6 +127,11 @@ function frl_update_option($key, $value_param, $clear_cache = true, $autoload_pa
     if ($clear_cache) {
         // Only refresh the options cache entry itself – dependent groups must remain intact to avoid thrashing.
         frl_cache_clear('options', 'all_options', false);
+        // HTML options are cached in the html group with 1-week TTL;
+        // single-key clears do not cascade, so explicit invalidation is needed.
+        if ($key === 'header_html' || $key === 'footer_html') {
+            frl_cache_clear('html');
+        }
     }
 
     add_filter('pre_option_' . $prefixed_key,

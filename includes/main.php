@@ -39,7 +39,7 @@ add_action('init', 'frl_disable_oembed_discovery', 5, 0);
 add_filter('auth_cookie_expiration', 'frl_extend_admin_cookie', 10, 1);
 add_action('shutdown', 'frl_process_deferred_writes', 10, 0);
 
-if (!frl_is_rest_api_request()) {
+if (!frl_is_rest_api_request() && defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
     add_filter('render_block_data', 'frl_log_capture_render_block_enter', 10, 1);
     add_filter('render_block', 'frl_log_capture_render_block_exit', 10, 2);
     add_action('pre_get_posts', 'frl_log_capture_query', 1, 1);
