@@ -120,9 +120,10 @@ const FRL_DEFAULT_FIELDS = array(
 			),
 			'image_preload_hero_mobile' => array(
 				'label' => 'Force Hero Image on Mobile',
-				'description' => 'Adds a separate preload link to force full-size image preload on mobile.',
+				'description' => 'Adds a separate preload link to force full-size image preload on mobile for the specified post-types. One post-type per line, you can use "home" for the homepage.',
 				'type' => 'textlist',
-				'default' => 1,
+				'default' => 'home
+				service',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
 			'image_preload_hero_mobile_size' => array(
