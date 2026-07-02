@@ -67,7 +67,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'absint',
 			),
 			'defer_css_handles' => array(
-				'label' => 'Deferred CSS String Matches',
+				'label' => 'Deferred CSS Styles Handles',
 				'description' => 'One handle per line, also plugin names can be used. The string is matched partially against the full URL of the style.',
 				'type' => 'textlist',
 				'default' => '

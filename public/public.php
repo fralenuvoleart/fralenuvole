@@ -107,23 +107,25 @@ function frl_build_featured_image_srcset(int $thumbnail_id, string $extension, s
  *
  * @param array  $preload_data Array with 'srcset'/'sizes' (desktop) or 'href' (mobile).
  * @param string $media        Optional media query attribute value.
+ * @param string $id_suffix    Optional suffix appended to the <link> id attribute (e.g., '-mobile').
  */
-function frl_output_preload_link(array $preload_data, string $media = ''): void
+function frl_output_preload_link(array $preload_data, string $media = '', string $id_suffix = ''): void
 {
     $media_attr = $media ? ' media="' . esc_attr($media) . '"' : '';
+    $link_id    = FRL_PREFIX . '-preload-img' . $id_suffix;
 
     if (!empty($preload_data['href'])) {
         printf(
-            '<link id="%s-preload-img" data-plugin="%s" rel="preload" fetchPriority="high" as="image" href="%s"%s />',
-            FRL_PREFIX,
+            '<link id="%s" data-plugin="%s" rel="preload" fetchPriority="high" as="image" href="%s"%s />',
+            $link_id,
             FRL_NAME,
             esc_url($preload_data['href']),
             $media_attr
         );
     } elseif (!empty($preload_data['srcset'])) {
         printf(
-            '<link id="%s-preload-img" data-plugin="%s" rel="preload" fetchPriority="high" imagesrcset="%s" imagesizes="%s" as="image"%s />',
-            FRL_PREFIX,
+            '<link id="%s" data-plugin="%s" rel="preload" fetchPriority="high" imagesrcset="%s" imagesizes="%s" as="image"%s />',
+            $link_id,
             FRL_NAME,
             esc_attr($preload_data['srcset']),
             esc_attr($preload_data['sizes']),
@@ -269,7 +271,7 @@ function frl_preload_featured_image()
         });
 
         if ($mobile_data && !empty($mobile_data['href'])) {
-            frl_output_preload_link($mobile_data, '(max-width: 767px)');
+            frl_output_preload_link($mobile_data, '(max-width: 767px)', '-mobile');
         }
     }
 }
