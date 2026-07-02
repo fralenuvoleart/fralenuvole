@@ -198,7 +198,20 @@ function frl_normalize_option($value, string $type = 'checkbox')
         case 'textlist':
             return frl_normalize_textlist($value);
 
-            // Types like 'text', 'select', 'wysiwyg', 'html' will now fall into the default case.
+        case 'text':
+        case 'html':
+        case 'wysiwyg':
+        case 'select':
+        case 'textarea':
+        case 'email':
+        case 'url':
+        case 'number':
+        case 'color':
+        case 'date':
+        case 'password':
+        case 'custom':
+            return $value;
+
         default:
             return frl_normalize_boolval($value);
     }
