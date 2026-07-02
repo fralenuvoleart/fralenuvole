@@ -103,7 +103,41 @@ function frl_build_featured_image_srcset(int $thumbnail_id, string $extension, s
 }
 
 /**
+ * Output a preload <link> tag for either responsive (imagesrcset/imagesizes) or single (href) preload.
+ *
+ * @param array  $preload_data Array with 'srcset'/'sizes' (desktop) or 'href' (mobile).
+ * @param string $media        Optional media query attribute value.
+ */
+function frl_output_preload_link(array $preload_data, string $media = ''): void
+{
+    $media_attr = $media ? ' media="' . esc_attr($media) . '"' : '';
+
+    if (!empty($preload_data['href'])) {
+        printf(
+            '<link id="%s-preload-img" data-plugin="%s" rel="preload" fetchPriority="high" as="image" href="%s"%s />',
+            FRL_PREFIX,
+            FRL_NAME,
+            esc_url($preload_data['href']),
+            $media_attr
+        );
+    } elseif (!empty($preload_data['srcset'])) {
+        printf(
+            '<link id="%s-preload-img" data-plugin="%s" rel="preload" fetchPriority="high" imagesrcset="%s" imagesizes="%s" as="image"%s />',
+            FRL_PREFIX,
+            FRL_NAME,
+            esc_attr($preload_data['srcset']),
+            esc_attr($preload_data['sizes']),
+            $media_attr
+        );
+    }
+}
+
+/**
  * Preload the featured image of a singular post, using an optional file extension (e.g., .avif, .webp).
+ *
+ * Outputs up to two <link> tags:
+ * - Desktop: responsive imagesrcset/imagesizes (with media="(min-width: 768px)" when mobile is active).
+ * - Mobile:  single href targeting a configurable thumbnail size with media="(max-width: 767px)".
  */
 function frl_preload_featured_image()
 {
@@ -163,14 +197,68 @@ function frl_preload_featured_image()
         $preload_cache[$post->ID] = $preload_data;
     }
 
+    $has_mobile    = (bool) frl_get_option('image_preload_hero_mobile');
+    $desktop_media = $has_mobile ? '(min-width: 768px)' : '';
+
     if ($preload_data && !empty($preload_data['srcset'])) {
-        printf(
-            '<link id="%s-preload-img" data-plugin="%s" rel="preload" fetchPriority="high" imagesrcset="%s" imagesizes="%s" as="image" />',
-            FRL_PREFIX,
-            FRL_NAME,
-            esc_attr($preload_data['srcset']),
-            esc_attr($preload_data['sizes'])
-        );
+        frl_output_preload_link($preload_data, $desktop_media);
+    }
+
+    // Mobile hero preload: single href targeting a specific thumbnail size
+    if ($has_mobile) {
+        $mobile_size = (string) frl_get_option('image_preload_hero_mobile_size');
+        if (empty($mobile_size)) {
+            $mobile_size = 'full';
+        }
+
+        $extension        = (string) frl_get_option('image_preload_featured_ext');
+        $mobile_cache_key = frl_generate_cache_key('featured_img_mobile', (string)$post->ID, $mobile_size, (string)$extension);
+
+        $mobile_data = frl_cache_remember('postdata', $mobile_cache_key, function () use ($post, $mobile_size, $extension) {
+            $thumbnail_id = get_post_thumbnail_id($post->ID);
+            if (!$thumbnail_id) {
+                return null;
+            }
+
+            $img_src = wp_get_attachment_image_src($thumbnail_id, $mobile_size);
+            if (!$img_src || empty($img_src[0])) {
+                return null;
+            }
+
+            $url = $img_src[0];
+
+            // Apply extension if configured and variant exists for this specific size
+            if (!empty($extension)) {
+                $original_path = get_attached_file($thumbnail_id);
+                if ($original_path && file_exists($original_path . $extension)) {
+                    $metadata = wp_get_attachment_metadata($thumbnail_id);
+                    if ($metadata && !empty($metadata['file'])) {
+                        $upload_dir = wp_upload_dir();
+                        $dirname    = trailingslashit(dirname($metadata['file']));
+                        $sizes      = $metadata['sizes'] ?? [];
+
+                        if (isset($sizes[$mobile_size])) {
+                            $variant_path = $upload_dir['basedir'] . '/' . $dirname . $sizes[$mobile_size]['file'] . $extension;
+                            if (file_exists($variant_path)) {
+                                $url = $upload_dir['baseurl'] . '/' . $dirname . $sizes[$mobile_size]['file'] . $extension;
+                            }
+                        } else {
+                            // Mobile size resolved to full/original — use original file path
+                            $variant_path = $original_path . $extension;
+                            if (file_exists($variant_path)) {
+                                $url = wp_get_attachment_url($thumbnail_id) . $extension;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return ['href' => $url];
+        });
+
+        if ($mobile_data && !empty($mobile_data['href'])) {
+            frl_output_preload_link($mobile_data, '(max-width: 767px)');
+        }
     }
 }
 

@@ -1,5 +1,47 @@
 # Active Context
 
+## ✅ Mobile Hero Image Preload — Desktop/Mobile Split with Media Queries (2026-07-02)
+
+### Problem
+`frl_preload_featured_image()` output a single responsive `<link imagesrcset>` — no way to force a specific full-size variant for mobile viewports via media query.
+
+### Fix Applied
+
+1. **New helper [`frl_output_preload_link()`](public/public.php:111)** — Extracted link output into a reusable function accepting `$preload_data` array (`'href'` for single URL, `'srcset'`/`'sizes'` for responsive) and optional `$media` string. DRY output for both desktop and mobile links.
+
+2. **Mobile hero preload** — When [`image_preload_hero_mobile`](config/config-options.php:121) is ON, a second `<link>` tag is output with:
+   - `href="..."` — single URL targeting `image_preload_hero_mobile_size` (default `1536x1536`)
+   - `media="(max-width: 767px)"` — only preloaded by mobile viewports
+   - Uses `wp_get_attachment_image_src($thumbnail_id, $mobile_size)` for thumbnail resolution with WP's built-in fallback
+
+3. **Desktop media query** — When mobile preload is active, the desktop responsive link gains `media="(min-width: 768px)"` to prevent double preloading. When mobile is OFF, no media attribute (current behavior preserved — zero regression).
+
+4. **Extension fallback (Approach B)** — If `.avif` variant exists for the mobile size, it's used. If not, the original format URL from `wp_get_attachment_image_src()` is used. Never skips the mobile link when toggle is ON — consistent with existing desktop fallback at [`public/public.php:136-140`](public/public.php:136).
+
+5. **Cache key strategy** — Mobile uses `featured_img_mobile_{post_id}_{mobile_size}_{extension}` in the `postdata` group (separate from desktop's `featured_img_{post_id}_{image_size}_{extension}`).
+
+6. **Cache cleanup** — [`frl_clear_post_cache()`](core/cache/cache-cleanup.php:74) now clears both `featured_img` and `featured_img_mobile` keys for the configured mobile size + `'full'` fallback.
+
+### Files Modified
+- [`public/public.php`](public/public.php:105-263) — Added `frl_output_preload_link()` helper, refactored `frl_preload_featured_image()` with mobile logic
+- [`core/cache/cache-cleanup.php`](core/cache/cache-cleanup.php:74-101) — Added mobile cache key clearing
+
+### Behavior Matrix
+| `preload_featured` | `hero_mobile` | Extension | Desktop link | Mobile link |
+|---|---|---|---|---|
+| OFF | any | any | — | — |
+| ON | OFF | `""` | `<link imagesrcset imagesizes>` (no media) | — |
+| ON | OFF | `.avif` | `<link imagesrcset imagesizes>` (no media) | — |
+| ON | ON | `""` | `<link imagesrcset imagesizes media="(min-width: 768px)">` | `<link href="mobile-url" media="(max-width: 767px)">` |
+| ON | ON | `.avif` | `<link imagesrcset imagesizes media="(min-width: 768px)">` | `<link href="mobile-url.avif" media="(max-width: 767px)">` |
+
+### Zero Regression
+- When `image_preload_hero_mobile` is OFF → behavior byte-identical to prior version
+- No changes to `frl_build_featured_image_srcset()`, `frl_get_featured_image_size()`, `frl_generate_cache_key()`
+- Desktop link output structure unchanged (only gains optional `media` attribute)
+
+---
+
 ## 🛡️ Production Audit — Rewrite Corruption & Cache Integrity Fixes (2026-07-01)
 
 ### Patches Applied (9 patches, 8 files)

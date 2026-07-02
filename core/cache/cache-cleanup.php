@@ -93,6 +93,20 @@ function frl_clear_post_cache($post_id)
                 frl_cache_clear('postdata', $alt_key);
             }
         }
+
+        // Clear mobile hero preload cache variants for this post
+        $mobile_size = (string) frl_get_option('image_preload_hero_mobile_size');
+        if (empty($mobile_size)) {
+            $mobile_size = 'full';
+        }
+        $mobile_key = frl_generate_cache_key('featured_img_mobile', (string)$post_id, $mobile_size, $ext);
+        frl_cache_clear('postdata', $mobile_key);
+
+        // Also clear common fallback sizes for mobile preload
+        foreach (['full', $mobile_size] as $m_size) {
+            $alt_mobile_key = frl_generate_cache_key('featured_img_mobile', (string)$post_id, $m_size, $ext);
+            frl_cache_clear('postdata', $alt_mobile_key);
+        }
     }
 }
 
