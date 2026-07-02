@@ -118,6 +118,20 @@ const FRL_DEFAULT_FIELDS = array(
 				'default' => 1,
 				'sanitize_callback' => 'absint',
 			),
+			'image_preload_hero_mobile' => array(
+				'label' => 'Force Hero Image on Mobile',
+				'description' => 'Adds a separate preload link to force full-size image preload on mobile.',
+				'type' => 'checkbox',
+				'default' => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'image_preload_hero_mobile_size' => array(
+				'label' => 'Size of Preloaded Hero Image on Mobile',
+				'description' => 'Specify the name of the WP thumbnail that will be preloaded on mobile (e.g. "full", "1536x1536"). Default fallback is "full".',
+				'type' => 'text',
+				'default' => '1536x1536',
+				'sanitize_callback' => 'sanitize_text_field',
+			),
 			'image_preload_featured_ext' => array(
 				'label' => 'Add extension to preloaded image',
 				'description' => 'Add a file extension to the preloaded featured image URL if the file exists (e.g. .avif). Leave blank to use the original image URL.',
