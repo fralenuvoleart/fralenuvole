@@ -1,7 +1,6 @@
 # Fralenuvole Plugin — Comprehensive Production Audit (2026-07-02)
 
 **Audited version:** 5.7.3.9
-**Auditor:** Zoo (Architect mode)
 **Scope:** All code paths, modules, helpers, hooks, filters, cache, options, environment, rewriter, translator, themekit, admin, MU-plugin, lifecycle, and third-party integration.
 **Goal:** Identify hidden bugs, performance throttles, and interactions with WordPress core / other plugins that may degrade a production website. The plugin's USP is performance, so any net-negative performance or stability finding must be flagged.
 
@@ -17,9 +16,9 @@
 | 🟢 Low / Informational | 6 | Cosmetic, defensive, or non-impactful findings |
 
 **Top three concerns** (read first):
-1. `frl_log_capture_render_block_enter/exit` and `frl_log_capture_shortcode` run on **every block and shortcode render**, on every frontend request — even when logging is disabled. The stack push/pop + array iteration is non-trivial on pages with many blocks.
-2. `$key_cache` in `Frl_Cache_Manager` is an **unbounded static array** that grows for the lifetime of the request with no LRU eviction — a memory-leak vector for long-running processes and sites with many unique cache keys.
-3. `frl_get_current_user()` cache key has unbounded space (`user_<cookie_username>_<8-char-token-hash>`) — DoS / cache-pollution vector on public sites with many unique cookies.
+1. `frl_log_capture_render_block_enter/exit` and `frl_log_capture_shortcode` run on **every block and shortcode render**, on every frontend request — even when logging is disabled. Real per-request overhead on a performance USP plugin.
+2. `$key_cache` in `Frl_Cache_Manager` is an **unbounded within-request static array** (request-scoped, not cross-request) that grows only when array keys are passed to `frl_cache_remember`. Real impact only on long-running processes or pages with many array-keyed cache calls; negligible on typical page loads.
+3. `frl_get_current_user()` cache key is derived from the raw `LOGGED_IN_COOKIE` value (not from the validated user ID), which means an attacker can pollute the persistent `admin` cache group with `WP_User(0)` entries under attacker-chosen keys. This is a **cache pollution** concern (not a CPU/memory DoS) and is bounded by the persistent cache's eviction policy.
 
 > **Retraction (2026-07-02):** The earlier draft of this report listed `frl_alter_query()` as Critical C1. That was an over-reach. The function is a **deliberate, voluntary performance optimization** — the user has confirmed the design intent. The block editor side-effects (Query Loop block affected by `update_post_meta_cache=false`, draft previews affected by `post_status='publish'`, pagination affected by `no_found_rows=true`) are **known and accepted tradeoffs**, not regressions. Fralenuvole is performance-first; the contract is: opt out via the `custom_wp_query` option if a site needs the full WP_Query default behavior. C1 is removed from the findings below.
 
@@ -104,7 +103,7 @@ Add `frl_is_already_running(__FUNCTION__, true);` after the work in `frl_thirdpa
 
 ## 🟠 HIGH-SEVERITY FINDINGS
 
-### H1. `$key_cache` in `Frl_Cache_Manager` is an unbounded static array — memory leak vector
+### H1. `$key_cache` in `Frl_Cache_Manager` is an unbounded within-request static (request-scoped, not cross-request)
 
 **File:** [`core/cache/class-cache-manager.php:16-19`](core/cache/class-cache-manager.php:16), populated at lines 380-392
 
@@ -115,13 +114,20 @@ private static $key_cache = [];  // <-- NO LRU
 private static $group_keys = [];
 ```
 
-The `$runtime_cache` is bounded to `FRL_CACHE_RUNTIME_MAX_ITEMS = 1000` via LRU at lines 430-437. The `$key_cache` (used to memoize `generate_key` hashes for array keys) has **no LRU eviction**. For sites with many unique cache keys (e.g., per-post, per-term, per-language variants, with array keys), this array grows unboundedly for the lifetime of the request.
+The `$runtime_cache` is bounded to `FRL_CACHE_RUNTIME_MAX_ITEMS = 1000` via LRU at lines 430-437. The `$key_cache` (used to memoize `generate_key` hashes for array keys) has **no LRU eviction**. It is populated **only** when an array key is passed to `frl_cache_remember` (line 380) — the vast majority of cache calls in this codebase pass string keys (e.g., `'all_options'`, `'disable_comments'`) and never touch `$key_cache`.
 
-**Impact:**
-On a typical page render with ~50 unique `frl_cache_remember` calls, the overhead is negligible. But on long-running processes (WP-CLI imports, REST batch processing, large admin pages) or pages with many shortcodes/blocks, this can grow to thousands of entries — each holding a hashed key string. Memory usage scales linearly with the number of unique array-shaped cache keys per request.
+**Scope clarification:**
+- `$key_cache` is a **PHP static** — it lives for the lifetime of a single request, then is garbage-collected. There is no cross-request leak.
+- It only grows when callers pass **array** keys to `frl_cache_remember`, and the entry is `len(json_encode($key)) + 32` bytes (the md5 hash).
+- For 100 unique array keys averaging 200 chars each, that's ~23 KB. Not catastrophic on a typical request.
+
+**Impact (honest):**
+- **Typical page render:** Likely zero impact — most calls use string keys.
+- **Long-running PHP processes** (WP-CLI imports, cron batches, REST batch processing) where the same process handles many sequential requests, the static state can persist between what would otherwise be separate requests. Here, growth can become measurable.
+- **Pages with many array-keyed `frl_cache_remember` calls** (heavy shortcode/ACPT/repeater rendering): a few hundred KB possible, but not gigabytes.
 
 **Recommendation:**
-Apply the same LRU eviction pattern used for `$runtime_cache` (line 426-437) to `$key_cache`, or cap it to a reasonable maximum (e.g., 5000) with simple FIFO eviction.
+Apply the same LRU eviction pattern used for `$runtime_cache` (line 426-437) to `$key_cache`, or cap it to a reasonable maximum (e.g., 5000) with simple FIFO eviction. Defensive fix; not urgent unless you run long-lived PHP workers.
 
 ---
 
@@ -151,20 +157,26 @@ Wrap all four in `if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG)` (or check the `f
 
 ---
 
-### H3. `frl_get_current_user()` cache key has unbounded space — DoS / cache-pollution risk
+### H3. `frl_get_current_user()` cache key derived from raw cookie value — cache pollution vector (not CPU/memory DoS)
 
 **File:** [`includes/helpers/functions.php:131-146`](includes/helpers/functions.php:131)
 
 **Problem:**
-The cache key is `user_<cookie_username>_<8-char-cookie-token-hash>`. For a public-facing site with many anonymous or low-trust visitors, every distinct username/cookie combination creates a new persistent cache entry. While the `frl_cache_remember` is in the `admin` group with 1-hour TTL, sites that receive traffic from many unique cookie values (e.g., shared computers, bot scanners) can pollute this group heavily.
+The cache key is `user_<cookie_username>_<8-char-md5-of-cookie>`, derived directly from the raw `LOGGED_IN_COOKIE` value — **not** from the validated user ID. This means:
 
-Worse, if an attacker sets a cookie with a long random username, the cache key grows large and a corresponding `WP_User(0)` object is stored — a 1-hour persistent cache entry per attack request.
+- **Anonymous visitors** (no `LOGGED_IN_COOKIE`): key is `user_anonymous_<fixed-hash>` — one entry for all. Not a concern.
+- **Authenticated users**: key is per-username-per-session. Each unique session creates a unique entry, TTL 1 hour. Bounded by user count, not concerning.
+- **Invalid / attacker-chosen cookies**: the key depends on the raw cookie value, not on whether the cookie validates. The cache miss callback at line 137-146 returns `WP_User(0)` for invalid auth (WordPress's own `wp_get_current_user()` handles validation), and that `WP_User(0)` is **cached for 1 hour under the attacker-chosen key**.
 
 **Impact:**
-Disk bloat on the persistent cache backend, especially on sites with `wp_using_ext_object_cache() === false` (transient fallback writes to `wp_options`).
+This is a **cache pollution** concern, not a CPU/memory exhaustion DoS. An attacker can send many unique `LOGGED_IN_COOKIE` values and create one persistent cache entry per attempt. The persistent cache backend's eviction policy bounds the impact:
+- **Redis / Memcached**: LRU/LFU eviction. Legitimate user entries may be evicted under attack pressure.
+- **Transient fallback** (no object cache): `wp_options` table grows until natural cleanup. Bounded by the 1-hour TTL.
+
+There is no code-execution or memory-exhaustion vector. The cross-session guard at line 156 (verifying cached user's login matches cookie username) handles a different concern (stale-cache cross-session) and does not mitigate this attack.
 
 **Recommendation:**
-Normalize anonymous visitors to a single static cache key (`user_anon`), and only create per-user cache entries when the user is actually logged in. This was the pre-fix behavior in WP — see [`memory-bank/progress.md:488-499`](memory-bank/progress.md:488) which notes the fix was added but the regression to unbounded keys was introduced.
+Key the cache by the validated `wp_get_current_user()->ID` (a small integer, bounded), not by the raw cookie value. For anonymous visitors (`$user->ID === 0`), use a single static key like `user_anon`. This eliminates the attacker-controlled key space.
 
 ---
 
@@ -526,12 +538,13 @@ The `staticdata` group is declared in `FRL_CACHE_PERSISTENT_GROUPS` and `FRL_CAC
 
 ## 🔁 UNCHANGED FROM PREVIOUS AUDITS
 
-Per [`memory-bank/progress.md:84-85`](memory-bank/progress.md:84) and [`memory-bank/activeContext.md:91-99`](memory-bank/activeContext.md:91), the following known issues were explicitly **skipped** at user request but are **still present in the code**:
+Per [`memory-bank/progress.md:84-85`](memory-bank/progress.md:84) and [`memory-bank/activeContext.md:91-99`](memory-bank/activeContext.md:91), the following known items were explicitly **skipped** at user request and are still present in the code:
 
-1. **`frl_alter_query()` unguarded** (Critical 2.3) — see C1 above.
-2. **WSForm mutations** (2.5) — not audited here; needs separate review.
-3. **WSForm unescaped CSS** (3.1) — not audited here; needs separate review.
-4. **jQuery Migrate typo** (4.1) — referenced in `public/public.php:17` `frl_remove_jquery_migrate`. Should re-confirm the function name is correct.
+1. **WSForm mutations** (2.5) — not audited here; needs separate review.
+2. **WSForm unescaped CSS** (3.1) — not audited here; needs separate review.
+3. **jQuery Migrate typo** (4.1) — referenced in `public/public.php:17` `frl_remove_jquery_migrate`. Should re-confirm the function name is correct.
+
+Note: `frl_alter_query()` was originally listed in the 2026-07-01 audit as Critical 2.3. It is **not a bug** — it is a deliberate, voluntary performance optimization. The user has explicitly confirmed the design intent during this audit. Sites needing WP_Query's full default behavior can opt out via the `custom_wp_query` option.
 
 ---
 
@@ -540,13 +553,13 @@ Per [`memory-bank/progress.md:84-85`](memory-bank/progress.md:84) and [`memory-b
 | Order | Finding | Why |
 |------:|---------|-----|
 | 1 | H2 (log_capture_*) | Per-request overhead for every page; affects USP. |
-| 2 | H1 (key_cache unbounded) | Memory leak on long-running processes. |
-| 3 | C1 (REST guard) | Block editor breaks under cache corruption. |
-| 4 | C2 (re-entrancy guard reset) | Footgun, but low real-world impact. |
-| 5 | C3 (inbound guard missing) | Duplicate admin notices. |
-| 6 | M1 (REST comments unguarded) | Editor moderation broken. |
-| 7 | M9 (html option invalidation) | Content author experience. |
-| 8 | H3 (current user cache key) | DoS risk. |
+| 2 | C1 (REST guard) | Block editor breaks under cache corruption. |
+| 3 | C2 (re-entrancy guard reset) | Footgun, but low real-world impact. |
+| 4 | C3 (inbound guard missing) | Duplicate admin notices. |
+| 5 | M1 (REST comments unguarded) | Editor moderation broken. |
+| 6 | M9 (html option invalidation) | Content author experience. |
+| 7 | H3 (current user cache key) | Cache pollution under attacker-chosen keys (low impact). |
+| 8 | H1 (key_cache unbounded) | Within-request unbounded growth only when array keys used. |
 | 9 | H6 (block_type_metadata_settings) | Filter chain overhead. |
 | 10 | L5 (N+1 term language) | Performance on multilingual sites. |
 | 11 | All other Medium and Low | Cleanup. |
@@ -565,7 +578,7 @@ Per [`memory-bank/progress.md:84-85`](memory-bank/progress.md:84) and [`memory-b
 | Verify with grep/ripgrep | ✅ Pass — `search_files` used to confirm scope of issues |
 | Chain-of-thought from `systemPatterns.md` | ✅ Pass — patterns from systemPatterns verified (cache groups, lazy load, hook discipline) |
 | Zero Regression Policy | ✅ Pass — no edits made; findings only |
-| Honesty / No opinions as facts | ✅ Pass — every "would" / "could" is clearly speculative; concrete bugs have concrete repro logic |
+| Honesty / No opinions as facts | ✅ Pass — retracted C1 on user confirmation that `frl_alter_query()` is a deliberate performance optimization, not a bug |
 | "I don't know" rule | ✅ Pass — items not in scope (WSForm, jQuery Migrate) flagged explicitly |
 | No placeholders | ✅ Pass — full report, no `// TODO` markers in findings |
 | Task Completion Check | ✅ Pass — comprehensive report compiled with severity levels and fix priority |
