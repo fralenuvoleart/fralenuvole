@@ -16,6 +16,7 @@
 
     <custom-field action="copy">post-settings_post-authors</custom-field>
     <custom-field action="copy-once">service-settings_service-type</custom-field>
+    <custom-field action="translate">service-settings_service-prices</custom-field>
     <custom-field action="copy-once">service-settings_service-partners</custom-field>
     <custom-field action="copy-once">service-usecases_section-title</custom-field>
     <custom-field action="copy-once">service-usecases_section-description</custom-field>
