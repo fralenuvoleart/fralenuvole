@@ -38,15 +38,16 @@ function frl_wsf_get_submission_data($days = 30) {
 
         // Get submissions from WS Form
         $submissions_table = $wpdb->prefix . 'wsf_submit';
-
-        // Check if the table exists
-        $table_exists = $wpdb->get_var(
-            $wpdb->prepare("SHOW TABLES LIKE %s", $submissions_table)
-        ) === $submissions_table;
+        static $wsf_table_exists = null;
+        if ($wsf_table_exists === null) {
+            $wsf_table_exists = $wpdb->get_var(
+                $wpdb->prepare("SHOW TABLES LIKE %s", $submissions_table)
+            ) === $submissions_table;
+        }
 
         $results = [];
 
-        if ($table_exists) {
+        if ($wsf_table_exists) {
             // Get form submissions within date range, optionally filtered by WS_STATS_FORM_IDS
             $query_sql = "SELECT
                     DATE(s.date_added) as submit_date,
@@ -72,12 +73,25 @@ function frl_wsf_get_submission_data($days = 30) {
             $results = $wpdb->get_results($query);
         }
 
-        // Get form names
+        // Get form names (batched single query instead of N+1 per form_id)
         $form_ids = array_unique(wp_list_pluck($results, 'form_id'));
         $form_names = [];
 
-        foreach ($form_ids as $form_id) {
-            $form_names[$form_id] = frl_wsf_get_form_name($form_id);
+        if (!empty($form_ids)) {
+            $placeholders = implode(',', array_fill(0, count($form_ids), '%d'));
+            $form_rows = $wpdb->get_results($wpdb->prepare(
+                "SELECT ID, post_title FROM {$wpdb->posts} WHERE ID IN ($placeholders) AND post_type = 'wsf-form'",
+                ...array_map('intval', $form_ids)
+            ));
+            foreach ($form_rows as $row) {
+                $form_names[(int)$row->ID] = $row->post_title;
+            }
+            // Fill in any form IDs not found in posts table (defensive)
+            foreach ($form_ids as $form_id) {
+                if (!isset($form_names[$form_id])) {
+                    $form_names[$form_id] = 'Form #' . $form_id;
+                }
+            }
         }
 
         // Process results into a structured format
