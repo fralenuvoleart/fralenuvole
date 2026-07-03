@@ -782,6 +782,10 @@ function frl_set_missing_option_default(string $key, bool $bypass_cache, array &
     // The operation that led to this (e.g., plugin reset) should handle bulk cache clearing.
     frl_update_option($key, $default_value, false, $autoload);
 
+    // Invalidate the stale 'all_options' persistent cache so the next request picks up this newly written option.
+    // $clear_cache=false prevents dependency cascade — single-key clear only.
+    frl_cache_clear('options', 'all_options', false);
+
     $prefixed_key = frl_prefix($key);
     $current_value = get_option($prefixed_key, null);
     $current_value = frl_normalize_option($current_value, $type);
