@@ -113,7 +113,6 @@ function frl_auto_backup_on_upgrade(): void
     }
 
     frl_update_option('plugin_version', FRL_VERSION);
-    frl_flush_rewrite_rules();
 }
 
 /**
