@@ -903,7 +903,7 @@ class Frl_Cache_Manager
             // 3. Flush each cache group using the comprehensive method
             // This ensures consistent behavior across all clearing operations
             foreach (array_keys(self::$TTL) as $group) {
-                $group_stats = self::clear_group_with_dependencies($group, null, true);
+                $group_stats = self::clear_group_with_dependencies($group, null, false);
 
                 // Aggregate statistics
                 $stats['runtime'] += $group_stats['runtime'];
@@ -1363,28 +1363,10 @@ class Frl_Cache_Manager
         frl_get_option('__reset__');
         $stats['runtime']++;
 
-        // Clear any filters that might override option values.
-        // Scoped to pre_option_{frl_prefix}_* hooks — only the plugin's own
-        // options namespace. Third-party code does not hook into this namespace
-        // so remove_all_filters() is safe. The anonymous closures registered by
-        // frl_update_option() and frl_delete_option() cannot be referenced by
-        // name, making targeted remove_filter() infeasible.
-        global $wp_filter;
-        if (!empty($wp_filter)) {
-            $prefix = frl_prefix();
-            $cleared = 0;
-
-            foreach (array_keys($wp_filter) as $filter_name) {
-                if (str_starts_with($filter_name, 'pre_option_' . $prefix)) {
-                    remove_all_filters($filter_name);
-                    $cleared++;
-                }
-            }
-            $stats['runtime'] += $cleared;
-        }
-        // Adding frl_is_already_running with $reset = true before the exit
-        // flags  that the class-level "reset options caches" operation
-        // has been performed for the current request
+        // No pre_option_frl_* filter removal needed here — frl_update_option()
+        // and frl_delete_option() already call remove_all_filters() before each
+        // write, and frl_get_plugin_options_db() reads directly from $wpdb,
+        // bypassing pre_option_* filters entirely.
 
         // If reset_options_caches are called multiple times
         // for the 'options' group in a single request, the operations

@@ -245,10 +245,11 @@ function frl_disable_comments()
     // This avoids running a potentially expensive UPDATE across the entire
     // wp_posts table synchronously on admin_init, which can lock the table
     // for seconds on sites with millions of posts.
-    if (frl_is_admin() && !wp_next_scheduled('frl_disable_comments_batch')) {
-        // Check if the operation is already marked as completed
+    if (frl_is_admin()) {
+        // Check if the operation is already marked as completed BEFORE
+        // hitting the cron system, which queries the DB on every admin request.
         $completed = frl_cache_get('options', 'disable_comments');
-        if ($completed !== '1') {
+        if ($completed !== '1' && !wp_next_scheduled('frl_disable_comments_batch')) {
             wp_schedule_single_event(time() + 5, 'frl_disable_comments_batch');
         }
     }

@@ -412,123 +412,54 @@ function frl_render_rewrite_multilingual_cpts() {
  */
 function frl_get_all_plugin_transients()
 {
-    // Use frl_cache_remember to cache the combined results of the limited queries
+    // Use frl_cache_remember to cache the combined results of a single query
     $all_transients = frl_cache_remember('staticdata', 'all_transients', function () {
         global $wpdb;
 
-        $all_results = [];
+        $groups_to_query = array_diff(FRL_CACHE_PERSISTENT_GROUPS, ['transients']);
 
-        // Get the list of persistent groups from the config constant
-        // Ensure the constant is defined before using it
-        $groups_to_query = FRL_CACHE_PERSISTENT_GROUPS;
+        // Single consolidated query replaces 16 individual per-group + base queries.
+        // Limit: (15 groups + 1 base slot) × FRL_CACHE_MAX_TRANSIENTS_PER_GROUP.
+        $limit = ((count($groups_to_query) + 1) * FRL_CACHE_MAX_TRANSIENTS_PER_GROUP);
 
-        // Exclude the 'transients' group itself if it exists, as it's used for the meta-cache key 'all_transients'
-        $groups_to_query = array_diff($groups_to_query, ['transients']);
-
-        // --- Query for Group-Specific Transients ---
-        foreach ($groups_to_query as $group) {
-            if (empty($group) || !is_string($group)) {
-                continue; // Skip invalid group names
-            }
-
-            // Construct prefixes for this specific group
-            $prefix = frl_prefix();
-            $group_prefix = $prefix . 'cache_' . $group . '_';
-            $transient_prefix = '_transient_' . $group_prefix;
-            $timeout_prefix = '_transient_timeout_' . $group_prefix;
-            $site_transient_prefix = '_site_transient_' . $group_prefix;
-            $site_timeout_prefix = '_site_transient_timeout_' . $group_prefix;
-
-            $query = $wpdb->prepare(
-                "SELECT option_name, option_value FROM {$wpdb->options}
-                 WHERE option_name LIKE %s
-                    OR option_name LIKE %s
-                    OR option_name LIKE %s
-                    OR option_name LIKE %s
-                 ORDER BY option_id DESC
-                 LIMIT %d", // Apply limit per group query
-                $transient_prefix . '%',
-                $timeout_prefix . '%',
-                $site_transient_prefix . '%',
-                $site_timeout_prefix . '%',
-                FRL_CACHE_MAX_TRANSIENTS_PER_GROUP
-            );
-
-            $group_results = $wpdb->get_results($query);
-
-            if (!empty($group_results)) {
-                $all_results = array_merge($all_results, $group_results);
-            }
-        }
-
-        // --- Query for Non-Grouped Transients ---
         $prefix = frl_prefix();
-        $transient_base = '_transient_' . $prefix;
-        $timeout_base = '_transient_timeout_' . $prefix;
-        $site_transient_base = '_site_transient_' . $prefix;
-        $site_timeout_base = '_site_transient_timeout_' . $prefix;
+        $t_pattern   = $prefix . '%';
+        $to_pattern  = $prefix . '%';
+        $st_pattern  = $prefix . '%';
+        $sto_pattern = $prefix . '%';
 
-        // Query for transients potentially matching the base prefix
-        $query_base = $wpdb->prepare(
+        $query = $wpdb->prepare(
             "SELECT option_name, option_value FROM {$wpdb->options}
-             WHERE (
-                    option_name LIKE %s OR option_name LIKE %s OR
-                    option_name LIKE %s OR option_name LIKE %s
-                   )
+             WHERE option_name LIKE %s OR option_name LIKE %s
+                OR option_name LIKE %s OR option_name LIKE %s
              ORDER BY option_id DESC
              LIMIT %d",
-            $transient_base . '%',      // Match _transient_PREFIX%
-            $timeout_base . '%',        // Match _transient_timeout_PREFIX%
-            $site_transient_base . '%', // Match _site_transient_PREFIX%
-            $site_timeout_base . '%',   // Match _site_transient_timeout_PREFIX%
-            FRL_CACHE_MAX_TRANSIENTS_PER_GROUP // Using the same limit as groups for now
+            '_transient_' . $t_pattern,
+            '_transient_timeout_' . $to_pattern,
+            '_site_transient_' . $st_pattern,
+            '_site_transient_timeout_' . $sto_pattern,
+            $limit
         );
 
-        $base_results = $wpdb->get_results($query_base);
-        $non_grouped_results = [];
-
-        if (!empty($base_results)) {
-            // Filter out transients that actually belong to a group (contain 'cache_')
-            $patterns_to_exclude = [
-                $transient_base . 'cache_',
-                $timeout_base . 'cache_',
-                $site_transient_base . 'cache_',
-                $site_timeout_base . 'cache_',
-            ];
-
-            foreach ($base_results as $result) {
-                $is_grouped = false;
-                foreach ($patterns_to_exclude as $exclude_pattern) {
-                    // Check if the option name starts with a grouped pattern
-                    if (str_starts_with($result->option_name, $exclude_pattern)) {
-                        $is_grouped = true;
-                        break;
-                    }
-                }
-                // If it didn't match any grouped patterns, add it to non-grouped results
-                if (!$is_grouped) {
-                    $non_grouped_results[] = $result;
-                }
-            }
+        $all_results = $wpdb->get_results($query);
+        if (empty($all_results)) {
+            return [];
         }
 
-        // Merge non-grouped results with group-specific results
-        $all_results = array_merge($all_results, $non_grouped_results);
-
-        // Remove potential duplicates just in case (e.g., if a non-grouped transient somehow matched a group query)
-        // This uses option_name as the key for uniqueness
-        $unique_results = [];
+        // Deduplicate by option_name (single query naturally avoids duplicates,
+        // but keep for safety).
+        $unique = [];
         foreach ($all_results as $result) {
-            $unique_results[$result->option_name] = $result;
+            $unique[$result->option_name] = $result;
         }
-        $all_results = array_values($unique_results);
 
-        // Sort the combined results for consistency
+        // Sort alphabetically for consistent display.
+        $all_results = array_values($unique);
         usort($all_results, function ($a, $b) {
             return strcmp($a->option_name, $b->option_name);
         });
 
-        return $all_results ?: []; // Return the combined, limited results
+        return $all_results;
 
     });
 
