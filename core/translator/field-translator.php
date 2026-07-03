@@ -19,6 +19,20 @@ function frl_translator_init(): void
         return;
     }
 
+    // Only register hooks for frontend page requests.
+    // REST API, admin, CLI, and cron requests do not need field or
+    // block translation — skip all hook registration entirely.
+    if (!frl_is_valid_frontend_page_request()) {
+        return;
+    }
+
+    // Register block translation on render_block at priority 10.
+    // This resolves {{text}} and [[permalink]] delimiters before
+    // apply_shortcodes runs at priority 20. Guarded by
+    // frl_is_valid_frontend_page_request() inside the callback to
+    // skip REST, admin, CLI, and cron requests.
+    add_filter('render_block', 'frl_translate_block_content', 10, 2);
+
     $is_posts_enabled = frl_get_option('translator_posts') === '1';
     $is_terms_enabled = frl_get_option('translator_terms') === '1';
     $is_users_enabled = frl_get_option('translator_users') === '1';
@@ -54,6 +68,28 @@ function frl_translator_init(): void
         // Single term fetch
         add_filter('get_term', 'frl_translator_filter_get_term', 20, 2);
     }
+}
+
+/**
+ * Translates {{text}} and [[permalink]] delimiters in block content.
+ *
+ * Registered on 'render_block' at priority 10 — runs before
+ * 'apply_shortcodes' at priority 20, ensuring shortcode output is not
+ * re-processed for delimiters. Guarded by frl_is_valid_frontend_page_request()
+ * to skip REST, admin, CLI, and cron requests where block translation is
+ * unnecessary and expensive.
+ *
+ * @param string $block_content The rendered block HTML.
+ * @param array  $block         The block object.
+ * @return string Block content with delimiters translated, or unchanged.
+ */
+function frl_translate_block_content(string $block_content, array $block): string
+{
+    if (!frl_is_valid_frontend_page_request()) {
+        return $block_content;
+    }
+
+    return frl_get_translation_block($block_content, $block);
 }
 
 /**
@@ -162,6 +198,10 @@ function frl_translator_pre_option(mixed $pre_value, string $option_name): mixed
  */
 function frl_translator_acf_link(mixed $value, int $post_id, array $field): mixed
 {
+    if (!frl_is_valid_frontend_page_request()) {
+        return $value;
+    }
+
     // Determine the correct list of fields to check against based on context.
     $translatable_fields = frl_translator_get_contextual_fields($post_id);
 
@@ -200,6 +240,10 @@ function frl_translator_acf_link(mixed $value, int $post_id, array $field): mixe
  */
 function frl_translator_acf_taxonomy(mixed $value, int $post_id, array $field): mixed
 {
+    if (!frl_is_valid_frontend_page_request()) {
+        return $value;
+    }
+
     if (frl_get_option('translator_taxonomies') !== '1' || empty(FRL_TRANSLATOR_TAXONOMIES)) { // @phpstan-ignore-line
         return $value;
     }
@@ -259,6 +303,10 @@ function frl_translator_acf_taxonomy(mixed $value, int $post_id, array $field): 
  */
 function frl_translator_filter_get_terms(array $terms, array $taxonomies, array $args): array
 {
+    if (!frl_is_valid_frontend_page_request()) {
+        return $terms;
+    }
+
     if (frl_get_option('translator_taxonomies') !== '1' || empty(FRL_TRANSLATOR_TAXONOMIES) || empty($terms)) { // @phpstan-ignore-line
         return $terms;
     }
@@ -286,6 +334,10 @@ function frl_translator_filter_get_terms(array $terms, array $taxonomies, array 
  */
 function frl_translator_filter_get_term(mixed $term, string $taxonomy): mixed
 {
+    if (!frl_is_valid_frontend_page_request()) {
+        return $term;
+    }
+
     if (frl_get_option('translator_taxonomies') !== '1' || empty(FRL_TRANSLATOR_TAXONOMIES) || !is_object($term)) { // @phpstan-ignore-line
         return $term;
     }
@@ -311,6 +363,10 @@ function frl_translator_filter_get_term(mixed $term, string $taxonomy): mixed
  */
 function frl_translator_acf_repeater(mixed $value, int $post_id, array $field): mixed
 {
+    if (!frl_is_valid_frontend_page_request()) {
+        return $value;
+    }
+
     if (!frl_is_array_not_empty($value)) {
         return $value;
     }
@@ -611,3 +667,4 @@ function frl_translator_should_skip_translation(mixed $value, bool $single, stri
         || !frl_is_valid_frontend_page_request()
         || !frl_string_matches_pattern($meta_key, $allowed_keys);
 }
+

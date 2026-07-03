@@ -46,12 +46,9 @@ if (!defined('ABSPATH')) {
  */
 function frl_shortcodes_init()
 {
-    // Process shortcodes BEFORE translation with higher priority (lower number)
-    add_filter('render_block',
-        'frl_shortcode_render_block_translation',
-        10,
-        2);
-    // Process shortcodes AFTER translation with lower priority (higher number)
+    // Register apply_shortcodes on render_block at priority 20.
+    // Block translation ({{}} delimiters) is handled independently by the
+    // translator module at priority 10 via frl_translate_block_content().
     add_filter('render_block',
         'apply_shortcodes',
         20,
@@ -1099,19 +1096,7 @@ function frl_shortcode_apply_excerpt($description)
 }
 
 /**
- * Processes block content by applying translation and then evaluating shortcodes.
- *
- * @param string $block_content The raw block content.
- * @param mixed  $block         The block object.
- * @return string Processed content.
- */
-function frl_shortcode_render_block_translation($block_content, $block)
-{
-    $translated_content = frl_get_translation_block($block_content, $block);
-    return apply_shortcodes($translated_content);
-}
 
-/**
  * Appends a sanitized anchor fragment to a URL if not already present.
  *
  * @param string $url    The base URL.

@@ -1,5 +1,48 @@
 # Project Progress
 
+## ✅ Block Translation Refactor — All Translator Hooks Guarded (2026-07-03)
+
+### Final State — 2 Files, 8 Guard Points
+
+**[`public/shortcodes.php`](public/shortcodes.php)** — Removed `render_block` p10 `frl_shortcode_render_block_translation()` (deleted function + filter). Kept p20 `apply_shortcodes` only.
+
+**[`core/translator/field-translator.php`](core/translator/field-translator.php)** — All 8 translation service entry points now guarded with `frl_is_valid_frontend_page_request()`:
+- Line 81: `frl_translate_block_content()` (new — render_block p10, moved from shortcodes)
+- Line 167: `frl_translator_pre_option()` (pre-existing guard)
+- Line 194: `frl_translator_acf_link()` (NEW guard)
+- Line 236: `frl_translator_acf_taxonomy()` (NEW guard)
+- Line 299: `frl_translator_filter_get_terms()` (NEW guard)
+- Line 330: `frl_translator_filter_get_term()` (NEW guard)
+- Line 359: `frl_translator_acf_repeater()` (NEW guard)
+- Line 660: `frl_translator_should_skip_translation()` (pre-existing, covers get_*_metadata)
+
+**`{{}}` in shortcode output — confirmed no regression:** Translation runs at p10, `apply_shortcodes` at p20. Deltas from shortcode expansion are never re-translated — same behavior before and after refactor.
+
+### Plan
+[`plans/rest-block-translation-bottleneck.md`](plans/rest-block-translation-bottleneck.md)
+
+## ✅ Block Translation Refactor — REST Guard + Module Relocation (2026-07-03)
+
+### Problem
+Block translation (`{{text}}` / `[[permalink]]`) ran during REST API requests because `render_block` filter was registered unconditionally in `shortcodes.php` without request context guard. Full translation pipeline (pattern extraction, Polylang adapter calls, cache ops) fired for every `frl-translate` block. Also architecturally misplaced — block translation lived in shortcodes file instead of translator module.
+
+### Changes (2 files)
+1. **[`public/shortcodes.php`](public/shortcodes.php)** — Removed `render_block` p10 `frl_shortcode_render_block_translation()` filter and function. Kept p20 `apply_shortcodes`.
+2. **[`core/translator/field-translator.php`](core/translator/field-translator.php)** — Added `render_block` p10 `frl_translate_block_content()` filter inside `frl_translator_init()` with `frl_is_valid_frontend_page_request()` guard. New function delegates to `frl_get_translation_block()`.
+
+### New render_block priority chain
+```
+p10: frl_translate_block_content()           ← translator, REST-guarded
+p10: frl_process_nav_menu_url_transforms()   ← navigation, unchanged
+p20: apply_shortcodes()                      ← shortcodes, unchanged
+```
+
+### Zero Regression
+Same translation function (`frl_get_translation_block()`), same `frl_block_translation_filter` hook path. `apply_shortcodes` runs once at p20 (was redundant at p10+p20, idempotent). Module guards inherited: `disable_translator` + `frl_is_multilingual_plugin_active()`. REST overhead eliminated.
+
+### Plan
+[`plans/rest-block-translation-bottleneck.md`](plans/rest-block-translation-bottleneck.md)
+
 ## ✅ Second Audit — 1 Genuine Patch (2026-07-02)
 
 **B1 — `get_term_link()` WP_Error not caught by `??`**
