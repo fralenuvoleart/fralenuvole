@@ -458,19 +458,21 @@ final class Frl_Translation_Service
             return $this->batch_permalinks_cache[$batch_key];
         }
 
+        // Pre-compute values invariant across the slug loop.
+        // - posts_page: the blog page ID and its slug (one DB call each).
+        // - public_types: all public post type objects (in-memory global, one call).
+        $posts_page      = (int) get_option('page_for_posts');
+        $posts_page_slug = $posts_page ? get_post_field('post_name', $posts_page) : '';
+        $public_types    = get_post_types(['public' => true], 'objects');
+
         $permalinks = [];
         foreach ($slugs as $original_slug) {
             // Prefer the official Posts Page when its base slug matches.
-            $posts_page = (int) get_option( 'page_for_posts' );
-            if ( $posts_page ) {
-                $posts_page_slug = get_post_field( 'post_name', $posts_page );
-                if ( $posts_page_slug === $original_slug ) {
-                    $link = $this->get_translation_permalink( $posts_page, $language );
-                    if ( $link ) {
-                        // debugging removed
-                        $permalinks[ $original_slug ] = $link;
-                        continue;
-                    }
+            if ($posts_page && $posts_page_slug === $original_slug) {
+                $link = $this->get_translation_permalink($posts_page, $language);
+                if ($link) {
+                    $permalinks[$original_slug] = $link;
+                    continue;
                 }
             }
 
@@ -498,8 +500,7 @@ final class Frl_Translation_Service
                 $archive_slug = sanitize_key($archive_slug);
 
                 if (!empty($archive_slug)) {
-                    $types = get_post_types(['public' => true], 'objects');
-                    foreach ($types as $type) {
+                    foreach ($public_types as $type) {
                         /** @var WP_Post_Type $type */
                         if (empty($type->has_archive)) continue;
                         $rewrite_slug = is_array($type->rewrite ?? null) ? ($type->rewrite['slug'] ?? '') : '';
