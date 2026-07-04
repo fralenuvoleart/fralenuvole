@@ -1,5 +1,50 @@
 # Project Progress
 
+## ✅ Performance Optimizations — Batch Preload + Image Size Loop Removal + all_options Batching (2026-07-04)
+
+### Problem
+`plans/analysis.md` claimed 13 performance issues with severity ratings from CRITICAL to LOW. Cross-referencing against live code revealed systematic overstatement — 5 of 12 findings ignored rate-limiting guards (cooldown transients, retry caps, dedup fast-paths, autosave skip logic). 3 genuine optimization opportunities identified with zero regression risk.
+
+### Patches Applied (3 files)
+
+**Patch 1: Batch Transient Preload** — [`core/cache/class-cache-manager.php:81-180`](core/cache/class-cache-manager.php:81)
+- `auto_preload()` now detects when all groups are persistent AND object cache is not functional
+- Routes to new `batch_preload_transients()` — single combined `wp_options` WHERE...OR query
+- Object-cache path completely untouched (guard at line 107: `!self::is_object_cache_truly_functional()`)
+- **Impact:** 10-12 DB queries → 1 on cold-cache frontend requests
+
+**Patch 2: Remove Image Size Variant Loop** — [`core/cache/cache-cleanup.php:87`](core/cache/cache-cleanup.php:87)
+- Removed `$common_sizes` loop clearing `thumbnail`/`medium`/`large`/`full` alternate keys
+- Only the configured featured image size is now cleared per save
+- Alternate-size entries self-expire at 24h TTL; preloader only generates keys for current config
+- **Impact:** ~12-16 cache ops → ~4-6 per `save_post`
+
+**Patch 3: Batch `all_options` Clear** — [`includes/helpers/functions-options.php:785-794`](includes/helpers/functions-options.php:785)
+- Static flag in `frl_set_missing_option_default()` batches clear to once per request
+- First clear is sufficient: `frl_get_plugin_options_db()` has per-request static cache
+- **Impact:** 50 clears → 1 when seeding missing options on cold cache
+
+### Dropped
+- **Patch 3 (adminui context-gate):** ~2ms savings on 200-500ms TTFB — micro-optimization not worth the code complexity.
+
+### Cumulative Impact
+| Scenario | Before | After |
+|----------|--------|-------|
+| DB queries (cold cache, frontend) | 10-12 | 1 |
+| Cache ops per `save_post` | ~12-16 | ~4-6 |
+| `all_options` clears (cold cache, 50 opts) | 50 | 1 |
+
+### Verification
+- All 3 files pass `php -l` syntax validation
+- `preload_multi()` still called by `frl_cache_preload_multi()` helper at [`functions-class-helpers.php:144`](includes/helpers/functions-class-helpers.php:144) — unchanged
+- Object-cache path: identical behavior — guard at line 107 + `foreach` fallback at line 112 preserves original per-group `preload_multi()` loop
+- Image size loop removal: only clears for the configured size — alternates self-expire
+
+### Plan
+[`plans/performance-optimizations.md`](plans/performance-optimizations.md)
+
+---
+
 ## ✅ Block Translation Refactor — All Translator Hooks Guarded (2026-07-03)
 
 ### Final State — 2 Files, 8 Guard Points

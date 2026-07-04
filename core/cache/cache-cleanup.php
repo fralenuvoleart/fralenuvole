@@ -84,16 +84,6 @@ function frl_clear_post_cache($post_id)
         $cache_key = frl_generate_cache_key('featured_img', (string)$post_id, $image_size, $ext);
         frl_cache_clear('postdata', $cache_key);
 
-        // Also clear any potential other sizes that might have been cached
-        // This covers edge cases where the preload logic might have changed
-        $common_sizes = ['thumbnail', 'medium', 'large', 'full'];
-        foreach ($common_sizes as $size) {
-            if ($size !== $image_size) {
-                $alt_key = frl_generate_cache_key('featured_img', (string)$post_id, $size, $ext);
-                frl_cache_clear('postdata', $alt_key);
-            }
-        }
-
         // Clear mobile hero preload cache variants for this post
         $mobile_size = (string) frl_get_option('image_preload_hero_mobile_size');
         if (empty($mobile_size)) {

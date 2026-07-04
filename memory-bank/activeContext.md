@@ -1,5 +1,23 @@
 # Active Context
 
+## ✅ Performance Optimizations — Batch Preload + Image Size Loop + all_options Batching (2026-07-04)
+
+**Context:** Reviewed `plans/analysis.md` against live code. 3 of 4 proposed patches applied (Patch 3 — adminui context-gate — dropped as micro-optimization with negligible real-world benefit). All zero regression risk.
+
+**Changes (3 files):**
+
+1. **[`core/cache/class-cache-manager.php:81-180`](core/cache/class-cache-manager.php:81)** — `auto_preload()` now detects transient-fallback scenario and routes to new `batch_preload_transients()` — single combined `wp_options` LIKE query (OR-chain across all groups) instead of 5-6 separate queries. Object-cache path completely untouched: guard at line 107 only enters batched codepath when `!self::is_object_cache_truly_functional()` AND all groups are persistent AND not already loaded. **10-12 DB queries → 1 on cold-cache frontend.**
+
+2. **[`core/cache/cache-cleanup.php:87`](core/cache/cache-cleanup.php:87)** — Removed `$common_sizes` loop (`['thumbnail','medium','large','full']`) from `frl_clear_post_cache()`. Only the configured featured image size is now cleared. Alternate-size cache entries self-expire at 24h TTL and are never read by the preloader (which always uses current config). **~12-16 cache ops → ~4-6 per save_post.**
+
+3. **[`includes/helpers/functions-options.php:785-794`](includes/helpers/functions-options.php:785)** — Static flag in `frl_set_missing_option_default()` batches `all_options` cache clear to once per request instead of once per missing option. When 50 options are seeded on cold cache, this eliminates 49 redundant `delete_transient()` + `unset()` + LRU-update cycles. First clear is sufficient — `frl_get_plugin_options_db()` uses per-request static cache, so subsequent calls read from memory regardless of persistent cache state. **50 clears → 1 on cold cache.**
+
+**Plan:** [`plans/performance-optimizations.md`](plans/performance-optimizations.md)
+
+**Drop rationale (Patch 3):** Context-gating `options → adminui` dependency cascade saves ~2 SELECT queries returning empty rows on cold cache — ~2ms on a 200-500ms TTFB. Not worth the code complexity.
+
+---
+
 ## ✅ Block Translation Refactor — REST Guard + Translator Module Relocation (2026-07-03)
 
 **Problem:** `render_block` → `frl_shortcode_render_block_translation()` fired during REST API requests, triggering the full translation pipeline (pattern extraction, Polylang adapter calls, cache operations) for every block with `frl-translate` class. ~3 second overhead per REST post list. Additionally, the block translation filter was architecturally misplaced in `shortcodes.php` instead of the translator module.

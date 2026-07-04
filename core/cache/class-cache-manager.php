@@ -76,6 +76,10 @@ class Frl_Cache_Manager
     /**
      * Preload groups for current context (admin/frontend).
      *
+     * When object cache is not functional and transients are in use,
+     * batches all group queries into a single DB query to avoid
+     * 5-6 separate LIKE scans on wp_options per cold-cache request.
+     *
      * @return bool True if preloaded, false if skipped (e.g., during AJAX).
      */
     public static function auto_preload()
@@ -89,11 +93,116 @@ class Frl_Cache_Manager
             ? FRL_CACHE_PRELOAD_BACKEND_GROUPS
             : FRL_CACHE_PRELOAD_FRONTEND_GROUPS;
 
+        // When all groups are persistent and object cache is not functional,
+        // batch them into a single DB query instead of N separate LIKE scans.
+        $all_persistent = true;
+        foreach ($groups_to_preload as $group) {
+            if (!isset(self::$persistent_groups_map[$group]) || isset(self::$loaded_groups[$group])) {
+                $all_persistent = false;
+                break;
+            }
+        }
+
+        if ($all_persistent && !self::is_object_cache_truly_functional()) {
+            self::batch_preload_transients($groups_to_preload);
+            return true;
+        }
+
+        // Object cache functional or mixed groups — per-group preload (no DB queries needed)
         foreach ($groups_to_preload as $group) {
             self::preload_multi($group);
         }
 
         return true;
+    }
+
+    /**
+     * Batch-load all preload groups from transients in a single DB query.
+     *
+     * Replaces N separate wp_options LIKE scans (one per group) with a single
+     * combined OR-chain query. Results are distributed by group prefix and
+     * injected into the runtime cache identically to the per-group path in
+     * get_multi().
+     *
+     * @param string[] $groups Cache groups to preload.
+     * @return void
+     */
+    private static function batch_preload_transients(array $groups): void
+    {
+        global $wpdb;
+        frl_flush_db();
+
+        $or_clauses = [];
+        foreach ($groups as $group) {
+            $prefix = '_transient_' . self::PREFIX . $group . '_';
+            $timeout_prefix = '_transient_timeout_' . self::PREFIX . $group . '_';
+            $or_clauses[] = $wpdb->prepare(
+                'option_name LIKE %s',
+                $wpdb->esc_like($prefix) . '%'
+            );
+            $or_clauses[] = $wpdb->prepare(
+                'option_name LIKE %s',
+                $wpdb->esc_like($timeout_prefix) . '%'
+            );
+        }
+
+        $query = "SELECT option_name, option_value FROM {$wpdb->options} WHERE " . implode(' OR ', $or_clauses);
+        $db_results = self::safe_db_query($query, [], 'batch_preload_transients');
+
+        // Distribute results by group prefix
+        $by_group = [];
+        foreach ($db_results as $row) {
+            foreach ($groups as $group) {
+                $prefix = '_transient_' . self::PREFIX . $group . '_';
+                $timeout_prefix = '_transient_timeout_' . self::PREFIX . $group . '_';
+                if (str_starts_with($row->option_name, $prefix) || str_starts_with($row->option_name, $timeout_prefix)) {
+                    $by_group[$group][] = $row;
+                    break;
+                }
+            }
+        }
+
+        // Process each group: separate values/timeouts, populate runtime cache
+        foreach ($groups as $group) {
+            $rows = $by_group[$group] ?? [];
+
+            if (empty($rows)) {
+                self::$loaded_groups[$group] = true;
+                continue;
+            }
+
+            $group_prefix = '_transient_' . self::PREFIX . $group . '_';
+            $timeout_prefix = '_transient_timeout_' . self::PREFIX . $group . '_';
+            $prefix_len = strlen($group_prefix);
+            $timeout_prefix_len = strlen($timeout_prefix);
+
+            $wp_cache = [];
+            $transients = [];
+
+            foreach ($rows as $row) {
+                $wp_cache[$row->option_name] = $row->option_value;
+
+                if (str_starts_with($row->option_name, $timeout_prefix)) {
+                    // timeout row — tracked in wp_cache but not injected into runtime
+                    continue;
+                }
+
+                $key = substr($row->option_name, $prefix_len);
+                $value = maybe_unserialize($row->option_value);
+                $transients[$key] = $value;
+
+                // Inject into runtime cache — mirrors get_multi() transient path
+                $cache_key = self::generate_key($group, $key);
+                self::set_runtime($cache_key, $value, $group);
+            }
+
+            // Inject into WordPress option cache — mirrors get_multi() transient path
+            if (!empty($wp_cache)) {
+                wp_cache_add_multiple($wp_cache, 'options');
+            }
+
+            self::$loaded_groups[$group] = true;
+        }
     }
 
     /**
