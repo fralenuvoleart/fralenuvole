@@ -291,7 +291,7 @@ function frl_wsf_execute_webhook_submission($args)
             );
         }
     } finally {
-        curl_close($ch);
+        $ch = null; // curl_close() deprecated since PHP 8.5; no-op since 8.0
     }
 }
 
