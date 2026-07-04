@@ -265,6 +265,21 @@ class Frl_Subdomain_Adapter_Legacy {
         if (!$this->should_transform()) {
             return $content;
         }
+
+        // Fast-fail: skip regex when content contains no recognized hosts.
+        // Mirrors the filter_render_block() pattern — avoids preg_replace_callback
+        // on the full post HTML when there are no cross-domain URLs to transform.
+        $has_recognized_host = false;
+        foreach ($this->get_recognized_hosts() as $host) {
+            if (str_contains($content, $host)) {
+                $has_recognized_host = true;
+                break;
+            }
+        }
+        if (!$has_recognized_host) {
+            return $content;
+        }
+
         return $this->transform_urls_in_html($content);
     }
 

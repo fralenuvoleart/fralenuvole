@@ -344,9 +344,11 @@ function frl_get_post_id_by_slug($slug)
     $cache_key = "postslug2id_" . sanitize_key($slug);
 
     return frl_cache_remember('permalinks', $cache_key, function () use ($slug, $lang) {
-        // Try 'pagename' for hierarchical slugs
+        // Try 'pagename' for hierarchical slugs — narrow to hierarchical types
+        // only, since pagename resolution requires parent→child path structure
+        // that non-hierarchical post types don't support.
         $posts = get_posts([
-            'post_type' => get_post_types(['public' => true]),
+            'post_type' => get_post_types(['public' => true, 'hierarchical' => true]),
             'pagename' => $slug,
             'post_status' => 'publish',
             'numberposts' => 1,

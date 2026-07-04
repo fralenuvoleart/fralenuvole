@@ -4,6 +4,24 @@
 
 **Context:** Reviewed `plans/analysis.md` against live code. 3 of 4 proposed patches applied (Patch 3 — adminui context-gate — dropped as micro-optimization with negligible real-world benefit). All zero regression risk.
 
+## ✅ Performance Patches — Subdomain Adapter & get_post_types Narrowing (2026-07-04)
+
+**Context:** Full codebase performance audit — 10 findings, 3 actionable. Patch 1 (adminui group decoupling) dropped after honest cost assessment: the `adminui` iteration is ~1-2ms per request and not the actual bottleneck (the `$wpdb LIKE` query is, and it's already cached under `options` group with 1-hour TTL).
+
+**Applied (2 files):**
+
+1. **[`modules/subdomain_adapter/class-subdomain-adapter-legacy.php:264-282`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:264)** — `filter_the_content()` now has the same `str_contains` fast-fail guard that `filter_render_block()` already had. Content without recognized hostnames skips the expensive `preg_replace_callback` entirely. Pattern copied verbatim from lines 295-308 of the same file.
+
+2. **[`includes/helpers/functions.php:349`](includes/helpers/functions.php:349)** — `frl_get_post_id_by_slug()` first query now uses `get_post_types(['public' => true, 'hierarchical' => true])` instead of `get_post_types(['public' => true])`. The `pagename` parameter only works for hierarchical post types, so non-hierarchical types in the `IN` clause were dead weight. The non-hierarchical fallback at line 362 already uses `'hierarchical' => false` with `'name'` — unchanged.
+
+**Dropped:**
+- Patch 1 (adminui group decoupling) — ~1-2ms per request, pure architectural correctness, no measurable speed gain.
+- F5 (broad get_posts in shortcode fallback) — cold-cache-only, already gated behind `frl_cache_remember`.
+- F6-F8 — micro-optimizations or already adequately cached.
+
+**Plan:** [`plans/performance-patch-plan-2026-07-04.md`](plans/performance-patch-plan-2026-07-04.md)
+**Report:** [`plans/performance-report-2026-07-04.md`](plans/performance-report-2026-07-04.md)
+
 **Changes (3 files):**
 
 1. **[`core/cache/class-cache-manager.php:81-180`](core/cache/class-cache-manager.php:81)** — `auto_preload()` now detects transient-fallback scenario and routes to new `batch_preload_transients()` — single combined `wp_options` LIKE query (OR-chain across all groups) instead of 5-6 separate queries. Object-cache path completely untouched: guard at line 107 only enters batched codepath when `!self::is_object_cache_truly_functional()` AND all groups are persistent AND not already loaded. **10-12 DB queries → 1 on cold-cache frontend.**

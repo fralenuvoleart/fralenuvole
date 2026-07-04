@@ -1,5 +1,24 @@
 # Project Progress
 
+## ✅ Performance Patches — Subdomain Adapter Fast-Fail + get_post_types Narrowing (2026-07-04)
+
+### Patches Applied (2 files)
+
+1. **[`modules/subdomain_adapter/class-subdomain-adapter-legacy.php:264-282`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:264)** — Added `str_contains` fast-fail guard to `filter_the_content()`, matching the existing pattern in `filter_render_block()` at lines 295-308. Content without recognized hostnames skips the expensive `preg_replace_callback` entirely.
+
+2. **[`includes/helpers/functions.php:349`](includes/helpers/functions.php:349)** — Narrowed `get_post_types()` in `frl_get_post_id_by_slug()` first query from all public types to hierarchical types only. `pagename` resolution requires parent→child path structure, so non-hierarchical types in the `IN` clause were dead weight. The non-hierarchical fallback using `'name'` is unchanged.
+
+### Dropped
+- **Patch 1 (adminui group decoupling):** Honest cost assessment revealed the `adminui` iteration is ~1-2ms per request. The real bottleneck (the `$wpdb LIKE` query) is already cached under `options` group with 1-hour TTL. Architectural correctness not worth the code change.
+
+### Plan
+[`plans/performance-patch-plan-2026-07-04.md`](plans/performance-patch-plan-2026-07-04.md)
+
+### Full Performance Audit
+[`plans/performance-report-2026-07-04.md`](plans/performance-report-2026-07-04.md) — 10 findings, 3 actionable, 2 applied, 1 dropped as negligible.
+
+---
+
 ## ✅ Performance Optimizations — Batch Preload + Image Size Loop Removal + all_options Batching (2026-07-04)
 
 ### Problem
