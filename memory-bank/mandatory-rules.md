@@ -1,10 +1,9 @@
 # Mandatory Operational Rules
 
 ## 🧠 MEMORY & PERSISTENCE
-- **Memory Retrieval:** Read `memory-bank/activeContext.md` and `memory-bank/productContext.md` at session start. These markdown files are the canonical source of truth over your general training data. Use `search_nodes` on the knowledge graph (`github.com/modelcontextprotocol/servers/tree/main/src/memory` MCP server) for quick cross-entity lookups during the session — the graph is a derived queryable index, not a replacement for the markdown files.
-- **Memory Update:** Write changes to `memory-bank/activeContext.md` and `progress.md` per the existing auto-update protocol. Whenever you write to those files, sync the knowledge graph afterward via `create_entities`/`add_observations`. No separate trigger — if the change wasn't worth documenting in markdown, it's not worth syncing to the graph. Markdown is canonical; the graph is complementary.
+- **Context Synchronization:** You MUST read the `/memory-bank` directory before every task. Use it as the primary source of truth over your general training data.
+- **Auto-Update Protocol:** Update `activeContext.md` and `progress.md` after every significant change without being prompted.
 - **Deep Scan Initialization:** If no `memory-bank/` exists, you must offer to initialize it by scanning `docs/` and the codebase to preserve legacy architectural decisions.
-- **Documentation:** When implementing a new subsystem, adapter, or significant feature, create a corresponding `docs/FEATURE.md` document. Update existing docs when architectural changes affect documented behavior.
 
 ## 🔍 ANALYSIS & REASONING
 - **Problem "Why":** Identify the underlying problem before proposing code. Do not rely solely on comments or assumptions.
@@ -13,8 +12,7 @@
 - **Verification via Ripgrep:** Before asserting that a pattern is followed or a regression is avoided, you MUST use `grep` or `ripgrep` to search the codebase for conflicting logic or existing implementations. Never rely on your internal "guess" of the file structure.
 
 ## 🛠️ DEVELOPMENT & QUALITY
-- **Zero Regression Policy:** This is production code. Before modifying any file in `core/`, `includes/`, or `modules/`, verify the change does not violate `systemPatterns.md` architecture constraints. For admin/UI changes, a lighter check is sufficient.
-- **Validation Loop:** Verify work a second time before presenting it. Re-verify specifically for side effects after every patch.
+- **Zero Regression Policy:** This is production code. Check `systemPatterns.md` before every file write to ensure zero violations of established architecture.
 - **Design Principles:** Prioritize KISS, Modularity, Performance, and SEO.
 
 ## 🛑 ABSOLUTE CONSTRAINTS (ANTI-HALLUCINATION)
@@ -22,20 +20,44 @@
 - **Gaslighting:** Deflecting errors with apologies instead of fixes is **GASLIGHTING**. 
 - **The "I Don't Know" Rule:** If context is missing or you are unsure, you must say "I don't know" rather than hallucinating a solution.
 - **No Placeholders:** Never use `// ... rest of code here`. Provide complete, functional snippets or targeted diffs.
-- **Security Files:** NEVER delete, modify, or expose files containing API keys, tokens, passwords, or credentials. If flagged as security issues, RESTORE them immediately and do not proceed without explicit user approval.
 
 ## ⚖️ SELF-AUDIT PROTOCOL
-- **Task Completion Check:** Before declaring a task finished, you must perform a self-audit against this checklist:
-  - [ ] Zero regressions? No existing signatures/filters/hooks changed
-  - [ ] Evidence provided? Specific file:line references in all claims
-  - [ ] Ripgrep verified? Codebase searched for conflicts before asserting patterns
-  - [ ] No hallucinations? All claims backed by source inspection, not assumptions
-  - [ ] Security intact? No API keys, tokens, or credentials exposed
-  - [ ] Memory updated? If activeContext.md / progress.md were written, knowledge graph synced
+- **Task Completion Check:** Before declaring a task finished, you must perform a self-audit.
+- **Audit Format:** List each "Mandatory" rule and state "Pass/Fail" based on your performance in this session.
 - **Correction:** If a "Fail" is identified, you must immediately correct the work before the session ends.
 
 ## ⚖️ CHAT PROTOCOL
 Follow these steps for each interaction:
-1. Read `memory-bank/activeContext.md` and `productContext.md` at session start. Use `search_nodes` on the knowledge graph for cross-entity lookups during the session.
-2. While conversing, be attentive to new information about user preferences, coding patterns, project structure.
-3. When updating `activeContext.md` or `progress.md`, sync the knowledge graph afterward.
+1. Always begin by retrieving relevant memories from your knowledge graph
+2. While conversing, be attentive to new information about user preferences, coding patterns, project structure
+3. At the end of each response, update memory with any new information gathered
+4. Create entities for recurring code patterns, architectural decisions, and significant bugs
+5. Connect related concepts using relations
+
+## ⚖️ KNOWLEDGE GRAPH PROTOCOL
+Purpose: Cross-file dependency cache. Not a duplicate of markdown.
+
+Store Test — all three must pass:
+1. Would mandatory markdown read give this fact? → If YES, skip.
+2. Does this fact require cross-referencing 2+ files to discover? → If NO, skip.
+3. Would this help answer "does changing X break Y"? → If NO, skip.
+
+Only store: integration points, behavioral invariants, constraint violations,
+  and current architecture state not yet reflected in markdown.
+
+Never store: dated change events, narrative descriptions, file locations,
+  feature lists, or any fact answerable from a single markdown read.
+
+Token budget: graph is cost-justified only when sessions involve
+  cross-subsystem impact questions. Store sparingly.
+
+## 🚫 OVERTHINKING GUARDRAIL (FAILURE RECORD)
+- **Root cause of failure:** Over-analyzed problems instead of simply asking "where is this filter registered" and "is it gated behind a condition". Kept looping on user's simple instructions instead of executing them immediately.
+- **CRITICAL RULE: When user gives a direct instruction with clear intent — DO IT.** Do not over-analyze, do not loop on their words, do not ask for clarification. Execute the instruction as-is.
+- **CRITICAL RULE: Do not re-loop same topic over and over again.** If you already have the context, use it. Excessive file I/O wastes time and frustrates the user.
+- **CRITICAL RULE: If a fix causes a regression, revert immediately and report. Do not design "v2" without explicit user approval.** Let the user decide the next step.
+
+## 🚫 LOOP PREVENTION (ENFORCED LIMITS)
+- **switch_mode LIMIT: 1 per task.** Call `switch_mode` exactly once — at the natural conclusion of planning, after the user has approved the plan. Never call it as a fallback when the user is frustrated, never call it to "keep going," and never call it a second time.
+- **File read LIMIT: max 5 unique files per investigation.** Do not re-read files you've already read in the same session. Before reading a new file, check: "do I already have this information from a previous read?"
+- **CRITICAL SELF-TERMINATION: If the user says STOP, indicates frustration, or asks "how do I stop this" — deliver your answer immediately with NO tool calls and `attempt_completion`. Do not call `switch_mode`, do not call `ask_followup_question`, do not read more files.**

@@ -34,6 +34,23 @@ Follow these steps for each interaction:
 4. Create entities for recurring code patterns, architectural decisions, and significant bugs
 5. Connect related concepts using relations
 
+## ⚖️ KNOWLEDGE GRAPH PROTOCOL
+Purpose: Cross-file dependency cache. Not a duplicate of markdown.
+
+Store Test — all three must pass:
+1. Would mandatory markdown read give this fact? → If YES, skip.
+2. Does this fact require cross-referencing 2+ files to discover? → If NO, skip.
+3. Would this help answer "does changing X break Y"? → If NO, skip.
+
+Only store: integration points, behavioral invariants, constraint violations,
+  and current architecture state not yet reflected in markdown.
+
+Never store: dated change events, narrative descriptions, file locations,
+  feature lists, or any fact answerable from a single markdown read.
+
+Token budget: graph is cost-justified only when sessions involve
+  cross-subsystem impact questions. Store sparingly.
+
 ## 🚫 OVERTHINKING GUARDRAIL (FAILURE RECORD)
 - **Root cause of failure:** Over-analyzed problems instead of simply asking "where is this filter registered" and "is it gated behind a condition". Kept looping on user's simple instructions instead of executing them immediately.
 - **CRITICAL RULE: When user gives a direct instruction with clear intent — DO IT.** Do not over-analyze, do not loop on their words, do not ask for clarification. Execute the instruction as-is.

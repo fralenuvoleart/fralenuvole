@@ -84,7 +84,12 @@
 				"@modelcontextprotocol/server-memory"
 			],
 			"alwaysAllow": [
-				"read_graph"
+				"read_graph",
+				"add_observations",
+				"delete_entities",
+				"delete_relations",
+				"create_entities",
+				"create_relations"
 			]
 		}
 	}
