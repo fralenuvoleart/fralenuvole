@@ -137,7 +137,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'label' => 'Size of Preloaded Hero Image on Mobile',
 				'description' => 'Specify the name of the WP thumbnail that will be preloaded on mobile (e.g. "full", "1536x1536"). Default fallback is "full".',
 				'type' => 'text',
-				'default' => '1536x1536',
+				'default' => 'full',
 				'sanitize_callback' => 'sanitize_text_field',
 			),
 			'image_filename_sanitize' => array(
