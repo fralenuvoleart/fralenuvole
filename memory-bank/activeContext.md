@@ -1,5 +1,30 @@
 # Active Context
 
+## ✅ Performance Patches — Static Caches for Redundant Parsing (2026-07-04)
+
+**Context:** Reviewed `plans/performance-report-2026-07-04.md` (24 findings). Cross-referenced each against live source code. 18 of 24 findings were overstated, already optimized, or voluntary design choices. 4 genuine findings patched; 2 excluded after investigation.
+
+**Applied (3 files, 4 patches):**
+
+1. **[`public/public.php:548-554`](public/public.php:548)** — `frl_alter_query()` now caches `custom_wp_query` textlist parsing in a `static $cached_cpts` variable. Eliminates redundant `frl_textlist_to_array()` + `frl_get_option()` on every secondary `WP_Query` (5-15 times per page load on widget-heavy pages).
+
+2. **[`public/public.php:202-205`](public/public.php:202)** — `frl_preload_featured_image()` now caches `hero_mobile_list` textlist parsing in a `static $hero_mobile_cache` variable. Eliminates redundant parsing on every singular page request.
+
+3. **[`admin/helpers/functions-admin.php:168-187`](admin/helpers/functions-admin.php:168)** — `frl_batch_update_options()` now pre-builds a `field_id => field_type` lookup map before the options loop. Replaces O(n×m) linear scan per option with O(1) hash map lookup. Map built once, reused for all options being saved.
+
+4. **[`admin/helpers/functions-admin-action-handlers.php:31-35`](admin/helpers/functions-admin-action-handlers.php:31)** — `frl_autodiscover_admin_actions()` now uses `static $discovered` guard to skip redundant `get_defined_functions()` iteration when multiple admin-post actions fire in the same request.
+
+**Excluded after investigation:**
+- **#3 (frl_get_current_user TTL):** `frl_clear_user_cache()` only clears `metafields` group, not `admin` group user cache. Increasing TTL to `DAY_IN_SECONDS` without also invalidating the `admin` group entry would extend staleness of roles/capabilities to 24h. Session-bound key makes targeted invalidation complex. Current 1-hour TTL kept.
+- **#18 (frl_get_post_id_by_slug two queries):** Necessary — hierarchical types use `pagename`, non-hierarchical use `name`. `get_page_by_path()` doesn't support Polylang's `lang` parameter. Results cached for 1 day in `permalinks` group. UNION query would bypass Polylang filters and WP post cache — fragile and high-risk.
+
+**Plan:** [`plans/performance-patches-2026-07-04.md`](plans/performance-patches-2026-07-04.md)
+**Report:** [`plans/performance-report-2026-07-04.md`](plans/performance-report-2026-07-04.md)
+
+**18 of 24 report findings rejected:** 4 critical (already optimized design choices), 8 high-frontend (6 overstated/design choices, 2 valid + patched), 5 high-admin (4 overstated/design choices, 1 valid + patched), 4 medium (niche or already cached), 4 low (already well-cached). The report systematically inflates severity ratings and ignores existing cache layers.
+
+---
+
 ## ✅ Performance Optimizations — Batch Preload + Image Size Loop + all_options Batching (2026-07-04)
 
 **Context:** Reviewed `plans/analysis.md` against live code. 3 of 4 proposed patches applied (Patch 3 — adminui context-gate — dropped as micro-optimization with negligible real-world benefit). All zero regression risk.

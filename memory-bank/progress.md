@@ -1,5 +1,33 @@
 # Project Progress
 
+## ✅ Performance Patches — Static Caches for Redundant Parsing (2026-07-04)
+
+### Context
+Reviewed `plans/performance-report-2026-07-04.md` (24 findings). Verified all claims against live source code. Report found to systematically overstate severity — most "critical" findings are already well-optimized design choices. 18 of 24 findings rejected after code review.
+
+### Patches Applied (3 files)
+
+1. **[`public/public.php:548-554`](public/public.php:548)** — `frl_alter_query()`: `static $cached_cpts` caches `custom_wp_query` textlist parsing. Eliminates re-parsing on every secondary WP_Query (5-15x per page).
+2. **[`public/public.php:202-205`](public/public.php:202)** — `frl_preload_featured_image()`: `static $hero_mobile_cache` caches `hero_mobile_list` textlist parsing on every singular page.
+3. **[`admin/helpers/functions-admin.php:168-187`](admin/helpers/functions-admin.php:168)** — `frl_batch_update_options()`: pre-built `field_id => field_type` lookup map replaces O(n×m) inner loop with O(1) hash lookup.
+4. **[`admin/helpers/functions-admin-action-handlers.php:31-35`](admin/helpers/functions-admin-action-handlers.php:31)** — `frl_autodiscover_admin_actions()`: `static $discovered` guard skips redundant function iteration.
+
+### Excluded After Investigation
+- **#3 (frl_get_current_user TTL):** `frl_clear_user_cache()` only clears `metafields`, not `admin` group. TTL increase would extend role staleness to 24h. Current 1-hour TTL is correct.
+- **#18 (frl_get_post_id_by_slug two queries):** Architecturally necessary (hierarchical vs non-hierarchical post types). `lang` parameter requires `get_posts()`. UNION bypasses Polylang. Results cached 1 day.
+
+### Report Quality Assessment
+- **4 Critical:** All design choices/already optimized — 0 actionable
+- **12 High:** 2 valid patched, 10 overstated/design choices
+- **4 Medium:** Niche or adequately cached — 0 actionable
+- **4 Low:** Already well-cached — 0 actionable
+- **Real hit rate:** 4/24 (16.7%) — consistent with prior audit (4/26 = 15.4%)
+
+### Plan
+[`plans/performance-patches-2026-07-04.md`](plans/performance-patches-2026-07-04.md)
+
+---
+
 ## ✅ Performance Patches — Subdomain Adapter Fast-Fail + get_post_types Narrowing (2026-07-04)
 
 ### Patches Applied (2 files)
