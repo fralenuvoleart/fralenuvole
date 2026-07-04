@@ -165,6 +165,15 @@ function frl_batch_update_options($options, $force_update = false)
     // Query directly from database instead of using cache
     $current_options = frl_get_plugin_options_db();
 
+    // Build field_id => field_type lookup map once (O(n) instead of O(n×m))
+    $all_fields = frl_get_all_plugin_options_settings(null);
+    $field_type_map = [];
+    foreach ($all_fields as $field) {
+        if (isset($field['id'], $field['type'])) {
+            $field_type_map[$field['id']] = $field['type'];
+        }
+    }
+
     foreach ($options as $key => $value) {
         // Skip if option key is not valid
         if (!is_string($key) || empty($key)) {
@@ -174,17 +183,8 @@ function frl_batch_update_options($options, $force_update = false)
         // Current value from provided options array
         $current_value = $current_options[$key] ?? null;
 
-        // Special handling for different field types
-        // Get field type if available to know how to handle the comparison
-        $field_type = null;
-
-        $all_fields = frl_get_all_plugin_options_settings(null);
-        foreach ($all_fields as $field) {
-            if (isset($field['id']) && $field['id'] === $key) {
-                $field_type = $field['type'];
-                break;
-            }
-        }
+        // O(1) field type lookup via pre-built map
+        $field_type = $field_type_map[$key] ?? null;
 
         $should_update = $force_update;
 

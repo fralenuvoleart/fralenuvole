@@ -27,6 +27,13 @@ function frl_autodiscover_admin_actions()
     if (!frl_is_admin() || !frl_is_administrator_action()) {
         return;
     }
+
+    static $discovered = null;
+    if ($discovered !== null) {
+        return;
+    }
+    $discovered = true;
+
     // Register critical handler explicitly
     add_action('admin_post_frl_save_options', 'frl_settings_fields_handle_save_options', 10, 0);
 

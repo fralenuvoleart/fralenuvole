@@ -1,239 +1,342 @@
 # Fralenuvole Performance Audit Report
-**Date:** 2026-07-04  
-**Scope:** All frontend codepaths (non-admin, non-REST, non-AJAX, non-cron)  
-**Methodology:** Static code analysis of every codepath directly exercised on frontend page renders. No documentation or assumptions — code only.
+
+**Date:** 2026-07-04
+**Plugin Version:** 5.7.4.1
+**Analysis Method:** Full execution flow tracing from entry point through every hook registration and callback
 
 ---
 
-## Findings Summary
+## Execution Flow
 
-| # | Severity | Category | File(s) | Lines |
-|---|----------|----------|---------|-------|
-| F1 | HIGH | Unnecessary DB query in cache hot-path | `includes/helpers/functions-options.php` | 286–296 |
-| F2 | HIGH | Uncached regex on every `the_content` | `modules/subdomain_adapter/class-subdomain-adapter-legacy.php` | 264–268, 331–356 |
-| F3 | HIGH | Uncached regex on every `render_block` | `modules/subdomain_adapter/class-subdomain-adapter-legacy.php` | 282–318, 331–356 |
-| F4 | MEDIUM | Broad `get_posts()` with ALL public post types | `includes/helpers/functions.php` | 348–354 |
-| F5 | MEDIUM | Broad `get_posts()` fallback in shortcode | `public/shortcodes.php` | 902–904 |
-| F6 | MEDIUM | Same option-definition loaded twice in retry path | `includes/helpers/functions-options.php` | 86, 770 |
-| F7 | LOW | Fresh closure allocated per block render | `includes/shared/navigation.php` | 54–86 |
-| F8 | LOW | `get_term_by()` uncached for source-language identity path | `core/translator/class-translation-service.php` | 349 |
-| F9 | INFO | Cold-cache: full option-type map built inside DB query | `includes/helpers/functions-options.php` | 267–329 |
-| F10 | INFO | Cold-cache: `the_content` + every block regex'd | `modules/subdomain_adapter/class-subdomain-adapter-legacy.php` | 264–356 |
-
----
-
-## F1 — HIGH: `frl_get_plugin_options_db()` builds full option-type map on every cold-cache call
-
-**File:** [`includes/helpers/functions-options.php:286-296`](includes/helpers/functions-options.php:286)
-
-**What happens:** `frl_get_plugin_options_db()` is the callback for `frl_cache_remember('options', 'all_options', ...)`. On every cache miss (cold cache, TTL expiry), it runs a `LIKE` query for ALL plugin options, then iterates results. But BEFORE the DB query, at lines 286–296, it calls:
-
-```php
-$all_default_definitions = frl_get_all_plugin_options_settings(null);
+```
+fralenuvole.php
+├── bootstrap.php
+│   ├── config/config.php → ALL 10 config files (every request)
+│   ├── includes/helpers/functions.php → ALL 7 helper files (every request)
+│   ├── Frl_Cache_Manager::init() → auto_preload() (every request)
+│   └── core/error-handler.php (every request)
+├── plugins_loaded:5 → frl_plugins_loaded()
+│   ├── frl_load_core_components()
+│   │   ├── core/cache/cache-cleanup.php
+│   │   ├── core/environment/environment-manager.php (if not disabled)
+│   │   ├── core/translator/translator.php (if multilingual + not disabled)
+│   │   ├── core/rewriter/class-rewriter.php (if not disabled)
+│   │   ├── core/themekit/themekit.php (always)
+│   │   ├── includes/main.php (always) → registers init/wp_head/wp_footer/shutdown hooks
+│   │   └── public/shortcodes.php (always)
+│   ├── frl_load_admin_components() [if admin]
+│   │   └── admin/admin.php → registers admin_menu/init/current_screen/admin_enqueue_scripts hooks
+│   ├── frl_load_public_components() [if frontend]
+│   │   ├── public/public.php → registers wp_head/wp_footer/pre_get_posts/rest_endpoints hooks
+│   │   └── public/schema/schema.php
+│   └── frl_modules_init() → loads enabled modules
 ```
 
-This loads the **entire** field definition registry — config fields, module fields, runtime fields, CPT options fields — which in turn loads and parses [`config/config-options.php`](config/config-options.php) (969 lines), all module config files, and [`FRL_OPTIONS_RUNTIME`](config/config-options.php:9-34). All of this just to build an `id → type` lookup map for normalizing raw DB values.
+---
 
-**Why it matters:** This is the single heaviest operation on the cold-cache frontend path. The `all_options` cache has a 1-hour TTL ([`FRL_CACHE_TTL['options'] = HOUR_IN_SECONDS`](config/config-cache.php:50)). Every hour, each frontend request that triggers this cache miss pays the cost of loading the full field registry. On sites without object cache (transient fallback), this cost is paid by EVERY request until the transients warm up.
+## 🔴 CRITICAL — Runs on EVERY request
 
-**The `frl_get_all_plugin_options_settings(null)` call itself IS cached** via [`frl_cache_remember('adminui', 'all_options_fields', ...)`](includes/helpers/functions-options.php:371) — so the field registry load only happens once. But the iteration over all definitions to build `$option_type_map` (lines 290–296) runs on every `frl_get_plugin_options_db()` call regardless, because the id-to-type map is NOT cached — it's rebuilt from the cached field registry each time.
+### 1. All 10 config files loaded unconditionally
+**File:** `config/config.php:10-19`, called from `includes/bootstrap.php:39`
 
-**Impact:** ~200–500 field definitions iterated on every cold-cache options load. The `frl_cache_remember('adminui', 'all_options_fields')` return value is an array of arrays — iterating it to extract `id` and `type` is O(n) where n = all plugin options. This is done inside a DB query wrapper.
+Every request — frontend, admin, AJAX, REST, cron — parses all 10 config files. This includes `config-cache-operations.php` which defines a massive `FRL_CACHE_OPERATIONS` constant with deeply nested arrays and callable references.
 
-**Remediation:** Cache the `$option_type_map` itself (e.g., under `'options'` group as `'option_type_map'`), or compute it once during `frl_load_config_options_defaults()` and store it alongside the defaults. This eliminates the per-call iteration overhead.
+**Impact:** Unnecessary I/O and PHP parse cost on requests that don't need all config (e.g., AJAX, REST, cron).
+
+**Fix:** Split config loading by request context. Only load cache-operations when cache operations are actually performed.
 
 ---
 
-## F2 — HIGH: Uncached `preg_replace_callback` on full post content via `the_content` filter
+### 2. `Frl_Cache_Manager::init()` → `auto_preload()` on every request
+**File:** `core/cache/class-cache-manager.php:64-73`, called from `includes/bootstrap.php:43`
 
-**File:** [`modules/subdomain_adapter/class-subdomain-adapter-legacy.php:264-268`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:264), [`331-356`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:331)
+- Calls `is_object_cache_truly_functional()` (line 107) which calls `get_provider_details()` (line 304) which reads the `object-cache.php` drop-in file content and does `filemtime()` on it — every request, cached only in a 1-week transient.
+- When object cache is NOT functional: `batch_preload_transients()` (line 107) executes a single DB query with multiple `LIKE` clauses on `wp_options` — one `LIKE` pair per preload group (6 frontend, 5 backend).
+- When object cache IS functional: `preload_multi()` per group — no DB queries, just `wp_cache_get_multiple()`.
 
-**What happens:** The legacy subdomain adapter hooks `the_content` at `PHP_INT_MAX`:
+**Impact:** On sites without a persistent object cache (Redis, Memcached, Litespeed), every cold-cache request hits `wp_options` with a multi-LIKE query. The `get_provider_details()` method also reads the `object-cache.php` file from disk on cache miss.
 
-```php
-public function filter_the_content(string $content): string {
-    if (!$this->should_transform()) return $content;
-    return $this->transform_urls_in_html($content);
-}
-```
-
-[`transform_urls_in_html()`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:331-356) builds a regex alternation of all recognized hosts (`pbservices.ge|pbproperty.ge|staging.pbservices.ge|ru.pbservices.ge` etc.), then runs `preg_replace_callback` over the **entire post content** matching href/action attributes.
-
-**Why it matters:** This runs on EVERY `the_content` filter call for every post — no caching whatsoever. On a page with 10 posts in a query loop, this regex runs 10 times. The content can be tens of kilobytes. The regex is complex (host alternation, URL matching). For sites where legacy URL transformation is enabled (`subdomain_adapter_legacy_links` option), this is a per-render cost that scales with content size.
-
-**The `should_transform()` guard** (lines 95–106) correctly skips admin/REST/cron/preview, but on frontend it always runs.
-
-**Remediation:** Either (a) cache the transformed content via `frl_cache_remember` keyed by post ID + language, or (b) skip the transformation when the post content doesn't contain any recognized host (fast `str_contains` pre-check before the regex, similar to the `filter_render_block` fast-fail pattern at lines 299–308).
+**Fix:** The batch preload is already an optimization (replacing N separate LIKE scans with 1). The remaining issue is that `get_provider_details()` does filesystem I/O. Cache the provider details more aggressively or detect the provider once at plugin activation.
 
 ---
 
-## F3 — HIGH: Uncached `preg_replace_callback` on every unique rendered block
+### 3. `frl_get_current_user()` called extensively, 1-hour cache TTL
+**File:** `includes/helpers/functions.php:111-162`
 
-**File:** [`modules/subdomain_adapter/class-subdomain-adapter-legacy.php:282-318`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:282)
+Uses `frl_cache_remember('admin', ...)` with 1-hour TTL. On cache miss: `wp_get_current_user()` hits the DB. Called from `frl_is_logged_in()`, `frl_has_access()`, `frl_admin_bar_menu_render()`, `frl_themekit_admin_body_classes()`, `frl_themekit_frontend_body_classes()`, `frl_trace_logged_user_visits()`, and more.
 
-**What happens:** `filter_render_block()` at `PHP_INT_MAX` runs `transform_urls_in_html()` on every unique block content. It has a per-request static cache (`$block_cache`, line 312), but each unique block content still gets regex'd once per request.
+**Impact:** The 1-hour TTL means this re-queries the DB frequently throughout the day for every logged-in user. The `admin` group TTL is 1 hour by design, but user objects change rarely (only on profile update).
 
-**Why it matters:** On a page with 30 blocks of varying content (common with block themes), 30 regex passes run every request. The fast-fail at lines 290–308 (block name check + `str_contains` host check) helps for trivial blocks, but ANY block containing a recognized host in its rendered HTML triggers the full regex.
-
-**Comparison with `filter_the_content` (F2):** The `the_content` filter processes the entire content once. The `render_block` filter processes individual block HTML chunks. Together, they can regex the same content twice — once as individual blocks and once as assembled `the_content`.
-
-**Remediation:** Same options as F2: cache per-block via `frl_cache_remember`, or accept the per-request dedup (which already exists) and optimize `transform_urls_in_html()` itself with a `str_contains` fast-fail.
+**Fix:** Increase TTL for user object cache to `DAY_IN_SECONDS` and invalidate on `profile_update` and `password_reset` hooks.
 
 ---
 
-## F4 — MEDIUM: `frl_get_post_id_by_slug()` queries ALL public post types
+### 4. `frl_has_access()` — 5-minute cache, DB on miss
+**File:** `includes/helpers/functions-access-control.php:25-52`
 
-**File:** [`includes/helpers/functions.php:348-354`](includes/helpers/functions.php:348)
+Uses `frl_cache_remember('admin', ...)` with 300s TTL. On cache miss: `$user->has_cap($capability)` which queries user meta. Called from admin bar rendering, dashboard widgets, admin menu removal, admin notices, and action handlers.
 
-**What happens:** On cache miss, the `pagename` path queries:
+**Impact:** Multiple capability checks per page load, each with a 5-minute cache window. On a busy admin page with multiple widgets and menu items, this can result in several `has_cap()` calls.
 
-```php
-$posts = get_posts([
-    'post_type' => get_post_types(['public' => true]),
-    'pagename' => $slug,
-    ...
-]);
-```
-
-This tells WordPress to search **all public post types** for a matching `pagename`. The inner `get_post_types()` call constructs the full list of public post types (potentially dozens on a site with many CPTs). The `get_posts()` query translates this into a broad `post_type IN (...)` clause.
-
-The fallback at lines 362–368 does the same for non-hierarchical types if the first attempt misses.
-
-**Why it matters:** This function is called from `[frl_translate_slug]` shortcode cache miss path. On a cold cache for a slug, this fires two broad `get_posts()` queries. The result IS cached via `frl_cache_remember('permalinks', ...)`, so subsequent requests are fine — but the first miss is expensive.
-
-**Remediation:** Narrow the post type list to only types that could realistically match. The function is already gated by whether `frl_get_translation_permalink()` returned empty. Consider using `get_page_by_path()` for the hierarchical case (already done in `frl_get_cpt_id_by_slug()` at line 416).
+**Fix:** Batch capability checks or increase TTL. Capabilities rarely change during a session.
 
 ---
 
-## F5 — MEDIUM: `get_posts()` fallback in `[frl_translate_slug]` shortcode queries ALL hierarchical types
+## 🟠 HIGH — Frontend request path
 
-**File:** [`public/shortcodes.php:902-904`](public/shortcodes.php:902)
+### 5. `frl_add_critical_css()` on `wp_head` — filesystem read + CSS minification
+**File:** `includes/shared/website-features.php:24-41`, hooked at `includes/main.php:31`
 
-**What happens:** When `frl_get_translation_permalink()` returns empty for a slug, the shortcode falls back to:
+Reads `critical.css` from disk via `file_get_contents()`, minifies CSS. Cached via `frl_cache_remember('html', ...)` with 1-week TTL. On cache miss: synchronous file read + CPU-bound minification on the critical rendering path.
 
-```php
-$posts = get_posts([
-    'post_type' => get_post_types(['public' => true, 'hierarchical' => true]),
-    'name' => $slug_to_translate,
-    'post_status' => 'publish',
-    'numberposts' => 1,
-    'lang' => $lang,
-]);
-```
+**Impact:** On cache miss (first request after cache clear, or after CSS file change), the `wp_head` action blocks on file I/O and CSS minification. This delays the first byte of HTML content.
 
-This queries ALL public hierarchical post types for a matching post name. On a site with hierarchical CPTs (pages, services, etc.), this generates a `post_type IN ('page', 'service', 'wp_block', ...)` clause.
-
-**Why it matters:** This fallback only triggers when the translation permalink lookup fails (post not translated, not found), but when it does, it's an expensive broad query. The result IS cached via the outer `frl_cache_remember('shortcodes', ...)` at line 897, so it's a cold-cache-only concern. But the cache key includes the slug, so each unique untranslatable slug burns one broad query on first encounter.
-
-**Remediation:** Consider limiting to `'page'` post type only, as hierarchical slug resolution is almost always for pages. Or use `get_page_by_path()` which WP core already optimizes.
+**Fix:** Pre-minify critical CSS at save time (in the admin options page) rather than at request time. Store the minified version in the option itself or in a separate transient.
 
 ---
 
-## F6 — MEDIUM: Same option-definition loaded twice in retry path
+### 6. `frl_add_deferred_css()` on `wp_footer` — `file_exists()` every request
+**File:** `includes/shared/website-features.php:52-77`, hooked at `includes/main.php:32`
 
-**File:** [`includes/helpers/functions-options.php:86`](includes/helpers/functions-options.php:86), [`770`](includes/helpers/functions-options.php:770)
+Calls `file_exists(get_stylesheet_directory() . '/deferred.css')` on every page load. Then calls `frl_get_assets_versions()` which does another `filemtime()`. The `file_exists` check is not cached.
 
-**What happens:** In `frl_get_option()`, when a key is genuinely missing from DB:
+**Impact:** Unnecessary filesystem stat call on every page load. While `file_exists` is fast, it's still a syscall on the critical rendering path.
 
-1. **Line 80:** `frl_set_missing_option_default()` is called
-2. **Line 770:** Inside that function, `frl_get_all_plugin_options_settings($key)` is called → loads option definition
-3. **Line 783:** `frl_update_option()` is called → at line 112, `frl_get_all_plugin_options_settings($key)` is called AGAIN
-4. **Line 797:** `get_option()` is called to verify the write
-
-If the write succeeds (`$options[$key]` is now set), the code returns normally. But if somehow the key is STILL not in `$options` (the retry path at lines 82–88), line 86 calls `frl_get_all_plugin_options_settings($key)` a THIRD time. The per-key lookup IS cached (line 343), so the 2nd and 3rd calls are fast — but the first call in step 2 creates the cache entry.
-
-**Remediation:** Pass the already-loaded `$default_option` from `frl_set_missing_option_default()` to `frl_update_option()` to avoid the redundant lookup. Or have `frl_update_option()` accept a pre-loaded definition array.
+**Fix:** Cache the result of `file_exists` in a static variable or use `frl_cache_remember` with the file's mtime as part of the key.
 
 ---
 
-## F7 — LOW: Fresh closure allocated per block render callback
+### 7. `frl_preload_featured_image()` on `wp_head` — multiple filesystem checks
+**File:** `public/public.php:144-277`, hooked at `public/public.php:12`
 
-**File:** [`includes/shared/navigation.php:54-86`](includes/shared/navigation.php:54)
+Only on singular posts. Uses `frl_cache_remember('postdata', ...)`. On cache miss: `get_post_thumbnail_id()`, `wp_upload_dir()`, `wp_get_attachment_metadata()`, multiple `file_exists()` checks for format variants (e.g., `.avif`). Also calls `frl_textlist_to_array()` to parse mobile hero option on every request (line 203).
 
-**What happens:** `frl_render_block_core_navigation_translation()` sets `$settings['render_callback']` to a new closure that captures `$current_lang`. This function is called via the `block_type_metadata_settings` filter, which fires for every `core/navigation` block on every page render. Each call allocates a new closure object.
+**Impact:** On cache miss for a post with a featured image, this does multiple filesystem checks and metadata lookups on `wp_head`. The `frl_textlist_to_array()` call on line 203 is also uncached and runs on every request.
 
-**Why it matters:** On a page with 3 navigation blocks (header, footer, sidebar), 3 closures are allocated per request. The closure captures `$current_lang` (a short string), so memory cost is negligible. The actual work inside the closure is cached via `frl_cache_remember('permalinks', ...)`, so the runtime cost is just the closure allocation + cache lookup.
-
-**Verdict:** Micro-optimization. The static caching inside the closure makes this effectively O(1) per navigation block. Not worth changing.
-
----
-
-## F8 — LOW: `get_term_by()` uncached for source-language identity path
-
-**File:** [`core/translator/class-translation-service.php:349`](core/translator/class-translation-service.php:349)
-
-**What happens:** In `get_translation_term_permalink()`, when `$language === $source_language` (identity path):
-
-```php
-$term = get_term_by('slug', $slug, $taxonomy);
-```
-
-This is an uncached DB query. The translated path (lines 358–388) uses `frl_cache_remember('permalinks', ...)`, but the identity path does not.
-
-**Why it matters:** On a source-language site (e.g., English-only), every term permalink request hits the DB. On a multilingual site, only source-language term lookups are affected. `get_term_by()` is relatively cheap (single query on indexed columns), but it's still a DB hit that could be cached.
-
-**Remediation:** Wrap in `frl_cache_remember` like the translation path, or rely on WordPress core's internal term cache (which already caches `get_term_by` results within a request).
+**Fix:** Cache the `hero_mobile_list` parsing result. The `frl_textlist_to_array(frl_get_option('image_preload_hero_mobile'))` on line 203 should be cached since the option rarely changes.
 
 ---
 
-## F9 — INFO: Cold-cache option-type map rebuilds inside DB query
+### 8. `frl_alter_query()` on `pre_get_posts` — option parsing on every secondary query
+**File:** `public/public.php:535-563`, hooked at `public/public.php:14`
 
-**File:** [`includes/helpers/functions-options.php:267-329`](includes/helpers/functions-options.php:267)
+Runs on EVERY non-main query. Calls `frl_textlist_to_array(frl_get_option('custom_wp_query'))` on every invocation. The option value doesn't change between queries within a request, but it's re-parsed every time.
 
-Already covered by F1, but worth noting that the `frl_get_all_plugin_options_settings(null)` call at line 289 triggers the full field registry load. The registry itself IS cached under `adminui` group — so the first frontend request after a cache clear loads the adminui group just to build a type map for options normalization. This is a cross-group cache dependency that could be cleaner.
+**Impact:** On a page with many secondary queries (widgets, related posts, navigation), this parses the same option string repeatedly. Each call goes through the cache layer and textlist parser.
 
----
-
-## F10 — INFO: Legacy subdomain adapter regex architecture
-
-**File:** [`modules/subdomain_adapter/class-subdomain-adapter-legacy.php:264-356`](modules/subdomain_adapter/class-subdomain-adapter-legacy.php:264)
-
-Already covered by F2 and F3. The cumulative effect is significant: `the_content` (full post HTML) + `render_block` (individual block HTML) both running `preg_replace_callback` with host-alternation patterns. When legacy links are enabled, this is the single largest CPU consumer on the frontend render path outside of WordPress core itself.
+**Fix:** Cache the parsed result in a static variable within the function. The option value won't change during a single request.
 
 ---
 
-## What's Already Well-Optimized
+### 9. `frl_themekit_enqueue_base_styles()` — CSS on every frontend page
+**File:** `core/themekit/themekit.php:117-121`, hooked at `core/themekit/themekit.php:46-51`
 
-The codebase has extensive caching that already handles many potential performance issues. Notable strengths:
+Enqueues `themekit-styles.css` (8.2 KB) on ALL frontend pages. No conditional loading — even on pages that don't use any themekit features.
 
-1. **Batch transient preload** ([`class-cache-manager.php:130-189`](core/cache/class-cache-manager.php:130)) — single DB query for all preload groups on cold cache
-2. **Translator REST guards** ([`field-translator.php:25-26`](core/translator/field-translator.php:25)) — all 8 entry points gated behind `frl_is_valid_frontend_page_request()`
-3. **Block translation pattern-based caching** ([`class-translation-service.php:268-300`](core/translator/class-translation-service.php:268)) — stable cache keys via pattern hashes instead of content hashes
-4. **Translation identity skip** ([`class-translation-service.php:228-230`](core/translator/class-translation-service.php:228)) — no cache entries for source-language strings
-5. **`frl_preload_featured_image()` per-request static cache** ([`public.php:156-200`](public/public.php:156)) — `$preload_cache` avoids redundant work
-6. **`all_options` clear batching** ([`functions-options.php:790-794`](includes/helpers/functions-options.php:790)) — one clear per request instead of one per option
-7. **`should_bypass()` checks** throughout cache manager — avoids cache operations when plugin is disabled
-8. **`frl_is_admin()` static cache** — computed once per request, O(1) thereafter
-9. **`frl_is_already_running()` guards** on init functions — prevents double initialization
-10. **Re-entrancy-free `frl_get_option()`** — `$loaded` + `$write_attempted` provide robust protection
+**Impact:** 8.2 KB of CSS loaded on every page, including pages that may not use any themekit styles. This is render-blocking CSS.
+
+**Fix:** This is by design (base styles). If the CSS is truly needed everywhere, ensure it's minified. If not, add conditional loading based on page content.
 
 ---
 
-## Priority Action Items
+### 10. `frl_public_scripts()` — JS on every frontend page
+**File:** `public/public.php:43-50`, hooked at `public/public.php:16`
 
-| Priority | Finding | Action |
-|----------|---------|--------|
-| **P0** | F1 — Option type map rebuilt in cold-cache DB path | Cache `$option_type_map` separately; compute once in `frl_load_config_options_defaults()` |
-| **P0** | F2 — Uncached regex on `the_content` | Add `str_contains` fast-fail before regex, OR cache per-post-per-language |
-| **P1** | F3 — Uncached regex on `render_block` | Same as F2; consider caching transformed block HTML per content hash |
-| **P1** | F4 — `get_post_types()` inside `get_posts()` calls | Limit to `'page'` or use `get_page_by_path()` |
-| **P2** | F5 — Broad hierarchical query fallback | Limit to `'page'` post type |
-| **P2** | F6 — Redundant option-definition lookup | Pass pre-loaded definition to `frl_update_option()` |
-| **—** | F7 — Closure allocation | Negligible; no action needed |
-| **—** | F8 — `get_term_by()` identity path | Low-impact; WP core term cache handles per-request dedup |
+Enqueues `public.js` (6.1 KB) on ALL frontend pages.
+
+**Impact:** 6.1 KB of JavaScript loaded on every page. Enqueued in footer (line 250 of `frl_enqueue_scripts` uses `true` for `$in_footer`), so not render-blocking, but still adds to page weight.
+
+**Fix:** Review if `public.js` is needed on all pages. If it only handles specific interactions, conditionally load it.
 
 ---
 
-## Self-Audit (Mandatory Rules)
+## 🟠 HIGH — Admin request path
 
-| Rule | Status | Notes |
-|------|--------|-------|
-| Context Synchronization | Pass | Read all memory-bank files before analysis |
-| Auto-Update Protocol | Pass | Will update `activeContext.md` and `progress.md` |
-| Problem "Why" | Pass | Each finding explains root cause before suggesting fix |
-| Chain of Thought | Pass | systemPatterns.md cache rules followed |
-| Evidence | Pass | All findings include file:line references |
-| Verification via Ripgrep | Pass | Used `search_files` for pattern discovery across entire codebase |
-| Zero Regression Policy | N/A | No code changes made — report only |
-| Honesty Protocol | Pass | All findings based on actual code reads, not assumptions |
-| No Placeholders | Pass | Complete analysis with specific references |
+### 11. `frl_admin_scripts()` — CSS on every admin page
+**File:** `admin/admin.php:212-216`, hooked at `admin/admin.php:28`
+
+Enqueues `admin.css` (9.4 KB) on ALL admin pages — including pages where the plugin has no UI.
+
+**Impact:** 9.4 KB of CSS loaded on every admin page, including pages like the main dashboard, post list, plugin list, etc. where the plugin's admin styles may not be needed.
+
+**Fix:** Restrict to plugin pages only, or split into a minimal global stylesheet and a full stylesheet for plugin pages.
+
+---
+
+### 12. `frl_load_logged_user_scripts()` — CSS on every page for logged-in users
+**File:** `includes/shared/logged-user.php:26-37`, hooked at `includes/shared/logged-user.php:15`
+
+Enqueues `shared-logged-user.css` (5.9 KB) on ALL pages (frontend + admin) for logged-in users. Also enqueues `admin-theme.css` (6.9 KB) if the option is enabled.
+
+**Impact:** Up to 12.8 KB of additional CSS on every page for every logged-in user. This affects both frontend and admin.
+
+**Fix:** The `shared-logged-user.css` is for admin bar styling and logged-in user indicators — this is legitimate. The `admin-theme.css` should only load on admin pages, not frontend.
+
+---
+
+### 13. `frl_trace_logged_user_visits()` — DB write on every page view
+**File:** `includes/shared/logged-user.php:477-563`, hooked at `includes/shared/logged-user.php:18-19`
+
+Runs on `wp_footer` and `admin_footer` for every logged-in user. Has a fast-path dedup check via `frl_cache_get('visits', ...)`. On cache miss: `frl_get_user_meta()` (DB read), iterates stored visits, `frl_update_user_meta()` (DB write).
+
+**Impact:** A DB write on every unique page visit by a logged-in user. The fast-path dedup prevents writes on repeat visits to the same URL within 5 minutes, but every new URL still triggers a write.
+
+**Fix:** This is by design for the user visits tracking feature. The dedup already mitigates the worst case. Consider batching writes or using a more efficient storage mechanism (e.g., a custom table instead of user meta).
+
+---
+
+### 14. `frl_get_debug_log_count()` — reads debug.log file
+**File:** `includes/shared/logged-user.php:405-468`, called from `frl_admin_bar_add_menu_primary()` at line 153
+
+Reads the last 100KB of `wp-content/debug.log`, counts non-ignored lines. Cached via transient for 5 minutes. On cache miss: synchronous file read + line-by-line iteration on the admin bar rendering path.
+
+**Impact:** On cache miss, the admin bar rendering blocks on reading up to 100KB from disk and iterating line-by-line. This happens on the `admin_bar_menu` hook (priority 9999).
+
+**Fix:** The 100KB cap and 5-minute transient are already good optimizations. Consider moving this to a cron job that updates the transient periodically, so the admin bar never blocks on file I/O.
+
+---
+
+### 15. `frl_batch_update_options()` — O(n×m) field type lookup
+**File:** `admin/helpers/functions-admin.php:160-248`
+
+When saving options, calls `frl_get_all_plugin_options_settings(null)` (line 181) which returns ALL plugin fields, then iterates them to find each option's type. This is O(n×m) where n = options being saved, m = total fields defined.
+
+**Impact:** On every settings save, this iterates all plugin fields for each option being saved. With many fields and many options, this can be slow.
+
+**Fix:** Build a `field_id => field_type` lookup map once, then use it for O(1) lookups instead of O(m) scans per option.
+
+---
+
+### 16. `frl_autodiscover_admin_actions()` — iterates all defined functions
+**File:** `admin/helpers/functions-admin-action-handlers.php:24-50`, called from `frl_admin_plugins_loaded()` at `admin/admin.php:57`
+
+Calls `get_defined_functions()['user']` and iterates ALL user-defined PHP functions to find those with the `frl_post_` prefix. Runs on every admin request where `frl_is_administrator_action()` is true.
+
+**Impact:** On a WordPress site with many plugins, `get_defined_functions()['user']` can return thousands of functions. Iterating all of them on every admin action request is wasteful.
+
+**Fix:** Cache the discovered handler list in a static variable or transient. The list of `frl_post_*` functions only changes when plugin files are modified.
+
+---
+
+## 🟡 MEDIUM — Conditional but expensive when triggered
+
+### 17. `frl_disable_comments()` — schedules cron, registers multiple hooks
+**File:** `includes/shared/website-features.php:234-304`, called from `frl_main_init()` → `frl_disable_wp_core_features()` at line 143
+
+When enabled: iterates all post types, checks cache for completion status, potentially schedules a cron event, registers 7 anonymous function hooks. The cron handler (`frl_run_disable_comments_batch`, line 315) does a direct `$wpdb->update()` on the posts table.
+
+**Impact:** The `$wpdb->update()` on the posts table in the cron handler could lock the table on sites with millions of posts. The code already acknowledges this and uses a cron job instead of running synchronously.
+
+**Fix:** The current implementation is already optimized (cron instead of synchronous). Consider adding a `LIMIT` clause to the UPDATE query for very large tables.
+
+---
+
+### 18. `frl_get_post_id_by_slug()` — two `get_posts()` queries on cache miss
+**File:** `includes/helpers/functions.php:340-377`
+
+On cache miss: first `get_posts()` with all public post types + `pagename`, then a second `get_posts()` with non-hierarchical post types + `name`. Two DB queries for a single slug lookup.
+
+**Impact:** Two `get_posts()` queries on cache miss. The results are cached in the `permalinks` group (1-day TTL), so this only affects the first lookup per slug per day.
+
+**Fix:** Use a single `get_page_by_path()` call which handles both hierarchical and non-hierarchical post types. Or use a direct `$wpdb` query with a UNION.
+
+---
+
+### 19. `frl_get_post_terms()` — per-term language check in loop
+**File:** `includes/helpers/functions.php:876-927`
+
+When translator is enabled: iterates all terms and calls `pll_get_term_language()` for each term individually. This is N function calls for N terms.
+
+**Impact:** For posts with many terms, this does N `pll_get_term_language()` calls. Each call may hit the cache or database.
+
+**Fix:** Batch the language checks if Polylang provides a bulk function. Or cache the language of each term individually so subsequent calls are fast.
+
+---
+
+### 20. `frl_custom_dashboard_widgets()` — multiple `frl_get_option()` calls
+**File:** `admin/admin.php:530-663`, hooked at `admin/admin.php:33`
+
+For each of 7 widgets: calls `frl_get_option()` 2-3 times (enable check, capability check, content check). That's ~20 `frl_get_option()` calls just to render the dashboard. Each call goes through the cache layer.
+
+**Impact:** ~20 cache lookups on every admin dashboard load. While each is fast individually, the cumulative effect is measurable.
+
+**Fix:** The `options` group is preloaded on backend requests, so these should all be runtime cache hits. Verify that the preload is working correctly.
+
+---
+
+## 🟢 LOW — Minor but cumulative
+
+### 21. `frl_add_image_sizes()` — parses textlist on cache miss
+**File:** `includes/shared/media.php:20-47`, called from `frl_main_init()` at `includes/main.php:68`
+
+On cache miss: parses the `image_sizes_list` option through `frl_textlist_to_array()`, filters valid sizes. Cached for 1 week.
+
+**Impact:** Only on cache miss (first request after cache clear). The 1-week TTL is appropriate.
+
+---
+
+### 22. `frl_get_avatar_data()` — per-comment avatar lookup
+**File:** `includes/shared/media.php:120-152`, hooked at `includes/shared/media.php:110`
+
+Runs on every `get_avatar_data` filter call (every comment, every author box). Uses `frl_cache_remember('options', ...)` with 1-day TTL. On cache miss: `frl_get_user_meta()` + `wp_get_attachment_image_url()`.
+
+**Impact:** On pages with many comments, this filter fires many times. The 1-day cache means most calls are runtime cache hits after the first lookup per user.
+
+---
+
+### 23. `frl_login_page_branding()` — `wp_get_attachment_image_src()` on cache miss
+**File:** `public/public.php:437-475`, hooked at `public/public.php:19`
+
+Only on login page. On cache miss: `wp_get_attachment_image_src(get_theme_mod('custom_logo'), 'full')`. Cached via `frl_cache_remember('html', ...)`.
+
+**Impact:** Only affects the login page, which is low-traffic. The caching is appropriate.
+
+---
+
+### 24. `frl_defer_css()` — string matching on every stylesheet
+**File:** `public/public.php:288-316`, hooked at `public/public.php:18`
+
+Runs on every `style_loader_tag` filter. Parses the `defer_css_handles` option via `frl_textlist_to_array()` (cached statically), then does `str_contains()` on every enqueued stylesheet's href.
+
+**Impact:** For pages with many stylesheets, this does `str_contains()` on each one. The static cache for the parsed option is good, but the per-stylesheet string matching adds up.
+
+**Fix:** Build a hash map of handles to defer for O(1) lookup instead of iterating the list for each stylesheet.
+
+---
+
+## Summary
+
+| Severity | Count | Runs On |
+|----------|-------|---------|
+| 🔴 Critical | 4 | Every request |
+| 🟠 High (Frontend) | 6 | Every frontend page |
+| 🟠 High (Admin) | 6 | Every admin page |
+| 🟡 Medium | 4 | Conditional features |
+| 🟢 Low | 4 | Specific contexts |
+| **Total** | **24** | |
+
+---
+
+## Top 5 Highest-Impact Issues
+
+1. **`auto_preload()` DB query on every cold-cache request** — when no object cache is active, a multi-LIKE query hits `wp_options` on every request. This is already optimized (batched into 1 query instead of N), but still hits the DB on every request without object cache.
+
+2. **`frl_trace_logged_user_visits()` DB write on every page** — user meta read + write on every unique page visit for logged-in users. The fast-path dedup helps, but every new URL still triggers a write.
+
+3. **`frl_alter_query()` re-parses option on every secondary query** — `frl_textlist_to_array()` called on every non-main `WP_Query`. A static cache would eliminate this entirely.
+
+4. **`frl_batch_update_options()` O(n×m) field lookup** — iterates all plugin fields for every option being saved. A pre-built lookup map would make this O(n).
+
+5. **`frl_autodiscover_admin_actions()` iterates all PHP functions** — `get_defined_functions()['user']` on qualifying admin requests. A cached handler list would eliminate this.
+
+---
+
+## Quick Wins (Low Effort, High Impact)
+
+| # | Issue | Fix | Effort |
+|---|-------|-----|--------|
+| 1 | `frl_alter_query()` re-parses option | Add static cache for parsed `custom_wp_query` | 1 line |
+| 2 | `frl_preload_featured_image()` re-parses mobile hero | Cache `hero_mobile_list` in static variable | 2 lines |
+| 3 | `frl_batch_update_options()` O(n×m) | Build field type lookup map once | ~10 lines |
+| 4 | `frl_autodiscover_admin_actions()` iterates all functions | Cache discovered handlers in static variable | ~5 lines |
+| 5 | `frl_defer_css()` iterates handles per stylesheet | Build hash map for O(1) lookup | ~5 lines |

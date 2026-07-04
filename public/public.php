@@ -199,8 +199,12 @@ function frl_preload_featured_image()
         $preload_cache[$post->ID] = $preload_data;
     }
 
-    $hero_mobile_raw  = frl_get_option('image_preload_hero_mobile');
-    $hero_mobile_list = frl_textlist_to_array($hero_mobile_raw);
+    static $hero_mobile_cache = null;
+    if ($hero_mobile_cache === null) {
+        $hero_mobile_raw    = frl_get_option('image_preload_hero_mobile');
+        $hero_mobile_cache  = frl_textlist_to_array($hero_mobile_raw);
+    }
+    $hero_mobile_list = $hero_mobile_cache;
     $has_mobile       = false;
 
     if (!empty($hero_mobile_list)) {
@@ -545,14 +549,17 @@ function frl_alter_query($query)
     $query->set('post_status', 'publish');
     $query->set( 'has_password', false );
 
-    $cpts_list = frl_textlist_to_array(frl_get_option('custom_wp_query'));
+    static $cached_cpts = null;
+    if ($cached_cpts === null) {
+        $cached_cpts = frl_textlist_to_array(frl_get_option('custom_wp_query'));
+    }
 
-    if (empty($cpts_list)) {
+    if (empty($cached_cpts)) {
         return;
     }
 
     // Flatten the array to get just the CPT names (first element of each sub-array)
-    $cpts_list = array_column($cpts_list, 0);
+    $cpts_list = array_column($cached_cpts, 0);
 
     // Add post type check for any custom post type
     $post_type = $query->get('post_type');
