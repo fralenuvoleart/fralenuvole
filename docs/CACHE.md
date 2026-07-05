@@ -26,6 +26,8 @@
 9. [Clearing Behavior Reference](#9-clearing-behavior-reference)
 10. [Performance Considerations](#10-performance-considerations)
 11. [Design Notes & Known Considerations](#11-design-notes--known-considerations)
+12. [The Options Read/Write Path](#12-the-options-readwrite-path)
+13. [Admin Cache-Clear Actions — Execution Context & Guarantees](#13-admin-cache-clear-actions--execution-context--guarantees)
 
 ---
 
@@ -578,3 +580,57 @@ Provider details are cached in a core transient (not through the cache manager's
 ### Known Limitation
 
 The `metadata` cache group is not listed in `FRL_CACHE_PERSISTENT_GROUPS`. This only affects sites with no functional object cache (transient-fallback only) — on any site with Redis/Litespeed/Memcached/Docket active, the group works correctly via the object-cache path regardless of this list.
+
+---
+
+## 12. The Options Read/Write Path
+
+`frl_get_option()` and `frl_update_option()` ([`functions-options.php`](includes/helpers/functions-options.php)) are not thin wrappers around `get_option()`/`update_option()` — they form a self-healing config-schema layer built on top of `Frl_Cache_Manager`. Every layer below exists to solve one specific, real problem.
+
+### Read path (`frl_get_option()`)
+
+Four tiers, each a fallback for the one before it:
+
+1. **Request-local static array** — `$options`/`$loaded` statics inside the function. Populated once per request; subsequent calls in the same request are a pure array lookup, zero cache/DB cost.
+2. **Persistent cache** — first load calls `frl_get_plugin_options('all')` → [`Frl_Cache_Manager::remember('options', 'all_options', …)`](core/cache/class-cache-manager.php:736), which is lock-protected against cache-stampede (see §5.8) and backed by [`frl_get_plugin_options_db()`](includes/helpers/functions-options.php:267) — a single `LIKE 'frl_%'` query normalizing every row against a type map built once per request.
+3. **Stale-cache recovery** — if a key is missing from the loaded snapshot, [`frl_handle_missing_option_key()`](includes/helpers/functions-options.php:735) does one direct `get_option()` DB-cache-aware check. If the key exists in the DB but was missing from the cached snapshot (e.g. written by WP-CLI, direct `wpdb`, staging sync), it patches the snapshot and single-key-clears the stale cache entry (no dependency cascade — this is a read-path correction, not a config change).
+4. **Missing-option self-seeding** — if the key genuinely doesn't exist in the DB (a new field shipped in a code deploy), [`frl_set_missing_option_default()`](includes/helpers/functions-options.php:768) looks up its registered default/type/autoload, writes it once, and batches the cache invalidation across N missing keys in a single request via a `$all_options_cleared` static guard (seeding 20 new options after a deploy costs one cache clear, not 20). A `$write_attempted` guard ensures each key is only seeded once per request even under repeated calls.
+
+This tier is what makes shipping a new config field in code "just work" on production without a migration script — the first read after deploy seeds and persists the default automatically.
+
+### Write path (`frl_update_option()`)
+
+```php
+remove_all_filters('pre_option_' . $prefixed_key);   // strip prior same-request closures
+$result = update_option($prefixed_key, $normalized_value, $autoload);
+frl_cache_clear('options', 'all_options', false);     // single-key clear only, no cascade
+add_filter('pre_option_' . $prefixed_key, fn() => $normalized_value, 9999, 1);
+```
+
+- `remove_all_filters()` before writing: without it, multiple writes to the same key within one request would stack anonymous closures, and since anonymous closures can't be targeted individually by `remove_filter()`, WordPress would return the **first** stale closure's value instead of the latest write.
+- The `pre_option_{$key}` filter at priority `9999`: guarantees native `get_option('frl_x')` calls made by *other* code (Rewriter features, third-party plugins, theme code) — which do **not** go through `frl_get_option()`'s own read path — see the fresh value immediately, same request, same millisecond, regardless of what priority any other `pre_option_frl_*` filter was registered at.
+- Scoped strictly to `pre_option_frl_*` — the plugin's own private option namespace — so this trick never affects any option belonging to another plugin or theme.
+
+### The one real same-request nuance
+
+`frl_get_option()`'s static array is populated from the plugin's own DB read path, not from native `get_option()` — so it is *not* covered by the `pre_option_` filter trick above. Practical consequence: within the single request that first force-applies an environment/config change (`init` priority 10, see [HOOKS.md](docs/HOOKS.md)), if `frl_get_option()` was already called once before [`Frl_Environment_Applier::apply_plugin_options()`](core/environment/class-environment-applier.php:120)'s write loop runs, a later call for a key that loop just rewrote will return the pre-write value for the *rest of that one request only* — the very next request is fully correct, since the persistent cache is invalidated by the orchestrated bulk clear that runs right after the write loop. This is the deliberate cost of batching N writes into one cache-clear instead of N cascading clears (each fanning out to `theme`/`html`/`admin`/`adminui`/`rewriter` per `FRL_CACHE_DEPENDENCIES`), confined to the rare state-transition request, and irrelevant to routine traffic or the warm-cache read path.
+
+---
+
+## 13. Admin Cache-Clear Actions — Execution Context & Guarantees
+
+### Works identically from the adminbar on frontend pages
+
+Adminbar cache links are built with `add_query_arg(FRL_PREFIX . '_action', $action)` ([`logged-user.php`](includes/shared/logged-user.php:186)) — no base URL, so they target the *current* page, admin or frontend. Processing happens in [`frl_process_plugin_actions()`](includes/helpers/functions-action-handlers.php:24), hooked unconditionally at `init:10` — **not** gated to `is_admin()` — and capability-checked via `frl_has_access('manage_options')` independent of context. [`frl_safe_redirect()`](includes/helpers/functions.php:791) returns the user to the referring page via the `Referer` header. The clearing action itself is fully functional on frontend pages.
+
+**Known gap:** the success/failure confirmation is stored via `frl_add_admin_notice()` as a transient, but is only ever rendered by `frl_display_all_admin_notices()`, hooked exclusively to `admin_notices` — a hook that never fires outside `wp-admin`. Clicking a cache-clear link from the adminbar while browsing the live site clears the cache correctly, but shows no visual confirmation on that page load; the stored notice will only surface if the admin later opens `wp-admin` before its timeout expires.
+
+### Why "Clear Caches (All)" and "Flush Rewrite Rules" take several seconds even on Redis
+
+**Flush Rewrite Rules** is not cache-bound, so a fast object-cache backend does not speed it up: `flush_rewrite_rules(true)` is a WordPress-core operation that regenerates the entire rule set across every post type, taxonomy, and multilingual CPT slug variant, then (with `$hard = true`) writes the full serialized ruleset to the DB and attempts a `.htaccess` save. This is CPU/regex-generation-bound and DB-write-bound — the cost scales with the number of active languages, CPTs, and taxonomies, independent of the caching backend.
+
+**Cache Clear (All)** ([`purge_all()`](core/cache/class-cache-manager.php:977)) itself is fast on Redis — 15 groups × a handful of sub-millisecond `wp_cache_*` round trips. The multi-second wall-clock time perceived after clicking the button is the combined click-to-page-loaded cycle: the redirect lands back on the admin settings page with a now-cold `adminui`/`admin`/`theme`/`staticdata` cache — the exact groups just purged — so that page's first render after the click legitimately rebuilds everything `frl_cache_remember()` was previously short-circuiting. This is the deliberate cost of a comprehensive purge, not a redundant operation.
+
+### No redundant clearing across composite actions
+
+`action_hard` runs `frl_cache_clear('hard')` (→ `purge_all()`, clears `options` among 15 groups) followed by `frl_flush_rewrite_rules()` (→ `clear_rewriter_caches()` → `frl_cache_clear('options')` again). This looks redundant on paper but isn't: [`clear_group_with_dependencies()`](core/cache/class-cache-manager.php:1311) tracks `self::$groups_cleared[$group]` and returns immediately with zero stats for any group already cleared earlier in the same request. Since step 1 marks `options` as cleared, step 2's call is a verified no-op, not a double clear.
