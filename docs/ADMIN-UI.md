@@ -1,8 +1,5 @@
 # Admin Interface Developer Reference
 
-**Version:** 5.5.0  
-**Last Updated:** 2026-04-24
-
 ---
 
 ## Directory Structure
@@ -10,7 +7,6 @@
 ```
 admin/
 ├── admin.php                          ← Core hooks, menu, dashboard widgets
-├── admin-settings-page.php            ← Entry point for settings page
 ├── components/
 │   ├── class-dashboard.php            ← Dashboard orchestrator
 │   ├── class-display-cache.php        ← Cache statistics display
@@ -53,13 +49,13 @@ admin/admin.php (loaded via plugin bootstrap)
   → frl_admin_plugins_loaded() [plugins_loaded/10]
     → frl_load_plugin_ui()
       → frl_is_plugin_context() [CHECK: ?page=fralenuvole or frl_ action]
-        → require admin-settings-page.php
+        → require admin/ui/ui-admin-settings.php
 ```
 
 ### 2. Settings Page Loading
 
 ```
-admin-settings-page.php
+admin/ui/ui-admin-settings.php
   → Load helpers (functions-admin-ui.php, functions-admin-class-helpers-ui.php)
   → Load UI components (ui-asset-loader.php, class-tab-*.php, class-ui-renderer.php)
   → Load display components (class-dashboard.php, class-display-*.php)
@@ -197,9 +193,9 @@ Frl_Dashboard_Renderer::render_widget([
 
 ## Dashboard Widgets
 
-### Registration (`admin/admin.php:595-729`)
+### Registration (`admin/admin.php` → `frl_custom_dashboard_widgets()`)
 
-Widgets are registered via `wp_dashboard_setup` hook. Configuration:
+Widgets are registered via the `wp_dashboard_setup` hook. Configuration:
 
 ```php
 $widgets = [
@@ -268,9 +264,10 @@ add_filter('frl_admin_dashboard_links', function($links) {
 |------|---------|---------|
 | `admin-ui.js` | Core UI (tabs, toggles) | Footer, deferred |
 | `admin-import-export.js` | Import/export AJAX | Footer, deferred |
-| `admin-menu-order.js` | Menu order copy | Footer, deferred |
 | `admin-tag-validator.js` | Tag validation AJAX | Footer, deferred |
 | `admin-log-manager.js` | Log viewer AJAX | Footer, deferred |
+| `admin-bulk-resave.js` | Bulk post re-save AJAX | Footer, deferred |
+| `admin-avatar.js` | Custom avatar upload | Footer, deferred |
 | `prism.min.js` | Syntax highlighting | Footer, deferred |
 | `prism-markup.min.js` | HTML syntax | Footer, deferred |
 

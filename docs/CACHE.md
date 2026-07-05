@@ -1,6 +1,6 @@
 # Cache System — Architectural Reference
 
-> **Fralenuvole v5.4.0** — Multi-backend caching layer with language awareness, dependency cascading, and orchestrated operations.
+> Multi-backend caching layer with language awareness, dependency cascading, and orchestrated operations.
 
 ---
 
@@ -25,7 +25,7 @@
 8. [Helper Functions API](#8-helper-functions-api)
 9. [Clearing Behavior Reference](#9-clearing-behavior-reference)
 10. [Performance Considerations](#10-performance-considerations)
-11. [Recent Fixes & Bug History](#11-recent-fixes--bug-history)
+11. [Design Notes & Known Considerations](#11-design-notes--known-considerations)
 
 ---
 
@@ -552,39 +552,20 @@ Provider details are cached in a core transient (not through the cache manager's
 
 ---
 
-## 11. Recent Fixes & Bug History
+## 11. Design Notes & Known Considerations
 
-### Applied Fixes (v5.4.0)
+### Deliberate Design Choices (Not Defects)
 
-| Fix | File:Line | Description |
-|---|---|---|
-| `'all_options, false'` string leak | [`functions-options.php:124`](includes/helpers/functions-options.php:124), [:726](includes/helpers/functions-options.php:726) | `false` was inside the string literal, making it part of the cache key name instead of the `$include_dependencies` argument. Dependency skipping now works correctly. |
-| Auth cookie side-effect extraction | [`class-cache-manager.php:835`](core/cache/class-cache-manager.php:835) | Extracted into `with_auth_preservation()` wrapper with documentation explaining the rationale. |
-| Double `serialize()` eliminated | [`class-cache-manager.php:504`](core/cache/class-cache-manager.php:504) | `frl_sanitize_for_serialization()` output used directly — eliminates redundant pre-serialization test. |
-| `purge_all()` double work eliminated | [`class-cache-manager.php:887`](core/cache/class-cache-manager.php:887) | `$transients_batch_deleted` flag skips redundant per-group transient deletion after batch delete. |
-| LRU size made configurable | [`config/config-cache.php:146`](config/config-cache.php:146) | `FRL_CACHE_RUNTIME_MAX_ITEMS = 1000` constant, class references `self::$max_runtime_items`. |
-| Unrecognized group warning | [`class-cache-manager.php:1195`](core/cache/class-cache-manager.php:1195) | `frl_log()` fires when group is in no configuration array. |
-| `atomic_clear_group()` return type normalization | [`class-cache-manager.php:1488`](core/cache/class-cache-manager.php:1488) | Maps `clear_group_with_dependencies()` output to documented `$stats` shape for consistent return regardless of cache backend. |
-| Navigation cache ID namespace collision | [`cache-cleanup.php:208`](core/cache/cache-cleanup.php:208), [:225](core/cache/cache-cleanup.php:225) | Split `frl_clear_navigation_cache()` into two functions: one for `wp_navigation` posts (`wp_navigation_{$id}` key), one for nav_menu terms (`wp_menu_{$id}` key) — separate key namespaces. |
-
-### Known Considerations (Not Yet Addressed)
-
-| Issue | Impact | Notes |
-|---|---|---|
-| `metadata` group not in `FRL_CACHE_PERSISTENT_GROUPS`
-| All-static design (`Frl_Cache_Manager`) | Impossible to mock, test, or swap implementations | Common WordPress pattern; acceptable for production |
-| Constant-based configuration | Cannot be filtered at runtime using `apply_filters()` | Acceptable per current design; constants are audit-friendly |
-| Provider detection not extracted | 158-line method in the cache manager class | Refactoring candidate: extract to `Frl_Cache_Provider_Detector` |
-
-### Retracted Concerns (Verified Safe)
-
-| Concern | Resolution |
+| Choice | Rationale |
 |---|---|
-| `pre_option_*` filter removal targets plugin's own namespace only | [`reset_options_caches()`](core/cache/class-cache-manager.php:1338) only removes `pre_option_frl_*` hooks — fully owned by this plugin |
-| `$loaded_groups` reset fires only on full-group clears | Code path at line 1241 is inside the `$key === null` block — single-key clears don't touch it |
-| `auto_preload()` batching | Batching is optimal; disabling would scatter individual `get_transient()`/`wp_cache_get()` calls across page render, degrading performance |
-| `metadata` group on object cache sites | Works correctly with Redis/Litespeed/Memcached/Docket — only transient-only sites affected |
+| `Frl_Cache_Manager` is a fully static class | Impossible to mock/swap in isolation, but this is the established convention across the codebase and consistent with how WordPress itself is typically extended. |
+| Configuration lives in PHP constants, not filterable via `apply_filters()` | Constants are `grep`-able and diff-able across the whole config surface in one place; runtime filterability was judged not worth the audit-trail cost for this plugin's deployment model. |
+| `purge_all()` batches transient deletion once, then skips redundant per-group deletion | Avoids an N+1 query pattern when purging every group in one call. |
 
----
+### Diagnostic: Non-Functional Group Flush Detection
 
-*Last updated: 2026-04-28*
+`purge_group_storage()` sets a short-lived canary key in the target object-cache group immediately before calling `wp_cache_flush_group()`, then checks whether it survived. Some object-cache drop-ins implement `wp_cache_flush_group()` as a no-op stub or don't support group-scoped flushing at all — without this check, a "Clear Cache" admin action could report success while stale data remains cached until natural TTL expiry. The check is purely diagnostic: it logs a warning via `frl_log()` when detected, but never changes the function's return value or any caller-visible behavior.
+
+### Known Limitation
+
+The `metadata` cache group is not listed in `FRL_CACHE_PERSISTENT_GROUPS`. This only affects sites with no functional object cache (transient-fallback only) — on any site with Redis/Litespeed/Memcached/Docket active, the group works correctly via the object-cache path regardless of this list.

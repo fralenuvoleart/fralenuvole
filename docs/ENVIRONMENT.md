@@ -1,8 +1,6 @@
 # Environment Manager — Developer Reference
 
-**Last Updated:** 2026-04-29  
-**Applies to:** Fralenuvole v5.6.0  
-**Source:** [`core/environment/`](../core/environment/) (9 files)  
+**Source:** [`core/environment/`](../core/environment/) (9 files)
 **Configuration:** [`config/environment/`](../config/environment/) (constants + snippets)
 
 ---
@@ -395,10 +393,10 @@ This function is the single gatekeeper for all EM features. If it returns `false
 
 **`load_environment_file()`:**
 - Loads raw content from `{prefix}_{option_name}.php`
-- If content contains `<?php`, validates PHP syntax:
-  - Writes content to a temp file
-  - Runs `php -l` (lint) via `exec()`
-  - Logs syntax errors but still returns the content (application-level validation only)
+- If content contains `<?php`, validates PHP syntax as an advisory-only check (the result never changes what's returned):
+  - Guarded by `function_exists('exec')` — skips gracefully with a log entry on hosts where `exec()` is disabled (common hardening on managed/shared hosting)
+  - When available: writes content to a temp file, runs `php -l` (lint) via `exec()`, logs syntax errors
+  - Wrapped in `catch (\Throwable $e)` so any unexpected failure (including `exec()` being disabled at runtime) is caught rather than propagating as a fatal error
 - Results cached in the `environment` cache group
 
 ### 5.7 `Frl_Environment_Host_Normalizer` (Trait)

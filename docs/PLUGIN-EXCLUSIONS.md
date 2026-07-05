@@ -167,9 +167,11 @@ Additionally, as a safety measure, the filter sanitizes `args` on every cron eve
 Capability-based exclusion runs during `muplugins_loaded` (before `plugins_loaded`), when WordPress user functions are not yet available. The dedicated [`frl_mu_check_access()`](includes/mu/functions-mu.php:91) function handles this:
 
 1. If `plugins_loaded` has fired → delegates to standard [`frl_has_access()`](includes/helpers/functions-access-control.php:95)
-2. If early loading → uses [`frl_get_auth_cookie_user_data()`](includes/mu/functions-mu.php:90) to read the auth cookie and query the DB directly
+2. If early loading → uses [`frl_get_auth_cookie_user_data()`](includes/mu/functions-mu.php:135) to read and verify the auth cookie, then query the DB directly
 
-The DB query in `frl_get_auth_cookie_user_data()` is cached cross-request via `frl_cache_remember` with a **300s TTL** (aligned with `frl_has_access()` standard path), keyed by username to prevent cross-user pollution.
+**Cookie signature verification:** `frl_get_auth_cookie_user_data()` cryptographically verifies the `logged_in` auth cookie before trusting its username — it replicates WordPress core's own `wp_validate_auth_cookie()` algorithm (`hash_hmac('md5', ...)` → `hash_hmac('sha256', ...)` → `hash_equals()`, bound to the user's current password-hash fragment) using only the `LOGGED_IN_KEY`/`LOGGED_IN_SALT` constants and native `hash_hmac()`. This works even though `wp-includes/pluggable.php` (home of `wp_validate_auth_cookie()`) hasn't loaded yet, because the constants it depends on are defined in `wp-config.php`, which loads *before* mu-plugins run. Without this check, an unauthenticated visitor could forge a cookie with a known/guessed username and receive that user's real capabilities. The check does not verify session-token revocation (`WP_Session_Tokens`) — accepted as a documented limitation since this function only gates a soft plugin-visibility decision, not real authentication.
+
+The DB query in `frl_get_auth_cookie_user_data()` (now also selecting `user_pass` for the signature check) is cached cross-request via `frl_cache_remember` with a **300s TTL** (aligned with `frl_has_access()` standard path), keyed by username to prevent cross-user pollution.
 
 ## Files
 

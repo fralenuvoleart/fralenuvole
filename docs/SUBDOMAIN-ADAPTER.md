@@ -143,6 +143,20 @@ Priority 20 for URL filters ensures they run after the Rewriter (priority 10).
 
 **404 errors are NOT redirected** — guarded by an explicit `is_404()` check. They render locally on the subdomain in the subdomain's language. This is intentional: a 404 means "no content exists," not "content belongs elsewhere."
 
+### Rewrite-Flush Coordination — `Frl_Subdomain_Adapter::$flush_depth`
+
+The adapter exposes a public static reference counter, `Frl_Subdomain_Adapter::$flush_depth`, that coordinates with two files outside this module:
+
+- [`includes/plugin-lifecycle.php`](includes/plugin-lifecycle.php) — `frl_flush_rewrite_rules()` increments the counter before calling WordPress's `flush_rewrite_rules(true)`, and decrements it in a `finally` block afterward.
+- [`core/rewriter/class-rewriter.php`](core/rewriter/class-rewriter.php) — `Frl_Rewriter::clear_rewriter_caches()` does the same around its own `flush_rewrite_rules(true)` call.
+- This class reads the counter in `filter_option_page_on_front()` and `filter_option_page_for_posts()`.
+
+**Why:** while WordPress is regenerating `rewrite_rules`, the `page_on_front`/`page_for_posts` options are read internally by core. On a subdomain request, this module's normal behavior is to translate those IDs to the subdomain's language-specific page. If that translation happened *during* a flush, the translated (language-specific) page ID would be baked into the globally-shared `rewrite_rules` option — corrupting the front page/posts page resolution for every other language and domain until the next flush. While `$flush_depth > 0`, both filters skip translation and return the raw, untranslated DB value instead.
+
+**It's a counter, not a boolean** because `frl_flush_rewrite_rules()` fires `do_action('update_option_permalink_structure')`, which can itself trigger `clear_rewriter_caches()` — nesting two flush attempts within one call chain. A boolean would be cleared by the inner call's `finally` block before the outer call finishes.
+
+**Maintenance note:** any future code path that calls WordPress's `flush_rewrite_rules(true)` directly — bypassing both `frl_flush_rewrite_rules()` and `Frl_Rewriter::clear_rewriter_caches()` — will not increment this counter, silently reintroducing the corruption risk described above on subdomain requests. New flush call sites should always go through one of those two existing functions.
+
 ---
 
 ## Public API
@@ -224,7 +238,6 @@ The [`Frl_Subdomain_Adapter_Legacy`](modules/subdomain_adapter/class-subdomain-a
 - Content URL transformation is purely runtime (regex on rendered HTML) — no database writes.
 - `render_block` at `PHP_INT_MAX` provides per-block transformation with a `str_contains` fast-fail guard and per-request static block cache.
 - Legacy incoming redirects respect `is_404()` and `is_admin()` guards; redirect loop prevention compares target vs current URL before redirecting.
-- See [`plans/subdomain-adapter-legacy-url-handling.md`](plans/subdomain-adapter-legacy-url-handling.md) for full implementation plan and testing checklist.
 
 ---
 
@@ -239,7 +252,7 @@ The [`Frl_Subdomain_Adapter_Legacy`](modules/subdomain_adapter/class-subdomain-a
 
 ---
 
-## Code Review Notes (2026-05-08)
+## Additional Technical Notes
 
 Key technical observations for future maintainers.
 
