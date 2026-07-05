@@ -167,7 +167,6 @@ function frl_uninstall_plugin(): void
  *          → clears options cache (→ rewriter → permalinks)
  *          → deletes exclusion patterns transient
  *          → calls flush_rewrite_rules(true)
- *          → notifies Litespeed via frl_thirdparty_maybe_notify('rewrite_flush')
  *        - Polylang: clean_languages_cache() [polylang/src/model.php:119]
  *          → ensures fresh language data during rule regeneration
  *   2. permalink_structure_changed → notifies any other plugins
@@ -195,7 +194,7 @@ function frl_flush_rewrite_rules(): void
 
     // When called before wp_loaded, the rewriter's deferred cache invalidation
     // hooks (registered in register_cache_invalidation_hooks()) are not yet set
-    // up. Run flush_rewrite_rules(true) and third-party notification directly.
+    // up. Run flush_rewrite_rules(true) directly.
     if (!did_action('wp_loaded')) {
         // Prevent the Subdomain Adapter from translating page_on_front /
         // page_for_posts during rule generation. On a subdomain request,
@@ -205,9 +204,6 @@ function frl_flush_rewrite_rules(): void
         }
         try {
             flush_rewrite_rules(true);
-            if (function_exists('frl_thirdparty_maybe_notify')) {
-                frl_thirdparty_maybe_notify('rewrite_flush');
-            }
         } finally {
             if (class_exists('Frl_Subdomain_Adapter')) {
                 Frl_Subdomain_Adapter::$flush_depth--;

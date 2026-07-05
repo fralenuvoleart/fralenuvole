@@ -1,5 +1,33 @@
 # Active Context
 
+## ✅ Cache Bridge Removal (2026-07-05)
+
+**Context:** Surgically removed the two-way cache bridge (third-party cache plugin notification feature). This feature previously notified LiteSpeed, Breeze, and WP Rocket when fralenuvole cleared its caches (outbound), and listened for their purge actions (inbound). Removed all related code, constants, documentation, and memory-bank references.
+
+**Files modified (7):**
+- [`modules/thirdparty/thirdparty.php`](modules/thirdparty/thirdparty.php) — Removed ~340 lines of cache bridge code (functions, hooks, inline registration)
+- [`modules/thirdparty/config-constants-thirdparty.php`](modules/thirdparty/config-constants-thirdparty.php) — Removed `FRL_THIRDPARTY_INBOUND_HOOKS`, `FRL_THIRDPARTY_INBOUND_QUERIES`, `FRL_THIRDPARTY_OUTBOUND_HOOKS` constants
+- [`config/config-cache-operations.php`](config/config-cache-operations.php) — Removed `frl_thirdparty_maybe_notify()` steps from `clear_hard`, `clear_all`, `clear_light`, and updated `action_hard` note
+- [`core/rewriter/class-rewriter.php`](core/rewriter/class-rewriter.php) — Removed `frl_thirdparty_maybe_notify('rewrite_flush')` from `clear_rewriter_caches()`
+- [`includes/plugin-lifecycle.php`](includes/plugin-lifecycle.php) — Removed `frl_thirdparty_maybe_notify('rewrite_flush')` from `frl_flush_rewrite_rules()` before-wp_loaded fallback
+- [`docs/CACHE.md`](docs/CACHE.md), [`docs/REWRITER.md`](docs/REWRITER.md), [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md) — Removed third-party notification references from operation tables, execution flow diagrams, and environment docs
+
+**Preserved:** SASWP schema injection, admin scripts, Greenshift REST fixes, and all unrelated functionality in [`modules/thirdparty/thirdparty.php`](modules/thirdparty/thirdparty.php).
+
+## ✅ Audit Patch Round — 3 Confirmed Findings Patched (2026-07-05)
+
+**Context:** Applied targeted fixes for 3 confirmed findings from the full codebase audit. (Original finding #1 — cache bridge — was superseded by the complete cache bridge removal above.)
+
+**Applied (3 files, 3 patches):**
+
+1. **[`admin/widgets/widget-user-visits.php:19-145`](admin/widgets/widget-user-visits.php:19)** — `frl_render_user_visits_widget()` now wraps entire rendering logic in `frl_cache_remember('adminui', 'user_visits_widget', ..., HOUR_IN_SECONDS)`. Added `'number' => 50` limit to `get_users()` call. Eliminates per-request unbounded user scan. Cache group corrected to `'adminui'` (admin interface assembly) per FRL_CACHE_PERSISTENT_GROUPS configuration.
+
+2. **[`modules/pbnova/code-snippets.php:26-28`](modules/pbnova/code-snippets.php:26)** — `add_action()` now gated behind `defined('FRL_PBNOVA_ENABLE_REGISTRATION_SNIPPET') && FRL_PBNOVA_ENABLE_REGISTRATION_SNIPPET`. Template/tutorial code with hardcoded field IDs no longer registers unconditionally. Added clear header comment explaining template nature and activation instructions.
+
+3. **[`modules/pbproperty/geodirectory.php:84-95`](modules/pbproperty/geodirectory.php:84)** — Added docblock documenting the N+1 `pll_get_post_language()` loop as acceptable (amortized by 24h daily cache). Includes remediation guidance if performance becomes critical.
+
+---
+
 ## ✅ Performance Patches — Static Caches for Redundant Parsing (2026-07-04)
 
 **Context:** Reviewed `plans/performance-report-2026-07-04.md` (24 findings). Cross-referenced each against live source code. 18 of 24 findings were overstated, already optimized, or voluntary design choices. 4 genuine findings patched; 2 excluded after investigation.
@@ -17,9 +45,6 @@
 **Excluded after investigation:**
 - **#3 (frl_get_current_user TTL):** `frl_clear_user_cache()` only clears `metafields` group, not `admin` group user cache. Increasing TTL to `DAY_IN_SECONDS` without also invalidating the `admin` group entry would extend staleness of roles/capabilities to 24h. Session-bound key makes targeted invalidation complex. Current 1-hour TTL kept.
 - **#18 (frl_get_post_id_by_slug two queries):** Necessary — hierarchical types use `pagename`, non-hierarchical use `name`. `get_page_by_path()` doesn't support Polylang's `lang` parameter. Results cached for 1 day in `permalinks` group. UNION query would bypass Polylang filters and WP post cache — fragile and high-risk.
-
-**Plan:** [`plans/performance-patches-2026-07-04.md`](plans/performance-patches-2026-07-04.md)
-**Report:** [`plans/performance-report-2026-07-04.md`](plans/performance-report-2026-07-04.md)
 
 **18 of 24 report findings rejected:** 4 critical (already optimized design choices), 8 high-frontend (6 overstated/design choices, 2 valid + patched), 5 high-admin (4 overstated/design choices, 1 valid + patched), 4 medium (niche or already cached), 4 low (already well-cached). The report systematically inflates severity ratings and ignores existing cache layers.
 
@@ -44,9 +69,6 @@
 - F5 (broad get_posts in shortcode fallback) — cold-cache-only, already gated behind `frl_cache_remember`.
 - F6-F8 — micro-optimizations or already adequately cached.
 
-**Plan:** [`plans/performance-patch-plan-2026-07-04.md`](plans/performance-patch-plan-2026-07-04.md)
-**Report:** [`plans/performance-report-2026-07-04.md`](plans/performance-report-2026-07-04.md)
-
 **Changes (3 files):**
 
 1. **[`core/cache/class-cache-manager.php:81-180`](core/cache/class-cache-manager.php:81)** — `auto_preload()` now detects transient-fallback scenario and routes to new `batch_preload_transients()` — single combined `wp_options` LIKE query (OR-chain across all groups) instead of 5-6 separate queries. Object-cache path completely untouched: guard at line 107 only enters batched codepath when `!self::is_object_cache_truly_functional()` AND all groups are persistent AND not already loaded. **10-12 DB queries → 1 on cold-cache frontend.**
@@ -54,8 +76,6 @@
 2. **[`core/cache/cache-cleanup.php:87`](core/cache/cache-cleanup.php:87)** — Removed `$common_sizes` loop (`['thumbnail','medium','large','full']`) from `frl_clear_post_cache()`. Only the configured featured image size is now cleared. Alternate-size cache entries self-expire at 24h TTL and are never read by the preloader (which always uses current config). **~12-16 cache ops → ~4-6 per save_post.**
 
 3. **[`includes/helpers/functions-options.php:785-794`](includes/helpers/functions-options.php:785)** — Static flag in `frl_set_missing_option_default()` batches `all_options` cache clear to once per request instead of once per missing option. When 50 options are seeded on cold cache, this eliminates 49 redundant `delete_transient()` + `unset()` + LRU-update cycles. First clear is sufficient — `frl_get_plugin_options_db()` uses per-request static cache, so subsequent calls read from memory regardless of persistent cache state. **50 clears → 1 on cold cache.**
-
-**Plan:** [`plans/performance-optimizations.md`](plans/performance-optimizations.md)
 
 **Drop rationale (Patch 3):** Context-gating `options → adminui` dependency cascade saves ~2 SELECT queries returning empty rows on cold cache — ~2ms on a 200-500ms TTFB. Not worth the code complexity.
 
@@ -87,7 +107,6 @@ PHP_INT_MAX: subdomain adapter legacy      ← unchanged
 
 **Zero regression:** Same translation function (`frl_get_translation_block()`), same `frl_block_translation_filter` hook path, `apply_shortcodes` runs at p20 only (was p10+p20, idempotent). REST overhead eliminated — `Frl_Translation_Service` singleton never instantiated.
 
-**Plan:** [`plans/rest-block-translation-bottleneck.md`](plans/rest-block-translation-bottleneck.md)
 
 ## ✅ Second Audit — 1 Genuine Patch Applied (2026-07-02)
 

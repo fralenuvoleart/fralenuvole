@@ -249,7 +249,6 @@ Frl_Rewriter::clear_rewriter_caches();
 // 1. frl_cache_clear('options')          // → cascades to rewriter → permalinks
 // 2. frl_delete_transient(EXCLUSION_PATTERNS_TRANSIENT)
 // 3. flush_rewrite_rules(true)           // hard flush, rewrites .htaccess
-// 4. frl_thirdparty_maybe_notify('rewrite_flush')  // notifies Litespeed, Breeze, WP Rocket
 ```
 
 Re-entrancy guard via `frl_is_already_running(__METHOD__)` ensures it runs once per request even if multiple `update_option_*` hooks fire.

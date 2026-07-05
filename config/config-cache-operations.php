@@ -45,11 +45,6 @@ const FRL_CACHE_OPERATIONS = [
 				'args' => [],
 				'note' => 'Fully reset plugin caches: purge_all() (all groups + dependencies via FRL_CACHE_DEPENDENCIES), clear_all_website_transients()',
 			],
-			[
-				'fn'   => 'frl_thirdparty_maybe_notify',
-				'args' => [ 'hard' ],
-				'note' => 'Notify third-party cache plugins: LiteSpeed, Breeze, WP Rocket (via FRL_THIRDPARTY_OUTBOUND_HOOKS config)',
-			],
 		],
 		'hooks'    => [
 			'before' => 'frl_before_cache_operation_clear_hard',
@@ -65,11 +60,6 @@ const FRL_CACHE_OPERATIONS = [
 				'args' => [],
 				'note' => 'Purge ALL cache groups including heavy groups (FRL_CACHE_HEAVY_GROUPS), with FRL_CACHE_DEPENDENCIES cascade',
 			],
-			[
-				'fn'   => 'frl_thirdparty_maybe_notify',
-				'args' => [ 'all' ],
-				'note' => 'Notify third-party cache plugins: LiteSpeed, Breeze, WP Rocket',
-			],
 		],
 		'hooks'    => [
 			'before' => 'frl_before_cache_operation_clear_all',
@@ -84,11 +74,6 @@ const FRL_CACHE_OPERATIONS = [
 				'fn'   => [ 'Frl_Cache_Manager', 'purge_light' ],
 				'args' => [],
 				'note' => 'Light purge: skip heavy groups (FRL_CACHE_HEAVY_GROUPS), clear all other groups with dependencies',
-			],
-			[
-				'fn'   => 'frl_thirdparty_maybe_notify',
-				'args' => [ 'light' ],
-				'note' => 'Notify third-party cache plugins: LiteSpeed, Breeze, WP Rocket',
 			],
 		],
 		'hooks'    => [
@@ -137,7 +122,7 @@ const FRL_CACHE_OPERATIONS = [
 			[
 				'fn'   => 'frl_cache_clear',
 				'args' => [ 'hard' ],
-				'note' => '→ delegates to clear_hard operation: Frl_Cache_Manager::hard_cache_reset() + frl_thirdparty_maybe_notify("hard")',
+				'note' => '→ delegates to clear_hard operation: Frl_Cache_Manager::hard_cache_reset()',
 			],
 			[
 				'fn'   => 'frl_flush_rewrite_rules',

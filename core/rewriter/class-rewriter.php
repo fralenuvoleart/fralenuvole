@@ -427,10 +427,6 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface
             }
         }
 
-        // Notify configured third-party cache plugins to purge stale pages.
-        if (function_exists('frl_thirdparty_maybe_notify')) {
-            frl_thirdparty_maybe_notify('rewrite_flush');
-        }
     }
 
     /**

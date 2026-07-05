@@ -82,7 +82,15 @@ function frl_pbproperty_geodir_posts_where($where, $query)
 }
 
 /**
- * Helper: Get property IDs for current language
+ * Helper: Get property IDs for current language.
+ *
+ * NOTE: The inner loop calls pll_get_post_language() individually per post
+ * (N+1 pattern). This is amortized by a daily cache (frl_cache_remember
+ * 'blocks' group, 24h TTL). On cold cache (~200 gd_place posts), the loop
+ * runs ~200 Polylang lookups — acceptable given the 24h cache window.
+ *
+ * If performance becomes critical, replace with a single wp_get_object_terms()
+ * batch call for all post IDs at once.
  */
 function frl_pbproperty_get_properties_ids()
 {

@@ -40,7 +40,7 @@ The cache system addresses the following requirements on a multilingual WordPres
 | **Automatic dependency clearing** | `FRL_CACHE_DEPENDENCIES` recursively clears groups when their dependents change |
 | **Graceful degradation** | Falls back to transients when no external object cache is available |
 | **Tiered cache clearing** | Light / All / Hard — different purge depths for different operational needs |
-| **Composite operations** | [`Frl_Cache_Operations`](core/cache/class-cache-operations.php) sequences multi-step operations (clear + rewrite flush + third-party notification) with lifecycle hooks |
+| **Composite operations** | [`Frl_Cache_Operations`](core/cache/class-cache-operations.php) sequences multi-step operations (clear + rewrite flush) with lifecycle hooks |
 
 ---
 
@@ -362,12 +362,9 @@ Currently used by `purge_all()`.
 
 | Operation | Steps | Description |
 |---|---|---|
-| `clear_hard` | 1. `Frl_Cache_Manager::hard_cache_reset()` | Full plugin cache reset + third-party notification |
-| | 2. `frl_thirdparty_maybe_notify('hard')` | |
-| `clear_all` | 1. `Frl_Cache_Manager::purge_all()` | Purge all groups + third-party notification |
-| | 2. `frl_thirdparty_maybe_notify('all')` | |
-| `clear_light` | 1. `Frl_Cache_Manager::purge_light()` | Light purge + third-party notification |
-| | 2. `frl_thirdparty_maybe_notify('light')` | |
+| `clear_hard` | 1. `Frl_Cache_Manager::hard_cache_reset()` | Full plugin cache reset |
+| `clear_all` | 1. `Frl_Cache_Manager::purge_all()` | Purge all groups |
+| `clear_light` | 1. `Frl_Cache_Manager::purge_light()` | Light purge |
 | `action_hard` | 1. `frl_cache_clear('hard')` → delegates to `clear_hard` | Admin: hard reset + immediate rewrite flush |
 | | 2. `frl_flush_rewrite_rules()` (immediate, mirrors WP permalink save) | |
 | `action_flush_rewrite_rules` | 1. `frl_flush_rewrite_rules()` | Admin: flush rewrite rules immediately |
@@ -512,10 +509,9 @@ frl_handle_action_clear_cache_hard()
               • wp_cache_flush() (global WP object cache)
               • clear_all_website_transients() (all _transient_ rows)
               • do_action(FRL_PREFIX . '_after_hard_cache_reset')
-            - frl_thirdparty_maybe_notify('hard')
      1b. frl_flush_rewrite_rules()
          → do_action('update_option_permalink_structure')
-         → clear_rewriter_caches() (clears options→rewriter→permalinks + flush_rewrite_rules(true) + notifies Litespeed)
+         → clear_rewriter_caches() (clears options→rewriter→permalinks + flush_rewrite_rules(true))
          → Polylang clean_languages_cache()
          → do_action('permalink_structure_changed')
 ```

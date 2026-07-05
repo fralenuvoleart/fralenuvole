@@ -516,14 +516,12 @@ All cache clearing during environment enforcement is executed through the **cach
 
 **Cache clear behavior by mode (via `env_*` operations):**
 
-| Mode | Operation | Steps | Third-party notification |
-|------|-----------|-------|------------------------|
-| State change (plugin/module) | `env_enforce_full` | `frl_cache_clear('all')` + `frl_flush_rewrite_rules()` | Yes — `frl_flush_rewrite_rules()` triggers `clear_rewriter_caches()` which calls `frl_thirdparty_maybe_notify('rewrite_flush')` |
-| State change (URL change) | `env_enforce_url_change` | `frl_cache_clear('all')` | No (same reason) |
-| State change (options only) | `env_enforce_options` | `frl_cache_clear('options')` → delegates to `clear_options` operation in orchestrator | No — options-only clear does not notify third parties |
-| Force mode | `env_enforce_full` | `frl_cache_clear('all')` + `frl_flush_rewrite_rules()` | Yes (same as plugin/module change) |
-
-**Third-party notification note:** The `clear_all` operation's `frl_thirdparty_maybe_notify('all')` step has no registered listeners — no outbound hook in [`FRL_THIRDPARTY_OUTBOUND_HOOKS`](../../modules/thirdparty/config-constants-thirdparty.php:81) defines a trigger matching `'all'`. Only `'hard'` and `'rewrite_flush'` triggers have registered listeners (LiteSpeed, Breeze, WP Rocket). Third-party cache plugins are **not** notified during enforcement — they are only notified via explicit admin actions (e.g., "Clear All Cache (Hard)") or by the rewriter subsystem.
+| Mode | Operation | Steps |
+|------|-----------|-------|
+| State change (plugin/module) | `env_enforce_full` | `frl_cache_clear('all')` + `frl_flush_rewrite_rules()` |
+| State change (URL change) | `env_enforce_url_change` | `frl_cache_clear('all')` |
+| State change (options only) | `env_enforce_options` | `frl_cache_clear('options')` → delegates to `clear_options` operation in orchestrator |
+| Force mode | `env_enforce_full` | `frl_cache_clear('all')` + `frl_flush_rewrite_rules()` |
 
 **Targeted clears inside apply methods (removed):**
 

@@ -1,5 +1,59 @@
 # Project Progress
 
+## ✅ Cache Bridge Removal (2026-07-05)
+
+### Context
+Surgically removed the entire two-way cache bridge feature. This feature notified external cache plugins (LiteSpeed, Breeze, WP Rocket) when fralenuvole cleared its caches, and listened for their purge actions to reciprocate. The feature was architecturally brittle — relying on timing-sensitive hook registration ordering — and has been removed per user direction.
+
+### Files Modified (7 code + 3 docs + 3 memory-bank)
+
+**Code files:**
+1. **[`modules/thirdparty/thirdparty.php`](modules/thirdparty/thirdparty.php)** — Removed ~340 lines: deleted `frl_thirdparty_maybe_notify()`, `frl_thirdparty_inbound_cache_clear()`, `frl_thirdparty_check_query_triggers()`, `frl_thirdparty_get_inbound_hooks()`, `frl_thirdparty_get_inbound_queries()`, `frl_thirdparty_get_outbound_hooks()`, `frl_thirdparty_store_notification_notice()`, `frl_thirdparty_display_notification_notice()`, and all related `add_action`/`add_filter` calls. SASWP schema injection code (lines 21-30, 115-308) preserved.
+2. **[`modules/thirdparty/config-constants-thirdparty.php`](modules/thirdparty/config-constants-thirdparty.php)** — Removed `FRL_THIRDPARTY_INBOUND_HOOKS`, `FRL_THIRDPARTY_INBOUND_QUERIES`, `FRL_THIRDPARTY_OUTBOUND_HOOKS` constants. Kept `FRL_THIRDPARTY_SQUEEZE_MAX_DIM`.
+3. **[`config/config-cache-operations.php`](config/config-cache-operations.php)** — Removed `frl_thirdparty_maybe_notify()` steps from `clear_hard`, `clear_all`, `clear_light`. Updated `action_hard` note to remove third-party mention.
+4. **[`core/rewriter/class-rewriter.php`](core/rewriter/class-rewriter.php)** — Removed `frl_thirdparty_maybe_notify('rewrite_flush')` call from `clear_rewriter_caches()`.
+5. **[`includes/plugin-lifecycle.php`](includes/plugin-lifecycle.php)** — Removed `frl_thirdparty_maybe_notify('rewrite_flush')` from `frl_flush_rewrite_rules()` before-wp_loaded fallback. Updated docblock.
+
+**Documentation:**
+6. **[`docs/CACHE.md`](docs/CACHE.md)** — Removed third-party notification from operation registry table, execution flow diagram, and feature overview.
+7. **[`docs/REWRITER.md`](docs/REWRITER.md)** — Removed step 4 from `clear_rewriter_caches()` chain.
+8. **[`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md)** — Removed "Third-party notification" column from cache clear behavior table and explanatory note.
+
+**Memory bank:**
+9. **[`memory-bank/activeContext.md`](memory-bank/activeContext.md)** — Replaced audit finding #1 (cache bridge dedup patch) with cache bridge removal summary.
+10. **[`memory-bank/progress.md`](memory-bank/progress.md)** — This file (replaced audit finding #1, updated all references).
+11. **[`memory-bank/systemPatterns.md`](memory-bank/systemPatterns.md)** — Cache bridge reference removed.
+
+### Zero-Regression Verification
+- [x] `grep -r "frl_thirdparty_maybe_notify" .` — 0 results (clean)
+- [x] `grep -r "FRL_THIRDPARTY_INBOUND_HOOKS\|FRL_THIRDPARTY_OUTBOUND_HOOKS" .` — 0 results (clean)
+- [x] All modified PHP files pass `php -l` syntax validation
+- [x] SASWP schema injection functionality preserved (lines 21-30, 115-308 of `thirdparty.php`)
+- [x] Admin scripts enqueue preserved (lines 35-71 of `thirdparty.php`)
+- [x] Greenshift REST fix preserved (lines 80-113 of `thirdparty.php`)
+- [x] `FRL_THIRDPARTY_SQUEEZE_MAX_DIM` constant preserved in `config-constants-thirdparty.php`
+
+## ✅ Audit Patch Round — 3 Confirmed Findings Patched (2026-07-05)
+
+### Context
+Applied targeted fixes for 3 confirmed findings from the full codebase audit. (Original finding #1 was superseded by the cache bridge removal above.)
+
+### Patches Applied (3 files)
+
+1. **[`admin/widgets/widget-user-visits.php:19-145`](admin/widgets/widget-user-visits.php:19)** — `frl_render_user_visits_widget()`: Added `'number' => 50` limit to `get_users()` (was unbounded). Wrapped entire rendering logic in `frl_cache_remember('adminui', 'user_visits_widget', closure, HOUR_IN_SECONDS)`. Eliminates per-request full user base scan. Cache group corrected to `'adminui'` (admin interface assembly).
+
+2. **[`modules/pbnova/code-snippets.php:26-28`](modules/pbnova/code-snippets.php:26)** — `add_action()` now gated behind `defined('FRL_PBNOVA_ENABLE_REGISTRATION_SNIPPET') && FRL_PBNOVA_ENABLE_REGISTRATION_SNIPPET`. Added clear header comment documenting this as template code with hardcoded field IDs. Must be explicitly opted in via wp-config.php constant.
+
+3. **[`modules/pbproperty/geodirectory.php:84-95`](modules/pbproperty/geodirectory.php:84)** — Added docblock documenting the N+1 `pll_get_post_language()` loop as acceptable (amortized by 24h daily cache in `blocks` group). Includes remediation path if performance becomes critical: replace with single `wp_get_object_terms()` batch call.
+
+### Zero-Regression Verification
+- All 3 files pass `php -l` syntax validation
+- Finding 1 (widget cache): `frl_cache_remember()` returns cached HTML; `get_users()` limit is `ORDER BY user_registered DESC` — 50 most recent users is sufficient for widget top-8 display
+- Finding 2 (PBNova guard): `defined()` check is `false` by default — code is effectively dead unless explicitly opted in
+- Finding 3 (docblock): pure comment, zero behavioral change
+
+---
+
 ## ✅ Performance Patches — Static Caches for Redundant Parsing (2026-07-04)
 
 ### Context
@@ -23,9 +77,6 @@ Reviewed `plans/performance-report-2026-07-04.md` (24 findings). Verified all cl
 - **4 Low:** Already well-cached — 0 actionable
 - **Real hit rate:** 4/24 (16.7%) — consistent with prior audit (4/26 = 15.4%)
 
-### Plan
-[`plans/performance-patches-2026-07-04.md`](plans/performance-patches-2026-07-04.md)
-
 ---
 
 ## ✅ Performance Patches — Subdomain Adapter Fast-Fail + get_post_types Narrowing (2026-07-04)
@@ -38,12 +89,6 @@ Reviewed `plans/performance-report-2026-07-04.md` (24 findings). Verified all cl
 
 ### Dropped
 - **Patch 1 (adminui group decoupling):** Honest cost assessment revealed the `adminui` iteration is ~1-2ms per request. The real bottleneck (the `$wpdb LIKE` query) is already cached under `options` group with 1-hour TTL. Architectural correctness not worth the code change.
-
-### Plan
-[`plans/performance-patch-plan-2026-07-04.md`](plans/performance-patch-plan-2026-07-04.md)
-
-### Full Performance Audit
-[`plans/performance-report-2026-07-04.md`](plans/performance-report-2026-07-04.md) — 10 findings, 3 actionable, 2 applied, 1 dropped as negligible.
 
 ---
 
@@ -87,9 +132,6 @@ Reviewed `plans/performance-report-2026-07-04.md` (24 findings). Verified all cl
 - Object-cache path: identical behavior — guard at line 107 + `foreach` fallback at line 112 preserves original per-group `preload_multi()` loop
 - Image size loop removal: only clears for the configured size — alternates self-expire
 
-### Plan
-[`plans/performance-optimizations.md`](plans/performance-optimizations.md)
-
 ---
 
 ## ✅ Block Translation Refactor — All Translator Hooks Guarded (2026-07-03)
@@ -110,9 +152,6 @@ Reviewed `plans/performance-report-2026-07-04.md` (24 findings). Verified all cl
 
 **`{{}}` in shortcode output — confirmed no regression:** Translation runs at p10, `apply_shortcodes` at p20. Deltas from shortcode expansion are never re-translated — same behavior before and after refactor.
 
-### Plan
-[`plans/rest-block-translation-bottleneck.md`](plans/rest-block-translation-bottleneck.md)
-
 ## ✅ Block Translation Refactor — REST Guard + Module Relocation (2026-07-03)
 
 ### Problem
@@ -131,9 +170,6 @@ p20: apply_shortcodes()                      ← shortcodes, unchanged
 
 ### Zero Regression
 Same translation function (`frl_get_translation_block()`), same `frl_block_translation_filter` hook path. `apply_shortcodes` runs once at p20 (was redundant at p10+p20, idempotent). Module guards inherited: `disable_translator` + `frl_is_multilingual_plugin_active()`. REST overhead eliminated.
-
-### Plan
-[`plans/rest-block-translation-bottleneck.md`](plans/rest-block-translation-bottleneck.md)
 
 ## ✅ Second Audit — 1 Genuine Patch (2026-07-02)
 
@@ -167,9 +203,6 @@ Same translation function (`frl_get_translation_block()`), same `frl_block_trans
 - [`public/public.php`](public/public.php:105-263) — Added `frl_output_preload_link()` + refactored `frl_preload_featured_image()`
 - [`core/cache/cache-cleanup.php`](core/cache/cache-cleanup.php:74-106) — Added mobile cache key invalidation
 
-### Plan
-- [`plans/mobile-hero-preload.md`](plans/mobile-hero-preload.md)
-
 ## ✅ Production Audit — Rewrite Corruption & Cache Integrity Fixes (2026-07-01)
 
 ### Patches Applied
@@ -195,9 +228,9 @@ Same translation function (`frl_get_translation_block()`), same `frl_block_trans
 - **File:** [`class-rewriter.php`](core/rewriter/class-rewriter.php:492-500)
 - Added `save_post`, `created_term`, `deleted_term` hooks to delete exclusion pattern transient
 
-#### Patch 6 (High 3.6) — Thirdparty Listener `try/finally`
+#### Patch 6 (High 3.6) — Thirdparty Listener `try/finally` (OBSOLETE — cache bridge removed 2026-07-05)
 - **File:** [`thirdparty.php`](modules/thirdparty/thirdparty.php:529-568)
-- Wrapped outbound loop in `try/finally` to guarantee inbound listener restoration
+- Wrapped outbound loop in `try/finally` to guarantee inbound listener restoration. **Removed along with entire cache bridge feature (2026-07-05).**
 
 #### Patch 7 (High 3.7) — Fallback Cache TTL
 - **File:** [`polylang.php`](core/translator/adapters/polylang.php:141)

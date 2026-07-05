@@ -9,8 +9,23 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/*
+ * TEMPLATE/EXAMPLE CODE — NOT FOR PRODUCTION USE.
+ *
+ * This file contains tutorial/example snippets with hardcoded field IDs
+ * (field_100, field_101, etc.) that must be replaced with actual form field
+ * IDs from your WSForm configuration before activation.
+ *
+ * To enable: define('FRL_PBNOVA_ENABLE_REGISTRATION_SNIPPET', true);
+ * in wp-config.php or your environment config.
+ *
+ * NOTE: THIS COLLECTION OF CODE SNIPPETS IS NOT ACTIVELY USED BY THE PLUGIN
+ * AND CAN BE IGNORED IN ANY REVIEW.
+ */
 
-add_action('my_full_conditional_registration', 'frl_pbnova_registration_and_enrollment', 10, 2);
+if (defined('FRL_PBNOVA_ENABLE_REGISTRATION_SNIPPET') && FRL_PBNOVA_ENABLE_REGISTRATION_SNIPPET) {
+    add_action('my_full_conditional_registration', 'frl_pbnova_registration_and_enrollment', 10, 2);
+}
 
 function frl_pbnova_registration_and_enrollment($form, $submit) {
     // 1. Extract the data you need (Email, Username, Password, Choice)
