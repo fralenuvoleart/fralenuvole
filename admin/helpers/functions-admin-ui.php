@@ -162,7 +162,7 @@ function frl_render_admin_actions_buttons()
         'clear_cache_hard',
         'reset_plugin button-primary',
         'Clear Caches (Hard)',
-        'WARNING: Clears all Plugin Caches, Website Transients and flushes rewrite rules.',
+        'Clears all Plugin Caches, Transients, and flushes rewrite rules.',
         '',
         ''
     );

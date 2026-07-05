@@ -506,15 +506,24 @@ frl_handle_action_clear_cache_hard()
          → Frl_Cache_Operations::run('clear_hard')
             - Frl_Cache_Manager::hard_cache_reset()
               • purge_all() (all groups + dependencies)
-              • wp_cache_flush() (global WP object cache)
-              • clear_all_website_transients() (all _transient_ rows)
+              • clear_transients() (this plugin's own transients only,
+                matched by prefix — other plugins'/themes' transients are
+                left untouched; use the separate "Clear Website Transients"
+                action for a full-site purge)
               • do_action(FRL_PREFIX . '_after_hard_cache_reset')
      1b. frl_flush_rewrite_rules()
          → do_action('update_option_permalink_structure')
-         → clear_rewriter_caches() (clears options→rewriter→permalinks + flush_rewrite_rules(true))
+         → clear_rewriter_caches() (clears options→rewriter→permalinks + flush_rewrite_rules(true);
+            the 'options' clear here is a no-op in practice — clear_hard already
+            cleared it in step 1a, and the $groups_cleared de-dup guard in
+            clear_group_with_dependencies() prevents a second pass)
          → Polylang clean_languages_cache()
          → do_action('permalink_structure_changed')
 ```
+
+Step order is deliberate: caches are purged *before* rewrite rules are
+regenerated, so `flush_rewrite_rules(true)` reads fresh, non-stale option
+values when features rebuild their rules.
 
 ---
 

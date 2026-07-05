@@ -225,12 +225,9 @@ function frl_handle_action_clear_cache_light()
 
     if (is_array($stats)) {
         $message_parts[] = sprintf(
-            __('Light Caches cleared: %d runtime, %d object cache, %d plugin transients, %d key cache, %d deferred writes', FRL_PREFIX),
+            __('Light cache cleared: %d items removed from memory, %d items removed from cache storage.', FRL_PREFIX),
             $stats['runtime'] ?? 0,
-            $stats['object_cache'] ?? 0,
-            $stats['transients'] ?? 0,
-            $stats['key_cache'] ?? 0,
-            $stats['deferred'] ?? 0
+            ($stats['object_cache'] ?? 0) + ($stats['transients'] ?? 0)
         );
         return ['success' => true, 'message_parts' => $message_parts, 'notice_type' => 'success'];
     }
@@ -256,12 +253,9 @@ function frl_handle_action_clear_cache_all()
 
     if (is_array($stats)) {
         $message_parts[] = sprintf(
-            __('All Caches cleared: %d runtime, %d object cache, %d plugin transients, %d key cache, %d deferred writes', FRL_PREFIX),
+            __('All caches cleared: %d items removed from memory, %d items removed from cache storage.', FRL_PREFIX),
             $stats['runtime'] ?? 0,
-            $stats['object_cache'] ?? 0,
-            $stats['transients'] ?? 0,
-            $stats['key_cache'] ?? 0,
-            $stats['deferred'] ?? 0
+            ($stats['object_cache'] ?? 0) + ($stats['transients'] ?? 0)
         );
         return ['success' => true, 'message_parts' => $message_parts, 'notice_type' => 'success'];
     }
@@ -303,11 +297,12 @@ function frl_handle_action_clear_cache_hard()
         $message_parts[] = __('- Plugin Internal Caches: Purged (details unavailable).', FRL_PREFIX);
     }
 
-    // All Website Transients
-    if (isset($stats['all_website_transients_deleted']['transients'])) {
-        $message_parts[] = sprintf(__('- All Website Transients: %d deleted.', FRL_PREFIX), $stats['all_website_transients_deleted']['transients']);
+    // Plugin Transients (scoped to this plugin only — other plugins'/themes'
+    // transients are intentionally left untouched by this action)
+    if (isset($stats['plugin_transients_deleted']['transients'])) {
+        $message_parts[] = sprintf(__('- Plugin Transients: %d deleted.', FRL_PREFIX), $stats['plugin_transients_deleted']['transients']);
     } else {
-        $message_parts[] = __('- All Website Transients: Cleared (details unavailable).', FRL_PREFIX);
+        $message_parts[] = __('- Plugin Transients: Cleared (details unavailable).', FRL_PREFIX);
     }
 
     $message_parts[] = __('- WordPress rewrite rules flushed.', FRL_PREFIX);

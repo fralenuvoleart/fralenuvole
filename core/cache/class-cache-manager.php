@@ -1862,7 +1862,14 @@ class Frl_Cache_Manager
     /**
      * Perform the most comprehensive cache reset possible by this plugin.
      *
-     * @return array{plugin_internal_purge: array, all_website_transients_deleted: array, browser_cache_headers_sent_via_purge_all: string} Statistics about the cache clearing operations.
+     * Scoped entirely to this plugin's own data — it never touches transients
+     * belonging to other plugins/themes. Site-wide transient cleanup remains
+     * available separately via the dedicated "Clear Website Transients" action
+     * (Frl_Cache_Manager::clear_all_website_transients()), which the admin can
+     * invoke explicitly and independently when a full-site transient purge is
+     * actually intended.
+     *
+     * @return array{plugin_internal_purge: array, plugin_transients_deleted: array, browser_cache_headers_sent_via_purge_all: string} Statistics about the cache clearing operations.
      */
     public static function hard_cache_reset()
     {
@@ -1873,8 +1880,11 @@ class Frl_Cache_Manager
         // browser cache (per group config), and its own persistent items.
         $stats['plugin_internal_purge'] = self::purge_all();
 
-        // 2. Clear ALL website transients from the database.
-        $stats['all_website_transients_deleted'] = self::clear_all_website_transients();
+        // 2. Clear this plugin's own transients only (prefix-scoped), not
+        // every transient on the site. Other plugins'/themes' transients are
+        // intentionally left untouched — use the separate "Clear Website
+        // Transients" action for a full-site purge.
+        $stats['plugin_transients_deleted'] = self::clear_transients();
 
         // 3. Reset PHP OPcache if available and enabled.
         //$stats['opcache_reset'] = self::opcache_reset();

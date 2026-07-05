@@ -43,7 +43,7 @@ const FRL_CACHE_OPERATIONS = [
 			[
 				'fn'   => [ 'Frl_Cache_Manager', 'hard_cache_reset' ],
 				'args' => [],
-				'note' => 'Fully reset plugin caches: purge_all() (all groups + dependencies via FRL_CACHE_DEPENDENCIES), clear_all_website_transients()',
+				'note' => 'Fully reset plugin caches: purge_all() (all groups + dependencies via FRL_CACHE_DEPENDENCIES), clear_transients() (plugin-prefixed transients only — other plugins\' transients are untouched)',
 			],
 		],
 		'hooks'    => [
