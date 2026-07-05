@@ -117,6 +117,19 @@ function frl_mu_check_access(string $capability): bool
  * (before plugins_loaded). Performs direct database queries with cross-request
  * caching via frl_cache_remember (300s TTL, username-scoped key).
  *
+ * The cookie's cryptographic signature IS verified (see below) even though this
+ * runs before wp-includes/pluggable.php loads — wp_validate_auth_cookie() and
+ * wp_hash() aren't callable yet, but the raw material they use (the LOGGED_IN_KEY/
+ * LOGGED_IN_SALT constants from wp-config.php, and the native hash_hmac() function)
+ * is available from the moment wp-config.php loads, well before mu-plugins run.
+ * This function replicates that algorithm directly instead of calling the
+ * not-yet-defined pluggable wrappers.
+ *
+ * Known trade-off vs. wp_validate_auth_cookie(): this does NOT check the token
+ * against WP_Session_Tokens (i.e. explicit "Log Out Everywhere" revocation is not
+ * honored here until the cookie naturally expires). Accepted as a documented
+ * limitation — still a strict improvement over no verification at all.
+ *
  * @return array|false Associative array with 'id' (int) and 'caps' (array) on success, false on failure.
  */
 function frl_get_auth_cookie_user_data()
@@ -153,7 +166,15 @@ function frl_get_auth_cookie_user_data()
     }
 
     list($username, $expiration, $token, $hmac) = $cookie_elements;
-    if (empty($username)) {
+
+    // Quick expiration check, mirroring wp_validate_auth_cookie()'s first guard.
+    if (empty($username) || !is_numeric($expiration) || (int) $expiration < time()) {
+        return $cache = false;
+    }
+
+    // The secret material needed to verify the signature. Defined in wp-config.php,
+    // available well before mu-plugins load — no pluggable.php dependency.
+    if (!defined('LOGGED_IN_KEY') || !defined('LOGGED_IN_SALT') || LOGGED_IN_KEY === '' || LOGGED_IN_SALT === '') {
         return $cache = false;
     }
 
@@ -161,7 +182,7 @@ function frl_get_auth_cookie_user_data()
     $meta_key = $wpdb->prefix . 'capabilities';
     $row = frl_cache_remember('admin', 'auth_cookie_user_' . $username, function () use ($wpdb, $username, $meta_key) {
         return $wpdb->get_row($wpdb->prepare(
-            "SELECT u.ID, um.meta_value
+            "SELECT u.ID, u.user_pass, um.meta_value
              FROM {$wpdb->users} u
              JOIN {$wpdb->usermeta} um ON u.ID = um.user_id
              WHERE u.user_login = %s AND um.meta_key = %s
@@ -172,6 +193,22 @@ function frl_get_auth_cookie_user_data()
     }, 300);
 
     if (!$row) {
+        return $cache = false;
+    }
+
+    // Verify the cookie's HMAC signature before trusting the username — replicates
+    // wp_validate_auth_cookie() / wp_hash() (wp-includes/pluggable.php) exactly:
+    //   key  = hash_hmac('md5',    "user|pass_frag|expiration|token", LOGGED_IN_KEY.LOGGED_IN_SALT)
+    //   hmac = hash_hmac('sha256', "user|expiration|token",            key)
+    // Without this, any visitor could set a cookie with a known/guessed username
+    // (e.g. from author archives) and this function would return that user's real
+    // capabilities to frl_mu_check_access() unverified.
+    $pass_frag = substr((string) $row->user_pass, 8, 4);
+    $salt = LOGGED_IN_KEY . LOGGED_IN_SALT;
+    $key = hash_hmac('md5', $username . '|' . $pass_frag . '|' . $expiration . '|' . $token, $salt);
+    $computed_hmac = hash_hmac('sha256', $username . '|' . $expiration . '|' . $token, $key);
+
+    if (!hash_equals($computed_hmac, $hmac)) {
         return $cache = false;
     }
 

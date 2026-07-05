@@ -1401,13 +1401,40 @@ class Frl_Cache_Manager
         $count = 0;
 
         if (self::is_object_cache_truly_functional()) {
+            $wp_cache_group = self::PREFIX . $group;
+
+            // Canary check (diagnostic only, does not alter $count or behavior):
+            // some object-cache drop-ins implement wp_cache_flush_group() as a
+            // no-op stub, or don't support group-scoped flushing at all. Without
+            // this, we'd silently report a successful clear while stale data
+            // remains cached until natural TTL expiry. We set a marker key before
+            // flushing and check afterward whether it survived.
+            $canary_key = '__frl_flush_canary__';
+            wp_cache_set($canary_key, 1, $wp_cache_group, MINUTE_IN_SECONDS);
+
             // Use WP's group flush if available
             if (function_exists('wp_cache_flush_group')) {
-                $result = wp_cache_flush_group(self::PREFIX . $group);
+                $result = wp_cache_flush_group($wp_cache_group);
                 $count = is_numeric($result) ? $result : 1;
             } else {
                 // No group-level flush available; mark as cleared (count approximate)
                 $count = 1; // Indicate that *something* was likely cleared, though not precisely countable
+            }
+
+            if (wp_cache_get($canary_key, $wp_cache_group) !== false) {
+                if (function_exists('frl_log')) {
+                    $provider = self::get_provider_details();
+                    frl_log(
+                        'Cache group flush appears non-functional for the active object-cache backend — group "{group}" may still contain stale data. Backend: {backend}',
+                        [
+                            'group' => $group,
+                            'backend' => $provider['label'] ?? 'unknown',
+                        ],
+                        false
+                    );
+                }
+                // Best-effort cleanup of our own canary so it doesn't linger.
+                wp_cache_delete($canary_key, $wp_cache_group);
             }
         } elseif (self::use_transient_fallback($group)) {
             // Skip per-group transient deletion if a batch delete already ran this request

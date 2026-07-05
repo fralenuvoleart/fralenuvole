@@ -69,37 +69,53 @@ function frl_bible_handle_proxy()
         wp_die('ESV API key not configured. Define FRL_BIBLE_API_KEY in wp-config.php');
     }
 
-    // Build API URL
-    $api_url = add_query_arg([
-        'q' => $passage
-    ], FRL_BIBLE_API_BASE_URL);
+    // Resolve (and briefly cache) the signed MP3 URL for this passage. Only a
+    // successful resolution is ever cached — every error path below calls
+    // wp_die() directly inside the closure, which halts execution before
+    // frl_cache_remember() can store anything, so failures are always retried
+    // fresh on the next request (no risk of caching a bad/empty result).
+    //
+    // TTL is intentionally short (2 minutes): long enough to absorb duplicate or
+    // rapid repeat requests for the same passage (multiple shortcode instances on
+    // one page, double-clicks on the play button), short enough to pose no
+    // realistic risk of the ESV-issued signed URL expiring before the browser's
+    // already-issued 302 redirect completes.
+    $cache_key = 'bible_audio_' . md5($passage);
+    $audio_url = frl_cache_remember('shortcodes', $cache_key, function () use ($passage, $api_key) {
+        // Build API URL
+        $api_url = add_query_arg([
+            'q' => $passage
+        ], FRL_BIBLE_API_BASE_URL);
 
-    // Request WITHOUT following redirects (like curl -L)
-    // ESV API returns 302 with Location header containing signed MP3 URL
-    $response = wp_remote_get($api_url, [
-        'headers' => [
-            'Authorization' => 'Token ' . $api_key
-        ],
-        'timeout' => 30,
-        'redirection' => 0  // Do not follow - we need the Location header
-    ]);
+        // Request WITHOUT following redirects (like curl -L)
+        // ESV API returns 302 with Location header containing signed MP3 URL
+        $response = wp_remote_get($api_url, [
+            'headers' => [
+                'Authorization' => 'Token ' . $api_key
+            ],
+            'timeout' => 30,
+            'redirection' => 0  // Do not follow - we need the Location header
+        ]);
 
-    if (is_wp_error($response)) {
-        error_log('ESV Error: wp_remote_get failed: ' . $response->get_error_message());
-        wp_die('Audio unavailable');
-    }
+        if (is_wp_error($response)) {
+            error_log('ESV Error: wp_remote_get failed: ' . $response->get_error_message());
+            wp_die('Audio unavailable');
+        }
 
-    $response_code = wp_remote_retrieve_response_code($response);
+        $response_code = wp_remote_retrieve_response_code($response);
 
-    // WordPress stores headers lowercase
-    $headers = wp_remote_retrieve_headers($response);
-    $audio_url = $headers['location'] ?? '';
+        // WordPress stores headers lowercase
+        $headers = wp_remote_retrieve_headers($response);
+        $resolved_url = $headers['location'] ?? '';
 
-    // ESV API returns 302 or 307 redirect with Location header
-    if ((!in_array($response_code, [302, 307]) && $response_code !== 200) || empty($audio_url)) {
-        $body = wp_remote_retrieve_body($response);
-        wp_die('Audio not found (HTTP ' . $response_code . '). Body: ' . esc_html(substr($body, 0, 200)));
-    }
+        // ESV API returns 302 or 307 redirect with Location header
+        if ((!in_array($response_code, [302, 307]) && $response_code !== 200) || empty($resolved_url)) {
+            $body = wp_remote_retrieve_body($response);
+            wp_die('Audio not found (HTTP ' . $response_code . '). Body: ' . esc_html(substr($body, 0, 200)));
+        }
+
+        return $resolved_url;
+    }, 2 * MINUTE_IN_SECONDS);
 
     // Redirect to the actual MP3
     wp_redirect(esc_url_raw($audio_url), 302);

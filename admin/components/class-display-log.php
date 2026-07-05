@@ -333,6 +333,7 @@ class Frl_Log_Manager
 		$buffer = '';
 		$pos = $file_size;
 		$timestamp_pattern = '/^\[(\d{2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2}:\d{2}) UTC\]/';
+		$current_entry = null;
 
 		// Read file in reverse chunks
 		while ($pos > 0 && count($entries) < $target_count) {
@@ -727,7 +728,7 @@ class Frl_Log_Manager
 			}
 
 			if (isset($_POST['error_filter'])) {
-				$this->set_error_filter(sanitize_text_field($_POST['filter']));
+				$this->set_error_filter(sanitize_text_field($_POST['error_filter']));
 			}
 		}
 

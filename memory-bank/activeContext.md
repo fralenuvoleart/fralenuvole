@@ -1,5 +1,42 @@
 # Active Context
 
+## ✅ Audit Patches Applied — 7 of 8 Findings (2026-07-05, same session)
+
+**Context:** User approved implementing the audit findings below, explicitly skipping #5 (WS Form webhook — left untouched). #4 required a pre-patch risk investigation (documented) before proceeding, which concluded patching was safe.
+
+**Patches applied (6 files, zero signature changes, all `php -l` verified):**
+1. **[`admin/components/class-tag-validator.php:1361-1379`](admin/components/class-tag-validator.php:1361)** — `render()` now wraps the `validate_url()` call in `frl_cache_remember('adminui', 'tag_validator_' . md5($url.'|'.$tags), closure, 5*MINUTE_IN_SECONDS)`. Fixes the eager-argument-evaluation bug (network call was previously unavoidable on every Dashboard-tab render since PHP evaluates function args before the call).
+2. **[`admin/components/class-display-log.php:335-336`](admin/components/class-display-log.php:335)** — Added missing `$current_entry = null;` init in `read_entries_reverse()`, matching sibling methods.
+3. **[`core/environment/class-environment-files.php:81-119`](core/environment/class-environment-files.php:81)** — `load_environment_file()`'s `exec('php -l')` check now guarded by `function_exists('exec')` and `catch (\Throwable $e)` (was `catch (Exception $e)`, which doesn't catch `\Error` from a disabled `exec()`). Content is still returned unconditionally, exactly as before.
+4. **[`includes/mu/functions-mu.php:135-216`](includes/mu/functions-mu.php:135)** — `frl_get_auth_cookie_user_data()` now verifies the auth cookie's HMAC signature (`hash_hmac('md5', ...)` → `hash_hmac('sha256', ...)` → `hash_equals()`) using `LOGGED_IN_KEY`/`LOGGED_IN_SALT` constants + the user's `user_pass` fragment, replicating `wp_validate_auth_cookie()`'s algorithm without depending on `pluggable.php` (confirmed via investigation: the crypto material is available from wp-config.php load time, well before mu-plugins run — only the *pluggable wrapper functions* are deferred by WP core, not the underlying constants/native hash functions). Added `u.user_pass` to the existing SQL SELECT. Documented trade-off: does not check `WP_Session_Tokens` (session revocation), so an explicit "log out everywhere" won't be honored until natural cookie expiry — accepted as a strict improvement over zero validation.
+6. **[`core/cache/class-cache-manager.php:1399-1447`](core/cache/class-cache-manager.php:1399)** — `purge_group_storage()` now sets a canary key before calling `wp_cache_flush_group()` and checks afterward whether it survived; if so, logs a diagnostic warning via `frl_log()` (silent, no email) that the active object-cache backend doesn't appear to support real group-scoped flushing. Purely additive — `$count` return value and all caller-visible behavior unchanged.
+7. **[`modules/frl/bible.php:55-119`](modules/frl/bible.php:55)** — `frl_bible_handle_proxy()` now wraps the ESV API call + Location-header resolution in `frl_cache_remember('shortcodes', 'bible_audio_' . md5($passage), closure, 2*MINUTE_IN_SECONDS)`. Error paths (`is_wp_error`, bad status code) call `wp_die()` inside the closure, which halts before any caching occurs — failures are always retried fresh, never cached.
+8. **[`admin/components/class-display-log.php:733`](admin/components/class-display-log.php:733)** — `render()` now reads `$_POST['error_filter']` (was `$_POST['filter']`), matching the `isset($_POST['error_filter'])` guard and the actual `<select name="error_filter">` form field.
+
+**Skipped per explicit user direction:** #5 (`modules/wsform/webhooks.php` button-webhook sync/async default inconsistency) — no change made.
+
+**Full report + patch design rationale:** [`plans/audit-report-2026-07-05.md`](../plans/audit-report-2026-07-05.md).
+
+---
+
+## 🔍 Full Codebase Audit — 8 Findings (2026-07-05)
+
+**Context:** User requested a from-scratch, entire-codebase analysis ignoring all past reports, focused on hidden bugs/logic errors in admin actions + WP core interaction, and performance codepaths undermining the "top-notch performance" USP. Full report: [`plans/audit-report-2026-07-05.md`](../plans/audit-report-2026-07-05.md).
+
+**Findings (unpatched — analysis only, no code changed this session):**
+1. **CRITICAL** — [`admin/components/class-tag-validator.php`](admin/components/class-tag-validator.php) has zero caching; `frl_tag_validator_render()` is called as a pre-evaluated PHP argument in [`class-dashboard.php:65`](admin/components/class-dashboard.php:65), so every load of the plugin's own Settings→Dashboard tab (the default tab) fires a blocking 30s-timeout self-cURL request via `direct_get_page_content()`.
+2. **HIGH** — [`class-display-log.php:321`](admin/components/class-display-log.php:321) `read_entries_reverse()` never initializes `$current_entry` (unlike its siblings at lines 160/260) — undefined-variable warning on every large-log (>256KB) descending read, self-writing into the very debug.log being viewed.
+3. **HIGH** — [`class-environment-files.php:94`](core/environment/class-environment-files.php:94) shells out to `exec('php -l ...')` purely for a logged-but-ignored syntax check (content returned regardless); `catch (Exception $e)` doesn't catch `\Error` from a disabled `exec()`, risking uncaught fatal on hardened hosts.
+4. **MEDIUM-HIGH** — [`includes/mu/functions-mu.php:122`](includes/mu/functions-mu.php:122) `frl_get_auth_cookie_user_data()` destructures the auth cookie's hmac/token but never validates them — capability lookup by username only, spoofable by unauthenticated visitors, affecting the byCap plugin-exclusion feature.
+5. **MEDIUM** — [`modules/wsform/webhooks.php:394`](modules/wsform/webhooks.php:394) button-click webhook (public, nopriv, no-nonce) defaults `use_cron=false` (sync/blocking), inconsistent with the main form webhook at line 219 which defaults `use_cron=true` (async).
+6. **MEDIUM** — [`class-cache-manager.php:1399`](core/cache/class-cache-manager.php:1399) `purge_group_storage()` reports success (`count=1`) when `wp_cache_flush_group()` exists but the active drop-in doesn't actually support group-scoped flushing — cache "Clear" admin actions can silently no-op.
+7. **LOW** — [`modules/frl/bible.php:79`](modules/frl/bible.php:79) ESV audio proxy has no caching on the resolved signed-URL per passage.
+8. **LOW** — [`class-display-log.php:730`](admin/components/class-display-log.php:730) reads `$_POST['filter']` while checking `isset($_POST['error_filter'])` — key mismatch, masked by `stripos('', ...)` returning a match.
+
+**Verification method:** Every finding traced through full call chain (hook → dispatcher → render function → leaf implementation) via `read_file` + `search_files`, per mandatory ripgrep-verification rule. No claim relies on inline comments alone. 62 areas re-confirmed as already well-engineered (cache subsystem, environment manager, rewriter, translator, MU cron/exclusion filters, public.php/shortcodes.php hot paths) — see report for full list.
+
+---
+
 ## ✅ Cache Bridge Removal (2026-07-05)
 
 **Context:** Surgically removed the two-way cache bridge (third-party cache plugin notification feature). This feature previously notified LiteSpeed, Breeze, and WP Rocket when fralenuvole cleared its caches (outbound), and listened for their purge actions (inbound). Removed all related code, constants, documentation, and memory-bank references.

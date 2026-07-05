@@ -1360,8 +1360,23 @@ class Frl_Tag_Validator
 
         $output .= '<div id="tag-validator-results-container">';
 
-        // 2. Run validation using the modern validation method
-        $validation_results = $this->validate_url($url_to_validate, $tags_to_check);
+        // 2. Run validation using the modern validation method.
+        // Wrapped in frl_cache_remember() so the expensive network request
+        // (direct_get_page_content() -> curl_exec()) is deferred into a closure
+        // instead of being evaluated eagerly. Without this, every passive load
+        // of the Dashboard tab (which defaults $url_to_validate to home_url('/'))
+        // would fire a blocking, uncached self-HTTP-request on every page view.
+        // Short TTL keeps explicit "Validate Tags" clicks reasonably fresh while
+        // fully absorbing repeated passive renders.
+        $tag_validator_cache_key = 'tag_validator_' . md5($url_to_validate . '|' . $tags_to_check);
+        $validation_results = frl_cache_remember(
+            'adminui',
+            $tag_validator_cache_key,
+            function () use ($url_to_validate, $tags_to_check) {
+                return $this->validate_url($url_to_validate, $tags_to_check);
+            },
+            5 * MINUTE_IN_SECONDS
+        );
 
         // 3. Render results using tag_validation_results method
         $output .= $this->render_tag_validation_results($validation_results, $url_to_validate);
