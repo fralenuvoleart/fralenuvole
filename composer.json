@@ -1,0 +1,6 @@
+{
+    "require-dev": {
+        "wp-coding-standards/wpcs": "*",
+        "squizlabs/php_codesniffer": "*"
+    }
+}
