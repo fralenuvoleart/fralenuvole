@@ -59,7 +59,6 @@
 	function apply() {
 		const y = scroller.scrollTop || 0;
 		const delta = y - lastY;
-		let changed = false;
 
 		// Direction detection with hysteresis
 		let nextDir = dir;
@@ -72,7 +71,10 @@
 			nextDir = 0;
 		}
 
-		// Update classes only on change
+		// Update classes only on change. Every classList.toggle() below already
+		// triggers the MutationObserver (line ~50), which schedules a single
+		// rAF-batched normalizeWhitespaceOnce() call — no separate normalize
+		// call is needed here, it would just duplicate that work.
 		if (nextDir !== dir) {
 			dir = nextDir;
 			const isDown = dir === 1;
@@ -80,12 +82,10 @@
 			if (prevDown !== isDown) {
 				root.classList.toggle('frl-is-scroll-down', isDown);
 				prevDown = isDown;
-				changed = true;
 			}
 			if (prevUp !== isUp) {
 				root.classList.toggle('frl-is-scroll-up', isUp);
 				prevUp = isUp;
-				changed = true;
 			}
 		}
 
@@ -94,14 +94,7 @@
 		if (prevTop !== isTop) {
 			root.classList.toggle('frl-is-top', isTop);
 			prevTop = isTop;
-			changed = true;
 		}
-
-		// Note: no explicit normalize call here — every classList.toggle() above
-		// already triggers the MutationObserver (line ~50), which schedules a single
-		// rAF-batched normalizeWhitespaceOnce() call. Calling it again synchronously
-		// here would just duplicate that work on every direction/position change.
-		void changed;
 
 		lastY = y;
 		ticking = false;
