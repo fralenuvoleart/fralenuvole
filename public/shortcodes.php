@@ -778,12 +778,13 @@ function frl_shortcode_permalink($atts, $content = null)
 {
 	$a = shortcode_atts(['id' => '', 'anchor' => ''], $atts, 'frl_permalink');
 
-	// Backward-compatible: prefer content when provided; otherwise use id attribute
+	// Backward-compatible: prefer content when provided; otherwise use id attribute.
+	// Numeric IDs must be checked BEFORE the generic non-empty check below, since
+	// ctype_digit(...) is a strict subset of !empty($a['id']) — checking the generic
+	// case first would make this numeric-ID branch permanently unreachable.
 	$raw = '';
 	if (!empty($content)) {
 		$raw = trim(wp_strip_all_tags($content));
-	} elseif (!empty($a['id'])) {
-		$raw = trim((string) $a['id']);
 	} elseif (!empty($a['id']) && ctype_digit((string) $a['id'])) {
 		$post_id = (int) $a['id'];
 		if ($post_id <= 0) {
@@ -800,6 +801,8 @@ function frl_shortcode_permalink($atts, $content = null)
 			$permalink .= '#' . sanitize_title((string) $a['anchor']);
 		}
 		return esc_url($permalink);
+	} elseif (!empty($a['id'])) {
+		$raw = trim((string) $a['id']);
 	} else {
         // Default: current post permalink
         $post_id = frl_get_current_post_id();
