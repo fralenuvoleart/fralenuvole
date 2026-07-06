@@ -11,5 +11,13 @@
     "phpTools.exclude": [
         ".dev/stubs",
         "vendor"
-    ]
+    ],
+    "php.problems.exclude": {
+        "/": [
+            404,
+            406,
+            407
+        ],
+        "vendor/": true
+    }
 }
