@@ -1,6 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
+# Self-protect: re-exec from a stable temp copy so `git reset --hard` below
+# can never affect the currently-running script instance (this script lives
+# inside the same repo it resets).
+if [ -z "${DEPLOY_SH_REEXECED:-}" ]; then
+    TMP_SELF="$(mktemp /tmp/deploy.XXXXXX.sh)"
+    cp "$0" "$TMP_SELF"
+    chmod +x "$TMP_SELF"
+    export DEPLOY_SH_REEXECED=1
+    exec "$TMP_SELF" "$@"
+fi
+
 PLUGIN_DIR="$HOME/public/wp-content/plugins/fralenuvole"
 BRANCH="main"
 
