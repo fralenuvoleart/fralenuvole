@@ -97,10 +97,11 @@
 			changed = true;
 		}
 
-		// Normalize once if we changed any class (defensive against external writers)
-		if (changed) {
-			normalizeWhitespaceOnce();
-		}
+		// Note: no explicit normalize call here — every classList.toggle() above
+		// already triggers the MutationObserver (line ~50), which schedules a single
+		// rAF-batched normalizeWhitespaceOnce() call. Calling it again synchronously
+		// here would just duplicate that work on every direction/position change.
+		void changed;
 
 		lastY = y;
 		ticking = false;
@@ -118,7 +119,7 @@
 		const isScroll = false;
 		root.classList.toggle('frl-is-scroll', isScroll);
 		prevScroll = isScroll;
-		normalizeWhitespaceOnce();
+		// MutationObserver handles normalization for the toggle above.
 	})();
 
 	// ---- DOM-dependent initializations (hero presence, header height var) ----
@@ -166,7 +167,7 @@
 		const hasHero = !!document.querySelector(SEL_HERO);
 		if (hasHero) {
 			root.classList.add('frl-has-hero');
-			normalizeWhitespaceOnce();
+			// MutationObserver handles normalization for the add() above.
 		}
 		// Track header height CSS var
 		initHeaderVarTracking();
@@ -179,11 +180,13 @@
 
 	// Passive listener – enqueue rAF work only
 	window.addEventListener('scroll', () => {
-		// Mark actively scrolling (transient) without DOM reads
+		// Mark actively scrolling (transient) without DOM reads.
+		// Every classList mutation below is caught by the MutationObserver
+		// (line ~50), which schedules a single rAF-batched normalization —
+		// no need to call normalizeWhitespaceOnce()/scheduleNormalize() here too.
 		if (prevScroll !== true) {
 			root.classList.add('frl-is-scroll');
 			prevScroll = true;
-			normalizeWhitespaceOnce();
 		}
 
 		// Instant frl-is-top when reaching absolute top (no lag)
@@ -191,7 +194,6 @@
 		if (yNow === 0 && prevTop !== true) {
 			root.classList.add('frl-is-top');
 			prevTop = true;
-			normalizeWhitespaceOnce();
 			// Also clear direction and scrolling immediately to prevent visual lag
 			if (prevDown) {
 				root.classList.remove('frl-is-scroll-down');
@@ -206,7 +208,6 @@
 				root.classList.remove('frl-is-scroll');
 				prevScroll = false;
 			}
-			normalizeWhitespaceOnce();
 		}
 
 		// Reset inactivity timer
@@ -218,10 +219,7 @@
 			if (prevScroll !== false) {
 				root.classList.remove('frl-is-scroll');
 				prevScroll = false;
-				// Optional: normalize once after burst if other scripts inject extra spaces
-				const cls = root.className;
-				const norm = cls.replace(/\s+/g, ' ').trim();
-				if (norm !== cls) root.className = norm;
+				// MutationObserver handles normalization for the remove() above.
 			}
 			scrollActiveTid = 0;
 		}, STOP_DELAY);

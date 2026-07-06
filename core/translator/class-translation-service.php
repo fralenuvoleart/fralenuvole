@@ -232,7 +232,11 @@ final class Frl_Translation_Service
 
         $this->queue_string_registration([$string]);
         $version = $this->get_translation_version();
-        $cache_key = substr(md5($string . '_' . $version), 0, 12);
+        // Use the full hash (no truncation): this is the highest-cardinality cache
+        // group in the plugin (every unique translatable string x every version),
+        // and a truncated 48-bit key raises collision risk for no benefit — the key
+        // is already opaque, so shortening it saves nothing but correctness.
+        $cache_key = md5($string . '_' . $version);
 
         return frl_cache_remember('translations', $cache_key, function () use ($string, $language) {
             $translation = $this->adapter->translate_string($string, $language);

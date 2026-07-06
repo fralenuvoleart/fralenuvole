@@ -134,7 +134,11 @@ function frl_shortcode_readtime($atts)
         return '';
     }
 
-    $cache_key = "readtime_{$post->ID}_" . md5(serialize($atts)) . '_v' . frl_get_post_cache_version($post->ID);
+    // Include translation_version: this shortcode's output embeds frl_get_translation()
+    // results (prefix/postfix), so the cache key must invalidate when string translations
+    // change, not only when the post itself is saved.
+    $translation_version = frl_get_option('translation_version') ?: 1;
+    $cache_key = "readtime_{$post->ID}_" . md5(serialize($atts)) . '_v' . frl_get_post_cache_version($post->ID) . '_tv' . $translation_version;
 
     return frl_cache_remember('shortcodes', $cache_key, function() use ($post, $atts) {
         $a = shortcode_atts(
@@ -1006,9 +1010,13 @@ function frl_shortcode_breadcrumbs($atts)
     // Cache key must vary with object + language.
     $object_id = get_queried_object_id();
 
+    // Include translation_version: the closure below calls frl_get_translation()
+    // ('Jurisdictions') and frl_get_translation_permalink(), so the cache key must
+    // invalidate when string translations change, not only when the post is saved.
     $version = ($object_id > 0) ? '_v' . frl_get_post_cache_version($object_id) : '';
+    $translation_version = frl_get_option('translation_version') ?: 1;
     $cache_key = 'breadcrumbs_' . $object_id . '_' .
-             md5( serialize( [ $a['separator'], $a['class'], $show_home, $show_current ] ) ) . $version;
+             md5( serialize( [ $a['separator'], $a['class'], $show_home, $show_current ] ) ) . $version . '_tv' . $translation_version;
 
     return frl_cache_remember('shortcodes', $cache_key, function () use ($a, $show_home, $show_current) {
         $links = [];
