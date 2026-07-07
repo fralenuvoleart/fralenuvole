@@ -1,6 +1,7 @@
 {
-    "phpsab.executablePathCS": "${workspaceFolder}/vendor/bin/phpcs",
-    "phpsab.executablePathCBF": "${workspaceFolder}/vendor/bin/phpcbf",
+    "phpsab.standard": "",
+    "phpsab.executablePathCS": "vendor/bin/phpcs",
+    "phpsab.executablePathCBF": "vendor/bin/phpcbf",
     "phpsab.composerJsonPath": "composer.json",
     "phpstan.config": ".dev/phpstan.neon",
     "intelephense.environment.includePaths": [

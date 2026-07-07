@@ -264,3 +264,20 @@ if (!function_exists('PLL')) {
         return new PLL_Base_Stub();
     }
 }
+
+if (!function_exists('icl_object_id')) {
+    /**
+     * WPML-compatibility function. Polylang implements this when its
+     * WPML Compatibility Mode is enabled, so this codebase can call it
+     * without caring which of the two plugins is actually active.
+     *
+     * @param int $element_id
+     * @param string $element_type
+     * @param bool $return_original_if_missing
+     * @param string|null $language_code
+     * @return int|null
+     */
+    function icl_object_id($element_id, $element_type, $return_original_if_missing = false, $language_code = null) {
+        return $element_id;
+    }
+}

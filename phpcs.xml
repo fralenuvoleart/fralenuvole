@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<ruleset name="FraleNuvole">
+    <description>Coding standard for the Fra Le Nuvole WordPress plugin.</description>
+
+    <!-- Check all PHP files in this plugin by default (used for CLI/full-project scans). -->
+    <file>.</file>
+    <arg name="extensions" value="php"/>
+    <arg value="sp"/>
+
+    <!-- Exclude vendor, build artifacts, generated stubs, and third-party/minified assets. -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>*/.dev/*</exclude-pattern>
+    <exclude-pattern>*/.git/*</exclude-pattern>
+    <exclude-pattern>*/assets/*</exclude-pattern>
+
+    <!--
+        Use WordPress-Core: matches this codebase's existing conventions
+        (tabs for indentation, snake_case function/hook names) without the
+        extra opinionated/VIP-style rules from WordPress-Extra or WordPress-Docs
+        (Yoda conditions, mandatory docblocks, i18n text-domain literal checks, etc).
+    -->
+    <rule ref="WordPress-Core">
+        <!-- Stylistic-only WPCS opinions that don't affect correctness or match this project's conventions. -->
+        <exclude name="WordPress.PHP.YodaConditions"/>
+        <exclude name="Universal.Operators.DisallowShortTernary"/>
+        <!--
+            This project passes text-domain constants (e.g. FRL_NAME) instead of
+            hard-coded string literals to i18n functions, which is intentional.
+        -->
+        <exclude name="WordPress.WP.I18n.NonSingularStringLiteralDomain"/>
+    </rule>
+</ruleset>

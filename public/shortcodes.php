@@ -1,7 +1,7 @@
 <?php
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -44,71 +44,79 @@ if (!defined('ABSPATH')) {
 /**
  * Register all public shortcodes and attach filters for content rendering.
  */
-function frl_shortcodes_init()
-{
-    // Register apply_shortcodes on render_block at priority 20.
-    // Block translation ({{}} delimiters) is handled independently by the
-    // translator module at priority 10 via frl_translate_block_content().
-    add_filter('render_block',
-        'apply_shortcodes',
-        20,
-        2);
+function frl_shortcodes_init() {
+	// Register apply_shortcodes on render_block at priority 20.
+	// Block translation ({{}} delimiters) is handled independently by the
+	// translator module at priority 10 via frl_translate_block_content().
+	add_filter(
+		'render_block',
+		'apply_shortcodes',
+		20,
+		2
+	);
 
-    // Title and description filters
-    add_filter('the_title',
-        'apply_shortcodes',
-        10,
-        2);
+	// Title and description filters
+	add_filter(
+		'the_title',
+		'apply_shortcodes',
+		10,
+		2
+	);
 
-    add_filter('the_excerpt',
-        'apply_shortcodes',
-        10,
-        2);
+	add_filter(
+		'the_excerpt',
+		'apply_shortcodes',
+		10,
+		2
+	);
 
-    add_filter('the_seo_framework_title_from_generation',
-        'apply_shortcodes',
-        10,
-        2);
+	add_filter(
+		'the_seo_framework_title_from_generation',
+		'apply_shortcodes',
+		10,
+		2
+	);
 
-    add_filter('the_seo_framework_custom_field_description',
-        'frl_shortcode_apply_excerpt',
-        10,
-        2);
+	add_filter(
+		'the_seo_framework_custom_field_description',
+		'frl_shortcode_apply_excerpt',
+		10,
+		2
+	);
 
-    // Register shortcodes
-    add_shortcode('frl', 'frl_shortcode_translation');
-    add_shortcode('frl_lang', 'frl_shortcode_language');
-    add_shortcode('frl_meta', 'frl_shortcode_meta');
-    add_shortcode('frl_repeater', 'frl_shortcode_repeater');
-    add_shortcode('frl_meta_rel', 'frl_shortcode_meta_rel');
-    add_shortcode('frl_permalink', 'frl_shortcode_permalink');
-    add_shortcode('frl_slug', 'frl_shortcode_slug');
-    add_shortcode('frl_user_meta', 'frl_shortcode_user_meta');
-    add_shortcode('frl_category_link', 'frl_shortcode_category_link');
+	// Register shortcodes.
+	add_shortcode( 'frl', 'frl_shortcode_translation' );
+	add_shortcode( 'frl_lang', 'frl_shortcode_language' );
+	add_shortcode( 'frl_meta', 'frl_shortcode_meta' );
+	add_shortcode( 'frl_repeater', 'frl_shortcode_repeater' );
+	add_shortcode( 'frl_meta_rel', 'frl_shortcode_meta_rel' );
+	add_shortcode( 'frl_permalink', 'frl_shortcode_permalink' );
+	add_shortcode( 'frl_slug', 'frl_shortcode_slug' );
+	add_shortcode( 'frl_user_meta', 'frl_shortcode_user_meta' );
+	add_shortcode( 'frl_category_link', 'frl_shortcode_category_link' );
 
-    // Breadcrumbs
-    add_shortcode('frl_breadcrumbs', 'frl_shortcode_breadcrumbs');
-    add_shortcode(FRL_PREFIX . '_langswitcher', 'frl_shortcode_langswitcher');
-    add_shortcode(FRL_PREFIX . '_readtime', 'frl_shortcode_readtime');
-    add_shortcode(FRL_PREFIX . '_featured', 'frl_shortcode_featured_image');
-    add_shortcode(FRL_PREFIX . '_year', 'frl_shortcode_current_year');
-    // Excerpt output
-    add_shortcode(FRL_PREFIX . '_excerpt', 'frl_shortcode_excerpt');
+	// Breadcrumbs
+	add_shortcode( 'frl_breadcrumbs', 'frl_shortcode_breadcrumbs' );
+	add_shortcode( FRL_PREFIX . '_langswitcher', 'frl_shortcode_langswitcher' );
+	add_shortcode( FRL_PREFIX . '_readtime', 'frl_shortcode_readtime' );
+	add_shortcode( FRL_PREFIX . '_featured', 'frl_shortcode_featured_image' );
+	add_shortcode( FRL_PREFIX . '_year', 'frl_shortcode_current_year' );
+	// Excerpt output
+	add_shortcode( FRL_PREFIX . '_excerpt', 'frl_shortcode_excerpt' );
 }
 
 /**
  * [frl] - Translates the enclosed content using the translation service.
  *
- * @param array $atts    Shortcode attributes.
+ * @param array       $atts    Shortcode attributes.
  * @param string|null $content Content to be translated.
  * @return string Translated content or empty string.
  */
-function frl_shortcode_translation($atts, $content = null)
-{
-    if (empty($content)) {
-        return '';
-    }
-    return frl_get_translation($content);
+function frl_shortcode_translation( $atts, $content = null ) {
+	if ( empty( $content ) ) {
+		return '';
+	}
+	return frl_get_translation( $content );
 }
 
 /**
@@ -116,9 +124,8 @@ function frl_shortcode_translation($atts, $content = null)
  *
  * @return string Current year.
  */
-function frl_shortcode_current_year()
-{
-    return date("Y");
+function frl_shortcode_current_year() {
+	return current_time( 'Y' );
 }
 
 /**
@@ -127,63 +134,65 @@ function frl_shortcode_current_year()
  * @param array $atts Attributes: words_per_min (int), prefix (string), postfix (string).
  * @return string Formatted reading time HTML.
  */
-function frl_shortcode_readtime($atts)
-{
-    global $post;
-    if (!$post) {
-        return '';
-    }
+function frl_shortcode_readtime( $atts ) {
+	global $post;
+	if ( ! $post ) {
+		return '';
+	}
 
-    // Include translation_version: this shortcode's output embeds frl_get_translation()
-    // results (prefix/postfix), so the cache key must invalidate when string translations
-    // change, not only when the post itself is saved.
-    $translation_version = frl_get_option('translation_version') ?: 1;
-    $cache_key = "readtime_{$post->ID}_" . md5(serialize($atts)) . '_v' . frl_get_post_cache_version($post->ID) . '_tv' . $translation_version;
+	// Include translation_version: this shortcode's output embeds frl_get_translation()
+	// results (prefix/postfix), so the cache key must invalidate when string translations
+	// change, not only when the post itself is saved.
+	$translation_version = frl_get_option( 'translation_version' ) ?: 1;
+	$cache_key           = "readtime_{$post->ID}_" . md5( serialize( $atts ) ) . '_v' . frl_get_post_cache_version( $post->ID ) . '_tv' . $translation_version;
 
-    return frl_cache_remember('shortcodes', $cache_key, function() use ($post, $atts) {
-        $a = shortcode_atts(
-            [
-                'words_per_min' => 275,
-                'prefix' => '',
-                'postfix' => __('min read', FRL_NAME)
-            ],
-            $atts,
-            'frl_readtime'
-        );
+	return frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $post, $atts ) {
+			$a = shortcode_atts(
+				array(
+					'words_per_min' => 275,
+					'prefix'        => '',
+					'postfix'       => __( 'min read', FRL_NAME ),
+				),
+				$atts,
+				'frl_readtime'
+			);
 
-        $content = wp_strip_all_tags($post->post_content);
-        if (empty($content)) {
-            return '';
-        }
+			$content = wp_strip_all_tags( $post->post_content );
+			if ( empty( $content ) ) {
+				return '';
+			}
 
-        $words = str_word_count($content);
-        $mins = max(1, round($words / (int) $a['words_per_min']));
+			$words = str_word_count( $content );
+			$mins  = max( 1, round( $words / (int) $a['words_per_min'] ) );
 
-        $prefix = wp_kses_post(frl_get_translation($a['prefix']));
-        $postfix = frl_get_translation($a['postfix']);
+			$prefix  = wp_kses_post( frl_get_translation( $a['prefix'] ) );
+			$postfix = frl_get_translation( $a['postfix'] );
 
-        return '<span class="reading-time">'
-            . ($prefix ? $prefix . ' ' : '')
-            . $mins
-            . ($postfix ? ' ' . $postfix : '')
-            . '</span>';
-    });
+			return '<span class="reading-time">'
+			. ( $prefix ? $prefix . ' ' : '' )
+			. $mins
+			. ( $postfix ? ' ' . $postfix : '' )
+			. '</span>';
+		}
+	);
 }
 
 /**
  * [frl_lang] - Displays the enclosed content only if the current language matches the specified one.
  *
- * @param array $atts    Attributes: lang (string).
+ * @param array       $atts    Attributes: lang (string).
  * @param string|null $content Content to display.
  * @return string Rendered content or empty string.
  */
-function frl_shortcode_language($atts, $content = null)
-{
-    $a = shortcode_atts(['lang' => ''], $atts);
-    if (empty($a['lang']) || empty($content)) {
-        return '';
-    }
-    return $a['lang'] === frl_get_language() ? do_shortcode($content) : '';
+function frl_shortcode_language( $atts, $content = null ) {
+	$a = shortcode_atts( array( 'lang' => '' ), $atts );
+	if ( empty( $a['lang'] ) || empty( $content ) ) {
+		return '';
+	}
+	return $a['lang'] === frl_get_language() ? do_shortcode( $content ) : '';
 }
 
 /**
@@ -192,10 +201,9 @@ function frl_shortcode_language($atts, $content = null)
  * @param array $atts Attributes: exclude (comma-separated slugs).
  * @return string HTML for the language switcher.
  */
-function frl_shortcode_langswitcher($atts = [])
-{
+function frl_shortcode_langswitcher( $atts = array() ) {
 	// Early exit if multilingual support (Polylang) is not available
-	if (!frl_is_multilingual('pll_the_languages')) {
+	if ( ! frl_is_multilingual( 'pll_the_languages' ) ) {
 		return '';
 	}
 
@@ -203,95 +211,115 @@ function frl_shortcode_langswitcher($atts = [])
 	$args = FRL_LANGSWITCHER_ARGS;
 
 	// Option-based overrides (only when provided)
-	$opt_hide_current = frl_get_option('langswitcher_hide_current');
-	if (!empty($opt_hide_current)) {
+	$opt_hide_current = frl_get_option( 'langswitcher_hide_current' );
+	if ( ! empty( $opt_hide_current ) ) {
 		$args['hide_current'] = (int) $opt_hide_current ? 1 : 0;
 	}
-	$opt_hide_if_no_translation = frl_get_option('langswitcher_hide_if_no_translation');
-	if (!empty($opt_hide_if_no_translation)) {
+	$opt_hide_if_no_translation = frl_get_option( 'langswitcher_hide_if_no_translation' );
+	if ( ! empty( $opt_hide_if_no_translation ) ) {
 		$args['hide_if_no_translation'] = (int) $opt_hide_if_no_translation ? 1 : 0;
 	}
 
 	// Parse option-based hidden language slugs (merged with shortcode exclude later)
-	$opt_hide_langs_raw = (string) frl_get_option('langswitcher_hide_languages');
-	$opt_exclude_slugs = [];
-	if (trim($opt_hide_langs_raw) !== '') {
-		$rows = frl_textlist_to_array($opt_hide_langs_raw);
-		if (is_array($rows)) {
-			foreach ($rows as $row) {
-				if (is_array($row) && isset($row[0])) {
-					$slug = sanitize_key(trim((string) $row[0]));
-					if ($slug !== '') {
+	$opt_hide_langs_raw = (string) frl_get_option( 'langswitcher_hide_languages' );
+	$opt_exclude_slugs  = array();
+	if ( trim( $opt_hide_langs_raw ) !== '' ) {
+		$rows = frl_textlist_to_array( $opt_hide_langs_raw );
+		if ( is_array( $rows ) ) {
+			foreach ( $rows as $row ) {
+				if ( is_array( $row ) && isset( $row[0] ) ) {
+					$slug = sanitize_key( trim( (string) $row[0] ) );
+					if ( $slug !== '' ) {
 						$opt_exclude_slugs[] = $slug;
 					}
 				}
 			}
 		}
-		$opt_exclude_slugs = array_values(array_unique($opt_exclude_slugs));
+		$opt_exclude_slugs = array_values( array_unique( $opt_exclude_slugs ) );
 	}
 
 	// Optional shortcode-level overrides
-	$a = shortcode_atts([
-		'exclude'  => !empty($opt_exclude_slugs) ? implode(',', $opt_exclude_slugs) : '',
-		'dropdown' => '', // '' = use default, '1' = dropdown, '0' = flags
-	], $atts, 'frl_langswitcher');
-	$exclude_slugs = array_values(array_filter(array_map('sanitize_key', array_map('trim', explode(',', (string)$a['exclude'])))));
+	$a             = shortcode_atts(
+		array(
+			'exclude'  => ! empty( $opt_exclude_slugs ) ? implode( ',', $opt_exclude_slugs ) : '',
+			'dropdown' => '', // '' = use default, '1' = dropdown, '0' = flags
+		),
+		$atts,
+		'frl_langswitcher'
+	);
+	$exclude_slugs = array_values( array_filter( array_map( 'sanitize_key', array_map( 'trim', explode( ',', (string) $a['exclude'] ) ) ) ) );
 
-	$post_id       = get_queried_object_id();
+	$post_id          = get_queried_object_id();
 	$dropdown_enabled = $a['dropdown'] !== ''
 		? (bool) $a['dropdown']
-		: (bool) ($args['dropdown'] ?? frl_get_option('langswitcher_dropdown'));
-	$cache_key = frl_generate_cache_key('langswitcher_' . ($dropdown_enabled ? 'dd' : 'fl'), 'post', (string)$post_id);
+		: (bool) ( $args['dropdown'] ?? frl_get_option( 'langswitcher_dropdown' ) );
+	$cache_key        = frl_generate_cache_key( 'langswitcher_' . ( $dropdown_enabled ? 'dd' : 'fl' ), 'post', (string) $post_id );
 
 	// show_flags=0 avoids Polylang rendering unused base64 PNGs.
-	$raw_args = array_merge(FRL_LANGSWITCHER_ARGS, [
-		'raw'        => 1,
-		'show_flags' => 0,
-	]);
+	$raw_args = array_merge(
+		FRL_LANGSWITCHER_ARGS,
+		array(
+			'raw'        => 1,
+			'show_flags' => 0,
+		)
+	);
 
-	$elements = frl_cache_remember('shortcodes', $cache_key, function () use ($raw_args) {
-		/** @disregard P1010 Undefined type */
-		$elements = pll_the_languages($raw_args);
-		if (!is_array($elements) || empty($elements)) {
-			return null;
+	$elements = frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $raw_args ) {
+			/** @disregard P1010 Undefined type */
+			$elements = pll_the_languages( $raw_args );
+			if ( ! is_array( $elements ) || empty( $elements ) ) {
+				return null;
+			}
+			return $elements;
 		}
-		return $elements;
-	});
+	);
 
-	if (empty($elements) || !is_array($elements)) {
+	if ( empty( $elements ) || ! is_array( $elements ) ) {
 		return '';
 	}
 
 	// Apply hide_current (not in dropdown mode — dropdown always shows current as selected)
-	if (!empty($args['hide_current']) && !$dropdown_enabled) {
-		$elements = array_filter($elements, function ($el) {
-			return empty($el['current_lang']);
-		});
+	if ( ! empty( $args['hide_current'] ) && ! $dropdown_enabled ) {
+		$elements = array_filter(
+			$elements,
+			function ( $el ) {
+				return empty( $el['current_lang'] );
+			}
+		);
 	}
 
 	// Apply hide_if_no_translation
-	if (!empty($args['hide_if_no_translation'])) {
-		$elements = array_filter($elements, function ($el) {
-			return empty($el['no_translation']);
-		});
+	if ( ! empty( $args['hide_if_no_translation'] ) ) {
+		$elements = array_filter(
+			$elements,
+			function ( $el ) {
+				return empty( $el['no_translation'] );
+			}
+		);
 	}
 
 	// Apply slug exclusions (from option + shortcode)
-	if (!empty($exclude_slugs)) {
-		$elements = array_filter($elements, function ($el) use ($exclude_slugs) {
-			return !in_array($el['slug'], $exclude_slugs, true);
-		});
+	if ( ! empty( $exclude_slugs ) ) {
+		$elements = array_filter(
+			$elements,
+			function ( $el ) use ( $exclude_slugs ) {
+				return ! in_array( $el['slug'], $exclude_slugs, true );
+			}
+		);
 	}
 
-	if (empty($elements)) {
+	if ( empty( $elements ) ) {
 		return '';
 	}
 
-	if ($dropdown_enabled) {
-		return frl_langswitcher_build_dropdown($elements);
+	if ( $dropdown_enabled ) {
+		return frl_langswitcher_build_dropdown( $elements );
 	}
 
-	return frl_langswitcher_build_list($elements);
+	return frl_langswitcher_build_list( $elements );
 }
 
 /**
@@ -305,39 +333,38 @@ function frl_shortcode_langswitcher($atts = [])
  * @param array $elements Raw language elements from pll_the_languages( [ 'raw' => 1 ] ).
  * @return string HTML <li> items wrapped in <div class="widget_polylang"><ul>…</ul></div>.
  */
-function frl_langswitcher_build_list(array $elements): string
-{
+function frl_langswitcher_build_list( array $elements ): string {
 	$items = '';
-	foreach ($elements as $el) {
-		$native_name = PLL()->model->get_language($el['slug'])->name ?? '';
+	foreach ( $elements as $el ) {
+		$native_name = PLL()->model->get_language( $el['slug'] )->name ?? '';
 
 		$link_atts = sprintf(
 			'lang="%1$s" hreflang="%1$s" href="%2$s"',
-			esc_attr($el['locale']),
-			esc_url($el['url'])
+			esc_attr( $el['locale'] ),
+			esc_url( $el['url'] )
 		);
 
-		if (!empty($el['link_classes'])) {
-			$link_atts .= sprintf(' class="%s"', esc_attr(implode(' ', $el['link_classes'])));
+		if ( ! empty( $el['link_classes'] ) ) {
+			$link_atts .= sprintf( ' class="%s"', esc_attr( implode( ' ', $el['link_classes'] ) ) );
 		}
-		if (!empty($el['current_lang'])) {
+		if ( ! empty( $el['current_lang'] ) ) {
 			$link_atts .= ' aria-current="true"';
 		}
-		if ($native_name !== '') {
-			$link_atts .= sprintf(' title="%s"', esc_attr($native_name));
+		if ( $native_name !== '' ) {
+			$link_atts .= sprintf( ' title="%s"', esc_attr( $native_name ) );
 		}
 
-		$flag = frl_langswitcher_inline_flag($el['slug'], $native_name);
+		$flag = frl_langswitcher_inline_flag( $el['slug'], $native_name );
 
 		$items .= sprintf(
 			"\t<li class=\"%1\$s\"><a %2\$s>%3\$s</a></li>\n",
-			esc_attr(implode(' ', $el['classes'])),
+			esc_attr( implode( ' ', $el['classes'] ) ),
 			$link_atts,
 			$flag
 		);
 	}
 
-	return sprintf('<div class="widget_polylang lang-switcher-flags"><ul>%s</ul></div>', $items);
+	return sprintf( '<div class="widget_polylang lang-switcher-flags"><ul>%s</ul></div>', $items );
 }
 
 /**
@@ -352,36 +379,35 @@ function frl_langswitcher_build_list(array $elements): string
  * @param string $name Native language name for the SVG <title>.
  * @return string Inline SVG markup, or empty string if the file doesn't exist.
  */
-function frl_langswitcher_inline_flag(string $slug, string $name): string
-{
-	static $cache = [];
+function frl_langswitcher_inline_flag( string $slug, string $name ): string {
+	static $cache = array();
 
-	if (array_key_exists($slug, $cache)) {
-		return $cache[$slug];
+	if ( array_key_exists( $slug, $cache ) ) {
+		return $cache[ $slug ];
 	}
 
 	$file = FRL_LANGSWITCHER_FLAGS_DIR . '/' . $slug . '.svg';
-	if (!is_readable($file)) {
-		$cache[$slug] = '';
+	if ( ! is_readable( $file ) ) {
+		$cache[ $slug ] = '';
 		return '';
 	}
 
-	$svg = file_get_contents($file);
-	if ($svg === false) {
-		$cache[$slug] = '';
+	$svg = file_get_contents( $file );
+	if ( $svg === false ) {
+		$cache[ $slug ] = '';
 		return '';
 	}
 
 	// Inject accessibility: role for screen readers, <title> for the accessible name.
 	$title_id = 'fl-' . $slug;
-	$svg = str_replace('<svg', '<svg role="img" aria-labelledby="' . $title_id . '"', $svg);
-	if (str_contains($svg, '<title>')) {
-		$svg = preg_replace('/<title>.*?<\/title>/', '<title id="' . $title_id . '">' . esc_html($name) . '</title>', $svg);
+	$svg      = str_replace( '<svg', '<svg role="img" aria-labelledby="' . $title_id . '"', $svg );
+	if ( str_contains( $svg, '<title>' ) ) {
+		$svg = preg_replace( '/<title>.*?<\/title>/', '<title id="' . $title_id . '">' . esc_html( $name ) . '</title>', $svg );
 	} else {
-		$svg = str_replace('</svg>', '<title id="' . $title_id . '">' . esc_html($name) . '</title></svg>', $svg);
+		$svg = str_replace( '</svg>', '<title id="' . $title_id . '">' . esc_html( $name ) . '</title></svg>', $svg );
 	}
 
-	$cache[$slug] = $svg;
+	$cache[ $slug ] = $svg;
 	return $svg;
 }
 
@@ -398,38 +424,39 @@ function frl_langswitcher_inline_flag(string $slug, string $name): string
  * @param array $elements Raw language elements from pll_the_languages( [ 'raw' => 1 ] ).
  * @return string HTML <select> element with inline <script>.
  */
-function frl_langswitcher_build_dropdown(array $elements): string
-{
+function frl_langswitcher_build_dropdown( array $elements ): string {
 	$name = 'lang_choice_1';
 
 	$options = '';
-	foreach ($elements as $el) {
-		$native_name = PLL()->model->get_language($el['slug'])->name ?? '';
+	foreach ( $elements as $el ) {
+		$native_name = PLL()->model->get_language( $el['slug'] )->name ?? '';
 
-		$data_lang = wp_json_encode([
-			'id'   => $el['id'],
-			'name' => $native_name,
-			'slug' => $el['slug'],
-			'dir'  => $el['is_rtl'] ?? '',
-		]);
+		$data_lang = wp_json_encode(
+			array(
+				'id'   => $el['id'],
+				'name' => $native_name,
+				'slug' => $el['slug'],
+				'dir'  => $el['is_rtl'] ?? '',
+			)
+		);
 
-		$selected   = !empty($el['current_lang']) ? ' selected="selected"' : '';
-		$lang_attr  = !empty($el['locale']) ? sprintf(' lang="%s"', esc_attr($el['locale'])) : '';
+		$selected  = ! empty( $el['current_lang'] ) ? ' selected="selected"' : '';
+		$lang_attr = ! empty( $el['locale'] ) ? sprintf( ' lang="%s"', esc_attr( $el['locale'] ) ) : '';
 
 		$options .= sprintf(
 			"\t" . '<option value="%1$s"%2$s%3$s data-lang="%4$s" title="%5$s">%6$s</option>' . "\n",
-			esc_url($el['url']),
+			esc_url( $el['url'] ),
 			$lang_attr,
 			$selected,
-			esc_html($data_lang),
-			esc_attr($native_name),
-			esc_html($el['name'])
+			esc_html( $data_lang ),
+			esc_attr( $native_name ),
+			esc_html( $el['name'] )
 		);
 	}
 
 	$output = sprintf(
 		'<select name="%1$s" id="%1$s" class="pll-switcher-select lang-switcher-dropdown">' . "\n" . '%2$s' . "\n" . '</select>' . "\n",
-		esc_attr($name),
+		esc_attr( $name ),
 		$options
 	);
 
@@ -437,8 +464,8 @@ function frl_langswitcher_build_dropdown(array $elements): string
 		'<script%1$s>
 					document.getElementById( "%2$s" ).addEventListener( "change", function ( event ) { location.href = event.currentTarget.value; } )
 				</script>',
-		current_theme_supports('html5', 'script') ? '' : ' type="text/javascript"',
-		esc_js($name)
+		current_theme_supports( 'html5', 'script' ) ? '' : ' type="text/javascript"',
+		esc_js( $name )
 	);
 
 	return $output;
@@ -450,20 +477,23 @@ function frl_langswitcher_build_dropdown(array $elements): string
  * @param array $atts Attributes: size (string, default 'full').
  * @return string Image URL or empty string.
  */
-function frl_shortcode_featured_image($atts)
-{
-    global $post;
-    if (!$post) {
-        return '';
-    }
+function frl_shortcode_featured_image( $atts ) {
+	global $post;
+	if ( ! $post ) {
+		return '';
+	}
 
-    $size = shortcode_atts(['size' => 'full'], $atts)['size'];
-    $cache_key = "featured_{$post->ID}_{$size}_v" . frl_get_post_cache_version($post->ID);
+	$size      = shortcode_atts( array( 'size' => 'full' ), $atts )['size'];
+	$cache_key = "featured_{$post->ID}_{$size}_v" . frl_get_post_cache_version( $post->ID );
 
-    return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $size) {
-        $url = get_the_post_thumbnail_url($post->ID, $size);
-        return $url ? esc_url($url) : '';
-    });
+	return frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $post, $size ) {
+			$url = get_the_post_thumbnail_url( $post->ID, $size );
+			return $url ? esc_url( $url ) : '';
+		}
+	);
 }
 
 /**
@@ -472,32 +502,51 @@ function frl_shortcode_featured_image($atts)
  * @param array $atts Attributes: field (required), select (selector for complex values), default (fallback).
  * @return string Meta value or default.
  */
-function frl_shortcode_meta($atts)
-{
-    global $post;
-    if (!$post || !is_a($post, 'WP_Post')) {
-        return '';
-    }
-    $a = shortcode_atts(['field' => '', 'select' => ':first', 'default' => ''], $atts, 'frl_meta');
-    $meta_key = sanitize_key($a['field']);
-    if (empty($meta_key)) {
-        return '';
-    }
+function frl_shortcode_meta( $atts ) {
+	global $post;
+	if ( ! $post || ! is_a( $post, 'WP_Post' ) ) {
+		return '';
+	}
+	$a        = shortcode_atts(
+		array(
+			'field'   => '',
+			'select'  => ':first',
+			'default' => '',
+		),
+		$atts,
+		'frl_meta'
+	);
+	$meta_key = sanitize_key( $a['field'] );
+	if ( empty( $meta_key ) ) {
+		return '';
+	}
 
-    // Normalize selectors
-    $selectors = array_values(array_filter(array_map('trim', explode('|', (string)$a['select'])), function ($s) { return $s !== ''; }));
-    if (empty($selectors)) { $selectors = [':first']; }
+	// Normalize selectors
+	$selectors = array_values(
+		array_filter(
+			array_map( 'trim', explode( '|', (string) $a['select'] ) ),
+			function ( $s ) {
+				return $s !== '';
+			}
+		)
+	);
+	if ( empty( $selectors ) ) {
+		$selectors = array( ':first' ); }
 
-    $default_value = (string) $a['default'];
-    $cache_key = 'meta_' . $post->ID . '_' . $meta_key . '_' . md5(implode('|', $selectors) . '|' . $default_value) . '_v' . frl_get_post_cache_version($post->ID);
-    return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $meta_key, $selectors, $default_value) {
-        $raw = frl_get_post_meta($post->ID, $meta_key, true);
-        $value = frl_coerce_to_string($raw, $selectors);
-        if ($value === '') {
-            return $default_value;
-        }
-        return do_shortcode($value);
-    });
+	$default_value = (string) $a['default'];
+	$cache_key     = 'meta_' . $post->ID . '_' . $meta_key . '_' . md5( implode( '|', $selectors ) . '|' . $default_value ) . '_v' . frl_get_post_cache_version( $post->ID );
+	return frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $post, $meta_key, $selectors, $default_value ) {
+			$raw   = frl_get_post_meta( $post->ID, $meta_key, true );
+			$value = frl_coerce_to_string( $raw, $selectors );
+			if ( $value === '' ) {
+				return $default_value;
+			}
+			return do_shortcode( $value );
+		}
+	);
 }
 
 /**
@@ -508,42 +557,49 @@ function frl_shortcode_meta($atts)
  * @param array $atts Attributes: field (required), index (required), subfield (required), default (fallback).
  * @return string Subfield value or default.
  */
-function frl_shortcode_repeater($atts)
-{
-    global $post;
-    if (!$post || !is_a($post, 'WP_Post')) {
-        return '';
-    }
+function frl_shortcode_repeater( $atts ) {
+	global $post;
+	if ( ! $post || ! is_a( $post, 'WP_Post' ) ) {
+		return '';
+	}
 
-    $a = shortcode_atts([
-        'field'    => '',
-        'index'    => '0',
-        'subfield' => '',
-        'default'  => '',
-        'format'   => '',
-    ], $atts, 'frl_repeater');
+	$a = shortcode_atts(
+		array(
+			'field'    => '',
+			'index'    => '0',
+			'subfield' => '',
+			'default'  => '',
+			'format'   => '',
+		),
+		$atts,
+		'frl_repeater'
+	);
 
-    $field    = sanitize_key($a['field']);
-    $index    = (int) $a['index'];
-    $subfield = sanitize_key($a['subfield']);
-    $default  = (string) $a['default'];
-    $format   = sanitize_key($a['format']);
+	$field    = sanitize_key( $a['field'] );
+	$index    = (int) $a['index'];
+	$subfield = sanitize_key( $a['subfield'] );
+	$default  = (string) $a['default'];
+	$format   = sanitize_key( $a['format'] );
 
-    if (empty($field) || $index < 0 || empty($subfield)) {
-        return '';
-    }
+	if ( empty( $field ) || $index < 0 || empty( $subfield ) ) {
+		return '';
+	}
 
-    $cache_key = frl_generate_cache_key('repeater', (string)$post->ID, $field, (string)$index, $subfield, $format, 'v' . frl_get_post_cache_version($post->ID));
-    return frl_cache_remember('shortcodes', $cache_key, function () use ($post, $field, $index, $subfield, $default, $format) {
-        $value = frl_get_repeater_field($post->ID, $field, $index, $subfield);
-        if ($value === null || $value === '') {
-            return $default;
-        }
-        if (is_array($value)) {
-            return frl_format_repeater_list($value, $format !== '' ? $format : 'comma');
-        }
-        return $value;
-    });
+	$cache_key = frl_generate_cache_key( 'repeater', (string) $post->ID, $field, (string) $index, $subfield, $format, 'v' . frl_get_post_cache_version( $post->ID ) );
+	return frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $post, $field, $index, $subfield, $default, $format ) {
+			$value = frl_get_repeater_field( $post->ID, $field, $index, $subfield );
+			if ( $value === null || $value === '' ) {
+				return $default;
+			}
+			if ( is_array( $value ) ) {
+				return frl_format_repeater_list( $value, $format !== '' ? $format : 'comma' );
+			}
+			return $value;
+		}
+	);
 }
 
 /**
@@ -559,34 +615,36 @@ function frl_shortcode_repeater($atts)
  * @param string $format 'comma' (default) or 'list'.
  * @return string Formatted HTML, or empty string if no items.
  */
-function frl_format_repeater_list(array $value, string $format): string
-{
-    // Flatten nested arrays and filter empty values
-    $items = [];
-    array_walk_recursive($value, function ($v) use (&$items) {
-        if ($v !== null && $v !== '') {
-            $items[] = esc_html((string) $v);
-        }
-    });
+function frl_format_repeater_list( array $value, string $format ): string {
+	// Flatten nested arrays and filter empty values
+	$items = array();
+	array_walk_recursive(
+		$value,
+		function ( $v ) use ( &$items ) {
+			if ( $v !== null && $v !== '' ) {
+				$items[] = esc_html( (string) $v );
+			}
+		}
+	);
 
-    if (empty($items)) {
-        return '';
-    }
+	if ( empty( $items ) ) {
+		return '';
+	}
 
-    if ($format === 'list') {
-        $lis = '';
-        foreach ($items as $i => $item) {
-            $lis .= sprintf(
-                '<li class="frl-repeater-item frl-repeater-item-%d"><span></span>%s</li>',
-                $i,
-                $item
-            );
-        }
-        return '<ul class="frl-repeater-list">' . $lis . '</ul>';
-    }
+	if ( $format === 'list' ) {
+		$lis = '';
+		foreach ( $items as $i => $item ) {
+			$lis .= sprintf(
+				'<li class="frl-repeater-item frl-repeater-item-%d"><span></span>%s</li>',
+				$i,
+				$item
+			);
+		}
+		return '<ul class="frl-repeater-list">' . $lis . '</ul>';
+	}
 
-    // Default: comma-separated
-    return '<span class="frl-repeater-comma">' . implode(', ', $items) . '</span>';
+	// Default: comma-separated
+	return '<span class="frl-repeater-comma">' . implode( ', ', $items ) . '</span>';
 }
 
 /**
@@ -595,147 +653,176 @@ function frl_format_repeater_list(array $value, string $format): string
  * @param array $atts Attributes: field (required), index (0 or 'all'), output ('title'|'id'|'permalink'|'slug'), sep (separator), anchor (fragment), id (source post ID).
  * @return string Rendered relational data.
  */
-function frl_shortcode_meta_rel($atts)
-{
-    global $post;
+function frl_shortcode_meta_rel( $atts ) {
+	global $post;
 
-    $a = shortcode_atts([
-        'field'  => '',
-        'index'  => '0',   // 0-based index or 'all'
-        'output' => 'title', // 'title' | 'id' | 'permalink' | 'slug'
-        'sep'    => ', ',
-        'anchor' => '',     // '' | 'cpt'|'service'|'current' | literal string
-        'id'     => '',     // Optional: source post ID for reading meta
-    ], $atts, 'frl_meta_rel');
+	$a = shortcode_atts(
+		array(
+			'field'  => '',
+			'index'  => '0',   // 0-based index or 'all'
+			'output' => 'title', // 'title' | 'id' | 'permalink' | 'slug'
+			'sep'    => ', ',
+			'anchor' => '',     // '' | 'cpt'|'service'|'current' | literal string
+			'id'     => '',     // Optional: source post ID for reading meta
+		),
+		$atts,
+		'frl_meta_rel'
+	);
 
-    $field = sanitize_key($a['field']);
-    if (empty($field)) {
-        return '';
-    }
+	$field = sanitize_key( $a['field'] );
+	if ( empty( $field ) ) {
+		return '';
+	}
 
-    // Determine source post ID
-    $target_post_id = 0;
-    if ($a['id'] !== '' && ctype_digit((string) $a['id'])) {
-        $target_post_id = (int) $a['id'];
-    } else {
-        $target_post_id = frl_get_current_post_id();
-    }
-    if ($target_post_id <= 0) {
-        return '';
-    }
+	// Determine source post ID
+	$target_post_id = 0;
+	if ( $a['id'] !== '' && ctype_digit( (string) $a['id'] ) ) {
+		$target_post_id = (int) $a['id'];
+	} else {
+		$target_post_id = frl_get_current_post_id();
+	}
+	if ( $target_post_id <= 0 ) {
+		return '';
+	}
 
-    $cache_key = 'meta_rel_' . $target_post_id . '_' . $field . '_' . md5(serialize([
-        (string) $a['index'], (string) $a['output'], (string) $a['sep'], (string) $a['anchor']
-    ])) . '_v' . frl_get_post_cache_version($target_post_id);
+	$cache_key = 'meta_rel_' . $target_post_id . '_' . $field . '_' . md5(
+		serialize(
+			array(
+				(string) $a['index'],
+				(string) $a['output'],
+				(string) $a['sep'],
+				(string) $a['anchor'],
+			)
+		)
+	) . '_v' . frl_get_post_cache_version( $target_post_id );
 
-    return frl_cache_remember('shortcodes', $cache_key, function () use ($target_post_id, $field, $a, $post) {
-        $raw = frl_get_post_meta($target_post_id, $field, true);
-        if (empty($raw)) {
-            return '';
-        }
+	return frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $target_post_id, $field, $a, $post ) {
+			$raw = frl_get_post_meta( $target_post_id, $field, true );
+			if ( empty( $raw ) ) {
+				return '';
+			}
 
-        $ids = frl_extract_relation_ids($raw);
-        if (empty($ids)) {
-            return '';
-        }
+			$ids = frl_extract_relation_ids( $raw );
+			if ( empty( $ids ) ) {
+				return '';
+			}
 
-        $output = sanitize_key($a['output']);
-        $sep    = (string) $a['sep'];
-        $wrapWithSpan = (strtolower(trim($sep)) === 'span');
+			$output       = sanitize_key( $a['output'] );
+			$sep          = (string) $a['sep'];
+			$wrap_span = ( strtolower( trim( $sep ) ) === 'span' );
 
-        // Prepare optional anchor fragment
-        $anchorFragment = '';
-        $anchorRaw = trim((string) $a['anchor']);
-        if ($output === 'permalink' && $anchorRaw !== '') {
-            $anchorKey = strtolower($anchorRaw);
-            if (in_array($anchorKey, ['cpt', 'service', 'current', 'post'], true)) {
-                if (is_object($post) && isset($post->ID)) {
-                    $slug = (string) get_post_field('post_name', (int) $post->ID);
-                    if ($slug !== '') {
-                        $anchorFragment = '#' . sanitize_title($slug);
-                    }
-                }
-            } else {
-                $anchorFragment = '#' . sanitize_title($anchorRaw);
-            }
-        }
+			// Prepare optional anchor fragment
+			$anchor_fragment = '';
+			$anchor_raw      = trim( (string) $a['anchor'] );
+			if ( $output === 'permalink' && $anchor_raw !== '' ) {
+				$anchor_key = strtolower( $anchor_raw );
+				if ( in_array( $anchor_key, array( 'cpt', 'service', 'current', 'post' ), true ) ) {
+					if ( is_object( $post ) && isset( $post->ID ) ) {
+						$slug = (string) get_post_field( 'post_name', (int) $post->ID );
+						if ( $slug !== '' ) {
+							$anchor_fragment = '#' . sanitize_title( $slug );
+						}
+					}
+				} else {
+					$anchor_fragment = '#' . sanitize_title( $anchor_raw );
+				}
+			}
 
-        $render_one = function (int $id) use ($output, $anchorFragment) {
-            if ($output === 'id') {
-                return (string) $id;
-            }
-            if ($output === 'slug') {
-                $slug = (string) get_post_field('post_name', $id);
-                return $slug !== '' ? esc_html($slug) : '';
-            }
-            if ($output === 'permalink') {
-                $url = get_permalink($id);
-                if (!$url) {
-                    return '';
-                }
-                // Append anchor if provided
-                if ($anchorFragment !== '' && strpos($url, '#') === false) {
-                    $url .= $anchorFragment;
-                }
-                return esc_url($url);
-            }
-            $title = get_the_title($id);
-            return $title !== '' ? esc_html($title) : '';
-        };
+			$render_one = function ( int $id ) use ( $output, $anchor_fragment ) {
+				if ( $output === 'id' ) {
+					return (string) $id;
+				}
+				if ( $output === 'slug' ) {
+					$slug = (string) get_post_field( 'post_name', $id );
+					return $slug !== '' ? esc_html( $slug ) : '';
+				}
+				if ( $output === 'permalink' ) {
+					$url = get_permalink( $id );
+					if ( ! $url ) {
+						return '';
+					}
+					// Append anchor if provided
+					if ( $anchor_fragment !== '' && strpos( $url, '#' ) === false ) {
+						$url .= $anchor_fragment;
+					}
+					return esc_url( $url );
+				}
+				$title = get_the_title( $id );
+				return $title !== '' ? esc_html( $title ) : '';
+			};
 
-        $index_raw = strtolower((string) $a['index']);
-        if ($index_raw === 'all') {
-            $pieces = [];
-            foreach ($ids as $id) {
-                $val = $render_one($id);
-                if ($val !== '') {
-                    $pieces[] = $wrapWithSpan ? ('<span>' . $val . '</span>') : $val;
-                }
-            }
-            if (!$pieces) {
-                return '';
-            }
-            return $wrapWithSpan ? implode('', $pieces) : implode($sep, $pieces);
-        }
+			$index_raw = strtolower( (string) $a['index'] );
+			if ( $index_raw === 'all' ) {
+				$pieces = array();
+				foreach ( $ids as $id ) {
+					$val = $render_one( $id );
+					if ( $val !== '' ) {
+						$pieces[] = $wrap_span ? ( '<span>' . $val . '</span>' ) : $val;
+					}
+				}
+				if ( ! $pieces ) {
+					return '';
+				}
+				return $wrap_span ? implode( '', $pieces ) : implode( $sep, $pieces );
+			}
 
-        $i = (int) $a['index'];
-        if ($i < 0 || $i >= count($ids)) {
-            return '';
-        }
-        $single = $render_one($ids[$i]);
-        if ($single === '') {
-            return '';
-        }
-        return $wrapWithSpan ? ('<span>' . $single . '</span>') : $single;
-    });
+			$i = (int) $a['index'];
+			if ( $i < 0 || $i >= count( $ids ) ) {
+				return '';
+			}
+			$single = $render_one( $ids[ $i ] );
+			if ( $single === '' ) {
+				return '';
+			}
+			return $wrap_span ? ( '<span>' . $single . '</span>' ) : $single;
+		}
+	);
 }
 
 /**
  * [frl_user_meta] - Displays metadata for the post author.
  *
- * @param array $atts    Attributes: field (meta key), select (selector), default (fallback).
+ * @param array       $atts    Attributes: field (meta key), select (selector), default (fallback).
  * @param string|null $content Optional field name provided as content.
  * @return string User meta value.
  */
-function frl_shortcode_user_meta($atts, $content = null)
-{
-    $field_from_content = trim(wp_strip_all_tags($content ?? ''));
-    $a = shortcode_atts(['field' => '', 'select' => ':first', 'default' => ''], $atts, 'frl_user_meta');
+function frl_shortcode_user_meta( $atts, $content = null ) {
+	$field_from_content = trim( wp_strip_all_tags( $content ?? '' ) );
+	$a                  = shortcode_atts(
+		array(
+			'field'   => '',
+			'select'  => ':first',
+			'default' => '',
+		),
+		$atts,
+		'frl_user_meta'
+	);
 
-    $field = !empty($a['field']) ? $a['field'] : $field_from_content;
-    if ($field === '') {
-        $field = 'display_name';
-    }
+	$field = ! empty( $a['field'] ) ? $a['field'] : $field_from_content;
+	if ( $field === '' ) {
+		$field = 'display_name';
+	}
 
-    $raw = get_the_author_meta(sanitize_key($field));
-    $selectors = array_values(array_filter(array_map('trim', explode('|', (string)$a['select'])), function ($s) { return $s !== ''; }));
-    if (empty($selectors)) { $selectors = [':first']; }
-    $value = frl_coerce_to_string($raw, $selectors);
+	$raw       = get_the_author_meta( sanitize_key( $field ) );
+	$selectors = array_values(
+		array_filter(
+			array_map( 'trim', explode( '|', (string) $a['select'] ) ),
+			function ( $s ) {
+				return $s !== '';
+			}
+		)
+	);
+	if ( empty( $selectors ) ) {
+		$selectors = array( ':first' ); }
+	$value = frl_coerce_to_string( $raw, $selectors );
 
-    if ($value === '') {
-        return esc_html((string)$a['default']);
-    }
-    return esc_html($value);
+	if ( $value === '' ) {
+		return esc_html( (string) $a['default'] );
+	}
+	return esc_html( $value );
 }
 
 /**
@@ -744,100 +831,121 @@ function frl_shortcode_user_meta($atts, $content = null)
  * @param array $atts Attributes: id (post ID).
  * @return string Post excerpt.
  */
-function frl_shortcode_excerpt($atts)
-{
-    global $post;
+function frl_shortcode_excerpt( $atts ) {
+	global $post;
 
-    $a = shortcode_atts(['id' => 0], $atts, 'frl_excerpt');
+	$a = shortcode_atts( array( 'id' => 0 ), $atts, 'frl_excerpt' );
 
-    // Determine target post ID
-    $post_id = (int) $a['id'];
-    if (!$post_id) {
-        $post_id = frl_get_current_post_id();
-    }
+	// Determine target post ID
+	$post_id = (int) $a['id'];
+	if ( ! $post_id ) {
+		$post_id = frl_get_current_post_id();
+	}
 
-    if (!$post_id) {
-        return '';
-    }
+	if ( ! $post_id ) {
+		return '';
+	}
 
-    $cache_key = "excerpt_post_{$post_id}_v" . frl_get_post_cache_version($post_id);
+	$cache_key = "excerpt_post_{$post_id}_v" . frl_get_post_cache_version( $post_id );
 
-    return frl_cache_remember('shortcodes', $cache_key, function () use ($post_id) {
-        $excerpt = trim(get_the_excerpt($post_id));
-        return $excerpt ? apply_shortcodes($excerpt) : '';
-    });
+	return frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $post_id ) {
+			$excerpt = trim( get_the_excerpt( $post_id ) );
+			return $excerpt ? apply_shortcodes( $excerpt ) : '';
+		}
+	);
 }
 
 /**
  * [frl_permalink] - Returns a translated permalink for a given slug or post ID.
  *
- * @param array $atts    Attributes: id (slug or ID), anchor (fragment).
+ * @param array       $atts    Attributes: id (slug or ID), anchor (fragment).
  * @param string|null $content Optional slug provided as content.
  * @return string Translated URL.
  */
-function frl_shortcode_permalink($atts, $content = null)
-{
-	$a = shortcode_atts(['id' => '', 'anchor' => ''], $atts, 'frl_permalink');
+function frl_shortcode_permalink( $atts, $content = null ) {
+	$a = shortcode_atts(
+		array(
+			'id'     => '',
+			'anchor' => '',
+		),
+		$atts,
+		'frl_permalink'
+	);
 
 	// Backward-compatible: prefer content when provided; otherwise use id attribute.
 	// Numeric IDs must be checked BEFORE the generic non-empty check below, since
 	// ctype_digit(...) is a strict subset of !empty($a['id']) — checking the generic
 	// case first would make this numeric-ID branch permanently unreachable.
 	$raw = '';
-	if (!empty($content)) {
-		$raw = trim(wp_strip_all_tags($content));
-	} elseif (!empty($a['id']) && ctype_digit((string) $a['id'])) {
+	if ( ! empty( $content ) ) {
+		$raw = trim( wp_strip_all_tags( $content ) );
+	} elseif ( ! empty( $a['id'] ) && ctype_digit( (string) $a['id'] ) ) {
 		$post_id = (int) $a['id'];
-		if ($post_id <= 0) {
+		if ( $post_id <= 0 ) {
 			return '#';
 		}
-		$slug = (string) get_post_field('post_name', $post_id);
-		$key_slug = $slug !== '' ? $slug : ('post-' . $post_id);
-		$curr_cache_key = 'permalink_' . sanitize_key($key_slug) . '_v' . frl_get_post_cache_version($post_id);
-		$permalink = frl_cache_remember('shortcodes', $curr_cache_key, function () use ($post_id) {
-			$url = get_permalink($post_id);
-			return $url ? $url : '#';
-		});
-		if (!empty($a['anchor']) && !str_contains($permalink, '#')) {
-			$permalink .= '#' . sanitize_title((string) $a['anchor']);
+		$slug           = (string) get_post_field( 'post_name', $post_id );
+		$key_slug       = $slug !== '' ? $slug : ( 'post-' . $post_id );
+		$curr_cache_key = 'permalink_' . sanitize_key( $key_slug ) . '_v' . frl_get_post_cache_version( $post_id );
+		$permalink      = frl_cache_remember(
+			'shortcodes',
+			$curr_cache_key,
+			function () use ( $post_id ) {
+				$url = get_permalink( $post_id );
+				return $url ? $url : '#';
+			}
+		);
+		if ( ! empty( $a['anchor'] ) && ! str_contains( $permalink, '#' ) ) {
+			$permalink .= '#' . sanitize_title( (string) $a['anchor'] );
 		}
-		return esc_url($permalink);
-	} elseif (!empty($a['id'])) {
-		$raw = trim((string) $a['id']);
+		return esc_url( $permalink );
+	} elseif ( ! empty( $a['id'] ) ) {
+		$raw = trim( (string) $a['id'] );
 	} else {
-        // Default: current post permalink
-        $post_id = frl_get_current_post_id();
-		if ($post_id <= 0) {
+		// Default: current post permalink
+		$post_id = frl_get_current_post_id();
+		if ( $post_id <= 0 ) {
 			return '#';
 		}
 		// Unify cache key naming with slug-based lookups: use slug when available
-		$slug = (string) get_post_field('post_name', $post_id);
-		$key_slug = $slug !== '' ? $slug : ('post-' . $post_id);
-		$curr_cache_key = 'permalink_' . sanitize_key($key_slug) . '_v' . frl_get_post_cache_version($post_id);
-		$permalink = frl_cache_remember('shortcodes', $curr_cache_key, function () use ($post_id) {
-			$url = get_permalink($post_id);
-			return $url ? $url : '#';
-		});
-		if (!empty($a['anchor']) && !str_contains($permalink, '#')) {
-			$permalink .= '#' . sanitize_title((string) $a['anchor']);
+		$slug           = (string) get_post_field( 'post_name', $post_id );
+		$key_slug       = $slug !== '' ? $slug : ( 'post-' . $post_id );
+		$curr_cache_key = 'permalink_' . sanitize_key( $key_slug ) . '_v' . frl_get_post_cache_version( $post_id );
+		$permalink      = frl_cache_remember(
+			'shortcodes',
+			$curr_cache_key,
+			function () use ( $post_id ) {
+				$url = get_permalink( $post_id );
+				return $url ? $url : '#';
+			}
+		);
+		if ( ! empty( $a['anchor'] ) && ! str_contains( $permalink, '#' ) ) {
+			$permalink .= '#' . sanitize_title( (string) $a['anchor'] );
 		}
-		return esc_url($permalink);
+		return esc_url( $permalink );
 	}
 
-	$link_parts = explode('#', $raw, 2);
-	$slug_part = $link_parts[0];
+	$link_parts = explode( '#', $raw, 2 );
+	$slug_part  = $link_parts[0];
 
-	$cache_key = frl_build_cache_key($slug_part, 'permalink');
-	$permalink = frl_cache_remember('shortcodes', $cache_key, function () use ($slug_part) {
-		return frl_get_translation_permalink($slug_part);
-	});
+	$cache_key = frl_build_cache_key( $slug_part, 'permalink' );
+	$permalink = frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $slug_part ) {
+			return frl_get_translation_permalink( $slug_part );
+		}
+	);
 
-	if (isset($link_parts[1]) && $link_parts[1] !== '') {
-		$permalink = frl_sc_append_anchor($permalink, $link_parts[1]);
-	} elseif (!empty($a['anchor'])) {
-		$permalink = frl_sc_append_anchor($permalink, (string) $a['anchor']);
+	if ( isset( $link_parts[1] ) && $link_parts[1] !== '' ) {
+		$permalink = frl_sc_append_anchor( $permalink, $link_parts[1] );
+	} elseif ( ! empty( $a['anchor'] ) ) {
+		$permalink = frl_sc_append_anchor( $permalink, (string) $a['anchor'] );
 	}
-	return esc_url($permalink);
+	return esc_url( $permalink );
 }
 
 /**
@@ -846,140 +954,161 @@ function frl_shortcode_permalink($atts, $content = null)
  * @param array $atts Attributes: id (slug or post ID).
  * @return string Translated slug.
  */
-function frl_shortcode_slug($atts)
-{
-    $a = shortcode_atts(['id' => ''], $atts, 'frl_slug');
-    $id_attr_raw = trim((string) $a['id']);
-    $pid_attr = 0;
+function frl_shortcode_slug( $atts ) {
+	$a           = shortcode_atts( array( 'id' => '' ), $atts, 'frl_slug' );
+	$id_attr_raw = trim( (string) $a['id'] );
+	$pid_attr    = 0;
 
-    // Single id attribute can be numeric (post ID) or slug
-    if ($id_attr_raw !== '' && ctype_digit($id_attr_raw)) {
-        $pid_attr = (int) $id_attr_raw;
-        $id_attr_raw = '';
-    }
+	// Single id attribute can be numeric (post ID) or slug
+	if ( $id_attr_raw !== '' && ctype_digit( $id_attr_raw ) ) {
+		$pid_attr    = (int) $id_attr_raw;
+		$id_attr_raw = '';
+	}
 
-    if ($pid_attr > 0) {
-        $slug = (string) get_post_field('post_name', $pid_attr);
-        if ($slug === '') {
-            return '';
-        }
-        $curr_cache_key = frl_build_cache_key($slug, 'slug') . '_v' . frl_get_post_cache_version($pid_attr);
-        return frl_cache_remember('shortcodes', $curr_cache_key, function () use ($slug) {
-            return esc_html($slug);
-        });
-    }
+	if ( $pid_attr > 0 ) {
+		$slug = (string) get_post_field( 'post_name', $pid_attr );
+		if ( $slug === '' ) {
+			return '';
+		}
+		$curr_cache_key = frl_build_cache_key( $slug, 'slug' ) . '_v' . frl_get_post_cache_version( $pid_attr );
+		return frl_cache_remember(
+			'shortcodes',
+			$curr_cache_key,
+			function () use ( $slug ) {
+				return esc_html( $slug );
+			}
+		);
+	}
 
-    if ($id_attr_raw === '') {
-        // Default: return current post slug
-        $post_id = frl_get_current_post_id();
-        if ($post_id > 0) {
-            $slug = (string) get_post_field('post_name', $post_id);
-            if ($slug === '') {
-                return '';
-            }
-            $curr_cache_key = frl_build_cache_key($slug, 'slug') . '_v' . frl_get_post_cache_version($post_id);
-            return frl_cache_remember('shortcodes', $curr_cache_key, function () use ($slug) {
-                return esc_html($slug);
-            });
-        }
-        return '';
-    }
+	if ( $id_attr_raw === '' ) {
+		// Default: return current post slug
+		$post_id = frl_get_current_post_id();
+		if ( $post_id > 0 ) {
+			$slug = (string) get_post_field( 'post_name', $post_id );
+			if ( $slug === '' ) {
+				return '';
+			}
+			$curr_cache_key = frl_build_cache_key( $slug, 'slug' ) . '_v' . frl_get_post_cache_version( $post_id );
+			return frl_cache_remember(
+				'shortcodes',
+				$curr_cache_key,
+				function () use ( $slug ) {
+					return esc_html( $slug );
+				}
+			);
+		}
+		return '';
+	}
 
-    $slug_to_translate = $id_attr_raw;
+	$slug_to_translate = $id_attr_raw;
 
-    // Early return if current language is the default: input slug is already correct
-    $default_lang = frl_get_default_language();
-    $current_lang = frl_get_language();
+	// Early return if current language is the default: input slug is already correct
+	$default_lang = frl_get_default_language();
+	$current_lang = frl_get_language();
 
-    if ($current_lang === $default_lang) {
-        return esc_html($slug_to_translate);
-    }
+	if ( $current_lang === $default_lang ) {
+		return esc_html( $slug_to_translate );
+	}
 
-    // Use a hash for hierarchical paths to avoid collisions (slashes get stripped by sanitize_key)
-    $cache_key = frl_build_cache_key($slug_to_translate, 'slug');
+	// Use a hash for hierarchical paths to avoid collisions (slashes get stripped by sanitize_key)
+	$cache_key = frl_build_cache_key( $slug_to_translate, 'slug' );
 
-    $translated_slug = frl_cache_remember('shortcodes', $cache_key, function () use ($slug_to_translate) {
-        $url = frl_get_translation_permalink($slug_to_translate);
-        if ($url === '' || $url === '#') {
-            // Fallback: search hierarchical posts by name when only child segment is provided
-            $lang = frl_get_language();
-            $posts = get_posts([
-                'post_type' => get_post_types(['public' => true, 'hierarchical' => true]),
-                'name' => $slug_to_translate,
-                'post_status' => 'publish',
-                'numberposts' => 1,
-                'lang' => $lang,
-            ]);
-            if (!empty($posts)) {
-                $url = get_permalink($posts[0]->ID) ?: '';
-            }
-            if ($url === '' || $url === '#') {
-                return '';
-            }
-        }
+	$translated_slug = frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $slug_to_translate ) {
+			$url = frl_get_translation_permalink( $slug_to_translate );
+			if ( $url === '' || $url === '#' ) {
+				// Fallback: search hierarchical posts by name when only child segment is provided
+				$lang  = frl_get_language();
+				$posts = get_posts(
+					array(
+						'post_type'   => get_post_types(
+							array(
+								'public'       => true,
+								'hierarchical' => true,
+							)
+						),
+						'name'        => $slug_to_translate,
+						'post_status' => 'publish',
+						'numberposts' => 1,
+						'lang'        => $lang,
+					)
+				);
+				if ( ! empty( $posts ) ) {
+					$url = get_permalink( $posts[0]->ID ) ?: '';
+				}
+				if ( $url === '' || $url === '#' ) {
+					return '';
+				}
+			}
 
-        $path = (string) parse_url($url, PHP_URL_PATH);
-        if ($path === '') {
-            $path = $url;
-        }
-        $path = rtrim($path, '/');
-        if ($path === '') {
-            return '';
-        }
-        $segments = explode('/', $path);
-        $last = (string) end($segments);
-        if ($last === '') {
-            return '';
-        }
-        $segment = trim(rawurldecode($last), '/');
-        if ($segment === '') {
-            return '';
-        }
-        return esc_html($segment);
-    });
+			$path = (string) parse_url( $url, PHP_URL_PATH );
+			if ( $path === '' ) {
+				$path = $url;
+			}
+			$path = rtrim( $path, '/' );
+			if ( $path === '' ) {
+				return '';
+			}
+			$segments = explode( '/', $path );
+			$last     = (string) end( $segments );
+			if ( $last === '' ) {
+				return '';
+			}
+			$segment = trim( rawurldecode( $last ), '/' );
+			if ( $segment === '' ) {
+				return '';
+			}
+			return esc_html( $segment );
+		}
+	);
 
-    return $translated_slug !== '' ? esc_html($translated_slug) : '';
+	return $translated_slug !== '' ? esc_html( $translated_slug ) : '';
 }
 
 /**
  * [frl_category_link] - Returns the translated permalink for a category.
  *
- * @param array $atts    Shortcode attributes.
+ * @param array       $atts    Shortcode attributes.
  * @param string|null $content Category slug or ID.
  * @return string Category URL.
  */
-function frl_shortcode_category_link($atts, $content = null)
-{
-    if (empty($content)) {
-        return '';
-    }
-    $identifier = trim(wp_strip_all_tags($content));
-    $cache_key = "cat_link_" . sanitize_key($identifier);
+function frl_shortcode_category_link( $atts, $content = null ) {
+	if ( empty( $content ) ) {
+		return '';
+	}
+	$identifier = trim( wp_strip_all_tags( $content ) );
+	$cache_key  = 'cat_link_' . sanitize_key( $identifier );
 
-    return frl_cache_remember('shortcodes', $cache_key, function () use ($identifier) {
-        $term_id = 0;
-        if (frl_is_multilingual('icl_object_id')) {
-            $lang = frl_get_language();
-            if (is_numeric($identifier)) {
-                $term_id = icl_object_id((int) $identifier, 'category', true, $lang);
-            } else {
-                $term = get_term_by('slug', sanitize_title($identifier), 'category');
-                if ($term) {
-                    $term_id = icl_object_id($term->term_id, 'category', true, $lang);
-                }
-            }
-        } elseif (is_numeric($identifier)) {
-            $term_id = (int) $identifier;
-        } else {
-            $term = get_term_by('slug', sanitize_title($identifier), 'category');
-            $term_id = $term ? $term->term_id : 0;
-        }
+	return frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $identifier ) {
+			$term_id = 0;
+			if ( frl_is_multilingual( 'icl_object_id' ) ) {
+				$lang = frl_get_language();
+				if ( is_numeric( $identifier ) ) {
+					$term_id = icl_object_id( (int) $identifier, 'category', true, $lang );
+				} else {
+					$term = get_term_by( 'slug', sanitize_title( $identifier ), 'category' );
+					if ( $term ) {
+						$term_id = icl_object_id( $term->term_id, 'category', true, $lang );
+					}
+				}
+			} elseif ( is_numeric( $identifier ) ) {
+				$term_id = (int) $identifier;
+			} else {
+				$term    = get_term_by( 'slug', sanitize_title( $identifier ), 'category' );
+				$term_id = $term ? $term->term_id : 0;
+			}
 
-        if ($term_id && term_exists($term_id, 'category')) {
-            return esc_url(get_category_link($term_id));
-        }
-        return '';
-    });
+			if ( $term_id && term_exists( $term_id, 'category' ) ) {
+				return esc_url( get_category_link( $term_id ) );
+			}
+			return '';
+		}
+	);
 }
 
 /**
@@ -988,89 +1117,94 @@ function frl_shortcode_category_link($atts, $content = null)
  * @param array $atts Attributes: separator, class, home (bool), current (bool).
  * @return string Breadcrumbs HTML.
  */
-function frl_shortcode_breadcrumbs($atts)
-{
-    if (is_front_page()) {
-        return '';
-    }
+function frl_shortcode_breadcrumbs( $atts ) {
+	if ( is_front_page() ) {
+		return '';
+	}
 
-    $a = shortcode_atts([
-        'separator' => ' / ',
-        'class'     => 'frl-breadcrumbs',
-        'home'      => '1', // 1 to show Home link, 0 to hide
-        'current'   => '1', // 1 to show current item, 0 to hide
-    ], $atts);
+	$a = shortcode_atts(
+		array(
+			'separator' => ' / ',
+			'class'     => 'frl-breadcrumbs',
+			'home'      => '1', // 1 to show Home link, 0 to hide
+			'current'   => '1', // 1 to show current item, 0 to hide
+		),
+		$atts
+	);
 
-    $show_home    = filter_var($a['home'], FILTER_VALIDATE_BOOLEAN);
-    $show_current = filter_var($a['current'], FILTER_VALIDATE_BOOLEAN);
+	$show_home    = filter_var( $a['home'], FILTER_VALIDATE_BOOLEAN );
+	$show_current = filter_var( $a['current'], FILTER_VALIDATE_BOOLEAN );
 
-    // Cache key must vary with object + language.
-    $object_id = get_queried_object_id();
+	// Cache key must vary with object + language.
+	$object_id = get_queried_object_id();
 
-    // Include translation_version: the closure below calls frl_get_translation()
-    // ('Jurisdictions') and frl_get_translation_permalink(), so the cache key must
-    // invalidate when string translations change, not only when the post is saved.
-    $version = ($object_id > 0) ? '_v' . frl_get_post_cache_version($object_id) : '';
-    $translation_version = frl_get_option('translation_version') ?: 1;
-    $cache_key = 'breadcrumbs_' . $object_id . '_' .
-             md5( serialize( [ $a['separator'], $a['class'], $show_home, $show_current ] ) ) . $version . '_tv' . $translation_version;
+	// Include translation_version: the closure below calls frl_get_translation()
+	// ('Jurisdictions') and frl_get_translation_permalink(), so the cache key must
+	// invalidate when string translations change, not only when the post is saved.
+	$version             = ( $object_id > 0 ) ? '_v' . frl_get_post_cache_version( $object_id ) : '';
+	$translation_version = frl_get_option( 'translation_version' ) ?: 1;
+	$cache_key           = 'breadcrumbs_' . $object_id . '_' .
+			md5( serialize( array( $a['separator'], $a['class'], $show_home, $show_current ) ) ) . $version . '_tv' . $translation_version;
 
-    return frl_cache_remember('shortcodes', $cache_key, function () use ($a, $show_home, $show_current) {
-        $links = [];
+	return frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $a, $show_home, $show_current ) {
+			$links = array();
 
-        // Home link (optional)
-        if ($show_home) {
-            $links[] = sprintf('<a href="%s">%s</a>', esc_url(home_url('/')), esc_html__('Home', FRL_NAME));
-        }
+			// Home link (optional)
+			if ( $show_home ) {
+				$links[] = sprintf( '<a href="%s">%s</a>', esc_url( home_url( '/' ) ), esc_html__( 'Home', FRL_NAME ) );
+			}
 
-        if (is_singular()) {
-            $post = get_queried_object();
-            if (!$post) {
-                return '';
-            }
+			if ( is_singular() ) {
+				$post = get_queried_object();
+				if ( ! $post ) {
+					return '';
+				}
 
-            $ancestors = get_post_ancestors($post);
-            $ancestors = array_reverse($ancestors);
+				$ancestors = get_post_ancestors( $post );
+				$ancestors = array_reverse( $ancestors );
 
- 		// Brand-specific breadcrumb items (e.g. PB Nova's 'service'/'jurisdiction'
- 		// CPT rules) are intentionally NOT hardcoded here — this shortcode is shared
- 		// across every brand deployment. Modules that need to inject extra items
- 		// hook into this filter instead (see modules/pbnova/pbnova.php).
- 		$links = apply_filters('frl_breadcrumbs_extra_items', $links, $post, $ancestors);
+				// Brand-specific breadcrumb items (e.g. PB Nova's 'service'/'jurisdiction'
+				// CPT rules) are intentionally NOT hardcoded here — this shortcode is shared
+				// across every brand deployment. Modules that need to inject extra items
+				// hook into this filter instead (see modules/pbnova/pbnova.php).
+				$links = apply_filters( 'frl_breadcrumbs_extra_items', $links, $post, $ancestors );
 
-           foreach ($ancestors as $ancestor_id) {
-                $links[] = sprintf('<a href="%s">%s</a>', esc_url(get_permalink($ancestor_id)), esc_html(get_the_title($ancestor_id)));
-            }
+				foreach ( $ancestors as $ancestor_id ) {
+					$links[] = sprintf( '<a href="%s">%s</a>', esc_url( get_permalink( $ancestor_id ) ), esc_html( get_the_title( $ancestor_id ) ) );
+				}
 
-            // Current item (optional)
-            if ($show_current) {
-                $links[] = esc_html(get_the_title($post));
-            }
+				// Current item (optional)
+				if ( $show_current ) {
+					$links[] = esc_html( get_the_title( $post ) );
+				}
+			} elseif ( is_category() || is_tag() || is_tax() ) {
+						$term = get_queried_object();
+				if ( ! $term ) {
+					return '';
+				}
 
-        } elseif (is_category() || is_tag() || is_tax()) {
-            $term = get_queried_object();
-            if (!$term) {
-                return '';
-            }
+				$ancestors = get_ancestors( $term->term_id, $term->taxonomy );
+				$ancestors = array_reverse( $ancestors );
+				foreach ( $ancestors as $ancestor_id ) {
+					$links[] = sprintf( '<a href="%s">%s</a>', esc_url( get_term_link( $ancestor_id, $term->taxonomy ) ), esc_html( get_term_field( 'name', $ancestor_id, $term->taxonomy ) ) );
+				}
 
-            $ancestors = get_ancestors($term->term_id, $term->taxonomy);
-            $ancestors = array_reverse($ancestors);
-            foreach ($ancestors as $ancestor_id) {
-                $links[] = sprintf('<a href="%s">%s</a>', esc_url(get_term_link($ancestor_id, $term->taxonomy)), esc_html(get_term_field('name', $ancestor_id, $term->taxonomy)));
-            }
+				if ( $show_current ) {
+					$links[] = esc_html( $term->name );
+				}
+			}
 
-            if ($show_current) {
-                $links[] = esc_html($term->name);
-            }
-        }
+			// Fallback for other views (archives, etc.) – just home
+			if ( count( $links ) <= 1 && $show_home ) {
+				return '';
+			}
 
-        // Fallback for other views (archives, etc.) – just home
-        if (count($links) <= 1 && $show_home) {
-            return '';
-        }
-
-        return sprintf('<nav class="%s">%s</nav>', esc_attr($a['class']), implode(esc_html($a['separator']), $links));
-    });
+			return sprintf( '<nav class="%s">%s</nav>', esc_attr( $a['class'] ), implode( esc_html( $a['separator'] ), $links ) );
+		}
+	);
 }
 
 /**
@@ -1079,9 +1213,8 @@ function frl_shortcode_breadcrumbs($atts)
  * @param string $description The excerpt text.
  * @return string Processed text.
  */
-function frl_shortcode_apply_excerpt($description)
-{
-    return apply_shortcodes($description);
+function frl_shortcode_apply_excerpt( $description ) {
+	return apply_shortcodes( $description );
 }
 
 /**
@@ -1092,12 +1225,11 @@ function frl_shortcode_apply_excerpt($description)
  * @param string $anchor The anchor text.
  * @return string URL with anchor.
  */
-function frl_sc_append_anchor(string $url, string $anchor): string
-{
-    if ($anchor === '' || str_contains($url, '#')) {
-        return $url;
-    }
-    return $url . '#' . sanitize_title($anchor);
+function frl_sc_append_anchor( string $url, string $anchor ): string {
+	if ( $anchor === '' || str_contains( $url, '#' ) ) {
+		return $url;
+	}
+	return $url . '#' . sanitize_title( $anchor );
 }
 
 /**
@@ -1107,10 +1239,9 @@ function frl_sc_append_anchor(string $url, string $anchor): string
  * @param string $type The key type (e.g., 'slug').
  * @return string Formatted cache key.
  */
-function frl_build_cache_key(string $key, string $type = 'slug'): string
-{
-    if ($type === 'slug') {
-        return 'slug_' . md5($key);
-    }
-    return $type . '_' . sanitize_key($key);
+function frl_build_cache_key( string $key, string $type = 'slug' ): string {
+	if ( $type === 'slug' ) {
+		return 'slug_' . md5( $key );
+	}
+	return $type . '_' . sanitize_key( $key );
 }
