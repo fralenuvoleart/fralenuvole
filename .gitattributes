@@ -35,3 +35,21 @@
 *.zip binary
 *.tar binary
 *.gz binary
+
+# Dev-only files/directories - excluded from `git archive` / GitHub "Download ZIP"
+# (has no effect on deploy.sh, which uses `git reset --hard` on a live clone - see deploy.sh's own prune step for that path)
+.dev/ export-ignore
+.vscode/ export-ignore
+.roo/ export-ignore
+.continue/ export-ignore
+.roomodes export-ignore
+docs/ export-ignore
+memory-bank/ export-ignore
+plans/ export-ignore
+phpcs.xml export-ignore
+composer.json export-ignore
+composer.lock export-ignore
+AGENTS.md export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
+deploy.sh export-ignore

@@ -16,7 +16,11 @@ parameters:
     bootstrapFiles:
         - stubs/wordpress-stubs.php
         - phpstan-bootstrap.php
-        - ../includes/bootstrap.php
+        # NOTE: intentionally NOT requiring ../includes/bootstrap.php here - it executes
+        # real WordPress runtime calls (e.g. Frl_Cache_Manager::init() -> $wpdb->prepare())
+        # which fatal outside a live WP request. config/config.php only defines constants,
+        # so it is safe to load for static analysis without touching any production file.
+        - ../config/config.php
         - stubs/polylang.php
         - stubs/wpml.php
         - stubs/acf.php
