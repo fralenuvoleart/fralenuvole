@@ -1,7 +1,7 @@
 <?php
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -17,9 +17,8 @@ if (!defined('ABSPATH')) {
  *
  * @return bool True if a multilingual plugin is active AND the translator is not disabled in settings.
  */
-function frl_translator_is_enabled(): bool
-{
-    return frl_is_multilingual_plugin_active() && !frl_get_option('disable_translator');
+function frl_translator_is_enabled(): bool {
+	return frl_is_multilingual_plugin_active() && ! frl_get_option( 'disable_translator' );
 }
 
 /**
@@ -28,12 +27,11 @@ function frl_translator_is_enabled(): bool
  * @param string|null $function_name Optional function name to check for existence.
  * @return bool True if multilingual capabilities are active and available.
  */
-function frl_is_multilingual(?string $function_name = null): bool
-{
-    if (!frl_translator_is_enabled()) {
-        return false;
-    }
-    return Frl_Translation_Service::get_instance()->is_multilingual($function_name);
+function frl_is_multilingual( ?string $function_name = null ): bool {
+	if ( ! frl_translator_is_enabled() ) {
+		return false;
+	}
+	return Frl_Translation_Service::get_instance()->is_multilingual( $function_name );
 }
 
 /**
@@ -43,16 +41,15 @@ function frl_is_multilingual(?string $function_name = null): bool
  * @param string      $type Object type ('post' or 'term'). Defaults to 'post'.
  * @return string Language code (e.g., 'en', 'it').
  */
-function frl_get_language(?int $id = null, string $type = 'post'): string
-{
-    if (!frl_translator_is_enabled()) {
-        return frl_get_default_language_fallback();
-    }
-    if ($id === null) {
-        $language = Frl_Translation_Service::get_instance()->get_language();
-        return !empty($language) ? $language : frl_get_default_language_fallback();
-    }
-    return Frl_Translation_Service::get_instance()->get_object_language($id, $type);
+function frl_get_language( ?int $id = null, string $type = 'post' ): string {
+	if ( ! frl_translator_is_enabled() ) {
+		return frl_get_default_language_fallback();
+	}
+	if ( $id === null ) {
+		$language = Frl_Translation_Service::get_instance()->get_language();
+		return ! empty( $language ) ? $language : frl_get_default_language_fallback();
+	}
+	return Frl_Translation_Service::get_instance()->get_object_language( $id, $type );
 }
 
 /**
@@ -60,12 +57,11 @@ function frl_get_language(?int $id = null, string $type = 'post'): string
  *
  * @return string Default language code.
  */
-function frl_get_default_language(): string
-{
-    if (!frl_translator_is_enabled()) {
-        return frl_get_default_language_fallback();
-    }
-    return Frl_Translation_Service::get_instance()->get_default_language();
+function frl_get_default_language(): string {
+	if ( ! frl_translator_is_enabled() ) {
+		return frl_get_default_language_fallback();
+	}
+	return Frl_Translation_Service::get_instance()->get_default_language();
 }
 
 /**
@@ -73,27 +69,25 @@ function frl_get_default_language(): string
  *
  * @return array List of active language codes.
  */
-function frl_get_active_languages(): array
-{
-    if (!frl_translator_is_enabled()) {
-        return frl_get_active_languages_fallback();
-    }
-    return Frl_Translation_Service::get_instance()->get_active_languages();
+function frl_get_active_languages(): array {
+	if ( ! frl_translator_is_enabled() ) {
+		return frl_get_active_languages_fallback();
+	}
+	return Frl_Translation_Service::get_instance()->get_active_languages();
 }
 
 /**
  * Get a string's translation.
  *
- * @param string      $string The string to translate.
+ * @param string      $str The string to translate.
  * @param string|null $lang    Optional target language.
  * @return string The translated string or the original if no translation is found.
  */
-function frl_get_translation(string $string, ?string $lang = null): string
-{
-    if (!frl_translator_is_enabled()) {
-        return $string;
-    }
-    return Frl_Translation_Service::get_instance()->get_translation($string, $lang);
+function frl_get_translation( string $str, ?string $lang = null ): string {
+	if ( ! frl_translator_is_enabled() ) {
+		return $str;
+	}
+	return Frl_Translation_Service::get_instance()->get_translation( $str, $lang );
 }
 
 /**
@@ -103,62 +97,65 @@ function frl_get_translation(string $string, ?string $lang = null): string
  * @param array  $block         The block attributes and context.
  * @return string The translated block content.
  */
-function frl_get_translation_block(string $block_content, array $block): string
-{
-    /**
-     * Three-tier guard architecture:
-     * 1. Fully disabled: Zero overhead, return content as-is.
-     * 2. Polylang off but not disabled: Safe Mode. Strip delimiters to keep site usable.
-     * 3. Polylang active: Full translation processing.
-     */
-    if ( frl_get_option('disable_translator') ) {
-        return $block_content;
-    }
-    elseif ( !frl_is_multilingual_plugin_active() ) {
+function frl_get_translation_block( string $block_content, array $block ): string {
+	/**
+	 * Three-tier guard architecture:
+	 * 1. Fully disabled: Zero overhead, return content as-is.
+	 * 2. Polylang off but not disabled: Safe Mode. Strip delimiters to keep site usable.
+	 * 3. Polylang active: Full translation processing.
+	 */
+	if ( frl_get_option( 'disable_translator' ) ) {
+		return $block_content;
+	} elseif ( ! frl_is_multilingual_plugin_active() ) {
 
-        // Safe Mode: Lightweight processing to remove delimiters without booting the full service.
-        $t_start = FRL_TRANSLATOR_DELIMITER_TEXT['start'];
-        $l_start = FRL_TRANSLATOR_DELIMITER_LINK['start'];
+		// Safe Mode: Lightweight processing to remove delimiters without booting the full service.
+		$t_start = FRL_TRANSLATOR_DELIMITER_TEXT['start'];
+		$l_start = FRL_TRANSLATOR_DELIMITER_LINK['start'];
 
-        if (!str_contains($block_content, $t_start) && !str_contains($block_content, $l_start)) {
-            return $block_content;
-        }
+		if ( ! str_contains( $block_content, $t_start ) && ! str_contains( $block_content, $l_start ) ) {
+			return $block_content;
+		}
 
-        // Request-level deduplication only. Persistent caching is intentionally omitted
-        // because $block_content may contain per-request dynamic values (e.g. GeoDirectory
-        // random IDs) that make md5-based keys unstable. A persistent cache with unstable
-        // keys produces 0% hit rate and transient bloat on sites without object cache.
-        static $safe_cache = [];
-        $sig = md5($block_content);
-        if (isset($safe_cache[$sig])) {
-            return $safe_cache[$sig];
-        }
+		// Request-level deduplication only. Persistent caching is intentionally omitted
+		// because $block_content may contain per-request dynamic values (e.g. GeoDirectory
+		// random IDs) that make md5-based keys unstable. A persistent cache with unstable
+		// keys produces 0% hit rate and transient bloat on sites without object cache.
+		static $safe_cache = array();
+		$sig               = md5( $block_content );
+		if ( isset( $safe_cache[ $sig ] ) ) {
+			return $safe_cache[ $sig ];
+		}
 
-        $t_start = preg_quote(FRL_TRANSLATOR_DELIMITER_TEXT['start'], '/');
-        $t_end   = preg_quote(FRL_TRANSLATOR_DELIMITER_TEXT['end'], '/');
-        $l_start = preg_quote(FRL_TRANSLATOR_DELIMITER_LINK['start'], '/');
-        $l_end   = preg_quote(FRL_TRANSLATOR_DELIMITER_LINK['end'], '/');
+		$t_start = preg_quote( FRL_TRANSLATOR_DELIMITER_TEXT['start'], '/' );
+		$t_end   = preg_quote( FRL_TRANSLATOR_DELIMITER_TEXT['end'], '/' );
+		$l_start = preg_quote( FRL_TRANSLATOR_DELIMITER_LINK['start'], '/' );
+		$l_end   = preg_quote( FRL_TRANSLATOR_DELIMITER_LINK['end'], '/' );
 
-        // Strip delimiters in a single pass, honouring FRL_TRANSLATOR_EXCLUDE
-        // so third-party placeholder syntax is left intact.
-        $combined = "/{$t_start}(.*?){$t_end}|{$l_start}(.*?){$l_end}/";
-        $content = preg_replace_callback($combined, function ($m) {
-            if (!empty($m[1])) {
-                $token = trim($m[1]);
-                // Excluded tokens: keep delimiters, leave untouched.
-                return frl_is_token_match($token) ? $m[0] : $token;
-            }
-            if (!empty($m[2])) {
-                // Permalink patterns: always strip to '#'.
-                return '#';
-            }
-            return $m[0];
-        }, $block_content);
+		// Strip delimiters in a single pass, honouring FRL_TRANSLATOR_EXCLUDE
+		// so third-party placeholder syntax is left intact.
+		$combined = "/{$t_start}(.*?){$t_end}|{$l_start}(.*?){$l_end}/";
+		$content  = preg_replace_callback(
+			$combined,
+			function ( $m ) {
+				if ( ! empty( $m[1] ) ) {
+					$token = trim( $m[1] );
+					// Excluded tokens: keep delimiters, leave untouched.
+					return frl_is_token_match( $token ) ? $m[0] : $token;
+				}
+				if ( ! empty( $m[2] ) ) {
+					// Permalink patterns: always strip to '#'.
+					return '#';
+				}
+				return $m[0];
+			},
+			$block_content
+		);
 
-        return $safe_cache[$sig] = $content;
-    }
+		$safe_cache[ $sig ] = $content;
+		return $safe_cache[ $sig ];
+	}
 
-    return Frl_Translation_Service::get_instance()->get_translation_block($block_content, $block);
+	return Frl_Translation_Service::get_instance()->get_translation_block( $block_content, $block );
 }
 
 /**
@@ -168,13 +165,12 @@ function frl_get_translation_block(string $block_content, array $block): string
  * @param string|null $language Optional target language.
  * @return string The translated permalink or '#' if not found.
  */
-function frl_get_translation_permalink(string $slug, ?string $language = null): string
-{
-    if (!frl_translator_is_enabled()) {
-        return '#';
-    }
-    $map = frl_get_translation_batch_permalinks([$slug], $language);
-    return $map[$slug] ?? '#';
+function frl_get_translation_permalink( string $slug, ?string $language = null ): string {
+	if ( ! frl_translator_is_enabled() ) {
+		return '#';
+	}
+	$map = frl_get_translation_batch_permalinks( array( $slug ), $language );
+	return $map[ $slug ] ?? '#';
 }
 
 /**
@@ -184,12 +180,11 @@ function frl_get_translation_permalink(string $slug, ?string $language = null): 
  * @param string|null $language Optional target language.
  * @return array Map of original slugs to translated permalinks.
  */
-function frl_get_translation_batch_permalinks(array $slugs, ?string $language = null): array
-{
-    if (!frl_translator_is_enabled()) {
-        return array_fill_keys($slugs, '#');
-    }
-    return Frl_Translation_Service::get_instance()->get_translation_batch_permalinks($slugs, $language);
+function frl_get_translation_batch_permalinks( array $slugs, ?string $language = null ): array {
+	if ( ! frl_translator_is_enabled() ) {
+		return array_fill_keys( $slugs, '#' );
+	}
+	return Frl_Translation_Service::get_instance()->get_translation_batch_permalinks( $slugs, $language );
 }
 
 /**
@@ -198,19 +193,18 @@ function frl_get_translation_batch_permalinks(array $slugs, ?string $language = 
  * @param string $content The content to process.
  * @return string The content with translated permalinks.
  */
-function frl_process_permalink_patterns(string $content): string
-{
-    if (!frl_translator_is_enabled()) {
-        // Safe Mode: Replace ##slug## with # to avoid showing raw tokens.
-        $l_start = FRL_TRANSLATOR_DELIMITER_LINK['start'];
-        if (!str_contains($content, $l_start)) {
-            return $content;
-        }
-        $l_start = preg_quote($l_start, '/');
-        $l_end   = preg_quote(FRL_TRANSLATOR_DELIMITER_LINK['end'], '/');
-        return preg_replace("/{$l_start}(.*?){$l_end}/", '#', $content);
-    }
-    return Frl_Translation_Service::get_instance()->process_permalink_patterns($content);
+function frl_process_permalink_patterns( string $content ): string {
+	if ( ! frl_translator_is_enabled() ) {
+		// Safe Mode: Replace ##slug## with # to avoid showing raw tokens.
+		$l_start = FRL_TRANSLATOR_DELIMITER_LINK['start'];
+		if ( ! str_contains( $content, $l_start ) ) {
+			return $content;
+		}
+		$l_start = preg_quote( $l_start, '/' );
+		$l_end   = preg_quote( FRL_TRANSLATOR_DELIMITER_LINK['end'], '/' );
+		return preg_replace( "/{$l_start}(.*?){$l_end}/", '#', $content );
+	}
+	return Frl_Translation_Service::get_instance()->process_permalink_patterns( $content );
 }
 
 /**
@@ -219,13 +213,12 @@ function frl_process_permalink_patterns(string $content): string
  * @param int $post_id Post ID.
  * @return array Language-keyed map of post IDs.
  */
-function frl_get_post_translations(int $post_id): array
-{
-    if (!frl_translator_is_enabled()) {
-        $default_lang = frl_get_default_language_fallback();
-        return [$default_lang => $post_id];
-    }
-    return Frl_Translation_Service::get_instance()->get_post_translations($post_id);
+function frl_get_post_translations( int $post_id ): array {
+	if ( ! frl_translator_is_enabled() ) {
+		$default_lang = frl_get_default_language_fallback();
+		return array( $default_lang => $post_id );
+	}
+	return Frl_Translation_Service::get_instance()->get_post_translations( $post_id );
 }
 
 /**
@@ -234,13 +227,12 @@ function frl_get_post_translations(int $post_id): array
  * @param int $term_id Term ID.
  * @return array Language-keyed map of term IDs.
  */
-function frl_get_term_translations(int $term_id): array
-{
-    if (!frl_translator_is_enabled()) {
-        $default_lang = frl_get_default_language_fallback();
-        return [$default_lang => $term_id];
-    }
-    return Frl_Translation_Service::get_instance()->get_term_translations($term_id);
+function frl_get_term_translations( int $term_id ): array {
+	if ( ! frl_translator_is_enabled() ) {
+		$default_lang = frl_get_default_language_fallback();
+		return array( $default_lang => $term_id );
+	}
+	return Frl_Translation_Service::get_instance()->get_term_translations( $term_id );
 }
 
 /**
@@ -255,13 +247,12 @@ function frl_get_term_translations(int $term_id): array
  *
  * @return string 2-letter language code (e.g., 'en', 'ru')
  */
-function frl_get_default_language_fallback(): string
-{
-    if (class_exists('Frl_Polylang_Adapter')) {
-        $adapter = new Frl_Polylang_Adapter();
-        return $adapter->get_default_language();
-    }
-    return FRL_TRANSLATOR_DEFAULT_LANG;
+function frl_get_default_language_fallback(): string {
+	if ( class_exists( 'Frl_Polylang_Adapter' ) ) {
+		$adapter = new Frl_Polylang_Adapter();
+		return $adapter->get_default_language();
+	}
+	return FRL_TRANSLATOR_DEFAULT_LANG;
 }
 
 /**
@@ -276,13 +267,12 @@ function frl_get_default_language_fallback(): string
  *
  * @return array Array of 2-letter language codes (e.g., ['en', 'ru', 'ar', 'zh'])
  */
-function frl_get_active_languages_fallback(): array
-{
-    if (class_exists('Frl_Polylang_Adapter')) {
-        $adapter = new Frl_Polylang_Adapter();
-        return $adapter->get_active_languages();
-    }
-    return [FRL_TRANSLATOR_DEFAULT_LANG];
+function frl_get_active_languages_fallback(): array {
+	if ( class_exists( 'Frl_Polylang_Adapter' ) ) {
+		$adapter = new Frl_Polylang_Adapter();
+		return $adapter->get_active_languages();
+	}
+	return array( FRL_TRANSLATOR_DEFAULT_LANG );
 }
 
 /**
@@ -291,10 +281,9 @@ function frl_get_active_languages_fallback(): array
  * @param string|null $language Optional target language code.
  * @return string The home URL for the language.
  */
-function frl_get_home_url(?string $language = null): string
-{
-    if (!frl_translator_is_enabled()) {
-        return home_url();
-    }
-    return Frl_Translation_Service::get_instance()->get_home_url($language);
+function frl_get_home_url( ?string $language = null ): string {
+	if ( ! frl_translator_is_enabled() ) {
+		return home_url();
+	}
+	return Frl_Translation_Service::get_instance()->get_home_url( $language );
 }

@@ -1,7 +1,7 @@
 <?php
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -20,9 +20,9 @@ if (!defined('ABSPATH')) {
  * Add more bot user-agent substrings as needed.
  * @var string[]
  */
-const FRL_MU_THROTTLE_USER_AGENT = [
-    'ChatGPT-User',
-];
+const FRL_MU_THROTTLE_USER_AGENT = array(
+	'ChatGPT-User',
+);
 
 /**
  * Maximum allowed requests within the throttle period.

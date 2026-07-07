@@ -1,76 +1,76 @@
 <?php
 
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Runtime plugin options not defined elsewhere, to remove missing options flag 
-const FRL_OPTIONS_RUNTIME = [
-	'environment_state' => [
-		'type' => 'text',
-		'default' => ''
-	],
-	'environment_ignore_plugins' => [
-		'type' => 'text',
-		'default' => ''
-	],
-	'environment_ignore_options' => [
-		'type' => 'text',
-		'default' => ''
-	],
-	'translation_version' => [
-		'type' => 'text',
-		'default' => 1
-	],
-	'translate_cpt_slugs_service' => [
-		'type' => 'textlist',
-		'default' => ''
-	],
-	'plugin_version' => [
-		'type' => 'text',
-		'default' => '0.0.0'
-	],
-];
+// Runtime plugin options not defined elsewhere, to remove missing options flag
+const FRL_OPTIONS_RUNTIME = array(
+	'environment_state'           => array(
+		'type'    => 'text',
+		'default' => '',
+	),
+	'environment_ignore_plugins'  => array(
+		'type'    => 'text',
+		'default' => '',
+	),
+	'environment_ignore_options'  => array(
+		'type'    => 'text',
+		'default' => '',
+	),
+	'translation_version'         => array(
+		'type'    => 'text',
+		'default' => 1,
+	),
+	'translate_cpt_slugs_service' => array(
+		'type'    => 'textlist',
+		'default' => '',
+	),
+	'plugin_version'              => array(
+		'type'    => 'text',
+		'default' => '0.0.0',
+	),
+);
 
 /**
  * Plugin default settings array - organized by section
  */
 const FRL_DEFAULT_FIELDS = array(
-	'website' => array(
-		'title' => 'Website Settings',
+	'website'        => array(
+		'title'  => 'Website Settings',
 		'fields' => array(
-			'section_title_performance' => array(
-				'label' => 'Performance',
+			'section_title_performance'           => array(
+				'label'       => 'Performance',
 				'description' => 'Performance settings',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'critical_css' => array(
-				'label' => 'Preload critical Theme CSS',
-				'description' => 'Preload critical CSS from "critical.css" file in current theme directory',
-				'type' => 'checkbox',
-				'default' => 1,
+			'critical_css'                        => array(
+				'label'             => 'Preload critical Theme CSS',
+				'description'       => 'Preload critical CSS from "critical.css" file in current theme directory',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'deferred_css' => array(
-				'label' => 'Defer non-critical Theme CSS',
-				'description' => 'Load non-critical styles from "deferred.css" in the current theme directory as non-render-blocking in the footer',
-				'type' => 'checkbox',
-				'default' => 1,
+			'deferred_css'                        => array(
+				'label'             => 'Defer non-critical Theme CSS',
+				'description'       => 'Load non-critical styles from "deferred.css" in the current theme directory as non-render-blocking in the footer',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'defer_css' => array(
-				'label' => 'Defer other CSS Styles',
-				'description' => 'Defer other non-critical CSS Styles by handle',
-				'type' => 'checkbox',
-				'default' => 1,
+			'defer_css'                           => array(
+				'label'             => 'Defer other CSS Styles',
+				'description'       => 'Defer other non-critical CSS Styles by handle',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'defer_css_handles' => array(
-				'label' => 'Deferred CSS Styles Handles',
-				'description' => 'One handle per line, also plugin names can be used. The string is matched partially against the full URL of the style.',
-				'type' => 'textlist',
-				'default' => '
+			'defer_css_handles'                   => array(
+				'label'             => 'Deferred CSS Styles Handles',
+				'description'       => 'One handle per line, also plugin names can be used. The string is matched partially against the full URL of the style.',
+				'type'              => 'textlist',
+				'default'           => '
 					blocks/cover/style
         			blocks/social-links/style
 					columnedmegamenu.css
@@ -78,489 +78,488 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'remove_jquery_mig' => array(
-				'label' => 'Remove jQuery Migrate',
-				'description' => 'Remove jQuery Migrate compatibility script',
-				'type' => 'checkbox',
-				'default' => 1,
+			'remove_jquery_mig'                   => array(
+				'label'             => 'Remove jQuery Migrate',
+				'description'       => 'Remove jQuery Migrate compatibility script',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'disable_rest' => array(
-				'label' => 'Disable REST',
-				'description' => 'Disable REST API for selected endpoints',
-				'type' => 'checkbox',
-				'default' => 1,
+			'disable_rest'                        => array(
+				'label'             => 'Disable REST',
+				'description'       => 'Disable REST API for selected endpoints',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'disable_oembed' => array(
-				'label' => 'Disable oEmbeds',
-				'description' => 'Disable oEmbeds support',
-				'type' => 'checkbox',
-				'default' => 1,
+			'disable_oembed'                      => array(
+				'label'             => 'Disable oEmbeds',
+				'description'       => 'Disable oEmbeds support',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'disable_emojis' => array(
-				'label' => 'Disable Emojis',
-				'description' => 'Disable emojis sitewide',
-				'type' => 'checkbox',
-				'default' => 1,
+			'disable_emojis'                      => array(
+				'label'             => 'Disable Emojis',
+				'description'       => 'Disable emojis sitewide',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'section_title_image_optimization' => array(
-				'label' => 'Image Optimization',
+			'section_title_image_optimization'    => array(
+				'label'       => 'Image Optimization',
 				'description' => 'Image optimization settings for improved performance',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'image_preload_featured' => array(
-				'label' => 'Preload featured images',
-				'description' => 'Preload featured images with responsive srcset.',
-				'type' => 'checkbox',
-				'default' => 1,
+			'image_preload_featured'              => array(
+				'label'             => 'Preload featured images',
+				'description'       => 'Preload featured images with responsive srcset.',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'image_preload_featured_ext' => array(
-				'label' => 'Add extension to preloaded image',
-				'description' => 'Add a file extension to the preloaded featured image URL if the file exists (e.g. .avif). Leave blank to use the original image URL.',
-				'type' => 'text',
-				'default' => '',
+			'image_preload_featured_ext'          => array(
+				'label'             => 'Add extension to preloaded image',
+				'description'       => 'Add a file extension to the preloaded featured image URL if the file exists (e.g. .avif). Leave blank to use the original image URL.',
+				'type'              => 'text',
+				'default'           => '',
 				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'image_preload_hero_mobile' => array(
-				'label' => 'Force Hero Image on Mobile',
-				'description' => 'Adds a separate preload link to force full-size image preload on mobile for the specified post-types. One post-type per line, you can use "home" for the homepage.',
-				'type' => 'textlist',
-				'default' => 'home
+			'image_preload_hero_mobile'           => array(
+				'label'             => 'Force Hero Image on Mobile',
+				'description'       => 'Adds a separate preload link to force full-size image preload on mobile for the specified post-types. One post-type per line, you can use "home" for the homepage.',
+				'type'              => 'textlist',
+				'default'           => 'home
 				service',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'image_preload_hero_mobile_size' => array(
-				'label' => 'Size of Preloaded Hero Image on Mobile',
-				'description' => 'Specify the name of the WP thumbnail that will be preloaded on mobile (e.g. "full", "1536x1536"). Default fallback is "full".',
-				'type' => 'text',
-				'default' => 'full',
+			'image_preload_hero_mobile_size'      => array(
+				'label'             => 'Size of Preloaded Hero Image on Mobile',
+				'description'       => 'Specify the name of the WP thumbnail that will be preloaded on mobile (e.g. "full", "1536x1536"). Default fallback is "full".',
+				'type'              => 'text',
+				'default'           => 'full',
 				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'image_filename_sanitize' => array(
-				'label' => 'Sanitize Filenames',
-				'description' => 'Sanitize filename and title of uploaded images to readable format.',
-				'type' => 'checkbox',
-				'default' => 1,
+			'image_filename_sanitize'             => array(
+				'label'             => 'Sanitize Filenames',
+				'description'       => 'Sanitize filename and title of uploaded images to readable format.',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'image_mime_support' => array(
-				'label' => 'SVG and WEBP Uploads',
-				'description' => 'Enable SVG and WEBP media support',
-				'type' => 'checkbox',
-				'default' => 1,
+			'image_mime_support'                  => array(
+				'label'             => 'SVG and WEBP Uploads',
+				'description'       => 'Enable SVG and WEBP media support',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'image_sizes' => array(
-				'label' => 'Add Media Image Sizes',
-				'description' => 'Add custom image sizes to media library',
-				'type' => 'checkbox',
-				'default' => 0,
+			'image_sizes'                         => array(
+				'label'             => 'Add Media Image Sizes',
+				'description'       => 'Add custom image sizes to media library',
+				'type'              => 'checkbox',
+				'default'           => 0,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'image_sizes_list' => array(
-				'label' => 'image Sizes List',
-				'description' => 'One image size per line. Format: name|width|height|Label',
-				'type' => 'textlist',
-				'rows' => 3,
-				'default' => '',
+			'image_sizes_list'                    => array(
+				'label'             => 'image Sizes List',
+				'description'       => 'One image size per line. Format: name|width|height|Label',
+				'type'              => 'textlist',
+				'rows'              => 3,
+				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'section_title_wordpress' => array(
-				'label' => 'WordPress Features',
+			'section_title_wordpress'             => array(
+				'label'       => 'WordPress Features',
 				'description' => 'Wordpress core features settings',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'disable_comments' => array(
-				'label' => 'Disable Comments',
-				'description' => 'Disable comments sitewide',
-				'type' => 'checkbox',
-				'default' => 1,
+			'disable_comments'                    => array(
+				'label'             => 'Disable Comments',
+				'description'       => 'Disable comments sitewide',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'login_branding' => array(
-				'label' => 'Login Page Branding',
-				'description' => 'Apply theme colors and logo to login page',
-				'type' => 'checkbox',
-				'default' => 1,
+			'login_branding'                      => array(
+				'label'             => 'Login Page Branding',
+				'description'       => 'Apply theme colors and logo to login page',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'custom_avatar' => array(
-				'label' => 'Custom User Avatar',
-				'description' => 'Upload a custom avatar for all users',
-				'type' => 'checkbox',
-				'default' => 1,
+			'custom_avatar'                       => array(
+				'label'             => 'Custom User Avatar',
+				'description'       => 'Upload a custom avatar for all users',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'editor_metabox' => array(
-				'label' => 'Editor Metabox',
-				'description' => 'Enable editor metabox in post edit screen',
-				'type' => 'checkbox',
-				'default' => 1,
+			'editor_metabox'                      => array(
+				'label'             => 'Editor Metabox',
+				'description'       => 'Enable editor metabox in post edit screen',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'nav_menu_custom_urls' => array(
-				'label' => 'Nav Menu URL Transforms',
-				'description' => 'Transform <code>#frl_url_*</code> fragments to URLs in navigation menus.',
-				'type' => 'checkbox',
-				'default' => 0,
+			'nav_menu_custom_urls'                => array(
+				'label'             => 'Nav Menu URL Transforms',
+				'description'       => 'Transform <code>#frl_url_*</code> fragments to URLs in navigation menus.',
+				'type'              => 'checkbox',
+				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'custom_wp_query' => array(
-				'label' => 'Custom WP Query',
-				'description' => 'Optimize secondary queries and order post types by ascending menu_order. One post type per line.',
-				'type' => 'textlist',
-				'default' => '
+			'custom_wp_query'                     => array(
+				'label'             => 'Custom WP Query',
+				'description'       => 'Optimize secondary queries and order post types by ascending menu_order. One post type per line.',
+				'type'              => 'textlist',
+				'default'           => '
 					service
 					flag
 					jurisdiction
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'section_title_langswitcher' => array(
-				'label' => 'Language Switcher',
+			'section_title_langswitcher'          => array(
+				'label'       => 'Language Switcher',
 				'description' => 'Polylang language switcher settings',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'langswitcher_dropdown' => array(
-				'label' => 'Langswitcher Dropdown',
-				'description' => 'Replace langswitcher flags with dropdown',
-				'type' => 'checkbox',
-				'default' => 0,
+			'langswitcher_dropdown'               => array(
+				'label'             => 'Langswitcher Dropdown',
+				'description'       => 'Replace langswitcher flags with dropdown',
+				'type'              => 'checkbox',
+				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'langswitcher_hide_current' => array(
-				'label' => 'Hide Current Language',
-				'description' => 'Hide current language link',
-				'type' => 'checkbox',
-				'default' => 0,
+			'langswitcher_hide_current'           => array(
+				'label'             => 'Hide Current Language',
+				'description'       => 'Hide current language link',
+				'type'              => 'checkbox',
+				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
 			'langswitcher_hide_if_no_translation' => array(
-				'label' => 'Hide if No Translation',
-				'description' => 'Hide language link if no translation',
-				'type' => 'checkbox',
-				'default' => 0,
+				'label'             => 'Hide if No Translation',
+				'description'       => 'Hide language link if no translation',
+				'type'              => 'checkbox',
+				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'langswitcher_hide_languages' => array(
-				'label' => 'Hide Languages',
-				'description' => 'One language slug per line.',
-				'type' => 'textlist',
-				'default' => '',
+			'langswitcher_hide_languages'         => array(
+				'label'             => 'Hide Languages',
+				'description'       => 'One language slug per line.',
+				'type'              => 'textlist',
+				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
 		),
 	),
-	'html' => array(
-		'title' => 'HTML and Scripts',
+	'html'           => array(
+		'title'  => 'HTML and Scripts',
 		'fields' => array(
-			'section_title_header' => array(
-				'label' => 'Header',
+			'section_title_header'     => array(
+				'label'       => 'Header',
 				'description' => 'Add custom HTML and scripts to the header',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'header_scripts' => array(
-				'label' => 'Header Scripts',
-				'description' => 'Absolute path to scripts to include. One per line.',
-				'type' => 'textlist',
-				'default' => '',
+			'header_scripts'           => array(
+				'label'             => 'Header Scripts',
+				'description'       => 'Absolute path to scripts to include. One per line.',
+				'type'              => 'textlist',
+				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
+				'restricted'        => true,
+			),
+			'header_html'              => array(
+				'label'      => 'Header HTML',
+				'type'       => 'html',
+				'default'    => '',
 				'restricted' => true,
 			),
-			'header_html' => array(
-				'label' => 'Header HTML',
-				'type' => 'html',
-				'default' => '',
-				'restricted' => true,
-			),
-			'header_html_php' => array(
-				'label' => 'Allow PHP in header',
-				'description' => 'Allow PHP code in the header HTML',
-				'type' => 'checkbox',
-				'default' => 0,
+			'header_html_php'          => array(
+				'label'             => 'Allow PHP in header',
+				'description'       => 'Allow PHP code in the header HTML',
+				'type'              => 'checkbox',
+				'default'           => 0,
 				'sanitize_callback' => 'absint',
-				'restricted' => true,
+				'restricted'        => true,
 			),
-			'section_title_footer' => array(
-				'label' => 'Footer',
+			'section_title_footer'     => array(
+				'label'       => 'Footer',
 				'description' => 'Add custom HTML and scripts to the footer',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'footer_scripts' => array(
-				'label' => 'Footer Scripts',
-				'description' => 'Absolute path to scripts to include. One per line.',
-				'type' => 'textlist',
-				'default' => '',
+			'footer_scripts'           => array(
+				'label'             => 'Footer Scripts',
+				'description'       => 'Absolute path to scripts to include. One per line.',
+				'type'              => 'textlist',
+				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
+				'restricted'        => true,
+			),
+			'footer_html'              => array(
+				'label'      => 'Footer HTML',
+				'type'       => 'html',
+				'default'    => '',
 				'restricted' => true,
 			),
-			'footer_html' => array(
-				'label' => 'Footer HTML',
-				'type' => 'html',
-				'default' => '',
-				'restricted' => true,
-			),
-			'footer_html_php' => array(
-				'label' => 'Allow PHP in footer',
-				'description' => 'Allow PHP code in the footer HTML',
-				'type' => 'checkbox',
-				'default' => 0,
+			'footer_html_php'          => array(
+				'label'             => 'Allow PHP in footer',
+				'description'       => 'Allow PHP code in the footer HTML',
+				'type'              => 'checkbox',
+				'default'           => 0,
 				'sanitize_callback' => 'absint',
-				'restricted' => true,
+				'restricted'        => true,
 			),
-			'section_title_schema' => array(
-				'label' => 'Schema Settings',
+			'section_title_schema'     => array(
+				'label'       => 'Schema Settings',
 				'description' => 'Sitewide settings for structured data',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
 			'schema_organization_name' => array(
-				'label' => 'Organization name',
+				'label'       => 'Organization name',
 				'description' => 'Organization name for Schema generation',
-				'type' => 'text',
-				'default' => 'PB Services Georgia',
+				'type'        => 'text',
+				'default'     => 'PB Services Georgia',
 			),
-			'schema_organization_url' => array(
-				'label' => 'Organization URL',
+			'schema_organization_url'  => array(
+				'label'       => 'Organization URL',
 				'description' => 'Organization URL for Schema generation',
-				'type' => 'text',
-				'default' => 'https://pbservices.ge/',
+				'type'        => 'text',
+				'default'     => 'https://pbservices.ge/',
 			),
-			'schema_founder_name' => array(
-				'label' => 'Founder Name',
+			'schema_founder_name'      => array(
+				'label'       => 'Founder Name',
 				'description' => 'Founder Name for Schema generation',
-				'type' => 'text',
-				'default' => 'Rati (Iese) Abashmadze',
+				'type'        => 'text',
+				'default'     => 'Rati (Iese) Abashmadze',
 			),
-			'schema_properties' => array(
-				'label'       => 'Enable Schema Properties',
-				'description' => 'Master toggle for Schema properties injection.',
-				'type'        => 'checkbox',
-				'default'     => 1,
+			'schema_properties'        => array(
+				'label'             => 'Enable Schema Properties',
+				'description'       => 'Master toggle for Schema properties injection.',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'restricted'  => true,
+				'restricted'        => true,
 			),
-			'schema_generator' => array(
-				'label'       => 'Enable Schema Generator',
-				'description' => 'Master toggle for dynamic schema generator (HowTo, FAQ, etc. from ACF/ACPT data).',
-				'type'        => 'checkbox',
-				'default'     => 1,
+			'schema_generator'         => array(
+				'label'             => 'Enable Schema Generator',
+				'description'       => 'Master toggle for dynamic schema generator (HowTo, FAQ, etc. from ACF/ACPT data).',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'restricted'  => true,
+				'restricted'        => true,
 			),
 		),
 	),
-	'features' => array(
-		'title' => 'Core Features',
+	'features'       => array(
+		'title'  => 'Core Features',
 		'fields' => array(
-			'section_title_themekit_settings' => array(
-				'label' => 'Themekit',
+			'section_title_themekit_settings'   => array(
+				'label'       => 'Themekit',
 				'description' => 'Enable/disable Themekit features.',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'themekit_body_classes' => array(
-				'label' => 'Add Body Classes',
-				'description' => 'Add body classes to the frontend and admin body tag',
-				'type' => 'checkbox',
-				'default' => 1,
-				'sanitize_callback' => 'absint',
-			),			
-			'themekit_base_css' => array(
-				'label' => 'Add Plugin themekit-styles.css',
-				'description' => 'Adds a supplemental <code>themekit-styles.css</code> stylesheet with base CSS styles that cannot be handled by theme.json.',
-				'type' => 'checkbox',
-				'default' => 1,
+			'themekit_body_classes'             => array(
+				'label'             => 'Add Body Classes',
+				'description'       => 'Add body classes to the frontend and admin body tag',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'themekit_font_display_swap' => array(
-				'label' => 'Font Display Swap',
-				'description' => 'Replace <code>font-display: fallback</code> with <code>font-display: swap</code> for WordPress Font Library fonts to improve Core Web Vitals',
-				'type' => 'checkbox',
-				'default' => 0,
+			'themekit_base_css'                 => array(
+				'label'             => 'Add Plugin themekit-styles.css',
+				'description'       => 'Adds a supplemental <code>themekit-styles.css</code> stylesheet with base CSS styles that cannot be handled by theme.json.',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'themekit_remove_wp_patterns' => array(
-				'label' => 'Remove WP Block Patterns',
-				'description' => 'Remove WP Core Block Patterns and remote patterns from the official Pattern Directory on WordPress.org',
-				'type' => 'checkbox',
-				'default' => 1,
+			'themekit_font_display_swap'        => array(
+				'label'             => 'Font Display Swap',
+				'description'       => 'Replace <code>font-display: fallback</code> with <code>font-display: swap</code> for WordPress Font Library fonts to improve Core Web Vitals',
+				'type'              => 'checkbox',
+				'default'           => 0,
+				'sanitize_callback' => 'absint',
+			),
+			'themekit_remove_wp_patterns'       => array(
+				'label'             => 'Remove WP Block Patterns',
+				'description'       => 'Remove WP Core Block Patterns and remote patterns from the official Pattern Directory on WordPress.org',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
 			'themekit_remove_provider_patterns' => array(
-				'label' => 'Remove Provider Block Patterns',
-				'description' => 'Disable block patterns of specific themes/plugins. Enter provider namespace (usually folder slug, e.g."ollie"). One provider per line.',
-				'type' => 'textlist',
-				'default' => '',
-				'placeholder' => 'ollie',
+				'label'             => 'Remove Provider Block Patterns',
+				'description'       => 'Disable block patterns of specific themes/plugins. Enter provider namespace (usually folder slug, e.g."ollie"). One provider per line.',
+				'type'              => 'textlist',
+				'default'           => '',
+				'placeholder'       => 'ollie',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'themekit_remove_provider_styles' => array(
-				'label' => 'Remove Provider Styles',
-				'description' => 'Disable styles by exact handle or provider slug. Enter provider slug or exact style handle ("ollie" or "global-styles"). One provider per line. <b>WARNING</b>: Removing WP Global Style ("global-styles") can break current theme.',
-				'type' => 'textlist',
-				'default' => '',
-				'placeholder' => 'greenshiftquery',
+			'themekit_remove_provider_styles'   => array(
+				'label'             => 'Remove Provider Styles',
+				'description'       => 'Disable styles by exact handle or provider slug. Enter provider slug or exact style handle ("ollie" or "global-styles"). One provider per line. <b>WARNING</b>: Removing WP Global Style ("global-styles") can break current theme.',
+				'type'              => 'textlist',
+				'default'           => '',
+				'placeholder'       => 'greenshiftquery',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'section_title_translator' => array(
-				'type' => 'section_title',
-				'label' => 'Translator',
+			'section_title_translator'          => array(
+				'type'        => 'section_title',
+				'label'       => 'Translator',
 				'description' => 'Dynamic translations for custom fields and metadata from any source.',
 			),
-			'translator_taxonomies' => array(
-				'type' => 'checkbox',
-				'label' => 'Translate Taxonomies',
+			'translator_taxonomies'             => array(
+				'type'        => 'checkbox',
+				'label'       => 'Translate Taxonomies',
 				'description' => 'Translates taxonomy names and descriptions (defined in FRL_TRANSLATOR_TAXONOMIES).',
-				'default' => '0',
+				'default'     => '0',
 			),
-			'translator_posts' => array(
-				'type' => 'checkbox',
-				'label' => 'Translate Post Meta Fields',
+			'translator_posts'                  => array(
+				'type'        => 'checkbox',
+				'label'       => 'Translate Post Meta Fields',
 				'description' => 'Translates custom fields on single posts, pages, and custom post types.',
-				'default' => '0',
+				'default'     => '0',
 			),
-			'translator_terms' => array(
-				'type' => 'checkbox',
-				'label' => 'Translate Taxonomy Fields',
+			'translator_terms'                  => array(
+				'type'        => 'checkbox',
+				'label'       => 'Translate Taxonomy Fields',
 				'description' => 'Translates custom fields on category, tag, and custom taxonomy archive pages.',
-				'default' => '0',
+				'default'     => '0',
 			),
-			'translator_users' => array(
-				'type' => 'checkbox',
-				'label' => 'Translate User Fields',
+			'translator_users'                  => array(
+				'type'        => 'checkbox',
+				'label'       => 'Translate User Fields',
 				'description' => 'Translates custom fields attached to user profiles.',
-				'default' => '0',
+				'default'     => '0',
 			),
-			'translator_options' => array(
-				'type' => 'checkbox',
-				'label' => 'Translate Site Options Fields',
+			'translator_options'                => array(
+				'type'        => 'checkbox',
+				'label'       => 'Translate Site Options Fields',
 				'description' => 'Translates fields saved in the options table (e.g., from an ACF Options Page).',
-				'default' => '0',
+				'default'     => '0',
 			),
-			'section_title_rewriter' => array(
-				'label' => 'Rewriter',
+			'section_title_rewriter'            => array(
+				'label'       => 'Rewriter',
 				'description' => 'Custom rewriter features with priority-based URL processing',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'translate_post_base' => array(
-				'label' => 'Post Base Translation',
-				'description' => 'Add language-specific post base to URLs. Adapts to permalink structure: with %category% creates /en/news/tech/article-name, without creates /en/news/article-name. Format: lang|base per line. Priorities: 10 (Archives) & 20 (Singles).',
-				'placeholder' => "en|news\nit|notizie",
-				'type' => 'textlist',
-				'default' => '',
+			'translate_post_base'               => array(
+				'label'             => 'Post Base Translation',
+				'description'       => 'Add language-specific post base to URLs. Adapts to permalink structure: with %category% creates /en/news/tech/article-name, without creates /en/news/article-name. Format: lang|base per line. Priorities: 10 (Archives) & 20 (Singles).',
+				'placeholder'       => "en|news\nit|notizie",
+				'type'              => 'textlist',
+				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'restricted' => true,
+				'restricted'        => true,
 			),
-			'translate_cpt_slugs' => array(
-				'label' => 'CPT Base Translation',
+			'translate_cpt_slugs'               => array(
+				'label'       => 'CPT Base Translation',
 				'description' => 'Translate CPT base in URLs for multilingual sites. Each CPT requires configuration in FRL_REWRITER_MULTILINGUAL_CPT constant. Format: lang|slug per line. Priorities: 15 (Archives) & 25 (Singles).',
 				'placeholder' => "en|services\nit|servizi",
-				'type' => 'custom',
-				'callback' => 'frl_render_rewrite_multilingual_cpts',
-				'restricted' => true,
+				'type'        => 'custom',
+				'callback'    => 'frl_render_rewrite_multilingual_cpts',
+				'restricted'  => true,
 			),
-			'remove_tax_base' => array(
-				'label' => 'Taxonomy Base Removal',
-				'description' => 'Remove taxonomy base from categories and custom taxonomies (e.g., /tech/ instead of /category/tech/). One taxonomy per line. Priority 35.',
-				'type' => 'textlist',
-				'default' => 'category',
-				'placeholder' => 'category',
+			'remove_tax_base'                   => array(
+				'label'             => 'Taxonomy Base Removal',
+				'description'       => 'Remove taxonomy base from categories and custom taxonomies (e.g., /tech/ instead of /category/tech/). One taxonomy per line. Priority 35.',
+				'type'              => 'textlist',
+				'default'           => 'category',
+				'placeholder'       => 'category',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'restricted' => true,
+				'restricted'        => true,
 			),
-			'remove_tax_base_info' => array(
-				'label' => 'Registered Taxonomies',
-				'type' => 'custom',
+			'remove_tax_base_info'              => array(
+				'label'    => 'Registered Taxonomies',
+				'type'     => 'custom',
 				'callback' => 'frl_render_rewrite_taxonomies',
 			),
-			'remove_cpt_base' => array(
-				'label' => 'CPT Base Removal',
-				'description' => 'Remove CPT base from URLs (e.g., /my-service/ instead of /service/my-service/). One CPT slug per line. Priority 40.',
-				'type' => 'textlist',
-				'default' => "flag\njurisdiction",
-				'placeholder' => "flag\njurisdiction",
+			'remove_cpt_base'                   => array(
+				'label'             => 'CPT Base Removal',
+				'description'       => 'Remove CPT base from URLs (e.g., /my-service/ instead of /service/my-service/). One CPT slug per line. Priority 40.',
+				'type'              => 'textlist',
+				'default'           => "flag\njurisdiction",
+				'placeholder'       => "flag\njurisdiction",
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'restricted' => true,
+				'restricted'        => true,
 			),
-			'remove_cpt_base_info' => array(
-				'label' => 'Registered CPTs',
-				'type' => 'custom',
+			'remove_cpt_base_info'              => array(
+				'label'    => 'Registered CPTs',
+				'type'     => 'custom',
 				'callback' => 'frl_render_rewrite_cpts',
 			),
 		),
 	),
-	'modules' => array(
-		'title' => 'Modules',
-		'fields' => array(
-		),
+	'modules'        => array(
+		'title'  => 'Modules',
+		'fields' => array(),
 	),
 	'administration' => array(
-		'title' => 'Admin Tools',
+		'title'  => 'Admin Tools',
 		'fields' => array(
 			'section_title_administration_general' => array(
-				'label' => 'General',
+				'label'       => 'General',
 				'description' => 'General administration settings',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'admin_theme_custom' => array(
-				'label' => 'Custom Admin Theme',
-				'description' => 'Enable custom admin theme in backend',
-				'type' => 'checkbox',
-				'default' => 1,
+			'admin_theme_custom'                   => array(
+				'label'             => 'Custom Admin Theme',
+				'description'       => 'Enable custom admin theme in backend',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'logged_user_visits' => array(
-				'label' => 'Log User Visits',
-				'description' => 'Trace logged user visits',
-				'type' => 'checkbox',
-				'default' => 1,
+			'logged_user_visits'                   => array(
+				'label'             => 'Log User Visits',
+				'description'       => 'Trace logged user visits',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'admin_featured_post_list' => array(
-				'label' => 'Featured Image in Posts List',
-				'description' => 'Show featured image in posts list',
-				'type' => 'checkbox',
-				'default' => 1,
+			'admin_featured_post_list'             => array(
+				'label'             => 'Featured Image in Posts List',
+				'description'       => 'Show featured image in posts list',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'extend_admin_cookie' => array(
-				'label' => 'Extend Admin Cookie',
-				'description' => 'Extend admin cookie lifetime',
-				'type' => 'checkbox',
-				'default' => 1,
+			'extend_admin_cookie'                  => array(
+				'label'             => 'Extend Admin Cookie',
+				'description'       => 'Extend admin cookie lifetime',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'section_title_adminbar' => array(
-				'label' => 'Adminbar',
+			'section_title_adminbar'               => array(
+				'label'       => 'Adminbar',
 				'description' => 'Customise top adminbar menu',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'ab_remove_links' => array(
-				'label' => 'Remove links in Adminbar',
-				'type' => 'checkbox',
-				'default' => 1,
+			'ab_remove_links'                      => array(
+				'label'             => 'Remove links in Adminbar',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'ab_remove_links_handles' => array(
-				'label' => 'Links to remove for everybody',
-				'description' => 'One link handle per line.',
-				'type' => 'textlist',
-				'default' => '
+			'ab_remove_links_handles'              => array(
+				'label'             => 'Links to remove for everybody',
+				'description'       => 'One link handle per line.',
+				'type'              => 'textlist',
+				'default'           => '
 					comments
 					customize
 					new-user
@@ -568,400 +567,400 @@ const FRL_DEFAULT_FIELDS = array(
 					ws-form-node
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'ab_remove_links_handles_user' => array(
-				'label' => 'Adminbar links to remove except for plugin admins',
-				'description' => 'One link handle per line.',
-				'type' => 'textlist',
-				'default' => '
+			'ab_remove_links_handles_user'         => array(
+				'label'             => 'Adminbar links to remove except for plugin admins',
+				'description'       => 'One link handle per line.',
+				'type'              => 'textlist',
+				'default'           => '
 					query-monitor
 					kwlm-menu
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'custom_ab_menu' => array(
-				'label' => 'Custom menu in Adminbar',
-				'type' => 'checkbox',
-				'default' => 1,
+			'custom_ab_menu'                       => array(
+				'label'             => 'Custom menu in Adminbar',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'custom_ab_links' => array(
-				'label' => 'Custom Adminbar links',
-				'description' => 'One link per line. Format: Label|URL',
-				'type' => 'textlist',
-				'default' => '',
-				'cols' => 70,
+			'custom_ab_links'                      => array(
+				'label'             => 'Custom Adminbar links',
+				'description'       => 'One link per line. Format: Label|URL',
+				'type'              => 'textlist',
+				'default'           => '',
+				'cols'              => 70,
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'section_title_admin_menu' => array(
-				'label' => 'Admin menu',
+			'section_title_admin_menu'             => array(
+				'label'       => 'Admin menu',
 				'description' => 'Customise left admin menu items',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'am_remove_links' => array(
-				'label' => 'Remove links in Admin menu',
-				'type' => 'checkbox',
-				'default' => 1,
+			'am_remove_links'                      => array(
+				'label'             => 'Remove links in Admin menu',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'am_remove_links_handles' => array(
-				'label' => 'Admin links to remove for everybody',
-				'description' => 'One link per line. Format: "menu_handle" for menus. "menu_handle|submenu_handle" for submenus. You can use also a string with part of the URL or the CSS class.',
-				'type' => 'textlist',
-				'default' => '',
+			'am_remove_links_handles'              => array(
+				'label'             => 'Admin links to remove for everybody',
+				'description'       => 'One link per line. Format: "menu_handle" for menus. "menu_handle|submenu_handle" for submenus. You can use also a string with part of the URL or the CSS class.',
+				'type'              => 'textlist',
+				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'am_remove_links_handles_user' => array(
-				'label' => 'Admin links to remove except for plugin admins',
-				'description' => 'One link per line. Format: "menu_handle" for menus. "menu_handle|submenu_handle" for submenus. You can use also a string with part of the URL or the CSS class.',
-				'type' => 'textlist',
-				'default' => '
+			'am_remove_links_handles_user'         => array(
+				'label'             => 'Admin links to remove except for plugin admins',
+				'description'       => 'One link per line. Format: "menu_handle" for menus. "menu_handle|submenu_handle" for submenus. You can use also a string with part of the URL or the CSS class.',
+				'type'              => 'textlist',
+				'default'           => '
 					themes.php
 					themes.php|site-editor.php
 					themes.php|greenshifttheme_settings
 					themes.php|site-editor.php?path=/patterns
 				',
-				'cols' => 70,
+				'cols'              => 70,
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'section_title_dashboard_widgets' => array(
-				'label' => 'Dashboard Widgets',
+			'section_title_dashboard_widgets'      => array(
+				'label'       => 'Dashboard Widgets',
 				'description' => 'Customise Dashboard widgets',
-				'type' 	=> 'section_title',
+				'type'        => 'section_title',
 			),
-			'dash_widget_last_posts' => array(
-				'label' => 'Last modified posts widget',
-				'description' => 'Show last modified posts in dashboard',
-				'type' => 'checkbox',
-				'default' => 1,
+			'dash_widget_last_posts'               => array(
+				'label'             => 'Last modified posts widget',
+				'description'       => 'Show last modified posts in dashboard',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'dash_widget_editor' => array(
-				'label' => 'Editor dashboard widget',
-				'description' => 'Show editor dashboard widget',
-				'type' => 'checkbox',
-				'default' => 1,
+			'dash_widget_editor'                   => array(
+				'label'             => 'Editor dashboard widget',
+				'description'       => 'Show editor dashboard widget',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'dash_widget_administrator' => array(
-				'label' => 'Admin dashboard widget',
-				'description' => 'Show admin dashboard widget',
-				'type' => 'checkbox',
-				'default' => 1,
+			'dash_widget_administrator'            => array(
+				'label'             => 'Admin dashboard widget',
+				'description'       => 'Show admin dashboard widget',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'dash_widget_user_visits' => array(
-				'label' => 'Logged users Widget',
+			'dash_widget_user_visits'              => array(
+				'label'       => 'Logged users Widget',
 				'description' => 'Show recent user activity on the dashboard',
-				'type' => 'checkbox',
-				'default' => '1',
-				'autoload' => 'no',
+				'type'        => 'checkbox',
+				'default'     => '1',
+				'autoload'    => 'no',
 			),
-			'remove_dash_widg' => array(
-				'label' => 'Remove dashboard widgets',
-				'description' => 'Remove core and plugin dashboard widgets',
-				'type' => 'checkbox',
-				'default' => 1,
+			'remove_dash_widg'                     => array(
+				'label'             => 'Remove dashboard widgets',
+				'description'       => 'Remove core and plugin dashboard widgets',
+				'type'              => 'checkbox',
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'remove_dash_widg_handles' => array(
-				'label' => 'Handles of widgets to remove',
-				'description' => 'One widget handle per line.',
-				'type' => 'textlist',
-				'default' => '
+			'remove_dash_widg_handles'             => array(
+				'label'             => 'Handles of widgets to remove',
+				'description'       => 'One widget handle per line.',
+				'type'              => 'textlist',
+				'default'           => '
 					fluentsmtp_reports_widget
 					kwlm-widget
 					blc_dashboard_widget
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'section_title_custom_html_widgets' => array(
-				'label' => 'Custom HTML Widgets',
+			'section_title_custom_html_widgets'    => array(
+				'label'       => 'Custom HTML Widgets',
 				'description' => 'Add custom HTML widgets to the dashboard',
-				'type' 	=> 'section_title',
+				'type'        => 'section_title',
 			),
-			'dash_widget_custom_html_enabled' => array(
-				'label' => 'Enable Custom HTML Widgets',
-				'description' => 'Enable custom HTML dashboard widgets',
-				'type' => 'checkbox',
-				'default' => 0,
+			'dash_widget_custom_html_enabled'      => array(
+				'label'             => 'Enable Custom HTML Widgets',
+				'description'       => 'Enable custom HTML dashboard widgets',
+				'type'              => 'checkbox',
+				'default'           => 0,
 				'sanitize_callback' => 'absint',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
 			// Widget 1
-			'dash_widget_custom_html_label_1' => array(
-				'label' => 'Widget 1 Title',
-				'type' => 'text',
-				'default' => 'Custom Widget',
+			'dash_widget_custom_html_label_1'      => array(
+				'label'             => 'Widget 1 Title',
+				'type'              => 'text',
+				'default'           => 'Custom Widget',
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'dash_widget_custom_html_cap_1' => array(
-				'label' => 'Widget 1: Minimum Capability',
-				'description' => 'Required capability (manage_options, edit_translations, edit_pages, create_posts)',
-				'type' => 'text',
-				'default' => 'delete_plugins',
+			'dash_widget_custom_html_cap_1'        => array(
+				'label'             => 'Widget 1: Minimum Capability',
+				'description'       => 'Required capability (manage_options, edit_translations, edit_pages, create_posts)',
+				'type'              => 'text',
+				'default'           => 'delete_plugins',
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'dash_widget_custom_html_content_1' => array(
-				'label' => 'Widget 1 Content',
+			'dash_widget_custom_html_content_1'    => array(
+				'label'       => 'Widget 1 Content',
 				'description' => 'HTML content for widget 1 (shortcodes are processed)',
-				'type' => 'html',
-				'rows' => 4,
-				'default' => '',
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'html',
+				'rows'        => 4,
+				'default'     => '',
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
 			// Widget 2
-			'dash_widget_custom_html_label_2' => array(
-				'label' => 'Widget 2 Title',
-				'type' => 'text',
-				'default' => 'Custom Widget',
+			'dash_widget_custom_html_label_2'      => array(
+				'label'             => 'Widget 2 Title',
+				'type'              => 'text',
+				'default'           => 'Custom Widget',
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'dash_widget_custom_html_cap_2' => array(
-				'label' => 'Widget 2: Minimum Capability',
-				'description' => 'Required capability (manage_options, edit_translations, edit_pages, create_posts)',
-				'type' => 'text',
-				'default' => 'delete_plugins',
+			'dash_widget_custom_html_cap_2'        => array(
+				'label'             => 'Widget 2: Minimum Capability',
+				'description'       => 'Required capability (manage_options, edit_translations, edit_pages, create_posts)',
+				'type'              => 'text',
+				'default'           => 'delete_plugins',
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'dash_widget_custom_html_content_2' => array(
-				'label' => 'Widget 2 Content',
+			'dash_widget_custom_html_content_2'    => array(
+				'label'       => 'Widget 2 Content',
 				'description' => 'HTML content for widget (shortcodes are processed)',
-				'type' => 'html',
-				'rows' => 4,
-				'default' => '',
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'html',
+				'rows'        => 4,
+				'default'     => '',
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
 			// Widget 3
-			'dash_widget_custom_html_label_3' => array(
-				'label' => 'Widget 3 Title',
-				'type' => 'text',
-				'default' => 'Custom Widget',
+			'dash_widget_custom_html_label_3'      => array(
+				'label'             => 'Widget 3 Title',
+				'type'              => 'text',
+				'default'           => 'Custom Widget',
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'dash_widget_custom_html_cap_3' => array(
-				'label' => 'Widget 3: Minimum Capability',
-				'description' => 'Required capability (manage_options, edit_translations, edit_pages, create_posts)',
-				'type' => 'text',
-				'default' => 'delete_plugins',
+			'dash_widget_custom_html_cap_3'        => array(
+				'label'             => 'Widget 3: Minimum Capability',
+				'description'       => 'Required capability (manage_options, edit_translations, edit_pages, create_posts)',
+				'type'              => 'text',
+				'default'           => 'delete_plugins',
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload' => 'no',
+				'autoload'          => 'no',
 			),
-			'dash_widget_custom_html_content_3' => array(
-				'label' => 'Widget 3 Content',
+			'dash_widget_custom_html_content_3'    => array(
+				'label'       => 'Widget 3 Content',
 				'description' => 'HTML content for widget (shortcodes are processed)',
-				'type' => 'html',
-				'rows' => 4,
-				'default' => '',
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'html',
+				'rows'        => 4,
+				'default'     => '',
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
 		),
 	),
-	'developer' => array(
-		'title' => 'Developer Tools',
+	'developer'      => array(
+		'title'  => 'Developer Tools',
 		'fields' => array(
-			'section_title_debug' => array(
-				'label' => 'Debug mode',
+			'section_title_debug'           => array(
+				'label'       => 'Debug mode',
 				'description' => 'wp-config.php settings',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'debug' => array(
-				'label' => 'WP_DEBUG',
+			'debug'                         => array(
+				'label'       => 'WP_DEBUG',
 				'description' => 'Enable WordPress debug mode',
-				'type' => 'checkbox',
-				'default' => 1,
-				'restricted' => true,
+				'type'        => 'checkbox',
+				'default'     => 1,
+				'restricted'  => true,
 			),
-			'debug_log' => array(
-				'label' => 'WP_DEBUG_LOG',
+			'debug_log'                     => array(
+				'label'       => 'WP_DEBUG_LOG',
 				'description' => 'Log errors to wp-content/debug.log',
-				'type' => 'checkbox',
-				'default' => 1,
-				'restricted' => true,
+				'type'        => 'checkbox',
+				'default'     => 1,
+				'restricted'  => true,
 			),
-			'debug_display' => array(
-				'label' => 'WP_DEBUG_DISPLAY',
+			'debug_display'                 => array(
+				'label'       => 'WP_DEBUG_DISPLAY',
 				'description' => 'Display errors and warnings on screen',
-				'type' => 'checkbox',
-				'default' => 0,
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'checkbox',
+				'default'     => 0,
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
 			'section_title_error_reporting' => array(
-				'label' => 'Error reporting',
+				'label'       => 'Error reporting',
 				'description' => 'Error reporting settings',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'error_reporting_email' => array(
-				'label' => 'Email on Error',
+			'error_reporting_email'         => array(
+				'label'       => 'Email on Error',
 				'description' => 'Send email notification on plugin error',
-				'type' => 'checkbox',
-				'default' => 1,
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'checkbox',
+				'default'     => 1,
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
-			'error_reporting_notice' => array(
-				'label' => 'Log Notices',
+			'error_reporting_notice'        => array(
+				'label'       => 'Log Notices',
 				'description' => 'Log notices in the debug.log file',
-				'type' => 'checkbox',
-				'default' => 1,
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'checkbox',
+				'default'     => 1,
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
-			'error_reporting_warning' => array(
-				'label' => 'Log Warnings',
+			'error_reporting_warning'       => array(
+				'label'       => 'Log Warnings',
 				'description' => 'Log warnings in the debug.log file',
-				'type' => 'checkbox',
-				'default' => 1,
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'checkbox',
+				'default'     => 1,
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
-			'error_reporting_deprecated' => array(
-				'label' => 'Log Deprecated',
+			'error_reporting_deprecated'    => array(
+				'label'       => 'Log Deprecated',
 				'description' => 'Log deprecated messages in the debug.log file',
-				'type' => 'checkbox',
-				'default' => 1,
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'checkbox',
+				'default'     => 1,
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
-			'error_reporting_plugin' => array(
-				'label' => 'Log Plugin Only',
+			'error_reporting_plugin'        => array(
+				'label'       => 'Log Plugin Only',
 				'description' => 'Log only messages from this plugin in the debug.log file',
-				'type' => 'checkbox',
-				'default' => 1,
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'checkbox',
+				'default'     => 1,
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
-			'error_reporting_suppressed' => array(
-				'label' => 'Suppress error patterns',
-				'description' => 'Suppress specific error types and patterns. One pattern per line. Format: string1(|string2|string3)',
-				'type' => 'textlist',
-				'default' => '_load_textdomain_just_in_time',
+			'error_reporting_suppressed'    => array(
+				'label'             => 'Suppress error patterns',
+				'description'       => 'Suppress specific error types and patterns. One pattern per line. Format: string1(|string2|string3)',
+				'type'              => 'textlist',
+				'default'           => '_load_textdomain_just_in_time',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'restricted' => true,
-				'autoload' => 'no',
+				'restricted'        => true,
+				'autoload'          => 'no',
 			),
 		),
 	),
-	'settings' => array(
-		'title' => 'Plugin Settings',
+	'settings'       => array(
+		'title'  => 'Plugin Settings',
 		'fields' => array(
-			'section_title_plugin_exclusion' => array(
-				'label' => 'External Plugin Exclusions',
+			'section_title_plugin_exclusion'    => array(
+				'label'       => 'External Plugin Exclusions',
 				'description' => 'Prevent specified plugins from loading without deactivating them.',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
 			'excluded_plugins_frontend_enabled' => array(
-				'label' => 'Enable Frontend Exclusion',
+				'label'       => 'Enable Frontend Exclusion',
 				'description' => 'Block plugins on frontend (applies to all users).',
-				'type' => 'checkbox',
-				'default' => 0,
-				'restricted' => true,
+				'type'        => 'checkbox',
+				'default'     => 0,
+				'restricted'  => true,
 			),
-			'excluded_plugins_frontend' => array(
-				'label' => 'Frontend Excluded Plugins',
+			'excluded_plugins_frontend'         => array(
+				'label'       => 'Frontend Excluded Plugins',
 				'description' => 'One plugin path per line (e.g., hello Dolly/hello.php).',
-				'type' => 'textlist',
-				'default' => '',
-				'restricted' => true,
+				'type'        => 'textlist',
+				'default'     => '',
+				'restricted'  => true,
 			),
-			'excluded_plugins_backend_enabled' => array(
-				'label' => 'Enable Backend Exclusion',
+			'excluded_plugins_backend_enabled'  => array(
+				'label'       => 'Enable Backend Exclusion',
 				'description' => 'Exclude plugins on admin dashboard (applies to all users).',
-				'type' => 'checkbox',
-				'default' => 0,
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'checkbox',
+				'default'     => 0,
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
-			'excluded_plugins_backend' => array(
-				'label' => 'Backend Excluded Plugins',
+			'excluded_plugins_backend'          => array(
+				'label'       => 'Backend Excluded Plugins',
 				'description' => 'One plugin path per line.  Format: plugin-handle|admin-screen (e.g. hello Dolly/hello.php|post.php).',
-				'type' => 'textlist',
-				'default' => '',
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'textlist',
+				'default'     => '',
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
-			'excluded_plugins_bycap_enabled' => array(
-				'label' => 'Enable Admin Capability Exclusion',
+			'excluded_plugins_bycap_enabled'    => array(
+				'label'       => 'Enable Admin Capability Exclusion',
 				'description' => 'Exclude plugins in admin for users without capability.',
-				'type' => 'checkbox',
-				'default' => 0,
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'checkbox',
+				'default'     => 0,
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
-			'excluded_plugins_bycap_cap' => array(
-				'label' => 'Required Capability',
+			'excluded_plugins_bycap_cap'        => array(
+				'label'       => 'Required Capability',
 				'description' => 'Capability needed to load excluded plugins in admin.',
-				'type' => 'text',
-				'default' => 'delete_plugins',
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'text',
+				'default'     => 'delete_plugins',
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
-			'excluded_plugins_bycap' => array(
-				'label' => 'Admin Excluded Plugins',
+			'excluded_plugins_bycap'            => array(
+				'label'       => 'Admin Excluded Plugins',
 				'description' => 'One plugin path per line (e.g., hello Dolly/hello.php).',
-				'type' => 'textlist',
-				'default' => '',
-				'restricted' => true,
-				'autoload' => 'no',
+				'type'        => 'textlist',
+				'default'     => '',
+				'restricted'  => true,
+				'autoload'    => 'no',
 			),
-			'section_title_components' => array(
-				'label' => 'Disable Core Features',
+			'section_title_components'          => array(
+				'label'       => 'Disable Core Features',
 				'description' => 'Disable core plugin features',
-				'type' => 'section_title',
+				'type'        => 'section_title',
 			),
-			'disable_cache' => array(
-				'label' => 'Disable Cache Manager',
+			'disable_cache'                     => array(
+				'label'       => 'Disable Cache Manager',
 				'description' => 'Bypass plugin cache manager and retrieve options directly from the database.',
-				'type' => 'checkbox',
-				'default' => 0,
-				'restricted' => true,
+				'type'        => 'checkbox',
+				'default'     => 0,
+				'restricted'  => true,
 			),
-			'disable_environment' => array(
-				'label' => 'Disable Environment Manager',
+			'disable_environment'               => array(
+				'label'       => 'Disable Environment Manager',
 				'description' => 'Bypass automatic runtime environment selection based on current host.',
-				'type' => 'checkbox',
-				'default' => 0,
-				'restricted' => true,
+				'type'        => 'checkbox',
+				'default'     => 0,
+				'restricted'  => true,
 			),
-			'disable_translator' => array(
-				'type' => 'checkbox',
-				'label' => 'Disable Translator',
+			'disable_translator'                => array(
+				'type'        => 'checkbox',
+				'label'       => 'Disable Translator',
 				'description' => 'Disable dynamic translation features for post, options, users, terms metadata.',
-				'default' => '0',
+				'default'     => '0',
 			),
-			'disable_rewriter' => array(
-				'type' => 'checkbox',
-				'label' => 'Disable Rewriter',
+			'disable_rewriter'                  => array(
+				'type'        => 'checkbox',
+				'label'       => 'Disable Rewriter',
 				'description' => 'Disable rewriter features.',
-				'default' => '0',
+				'default'     => '0',
 			),
-			'disable_plugin' => array(
-				'label' => 'Disable Plugin',
+			'disable_plugin'                    => array(
+				'label'       => 'Disable Plugin',
 				'description' => 'Disable all plugin features (except admin, shortcodes, translations and theme.json).',
-				'type' => 'checkbox',
-				'default' => 0,
-				'restricted' => true,
+				'type'        => 'checkbox',
+				'default'     => 0,
+				'restricted'  => true,
 			),
 		),
 	),

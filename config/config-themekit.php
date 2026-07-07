@@ -8,8 +8,8 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -20,22 +20,22 @@ if (!defined('ABSPATH')) {
  * 2. ThemeKit Styles (priority 11)
  * 3. Theme Stylesheet (priority 12)
  * 4. Module Styles (priority 15)
- * 
+ *
  */
-const FRL_THEMEKIT_STYLE_PRIORITY = [
-    'themekit' => 10,
-    'modules'  => 15,
-];
+const FRL_THEMEKIT_STYLE_PRIORITY = array(
+	'themekit' => 10,
+	'modules'  => 15,
+);
 
 /**
  * Themekit defined Patterns Categories
  */
-const FRL_THEMEKIT_PATTERNS_CATEGORIES = [
-    'sections',
-    'queries',
-    'ACF',
-    'editorial'
-];
+const FRL_THEMEKIT_PATTERNS_CATEGORIES = array(
+	'sections',
+	'queries',
+	'ACF',
+	'editorial',
+);
 
 /**
  * Query parameters that trigger body class additions
@@ -43,6 +43,6 @@ const FRL_THEMEKIT_PATTERNS_CATEGORIES = [
  * When these query parameters are present in the URL, a corresponding
  * body class "has-{param}" will be added (e.g. "has-frlq").
  */
-const FRL_THEMEKIT_TRACKED_QUERY_PARAMS = [
-    'frlq',   // Bible reference query param
-];
+const FRL_THEMEKIT_TRACKED_QUERY_PARAMS = array(
+	'frlq',   // Bible reference query param
+);

@@ -9,8 +9,8 @@
  */
 
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -21,23 +21,22 @@ if (!defined('ABSPATH')) {
  * @hook wp_head
  * @priority -999
  */
-function frl_add_critical_css()
-{
-    if (!frl_get_option('critical_css')) {
-        return;
-    }
+function frl_add_critical_css() {
+	if ( ! frl_get_option( 'critical_css' ) ) {
+		return;
+	}
 
-    $css = frl_get_critical_css_data();
+	$css = frl_get_critical_css_data();
 
-    if (frl_is_array_not_empty($css)) {
-        printf(
-            '<style id="%s-critical-css" data-lastmod="%s" data-plugin="%s" data-parsing="critical-css">%s</style>',
-            FRL_PREFIX,
-            date('Y-m-d-H:i', $css['mtime']),
-            FRL_NAME,
-            $css['css']
-        );
-    }
+	if ( frl_is_array_not_empty( $css ) ) {
+		printf(
+			'<style id="%s-critical-css" data-lastmod="%s" data-plugin="%s" data-parsing="critical-css">%s</style>',
+			FRL_PREFIX,
+			gmdate( 'Y-m-d-H:i', $css['mtime'] ),
+			FRL_NAME,
+			$css['css']
+		);
+	}
 }
 
 /**
@@ -49,31 +48,30 @@ function frl_add_critical_css()
  * @hook wp_footer
  * @priority 1
  */
-function frl_add_deferred_css()
-{
-    if (!frl_get_option('deferred_css')) {
-        return;
-    }
+function frl_add_deferred_css() {
+	if ( ! frl_get_option( 'deferred_css' ) ) {
+		return;
+	}
 
-    $css_path = get_stylesheet_directory() . '/deferred.css';
+	$css_path = get_stylesheet_directory() . '/deferred.css';
 
-    if (!file_exists($css_path)) {
-        return;
-    }
+	if ( ! file_exists( $css_path ) ) {
+		return;
+	}
 
-    $assets  = ['deferred-css' => $css_path];
-    $version = frl_get_assets_versions($assets, 'deferred_css', 'versions', false);
+	$assets  = array( 'deferred-css' => $css_path );
+	$version = frl_get_assets_versions( $assets, 'deferred_css', 'versions', false );
 
-    if (empty($version)) {
-        return;
-    }
+	if ( empty( $version ) ) {
+		return;
+	}
 
-    $mtime = $version['deferred-css'];
-    $url   = esc_url(get_stylesheet_directory_uri() . '/deferred.css?ver=' . $mtime);
+	$mtime = $version['deferred-css'];
+	$url   = esc_url( get_stylesheet_directory_uri() . '/deferred.css?ver=' . $mtime );
 
-    echo "<link rel='stylesheet' id='" . FRL_PREFIX . "-deferred-css' href='{$url}' media='print' onload=\"this.media='all'\" data-plugin='" . FRL_NAME . "' data-parsing='deferred-css'>\n";
-    
-    echo "<noscript><link rel='stylesheet' href='{$url}'></noscript>\n";
+	echo "<link rel='stylesheet' id='" . FRL_PREFIX . "-deferred-css' href='{$url}' media='print' onload=\"this.media='all'\" data-plugin='" . FRL_NAME . "' data-parsing='deferred-css'>\n";
+
+	echo "<noscript><link rel='stylesheet' href='{$url}'></noscript>\n";
 }
 
 /**
@@ -84,43 +82,44 @@ function frl_add_deferred_css()
  *
  * @return array{css: string, mtime: int}|array{} Array with 'css' and 'mtime', or empty array if unavailable.
  */
-function frl_get_critical_css_data()
-{
-    $css_path = get_stylesheet_directory() . '/critical.css';
-    $css_file = ['critical-css' => $css_path];
-    // Retrieve asset versions for the critical CSS file
-    $css_version = frl_get_assets_versions($css_file, 'critical_css', 'versions', false);
-    if (empty($css_version)) {
-        return [];
-    }
+function frl_get_critical_css_data() {
+	$css_path = get_stylesheet_directory() . '/critical.css';
+	$css_file = array( 'critical-css' => $css_path );
+	// Retrieve asset versions for the critical CSS file
+	$css_version = frl_get_assets_versions( $css_file, 'critical_css', 'versions', false );
+	if ( empty( $css_version ) ) {
+		return array();
+	}
 
-    $mtime = $css_version['critical-css'];
+	$mtime = $css_version['critical-css'];
 
-    if (!$mtime) {
-        return [];
-    }
+	if ( ! $mtime ) {
+		return array();
+	}
 
-    $critical_css = frl_cache_remember('html', "critical_css_{$mtime}",
-        function () use ($css_path, $mtime) {
-            // Single file read operation - more efficient than checking existence first
-            $css_content = file_get_contents($css_path);
-            if ($css_content === false || empty($css_content)) {
-                return '';
-            }
+	$critical_css = frl_cache_remember(
+		'html',
+		"critical_css_{$mtime}",
+		function () use ( $css_path, $mtime ) {
+			// Single file read operation - more efficient than checking existence first
+			$css_content = file_get_contents( $css_path );
+			if ( $css_content === false || empty( $css_content ) ) {
+				return '';
+			}
 
-            $minified = frl_minify_css($css_content);
+			$minified = frl_minify_css( $css_content );
 
-            // Prepare the data to be cached
-            $data = [
-                'css' => $minified,
-                'mtime' => $mtime
-            ];
+			// Prepare the data to be cached
+			$data = array(
+				'css'   => $minified,
+				'mtime' => $mtime,
+			);
 
-            return $data;
-        }
-    );
+			return $data;
+		}
+	);
 
-    return $critical_css;
+	return $critical_css;
 }
 
 /**
@@ -129,38 +128,36 @@ function frl_get_critical_css_data()
  * This is the main entry point for feature disabling, typically called during initialization.
  * Also handles the removal of Dashicons for non-logged-in users on the frontend.
  */
-function frl_disable_wp_core_features()
-{
-    if (frl_get_option('disable_oembed')) {
-        frl_disable_oembed();
-    }
+function frl_disable_wp_core_features() {
+	if ( frl_get_option( 'disable_oembed' ) ) {
+		frl_disable_oembed();
+	}
 
-    if (frl_get_option('disable_emojis')) {
-        frl_remove_emojis();
-    }
+	if ( frl_get_option( 'disable_emojis' ) ) {
+		frl_remove_emojis();
+	}
 
-    if (frl_get_option('disable_comments')) {
-        frl_disable_comments();
-    }
+	if ( frl_get_option( 'disable_comments' ) ) {
+		frl_disable_comments();
+	}
 
-    if (!frl_is_logged_in() && !is_login()) {
-        wp_dequeue_style('dashicons');
-        wp_deregister_style('dashicons');
-    }
+	if ( ! frl_is_logged_in() && ! is_login() ) {
+		wp_dequeue_style( 'dashicons' );
+		wp_deregister_style( 'dashicons' );
+	}
 }
 
 /**
  * Disables oEmbed discovery and parsing functionality.
  */
-function frl_disable_oembed()
-{
-    // Use standard WordPress removal functions for built-in hooks
-    remove_action('rest_api_init', 'wp_oembed_register_route');
-    remove_filter('oembed_dataparse', 'wp_filter_oembed_result', 10);
-    remove_action('wp_head', 'wp_oembed_add_discovery_links');
-    remove_action('wp_head', 'wp_oembed_add_host_js');
+function frl_disable_oembed() {
+	// Use standard WordPress removal functions for built-in hooks
+	remove_action( 'rest_api_init', 'wp_oembed_register_route' );
+	remove_filter( 'oembed_dataparse', 'wp_filter_oembed_result', 10 );
+	remove_action( 'wp_head', 'wp_oembed_add_discovery_links' );
+	remove_action( 'wp_head', 'wp_oembed_add_host_js' );
 
-    add_filter('embed_oembed_discover', '__return_false', 10, 0);
+	add_filter( 'embed_oembed_discover', '__return_false', 10, 0 );
 }
 
 /**
@@ -169,13 +166,12 @@ function frl_disable_oembed()
  * @param string[] $plugins List of TinyMCE plugins.
  * @return string[] Filtered list of plugins.
  */
-function frl_disable_emojis_tinymce($plugins)
-{
-    if (frl_is_array_not_empty($plugins)) {
-        return array_diff($plugins, array('wpemoji'));
-    } else {
-        return array();
-    }
+function frl_disable_emojis_tinymce( $plugins ) {
+	if ( frl_is_array_not_empty( $plugins ) ) {
+		return array_diff( $plugins, array( 'wpemoji' ) );
+	} else {
+		return array();
+	}
 }
 
 /**
@@ -185,39 +181,37 @@ function frl_disable_emojis_tinymce($plugins)
  * @param string $relation_type The relation type the URLs are printed for.
  * @return string[] Filtered list of URLs.
  */
-function frl_disable_emojis_remove_dns_prefetch($urls, $relation_type)
-{
-    if ('dns-prefetch' == $relation_type) {
-        /** This filter is documented in wp-includes/formatting.php */
-        $emoji_svg_url = apply_filters('emoji_svg_url', 'https://s.w.org/images/core/emoji/2/svg/');
+function frl_disable_emojis_remove_dns_prefetch( $urls, $relation_type ) {
+	if ( 'dns-prefetch' === $relation_type ) {
+		/** This filter is documented in wp-includes/formatting.php */
+		$emoji_svg_url = apply_filters( 'emoji_svg_url', 'https://s.w.org/images/core/emoji/2/svg/' );
 
-        $urls = array_diff($urls, array($emoji_svg_url));
-    }
-    return $urls;
+		$urls = array_diff( $urls, array( $emoji_svg_url ) );
+	}
+	return $urls;
 }
 
 /**
  * Disables WordPress emoji support across the site and admin area.
  */
-function frl_remove_emojis()
-{
-    if (!frl_get_option('disable_emojis')) {
-        return;
-    }
+function frl_remove_emojis() {
+	if ( ! frl_get_option( 'disable_emojis' ) ) {
+		return;
+	}
 
-    remove_action('wp_head', 'print_emoji_detection_script', 7);
-    remove_action('admin_print_scripts', 'print_emoji_detection_script');
-    remove_action('wp_print_styles', 'print_emoji_styles');
-    remove_action('admin_print_styles', 'print_emoji_styles');
-    remove_filter('the_content_feed', 'wp_staticize_emoji');
-    remove_filter('comment_text_rss', 'wp_staticize_emoji');
-    remove_filter('wp_mail', 'wp_staticize_emoji_for_email');
+	remove_action( 'wp_head', 'print_emoji_detection_script', 7 );
+	remove_action( 'admin_print_scripts', 'print_emoji_detection_script' );
+	remove_action( 'wp_print_styles', 'print_emoji_styles' );
+	remove_action( 'admin_print_styles', 'print_emoji_styles' );
+	remove_filter( 'the_content_feed', 'wp_staticize_emoji' );
+	remove_filter( 'comment_text_rss', 'wp_staticize_emoji' );
+	remove_filter( 'wp_mail', 'wp_staticize_emoji_for_email' );
 
-    // Avoid registering callbacks that live in public components when the plugin front-end is disabled.
-    if (!frl_get_option('disable_plugin')) {
-        add_filter('tiny_mce_plugins',  'frl_disable_emojis_tinymce',             10, 1);
-        add_filter('wp_resource_hints', 'frl_disable_emojis_remove_dns_prefetch', 10, 2);
-    }
+	// Avoid registering callbacks that live in public components when the plugin front-end is disabled.
+	if ( ! frl_get_option( 'disable_plugin' ) ) {
+		add_filter( 'tiny_mce_plugins', 'frl_disable_emojis_tinymce', 10, 1 );
+		add_filter( 'wp_resource_hints', 'frl_disable_emojis_remove_dns_prefetch', 10, 2 );
+	}
 }
 
 /**
@@ -231,84 +225,111 @@ function frl_remove_emojis()
  * - Unregisters comment widgets and filters comment status.
  * - Removes the recent comments dashboard widget.
  */
-function frl_disable_comments()
-{
-    if (frl_is_already_running(__FUNCTION__)) {
-        return;
-    }
+function frl_disable_comments() {
+	if ( frl_is_already_running( __FUNCTION__ ) ) {
+		return;
+	}
 
-    // Remove comment support from all post types
-    foreach (get_post_types() as $post_type) {
-        if (post_type_supports($post_type, 'comments')) {
-            remove_post_type_support($post_type, 'comments');
-            remove_post_type_support($post_type, 'trackbacks');
-        }
-    }
+	// Remove comment support from all post types
+	foreach ( get_post_types() as $post_type ) {
+		if ( post_type_supports( $post_type, 'comments' ) ) {
+			remove_post_type_support( $post_type, 'comments' );
+			remove_post_type_support( $post_type, 'trackbacks' );
+		}
+	}
 
-    // Schedule a one-time cron to batch-close existing comments (avoids a
-    // synchronous table-wide UPDATE on admin_init). Completion marker uses
-    // the `_frl_` internal-state convention (like `_frl_post_version`), not
-    // a cache entry and not a plain `frl_`-prefixed option: it must survive
-    // "Clear Cache", and frl_-prefixed options leak into Import/Export via
-    // frl_get_plugin_options_db()'s raw `LIKE 'frl_%'` scan — which would
-    // wrongly mark a *different* environment's comments as already closed.
-    // Cleaned up in frl_delete_plugin(). Skipped for REST/AJAX (no admin UI
-    // to protect there, and the check is moot once the batch has run).
-    if (frl_is_admin() && !frl_is_rest_api_request() && !wp_doing_ajax()) {
-        $completed = get_option('_frl_disable_comments_completed');
-        if ($completed !== '1' && !wp_next_scheduled('frl_disable_comments_batch')) {
-            wp_schedule_single_event(time() + 5, 'frl_disable_comments_batch');
-        }
-    }
+	// Schedule a one-time cron to batch-close existing comments (avoids a
+	// synchronous table-wide UPDATE on admin_init). Completion marker uses
+	// the `_frl_` internal-state convention (like `_frl_post_version`), not
+	// a cache entry and not a plain `frl_`-prefixed option: it must survive
+	// "Clear Cache", and frl_-prefixed options leak into Import/Export via
+	// frl_get_plugin_options_db()'s raw `LIKE 'frl_%'` scan — which would
+	// wrongly mark a *different* environment's comments as already closed.
+	// Cleaned up in frl_delete_plugin(). Skipped for REST/AJAX (no admin UI
+	// to protect there, and the check is moot once the batch has run).
+	if ( frl_is_admin() && ! frl_is_rest_api_request() && ! wp_doing_ajax() ) {
+		$completed = get_option( '_frl_disable_comments_completed' );
+		if ( $completed !== '1' && ! wp_next_scheduled( 'frl_disable_comments_batch' ) ) {
+			wp_schedule_single_event( time() + 5, 'frl_disable_comments_batch' );
+		}
+	}
 
-    // Handle the scheduled batch update
-    if (!has_action('frl_disable_comments_batch', 'frl_run_disable_comments_batch')) {
-        add_action('frl_disable_comments_batch', 'frl_run_disable_comments_batch');
-    }
+	// Handle the scheduled batch update
+	if ( ! has_action( 'frl_disable_comments_batch', 'frl_run_disable_comments_batch' ) ) {
+		add_action( 'frl_disable_comments_batch', 'frl_run_disable_comments_batch' );
+	}
 
-    // Admin-UI-only hooks: nothing here renders during REST/AJAX dispatch.
-    if (!frl_is_rest_api_request() && !wp_doing_ajax()) {
-        add_action('admin_menu', function () {
-            remove_menu_page('edit-comments.php');
-        }, 10, 0);
+	// Admin-UI-only hooks: nothing here renders during REST/AJAX dispatch.
+	if ( ! frl_is_rest_api_request() && ! wp_doing_ajax() ) {
+		add_action(
+			'admin_menu',
+			function () {
+				remove_menu_page( 'edit-comments.php' );
+			},
+			10,
+			0
+		);
 
-        add_action('admin_bar_menu', function ($wp_admin_bar) {
-            $wp_admin_bar->remove_node('comments');
-        }, 999, 1);
+		add_action(
+			'admin_bar_menu',
+			function ( $wp_admin_bar ) {
+				$wp_admin_bar->remove_node( 'comments' );
+			},
+			999,
+			1
+		);
 
-        add_action('widgets_init', function () {
-            unregister_widget('WP_Widget_Recent_Comments');
-        }, 10, 0);
+		add_action(
+			'widgets_init',
+			function () {
+				unregister_widget( 'WP_Widget_Recent_Comments' );
+			},
+			10,
+			0
+		);
 
-        add_action('admin_init', function () {
-            remove_meta_box('dashboard_recent_comments', 'dashboard', 'normal');
-        }, 10, 0);
-    }
+		add_action(
+			'admin_init',
+			function () {
+				remove_meta_box( 'dashboard_recent_comments', 'dashboard', 'normal' );
+			},
+			10,
+			0
+		);
+	}
 
-    // REST/feed/policy filters stay unconditional — these are what actually
-    // enforce "comments disabled" for REST requests, not just admin UI.
-    add_filter('rest_endpoints', function ($endpoints) {
-        unset($endpoints['/wp/v2/comments']);
-        unset($endpoints['/wp/v2/comments/(?P<id>[\d]+)']);
-        return $endpoints;
-    });
+	// REST/feed/policy filters stay unconditional — these are what actually
+	// enforce "comments disabled" for REST requests, not just admin UI.
+	add_filter(
+		'rest_endpoints',
+		function ( $endpoints ) {
+			unset( $endpoints['/wp/v2/comments'] );
+			unset( $endpoints['/wp/v2/comments/(?P<id>[\d]+)'] );
+			return $endpoints;
+		}
+	);
 
-    add_action('template_redirect', function () {
-        if (is_comment_feed()) {
-            $redirect_url = home_url();
-            if (!empty($_GET)) {
-                $redirect_url = add_query_arg($_GET, $redirect_url);
-            }
-            wp_redirect($redirect_url);
-            exit;
-        }
-    }, 999, 0);
+	add_action(
+		'template_redirect',
+		function () {
+			if ( is_comment_feed() ) {
+				$redirect_url = home_url();
+				if ( ! empty( $_GET ) ) {
+					$redirect_url = add_query_arg( $_GET, $redirect_url );
+				}
+				wp_redirect( $redirect_url );
+				exit;
+			}
+		},
+		999,
+		0
+	);
 
-    add_filter('comments_open',  '__return_false',       20, 2);
-    add_filter('pings_open',     '__return_false',       20, 2);
-    add_filter('comments_array', '__return_empty_array', 10, 2);
+	add_filter( 'comments_open', '__return_false', 20, 2 );
+	add_filter( 'pings_open', '__return_false', 20, 2 );
+	add_filter( 'comments_array', '__return_empty_array', 10, 2 );
 
-    frl_is_already_running(__FUNCTION__, true);
+	frl_is_already_running( __FUNCTION__, true );
 }
 
 /**
@@ -319,15 +340,20 @@ function frl_disable_comments()
  *
  * @return void
  */
-function frl_run_disable_comments_batch(): void
-{
-    global $wpdb;
+function frl_run_disable_comments_batch(): void {
+	global $wpdb;
 
-    $wpdb->update(
-        $wpdb->posts,
-        ['comment_status' => 'closed', 'ping_status' => 'closed'],
-        ['post_status' => 'publish', 'comment_status' => 'open']
-    );
+	$wpdb->update(
+		$wpdb->posts,
+		array(
+			'comment_status' => 'closed',
+			'ping_status'    => 'closed',
+		),
+		array(
+			'post_status'    => 'publish',
+			'comment_status' => 'open',
+		)
+	);
 
-    update_option('_frl_disable_comments_completed', '1', false);
+	update_option( '_frl_disable_comments_completed', '1', false );
 }

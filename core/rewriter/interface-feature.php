@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -12,35 +12,35 @@ if (!defined('ABSPATH')) {
  * @package Fralenuvole
  * @since 3.0.0
  */
-interface Frl_Rewriter_Feature_Interface
-{
-    /** Priority: lower number = higher specificity */
-    public function get_priority(): int;
+interface Frl_Rewriter_Feature_Interface {
 
-    /** Return human-readable feature name */
-    public function get_name(): string;
+	/** Priority: lower number = higher specificity */
+	public function get_priority(): int;
 
-    /** Whether this feature is currently enabled by configuration */
-    public function is_enabled(): bool;
+	/** Return human-readable feature name */
+	public function get_name(): string;
 
-    /** Rewrite rules pattern => query vars */
-    public function generate_rules(): array;
+	/** Whether this feature is currently enabled by configuration */
+	public function is_enabled(): bool;
 
-    /** Does this feature handle the given request URI? */
-    public function applies_to_request(string $request_uri): bool;
+	/** Rewrite rules pattern => query vars */
+	public function generate_rules(): array;
 
-    /** Resolve request URI into WP query vars */
-    public function resolve_request(string $request_uri): array;
+	/** Does this feature handle the given request URI? */
+	public function applies_to_request( string $request_uri ): bool;
 
-    /** Whether this feature applies to a given object (post/term) for outbound URL transformation */
-    public function applies_to($object): bool;
+	/** Resolve request URI into WP query vars */
+	public function resolve_request( string $request_uri ): array;
 
-    /** Transform outbound URL for the given object */
-    public function transform(string $url, $object): string;
+	/** Whether this feature applies to a given object (post/term) for outbound URL transformation */
+	public function applies_to( $obj ): bool;
 
-    /** Query var used by catch-all rules or empty string */
-    public function get_catch_all_query_var(): string;
+	/** Transform outbound URL for the given object */
+	public function transform( string $url, $obj ): string;
 
-    /** Convenience flag */
-    public function uses_catch_all(): bool;
+	/** Query var used by catch-all rules or empty string */
+	public function get_catch_all_query_var(): string;
+
+	/** Convenience flag */
+	public function uses_catch_all(): bool;
 }

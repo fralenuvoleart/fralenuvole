@@ -40,8 +40,8 @@
  */
 
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 // Load dependencies
@@ -50,8 +50,8 @@ require_once __DIR__ . '/class-rewriter-coordinator.php';
 require_once __DIR__ . '/trait-cache-key-generator.php';
 
 // Config validator is admin-only: heavy class with no frontend value.
-if (is_admin()) {
-    require_once __DIR__ . '/class-rewriter-config-validator.php';
+if ( is_admin() ) {
+	require_once __DIR__ . '/class-rewriter-config-validator.php';
 }
 
 /**
@@ -63,474 +63,489 @@ if (is_admin()) {
  * @package Fralenuvole
  * @since 3.0.0
  */
-final class Frl_Rewriter implements Frl_Rewriter_Interface
-{
-    use Frl_Rewriter_Cache_Key_Trait;
-    private Frl_Rewriter_Coordinator $coordinator;
+final class Frl_Rewriter implements Frl_Rewriter_Interface {
 
-    private static ?self $instance = null;
-    private static bool $hooks_registered = false;
+	use Frl_Rewriter_Cache_Key_Trait;
 
-    /**
-     * Private constructor - use init() to get instance
-     *
-     * @return void
-     */
-    private function __construct()
-    {
-        $this->coordinator = Frl_Rewriter_Coordinator::init();
-        $this->register_hooks();
-        // Validation and feature caching are deferred to runtime to ensure CPTs and mappings are loaded.
-    }
+	private Frl_Rewriter_Coordinator $coordinator;
 
-    /**
-     * Get the singleton instance
-     *
-     * @return self The rewriter instance
-     */
-    public static function init(): self
-    {
-        if (self::$instance === null) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
+	private static ?self $instance        = null;
+	private static bool $hooks_registered = false;
 
-    /**
-     * Register WordPress hooks for URL transformation and cache invalidation
-     *
-     * @return void
-     */
-    private function register_hooks(): void
-    {
-        if (self::$hooks_registered) {
-            return;
-        }
+	/**
+	 * Private constructor - use init() to get instance
+	 *
+	 * @return void
+	 */
+	private function __construct() {
+		$this->coordinator = Frl_Rewriter_Coordinator::init();
+		$this->register_hooks();
+		// Validation and feature caching are deferred to runtime to ensure CPTs and mappings are loaded.
+	}
 
-        // URL transformation hooks (for generating URLs)
-        add_filter('post_type_link', [$this, 'filter_post_link'], 10, 2);
-        add_filter('term_link', [$this, 'filter_term_link'], 10, 3);
+	/**
+	 * Get the singleton instance
+	 *
+	 * @return self The rewriter instance
+	 */
+	public static function init(): self {
+		if ( self::$instance === null ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
 
-        // Wire cache invalidation so changes to permalink options flush rewriter caches.
-        self::register_cache_invalidation_hooks();
+	/**
+	 * Register WordPress hooks for URL transformation and cache invalidation
+	 *
+	 * @return void
+	 */
+	private function register_hooks(): void {
+		if ( self::$hooks_registered ) {
+			return;
+		}
 
-        self::$hooks_registered = true;
-    }
+		// URL transformation hooks (for generating URLs)
+		add_filter( 'post_type_link', array( $this, 'filter_post_link' ), 10, 2 );
+		add_filter( 'term_link', array( $this, 'filter_term_link' ), 10, 3 );
+
+		// Wire cache invalidation so changes to permalink options flush rewriter caches.
+		self::register_cache_invalidation_hooks();
+
+		self::$hooks_registered = true;
+	}
 
 
-    /**
-     * Filter post link for URL transformation
-     *
-     * @param string $link The post link URL
-     * @param mixed $post The post object
-     * @return string The transformed post link
-     */
-    public function filter_post_link(string $link, $post): string
-    {
-        return $this->transform_url($link, $post);
-    }
+	/**
+	 * Filter post link for URL transformation
+	 *
+	 * @param string $link The post link URL
+	 * @param mixed $post The post object
+	 * @return string The transformed post link
+	 */
+	public function filter_post_link( string $link, $post ): string {
+		return $this->transform_url( $link, $post );
+	}
 
-    /**
-     * Filter term link for URL transformation
-     *
-     * @param string $link The term link URL
-     * @param mixed $term The term object or term ID
-     * @param string $taxonomy The taxonomy name (optional)
-     * @return string The transformed term link
-     */
-    public function filter_term_link(string $link, $term, string $taxonomy = ''): string
-    {
-        if (is_int($term)) {
-            $term = get_term($term, $taxonomy);
-        }
-        if (!is_object($term) || is_wp_error($term)) {
-            return $link;
-        }
-        return $this->transform_url($link, $term);
-    }
+	/**
+	 * Filter term link for URL transformation
+	 *
+	 * @param string $link The term link URL
+	 * @param mixed $term The term object or term ID
+	 * @param string $taxonomy The taxonomy name (optional)
+	 * @return string The transformed term link
+	 */
+	public function filter_term_link( string $link, $term, string $taxonomy = '' ): string {
+		if ( is_int( $term ) ) {
+			$term = get_term( $term, $taxonomy );
+		}
+		if ( ! is_object( $term ) || is_wp_error( $term ) ) {
+			return $link;
+		}
+		return $this->transform_url( $link, $term );
+	}
 
-    /**
-     * Central URL transformation logic.
-     *
-     * Iterates through features in priority order and applies ALL
-     * matching transformations (composition). Caches the result.
-     *
-     * @param string $url The URL to transform
-     * @param mixed $object The object (post/term) the URL belongs to
-     * @return string The transformed URL
-     */
-    private function transform_url(string $url, $object): string
-    {
-        // Early exit if input is invalid
-        if (!is_object($object)) {
-            return $url;
-        }
+	/**
+	 * Central URL transformation logic.
+	 *
+	 * Iterates through features in priority order and applies ALL
+	 * matching transformations (composition). Caches the result.
+	 *
+	 * @param string $url The URL to transform
+	 * @param mixed $obj The object (post/term) the URL belongs to
+	 * @return string The transformed URL
+	 */
+	private function transform_url( string $url, $obj ): string {
+		// Early exit if input is invalid
+		if ( ! is_object( $obj ) ) {
+			return $url;
+		}
 
-        // REST API guard must come BEFORE the cache check.
-        // URL transformation is disabled for REST to preserve canonical, untransformed URLs for
-        // API clients. Placing this first ensures REST requests NEVER read a cached transformed
-        // URL that was stored by a prior frontend request — guaranteeing consistent REST output
-        // regardless of cache state.
-        if (frl_is_rest_api_request()) {
-            return $url;
-        }
+		// REST API guard must come BEFORE the cache check.
+		// URL transformation is disabled for REST to preserve canonical, untransformed URLs for
+		// API clients. Placing this first ensures REST requests NEVER read a cached transformed
+		// URL that was stored by a prior frontend request — guaranteeing consistent REST output
+		// regardless of cache state.
+		if ( frl_is_rest_api_request() ) {
+			return $url;
+		}
 
-        // Preview guard: skip URL transformation for preview requests to prevent
-        // preview URLs from being transformed and cached incorrectly.
-        if (is_preview()) {
-            return $url;
-        }
+		// Preview guard: skip URL transformation for preview requests to prevent
+		// preview URLs from being transformed and cached incorrectly.
+		if ( is_preview() ) {
+			return $url;
+		}
 
-        // Fast-path cache check: generate the key and return immediately on hit.
-        // This eliminates the get_enabled_features() array_filter call on every
-        // post_type_link / term_link filter invocation when the result is already cached.
-        $cache_key = $this->generate_cache_key($url, $object);
-        $cached = frl_cache_get('permalinks', $cache_key);
-        if (is_string($cached)) {
-            return $cached;
-        }
+		// Fast-path cache check: generate the key and return immediately on hit.
+		// This eliminates the get_enabled_features() array_filter call on every
+		// post_type_link / term_link filter invocation when the result is already cached.
+		$cache_key = $this->generate_cache_key( $url, $obj );
+		$cached    = frl_cache_get( 'permalinks', $cache_key );
+		if ( is_string( $cached ) ) {
+			return $cached;
+		}
 
-        // Re-entrancy protection: prevent recursive URL processing during ACF relationship queries.
-        // Use string concatenation for the key instead of md5 for maximum performance.
-        static $processing_urls = [];
-        $object_id = isset($object->ID) ? $object->ID : (isset($object->term_id) ? $object->term_id : 'unknown');
-        $re_entrancy_key = $object_id . '_' . $url;
+		// Re-entrancy protection: prevent recursive URL processing during ACF relationship queries.
+		// Use string concatenation for the key instead of md5 for maximum performance.
+		static $processing_urls = array();
+		$object_id              = isset( $obj->ID ) ? $obj->ID : ( isset( $obj->term_id ) ? $obj->term_id : 'unknown' );
+		$re_entrancy_key        = $object_id . '_' . $url;
 
-        if (isset($processing_urls[$re_entrancy_key])) {
-            // Cache was already checked above and was a miss; no result available yet.
-            return $url;
-        }
+		if ( isset( $processing_urls[ $re_entrancy_key ] ) ) {
+			// Cache was already checked above and was a miss; no result available yet.
+			return $url;
+		}
 
-        $processing_urls[$re_entrancy_key] = true;
+		$processing_urls[ $re_entrancy_key ] = true;
 
-        // Get enabled features (only reached on cache miss — avoids array_filter overhead on hits).
-        $features = $this->coordinator->get_enabled_features();
-        if (empty($features)) {
-            unset($processing_urls[$re_entrancy_key]);
-            return $url;
-        }
+		// Get enabled features (only reached on cache miss — avoids array_filter overhead on hits).
+		$features = $this->coordinator->get_enabled_features();
+		if ( empty( $features ) ) {
+			unset( $processing_urls[ $re_entrancy_key ] );
+			return $url;
+		}
 
-        // cache_key already generated above.
+		// cache_key already generated above.
 
-        try {
-            $result = frl_cache_remember('permalinks', $cache_key, function () use ($url, $object, $features) {
-                $transformed_url = $url;
+		try {
+			$result = frl_cache_remember(
+				'permalinks',
+				$cache_key,
+				function () use ( $url, $obj, $features ) {
+					$transformed_url = $url;
 
-                // Dispatcher cache: map object signature -> applicable features (LRU pattern).
-                // $cache_order is keyed by signature (value unused) so both the "touch"
-                // (move-to-end) and "evict oldest" operations are O(1) via unset()/re-insert
-                // and array_key_first(), instead of O(n) array_diff()/array_shift() on a
-                // plain indexed array. PHP preserves associative-array insertion order.
-                static $feature_match_cache = [];
-                static $cache_order = [];
-                // Build a signature that normalizes to base WP classes to prevent
-                // cache fragmentation from subclasses (e.g., WC_Product extends WP_Post).
-                // Using spl_object_id ensures true identity even for different instances
-                // of the same class with the same post_type.
-                $base_class = ($object instanceof WP_Post) ? 'WP_Post' : (($object instanceof WP_Term) ? 'WP_Term' : get_class($object));
-                $signature = $base_class;
-                if (isset($object->post_type)) {
-                    $signature .= '_' . $object->post_type;
-                } elseif (isset($object->taxonomy)) {
-                    $signature .= '_' . $object->taxonomy;
-                }
+					// Dispatcher cache: map object signature -> applicable features (LRU pattern).
+					// $cache_order is keyed by signature (value unused) so both the "touch"
+					// (move-to-end) and "evict oldest" operations are O(1) via unset()/re-insert
+					// and array_key_first(), instead of O(n) array_diff()/array_shift() on a
+					// plain indexed array. PHP preserves associative-array insertion order.
+					static $feature_match_cache = array();
+					static $cache_order         = array();
+					// Build a signature that normalizes to base WP classes to prevent
+					// cache fragmentation from subclasses (e.g., WC_Product extends WP_Post).
+					// Using spl_object_id ensures true identity even for different instances
+					// of the same class with the same post_type.
+					$base_class = ( $obj instanceof WP_Post ) ? 'WP_Post' : ( ( $obj instanceof WP_Term ) ? 'WP_Term' : get_class( $obj ) );
+					$signature  = $base_class;
+					if ( isset( $obj->post_type ) ) {
+						$signature .= '_' . $obj->post_type;
+					} elseif ( isset( $obj->taxonomy ) ) {
+						$signature .= '_' . $obj->taxonomy;
+					}
 
-                // LRU memory guard: evict oldest entries when cache exceeds 1024
-                if (count($feature_match_cache) >= 1024 && !isset($feature_match_cache[$signature])) {
-                    // Remove oldest 10% of entries
-                    $evict_count = (int) ceil(count($cache_order) * 0.1);
-                    for ($i = 0; $i < $evict_count && !empty($cache_order); $i++) {
-                        $oldest = array_key_first($cache_order);
-                        unset($cache_order[$oldest], $feature_match_cache[$oldest]);
-                    }
-                }
+					// LRU memory guard: evict oldest entries when cache exceeds 1024
+					if ( count( $feature_match_cache ) >= 1024 && ! isset( $feature_match_cache[ $signature ] ) ) {
+						// Remove oldest 10% of entries
+						$evict_count = (int) ceil( count( $cache_order ) * 0.1 );
+						for ( $i = 0; $i < $evict_count && ! empty( $cache_order ); $i++ ) {
+							$oldest = array_key_first( $cache_order );
+							unset( $cache_order[ $oldest ], $feature_match_cache[ $oldest ] );
+						}
+					}
 
-                if (isset($feature_match_cache[$signature])) {
-                    $applicable = $feature_match_cache[$signature];
-                    // Move to end of LRU order — O(1) touch via unset + re-insert
-                    unset($cache_order[$signature]);
-                    $cache_order[$signature] = true;
-                } else {
-                    $applicable = [];
-                    foreach ($features as $feature) {
-                        if ($feature->is_enabled() && $feature->applies_to($object)) {
-                            $applicable[] = $feature;
-                        }
-                    }
-                    $feature_match_cache[$signature] = $applicable;
-                    $cache_order[$signature] = true;
-                }
+					if ( isset( $feature_match_cache[ $signature ] ) ) {
+						$applicable = $feature_match_cache[ $signature ];
+						// Move to end of LRU order — O(1) touch via unset + re-insert
+						unset( $cache_order[ $signature ] );
+						$cache_order[ $signature ] = true;
+					} else {
+						$applicable = array();
+						foreach ( $features as $feature ) {
+							if ( $feature->is_enabled() && $feature->applies_to( $obj ) ) {
+								$applicable[] = $feature;
+							}
+						}
+						$feature_match_cache[ $signature ] = $applicable;
+						$cache_order[ $signature ]         = true;
+					}
 
-                // Early return if no features apply to this specific object
-                if (empty($applicable)) {
-                    return $url;
-                }
+					// Early return if no features apply to this specific object
+					if ( empty( $applicable ) ) {
+						return $url;
+					}
 
-                // Apply transforms only from applicable list
-                foreach ($applicable as $feature) {
-                    try {
-                        $next_url = $feature->transform($transformed_url, $object);
+					// Apply transforms only from applicable list
+					foreach ( $applicable as $feature ) {
+						try {
+							$next_url = $feature->transform( $transformed_url, $obj );
 
-                        if (is_string($next_url)) {
-                            $transformed_url = $next_url;
-                        }
-                    } catch (Throwable $e) {
-                        frl_log('Rewriter feature {feature} failed during URL transformation: {error}', [
-                            'feature' => $feature->get_name(),
-                            'error'   => $e->getMessage(),
-                        ]);
-                    }
-                }
+							if ( is_string( $next_url ) ) {
+								$transformed_url = $next_url;
+							}
+						} catch ( Throwable $e ) {
+							frl_log(
+								'Rewriter feature {feature} failed during URL transformation: {error}',
+								array(
+									'feature' => $feature->get_name(),
+									'error'   => $e->getMessage(),
+								)
+							);
+						}
+					}
 
-                return $transformed_url;
-            });
-        } finally {
-            unset($processing_urls[$re_entrancy_key]);
-        }
-        
-        // Final safety check: Ensure we always return a string
-        return is_string($result) ? $result : $url;
-    }
+					return $transformed_url;
+				}
+			);
+		} finally {
+			unset( $processing_urls[ $re_entrancy_key ] );
+		}
 
-    // generate_cache_key() now provided by trait
+		// Final safety check: Ensure we always return a string
+		return is_string( $result ) ? $result : $url;
+	}
+
+	// generate_cache_key() now provided by trait
 
 
-    /**
-     * Add rewrite rules (delegated to coordinator)
-     * Required by Frl_Rewriter_Interface
-     *
-     * @return void
-     */
-    public function add_rewrite_rules(): void
-    {
-        // Rules are automatically registered when features initialize
-        // This method satisfies the interface but work is delegated to features
-        // To manually refresh rules, use force_rules_refresh() instead
+	/**
+	 * Add rewrite rules (delegated to coordinator)
+	 * Required by Frl_Rewriter_Interface
+	 *
+	 * @return void
+	 */
+	public function add_rewrite_rules(): void {
+		// Rules are automatically registered when features initialize
+		// This method satisfies the interface but work is delegated to features
+		// To manually refresh rules, use force_rules_refresh() instead
+	}
 
-    }
+	/**
+	 * Get the coordinator instance (for advanced usage)
+	 *
+	 * @return Frl_Rewriter_Coordinator The coordinator instance
+	 */
+	public function get_coordinator(): Frl_Rewriter_Coordinator {
+		return $this->coordinator;
+	}
 
-    /**
-     * Get the coordinator instance (for advanced usage)
-     *
-     * @return Frl_Rewriter_Coordinator The coordinator instance
-     */
-    public function get_coordinator(): Frl_Rewriter_Coordinator
-    {
-        return $this->coordinator;
-    }
+	/**
+	 * Check if any features are enabled
+	 *
+	 * @return bool True if any features are enabled
+	 */
+	public function has_any_features_enabled(): bool {
+		return ! empty( $this->coordinator->get_enabled_features() );
+	}
 
-    /**
-     * Check if any features are enabled
-     *
-     * @return bool True if any features are enabled
-     */
-    public function has_any_features_enabled(): bool
-    {
-        return !empty($this->coordinator->get_enabled_features());
-    }
+	/**
+	 * Pre-populate permalink cache for ACF relationship objects.
+	 *
+	 * Calling get_permalink() for each post is sufficient: it fires the post_type_link
+	 * filter which invokes transform_url(), which caches the transformed result via
+	 * frl_cache_remember. No explicit transform_url() call is needed here — doing so
+	 * would transform an already-transformed URL a second time, corrupting the cache.
+	 *
+	 * @param array $posts Array of WP_Post objects from ACF relationship fields
+	 * @return void
+	 */
+	public function warm_cache_for_posts( array $posts ): void {
+		if ( empty( $posts ) ) {
+			return;
+		}
 
-    /**
-     * Pre-populate permalink cache for ACF relationship objects.
-     *
-     * Calling get_permalink() for each post is sufficient: it fires the post_type_link
-     * filter which invokes transform_url(), which caches the transformed result via
-     * frl_cache_remember. No explicit transform_url() call is needed here — doing so
-     * would transform an already-transformed URL a second time, corrupting the cache.
-     *
-     * @param array $posts Array of WP_Post objects from ACF relationship fields
-     * @return void
-     */
-    public function warm_cache_for_posts(array $posts): void
-    {
-        if (empty($posts)) {
-            return;
-        }
+		foreach ( $posts as $post ) {
+			if ( ! is_object( $post ) || ! isset( $post->ID ) ) {
+				continue;
+			}
 
-        foreach ($posts as $post) {
-            if (!is_object($post) || !isset($post->ID)) {
-                continue;
-            }
+			// get_permalink() fires post_type_link → filter_post_link() → transform_url(),
+			// which internally uses frl_cache_remember to store the result. A subsequent
+			// call in the same request for the same post will return the cached value.
+			get_permalink( $post );
+		}
+	}
 
-            // get_permalink() fires post_type_link → filter_post_link() → transform_url(),
-            // which internally uses frl_cache_remember to store the result. A subsequent
-            // call in the same request for the same post will return the cached value.
-            get_permalink($post);
-        }
-    }
+	/**
+	 * Returns a list of CPT slugs that have multilingual configurations defined.
+	 *
+	 * This method is kept as a static utility for the admin UI, as it does not
+	 * depend on the rewriter's runtime state.
+	 *
+	 * @return array A simple array of CPT slugs (e.g., ['service']).
+	 */
+	public static function get_multilingual_cpts(): array {
+		// Cache the multilingual CPTs list for admin UI performance
+		return frl_cache_remember(
+			'rewriter',
+			'multilingual_cpts',
+			function () {
+				$cpts = array();
 
-    /**
-     * Returns a list of CPT slugs that have multilingual configurations defined.
-     *
-     * This method is kept as a static utility for the admin UI, as it does not
-     * depend on the rewriter's runtime state.
-     *
-     * @return array A simple array of CPT slugs (e.g., ['service']).
-     */
-    public static function get_multilingual_cpts(): array
-    {
-        // Cache the multilingual CPTs list for admin UI performance
-        return frl_cache_remember('rewriter', 'multilingual_cpts', function () {
-            $cpts = [];
+				if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
+					foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
+						$option = frl_get_option( "translate_cpt_slugs_{$cpt_slug}" );
+						if ( ! empty( trim( (string) $option ) ) ) {
+							$cpts[] = $cpt_slug;
+						}
+					}
+				}
 
-            if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
-                foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
-                    $option = frl_get_option("translate_cpt_slugs_{$cpt_slug}");
-                    if (!empty(trim((string)$option))) {
-                        $cpts[] = $cpt_slug;
-                    }
-                }
-            }
+				return $cpts;
+			}
+		);
+	}
 
-            return $cpts;
-        });
-    }
+	/**
+	 * Clear all rewriter-related caches including plugin option caches, then flush rules.
+	 *
+	 * Called when plugin settings have changed (hooked to update_option_* actions).
+	 * The 'options' clear is required because feature config hashes are derived from
+	 * frl_get_option() values: without clearing the option cache first, generate_rules()
+	 * would produce a stale hash key and serve old cached rules even after the option
+	 * was saved.
+	 *
+	 * For flush operations not triggered by a settings change (button press, cron,
+	 * code update), use frl_flush_rewrite_rules() which fires the same WordPress
+	 * core actions and achieves the same result through the hook chain.
+	 *
+	 * Re-entrancy guard: multiple update_option_* hooks can fire in one request
+	 * when a settings page saves several fields simultaneously. The guard ensures
+	 * flush_rewrite_rules() and the third-party notification run exactly once.
+	 */
+	public static function clear_rewriter_caches(): void {
+		if ( frl_is_already_running( __METHOD__ ) ) {
+			return;
+		}
 
-    /**
-     * Clear all rewriter-related caches including plugin option caches, then flush rules.
-     *
-     * Called when plugin settings have changed (hooked to update_option_* actions).
-     * The 'options' clear is required because feature config hashes are derived from
-     * frl_get_option() values: without clearing the option cache first, generate_rules()
-     * would produce a stale hash key and serve old cached rules even after the option
-     * was saved.
-     *
-     * For flush operations not triggered by a settings change (button press, cron,
-     * code update), use frl_flush_rewrite_rules() which fires the same WordPress
-     * core actions and achieves the same result through the hook chain.
-     *
-     * Re-entrancy guard: multiple update_option_* hooks can fire in one request
-     * when a settings page saves several fields simultaneously. The guard ensures
-     * flush_rewrite_rules() and the third-party notification run exactly once.
-     */
-    public static function clear_rewriter_caches(): void
-    {
-        if (frl_is_already_running(__METHOD__)) {
-            return;
-        }
+		// Clearing 'options' cascades into 'rewriter' via FRL_CACHE_DEPENDENCIES,
+		// so an explicit frl_cache_clear('rewriter') call is not needed here.
+		// Note: frl_cache_clear('options') internally calls reset_options_caches()
+		// which handles wp_cache_delete('alloptions', 'options') and frl_get_option('__reset__'),
+		// so alloptions clearing is already covered by the cache manager.
+		frl_cache_clear( 'options' );
+		frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
 
-        // Clearing 'options' cascades into 'rewriter' via FRL_CACHE_DEPENDENCIES,
-        // so an explicit frl_cache_clear('rewriter') call is not needed here.
-        // Note: frl_cache_clear('options') internally calls reset_options_caches()
-        // which handles wp_cache_delete('alloptions', 'options') and frl_get_option('__reset__'),
-        // so alloptions clearing is already covered by the cache manager.
-        frl_cache_clear('options');
-        frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
+		// Prevent the Subdomain Adapter from translating page_on_front /
+		// page_for_posts during rule generation. Reference counter because
+		// frl_flush_rewrite_rules() also increments via its own codepath,
+		// and the two can nest via do_action('update_option_permalink_structure').
+		if ( class_exists( 'Frl_Subdomain_Adapter' ) ) {
+			++Frl_Subdomain_Adapter::$flush_depth;
+		}
+		try {
+			flush_rewrite_rules( true );
+		} finally {
+			if ( class_exists( 'Frl_Subdomain_Adapter' ) ) {
+				--Frl_Subdomain_Adapter::$flush_depth;
+			}
+		}
+	}
 
-        // Prevent the Subdomain Adapter from translating page_on_front /
-        // page_for_posts during rule generation. Reference counter because
-        // frl_flush_rewrite_rules() also increments via its own codepath,
-        // and the two can nest via do_action('update_option_permalink_structure').
-        if (class_exists('Frl_Subdomain_Adapter')) {
-            Frl_Subdomain_Adapter::$flush_depth++;
-        }
-        try {
-            flush_rewrite_rules(true);
-        } finally {
-            if (class_exists('Frl_Subdomain_Adapter')) {
-                Frl_Subdomain_Adapter::$flush_depth--;
-            }
-        }
+	/**
+	 * Force a full rewrite rules refresh, resetting the coordinator's in-memory
+	 * config hash so the validation cache also re-evaluates.
+	 *
+	 * @return void
+	 */
+	public static function force_rules_refresh(): void {
+		$coordinator = Frl_Rewriter_Coordinator::init();
+		$coordinator->invalidate_config_hash();
+		frl_flush_rewrite_rules();
+		// Validate all features after flush to catch pattern conflicts and routing issues.
+		$coordinator->validate_all_features();
+	}
 
-    }
+	/**
+	 * Register cache invalidation hooks.
+	 * Called during plugin initialization.
+	 *
+	 * @return void
+	 */
+	public static function register_cache_invalidation_hooks(): void {
+		// Reentrancy protection - ensure hooks registered only once
+		static $cache_hooks_registered = false;
+		if ( $cache_hooks_registered ) {
+			return;
+		}
+		$cache_hooks_registered = true;
 
-    /**
-     * Force a full rewrite rules refresh, resetting the coordinator's in-memory
-     * config hash so the validation cache also re-evaluates.
-     *
-     * @return void
-     */
-    public static function force_rules_refresh(): void
-    {
-        $coordinator = Frl_Rewriter_Coordinator::init();
-        $coordinator->invalidate_config_hash();
-        frl_flush_rewrite_rules();
-        // Validate all features after flush to catch pattern conflicts and routing issues.
-        $coordinator->validate_all_features();
-    }
+		// Defer hook registration until 'wp_loaded' to ensure all plugins and themes are loaded
+		add_action(
+			'wp_loaded',
+			function () {
+				add_action( 'update_option_permalink_structure', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
+				add_action( 'update_option_category_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
+				add_action( 'update_option_tag_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
+				add_action( 'update_option_remove_cpt_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
+				add_action( 'update_option_remove_tax_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
+				// Post base translation affects get_post_base_mappings(), taxonomy rules, and catch-all exclusions.
+				add_action( 'update_option_translate_post_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
 
-    /**
-     * Register cache invalidation hooks.
-     * Called during plugin initialization.
-     *
-     * @return void
-     */
-    public static function register_cache_invalidation_hooks(): void
-    {
-        // Reentrancy protection - ensure hooks registered only once
-        static $cache_hooks_registered = false;
-        if ($cache_hooks_registered) {
-            return;
-        }
-        $cache_hooks_registered = true;
+				if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
+					foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
+						add_action( "update_option_translate_cpt_slugs_{$cpt_slug}", array( self::class, 'clear_rewriter_caches' ), 10, 1 );
+					}
+				}
 
-        // Defer hook registration until 'wp_loaded' to ensure all plugins and themes are loaded
-        add_action('wp_loaded', function () {
-            add_action('update_option_permalink_structure', [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('update_option_category_base',       [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('update_option_tag_base',            [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('update_option_remove_cpt_base',     [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('update_option_remove_tax_base',     [self::class, 'clear_rewriter_caches'], 10, 1);
-            // Post base translation affects get_post_base_mappings(), taxonomy rules, and catch-all exclusions.
-            add_action('update_option_translate_post_base', [self::class, 'clear_rewriter_caches'], 10, 1);
+				// Invalidate cached exclusion patterns when Polylang languages are
+				// added, updated, or when the default language changes. Without these
+				// hooks, rewrite rules referencing removed languages or missing rules
+				// for new languages persist until the next permalink structure change.
+				// Language deletion is covered by the 'deleted_term' hook below
+				// (Polylang calls wp_delete_term() which fires 'deleted_term').
+				add_action( 'pll_add_language', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
+				add_action( 'pll_update_language', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
+				add_action( 'pll_update_default_lang', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
 
-            if (defined('FRL_REWRITER_MULTILINGUAL_CPT') && is_array(FRL_REWRITER_MULTILINGUAL_CPT)) {
-                foreach (FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug) {
-                    add_action("update_option_translate_cpt_slugs_{$cpt_slug}", [self::class, 'clear_rewriter_caches'], 10, 1);
-                }
-            }
+				// Invalidate exclusion patterns when content changes that could
+				// introduce new slugs captured by catch-all rewrite rules.
+				// Without persistent object cache, exclusion patterns have a 1-hour
+				// TTL — these hooks ensure new pages/CPTs/terms don't cause routing
+				// conflicts during that window.
+				add_action(
+					'save_post',
+					function ( $post_id ) {
+						// Use the existing helper — covers autosave, revision, auto-draft,
+						// trash, and inherit statuses.
+						if ( ! frl_is_post_save_action( $post_id ) ) {
+							return;
+						}
+						frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
+					}
+				);
+				add_action(
+					'created_term',
+					function () {
+						frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
+					}
+				);
+				add_action(
+					'deleted_term',
+					function ( $term_id, $tt_id, $taxonomy ) {
+						if ( $taxonomy === 'language' ) {
+							// Language deletion invalidates all cached language-dependent
+							// rewrite rules. A full flush is required — merely deleting
+							// the exclusion patterns transient is insufficient.
+							self::clear_rewriter_caches();
+						} else {
+							frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
+						}
+					},
+					10,
+					3
+				);
 
-            // Invalidate cached exclusion patterns when Polylang languages are
-            // added, updated, or when the default language changes. Without these
-            // hooks, rewrite rules referencing removed languages or missing rules
-            // for new languages persist until the next permalink structure change.
-            // Language deletion is covered by the 'deleted_term' hook below
-            // (Polylang calls wp_delete_term() which fires 'deleted_term').
-            add_action('pll_add_language',        [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('pll_update_language',     [self::class, 'clear_rewriter_caches'], 10, 1);
-            add_action('pll_update_default_lang', [self::class, 'clear_rewriter_caches'], 10, 1);
-
-            // Invalidate exclusion patterns when content changes that could
-            // introduce new slugs captured by catch-all rewrite rules.
-            // Without persistent object cache, exclusion patterns have a 1-hour
-            // TTL — these hooks ensure new pages/CPTs/terms don't cause routing
-            // conflicts during that window.
-            add_action('save_post', function ($post_id) {
-                // Use the existing helper — covers autosave, revision, auto-draft,
-                // trash, and inherit statuses.
-                if (!frl_is_post_save_action($post_id)) {
-                    return;
-                }
-                frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
-            });
-            add_action('created_term', function () {
-                frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
-            });
-            add_action('deleted_term', function ($term_id, $tt_id, $taxonomy) {
-                if ($taxonomy === 'language') {
-                    // Language deletion invalidates all cached language-dependent
-                    // rewrite rules. A full flush is required — merely deleting
-                    // the exclusion patterns transient is insufficient.
-                    self::clear_rewriter_caches();
-                } else {
-                    frl_delete_transient(Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT);
-                }
-            }, 10, 3);
-
-            // Repair absent rewrite_rules (normal WP state during any flush cycle).
-            // Exponential backoff prevents log flooding on persistent failure.
-            // Retry count expires after 1 hour to allow recovery after temporary issues.
-            $retry_count = (int) frl_get_transient('rewrite_flush_retry_count') ?: 0;
-            if ($retry_count > 5) {
-                frl_log('Rewrite flush failed after 5 attempts - stopping automatic repair', [
-                    'retry_count' => $retry_count
-                ]);
-                return; // Stop retrying until retry count expires
-            }
-            if (get_option('rewrite_rules') === false && !frl_get_transient('rewrite_flush_cooldown')) {
-                frl_set_transient('rewrite_flush_cooldown', true, 60);
-                frl_set_transient('rewrite_flush_retry_count', $retry_count + 1, HOUR_IN_SECONDS);
-                frl_flush_rewrite_rules();
-            }
-        }, 10, 0);
-    }
+				// Repair absent rewrite_rules (normal WP state during any flush cycle).
+				// Exponential backoff prevents log flooding on persistent failure.
+				// Retry count expires after 1 hour to allow recovery after temporary issues.
+				$retry_count = (int) frl_get_transient( 'rewrite_flush_retry_count' ) ?: 0;
+				if ( $retry_count > 5 ) {
+					frl_log(
+						'Rewrite flush failed after 5 attempts - stopping automatic repair',
+						array(
+							'retry_count' => $retry_count,
+						)
+					);
+					return; // Stop retrying until retry count expires
+				}
+				if ( get_option( 'rewrite_rules' ) === false && ! frl_get_transient( 'rewrite_flush_cooldown' ) ) {
+					frl_set_transient( 'rewrite_flush_cooldown', true, 60 );
+					frl_set_transient( 'rewrite_flush_retry_count', $retry_count + 1, HOUR_IN_SECONDS );
+					frl_flush_rewrite_rules();
+				}
+			},
+			10,
+			0
+		);
+	}
 }

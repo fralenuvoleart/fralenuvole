@@ -20,38 +20,38 @@
  * @package Fralenuvole
  */
 
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
-return [
-    'Article' => [
-        'author' => [
-            '_ref'     => 'post-settings_post-authors', // ACF field on current post → ref IDs
-            '_fallback' => FRL_DEFAULT_AUTHOR_CPT_ID, // fallback CPT post ID when ACF is empty
-            'name'     => 'post_title', // Person.name from ref post title
-            'url'      => 'post_permalink', // Person.url from ref post permalink
-            'image'    => 'post_thumbnail', // Person.image ImageObject
-            'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF
-            'sameAs' => [
-                'team-settings_team-linkedin',
-                'team-settings_team-facebook',
-                'team-settings_team-website',
-                'team-settings_team-whatsapp',
-            ],
-        ],
-        'editor' => [
-            '_force'   => FRL_DEFAULT_EDITOR_CPT_ID, // always use this CPT post ID
-            'name'     => 'post_title', // Person.name from ref post title
-            'url'      => 'post_permalink', // Person.url from ref post permalink
-            'image'    => 'post_thumbnail', // Person.image ImageObject
-            'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF
-            'sameAs' => [
-                'team-settings_team-linkedin',
-                'team-settings_team-facebook',
-                'team-settings_team-website',
-                'team-settings_team-whatsapp',
-            ],
-        ],
-    ],
-];
+return array(
+	'Article' => array(
+		'author' => array(
+			'_ref'      => 'post-settings_post-authors', // ACF field on current post → ref IDs
+			'_fallback' => FRL_DEFAULT_AUTHOR_CPT_ID, // fallback CPT post ID when ACF is empty
+			'name'      => 'post_title', // Person.name from ref post title
+			'url'       => 'post_permalink', // Person.url from ref post permalink
+			'image'     => 'post_thumbnail', // Person.image ImageObject
+			'jobTitle'  => 'team-settings_team-role', // Person.jobTitle from ref post ACF
+			'sameAs'    => array(
+				'team-settings_team-linkedin',
+				'team-settings_team-facebook',
+				'team-settings_team-website',
+				'team-settings_team-whatsapp',
+			),
+		),
+		'editor' => array(
+			'_force'   => FRL_DEFAULT_EDITOR_CPT_ID, // always use this CPT post ID
+			'name'     => 'post_title', // Person.name from ref post title
+			'url'      => 'post_permalink', // Person.url from ref post permalink
+			'image'    => 'post_thumbnail', // Person.image ImageObject
+			'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF
+			'sameAs'   => array(
+				'team-settings_team-linkedin',
+				'team-settings_team-facebook',
+				'team-settings_team-website',
+				'team-settings_team-whatsapp',
+			),
+		),
+	),
+);

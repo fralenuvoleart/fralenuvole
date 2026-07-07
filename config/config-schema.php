@@ -5,7 +5,9 @@
  * Controls which schema keys are translated (inclusion list).
  * Organization identity is managed via per-environment plugin options.
  */
-if (!defined('ABSPATH')) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
  * Only these keys are translated. All others kept as-is.
@@ -19,8 +21,8 @@ if (!defined('ABSPATH')) exit;
  *   '!Organization.name'  → but skip name under Organization
  *   '!name'               → skip any key named 'name' at any depth
  */
-const FRL_SCHEMA_TRANSLATE_KEYS = [
+const FRL_SCHEMA_TRANSLATE_KEYS = array(
 	'address',
 	'foundingLocation',
 	'audienceType',
-];
+);

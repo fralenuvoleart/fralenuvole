@@ -8,16 +8,16 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 // Load configuration constants.
 require_once __DIR__ . '/config-constants-subdomain-adapter.php';
 
 // Defensive: bail if the map constant was not defined.
-if (!defined('FRL_SUBDOMAIN_ADAPTER_MAP')) {
-    return;
+if ( ! defined( 'FRL_SUBDOMAIN_ADAPTER_MAP' ) ) {
+	return;
 }
 
 // Load the handler class.
@@ -28,13 +28,13 @@ require_once __DIR__ . '/class-subdomain-adapter.php';
 Frl_Subdomain_Adapter::init();
 
 // Load and initialize the legacy URL handler (content, navigation, redirects).
-if (frl_get_option('subdomain_adapter_legacy_links')) {
-    require_once __DIR__ . '/class-subdomain-adapter-legacy.php';
-    Frl_Subdomain_Adapter_Legacy::init();
+if ( frl_get_option( 'subdomain_adapter_legacy_links' ) ) {
+	require_once __DIR__ . '/class-subdomain-adapter-legacy.php';
+	Frl_Subdomain_Adapter_Legacy::init();
 }
 
 // Load and initialize the TSF robots.txt & sitemap compatibility handler.
-if (class_exists('The_SEO_Framework\Load')) {
-    require_once __DIR__ . '/class-subdomain-adapter-robots.php';
-    Frl_Subdomain_Adapter_Robots::init();
+if ( class_exists( 'The_SEO_Framework\Load' ) ) {
+	require_once __DIR__ . '/class-subdomain-adapter-robots.php';
+	Frl_Subdomain_Adapter_Robots::init();
 }

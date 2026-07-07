@@ -14,15 +14,15 @@
  * @package Fralenuvole
  */
 
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
-return [
-    'Service' => [
-        'serviceType' => 'service_category',
-    ],
-    'Article' => [
-        'articleSection' => 'category',
-    ],
-];
+return array(
+	'Service' => array(
+		'serviceType' => 'service_category',
+	),
+	'Article' => array(
+		'articleSection' => 'category',
+	),
+);

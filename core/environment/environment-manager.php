@@ -8,10 +8,11 @@
  * @package Fralenuvole
  */
 
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
+require_once __DIR__ . '/trait-environment-host-normalizer.php';
 require_once __DIR__ . '/class-environment-utils.php';
 require_once __DIR__ . '/class-environment-config.php';
 require_once __DIR__ . '/class-environment-state.php';

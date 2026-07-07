@@ -1,6 +1,6 @@
 <?php
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
@@ -19,17 +19,16 @@ Frl_Settings_Fields::init_filters();
  *
  * @return Frl_Settings_Fields The single settings page instance.
  */
-function frl_get_settings_page()
-{
+function frl_get_settings_page() {
 	static $instance = null;
 
-	if ($instance === null) {
+	if ( $instance === null ) {
 		// Get all UI field definitions
 		// ($key= null: All fields, $ui_fields = true: config + modules, excludes runtime)
-		$all_fields = frl_get_all_plugin_options_settings(null, true);
+		$all_fields = frl_get_all_plugin_options_settings( null, true );
 
 		// Create the instance - this will also trigger widget registration via the constructor
-		$instance = new Frl_Settings_Fields(['fields' => $all_fields]);
+		$instance = new Frl_Settings_Fields( array( 'fields' => $all_fields ) );
 
 		// Always initialize sections and fields
 		$instance->frl_setup_sections();
@@ -44,32 +43,31 @@ function frl_get_settings_page()
  *
  * This class uses a hybrid approach with both static and instance methods.
  */
-class Frl_Settings_Fields
-{
+class Frl_Settings_Fields {
+
 
 	public $fields;
 
-	private $processed_sections = [];
+	private $processed_sections = array();
 
-	private $registered_fields = [];
+	private $registered_fields = array();
 
-	private $tab_labels = [];
+	private $tab_labels = array();
 
 	private $active_tab = 0;
 
 	// Registry for widgets that will be inserted in sections
-	public $widgets = [
-		'before' => [], // Widgets to show before section fields
-		'after' => []   // Widgets to show after section fields
-	];
+	public $widgets = array(
+		'before' => array(), // Widgets to show before section fields
+		'after'  => array(),   // Widgets to show after section fields
+	);
 
 	/**
 	 * Initialize static filters for the class.
 	 *
 	 * @return void
 	 */
-	public static function init_filters()
-	{
+	public static function init_filters() {
 		// No filters needed - all tabs are handled consistently
 	}
 
@@ -79,11 +77,10 @@ class Frl_Settings_Fields
 	 * @param array $args Initial properties to set.
 	 * @return void
 	 */
-	public function __construct($args = [])
-	{
-		if (frl_is_array_not_empty($args)) {
-			foreach ($args as $key => $property) {
-				if (property_exists($this, $key)) {
+	public function __construct( $args = array() ) {
+		if ( frl_is_array_not_empty( $args ) ) {
+			foreach ( $args as $key => $property ) {
+				if ( property_exists( $this, $key ) ) {
 					$this->{$key} = $property;
 				}
 			}
@@ -93,15 +90,15 @@ class Frl_Settings_Fields
 		// which calls frl_setup_sections() and frl_setup_fields() directly after construction.
 
 		// Fire widget registration hook during construction
-		do_action('frl_register_section_widgets', $this);
+		do_action( 'frl_register_section_widgets', $this );
 
 		// IMMEDIATELY register action handlers for widgets - don't use a hook
 		// This ensures callbacks are registered before they're checked
 		$this->register_widget_actions();
 
-		if (frl_is_array_not_empty($this->fields)) {
-			foreach ($this->fields as $field) {
-				$this->validate_field($field);
+		if ( frl_is_array_not_empty( $this->fields ) ) {
+			foreach ( $this->fields as $field ) {
+				$this->validate_field( $field );
 			}
 		}
 	}
@@ -113,31 +110,31 @@ class Frl_Settings_Fields
 	 *
 	 * @return void
 	 */
-	public function register_widget_actions()
-	{
+	public function register_widget_actions() {
 		// Process both 'before' and 'after' positions
-		foreach (['before', 'after'] as $position) {
-			if (empty($this->widgets[$position])) {
+		foreach ( array( 'before', 'after' ) as $position ) {
+			if ( empty( $this->widgets[ $position ] ) ) {
 				continue;
 			}
 
-			foreach ($this->widgets[$position] as $section_id => $callbacks) {
+			foreach ( $this->widgets[ $position ] as $section_id => $callbacks ) {
 				// Create action name dynamically based on position and section
 				$action_name = FRL_PREFIX . "_{$position}_section_{$section_id}_content";
 
 				// Create a stable closure that will call all callbacks for this section
 				// Note: Using direct reference to $this to avoid closure issues with object references
-				add_action($action_name,
-					function ($section) use ($section_id, $position) {
+				add_action(
+					$action_name,
+					function ( $section ) use ( $section_id, $position ) {
 						// Early return if section doesn't match
-						if ($section['id'] !== $section_id || empty($this->widgets[$position][$section_id])) {
+						if ( $section['id'] !== $section_id || empty( $this->widgets[ $position ][ $section_id ] ) ) {
 							return;
 						}
 
 						// Execute all callbacks for this section/position
-						foreach ($this->widgets[$position][$section_id] as $callback) {
-							if (is_callable($callback)) {
-								echo call_user_func($callback);
+						foreach ( $this->widgets[ $position ][ $section_id ] as $callback ) {
+							if ( is_callable( $callback ) ) {
+								echo call_user_func( $callback );
 							}
 						}
 					},
@@ -153,8 +150,7 @@ class Frl_Settings_Fields
 	 *
 	 * @return void
 	 */
-	public static function render_settings_page()
-	{
+	public static function render_settings_page() {
 		// Get the settings page instance
 		$settings_page = frl_get_settings_page();
 
@@ -167,8 +163,7 @@ class Frl_Settings_Fields
 	 *
 	 * @return void
 	 */
-	public function frl_settings_content()
-	{
+	public function frl_settings_content() {
 		// Get the current active tab from Tab Manager
 		$active_tab = frl_tab_get_active_tab();
 
@@ -176,43 +171,44 @@ class Frl_Settings_Fields
 		$use_vertical_tabs = true;
 
 		// Let the Tab Manager render the container start
-		frl_tab_render_tab_container_start($use_vertical_tabs, '', $active_tab);
+		frl_tab_render_tab_container_start( $use_vertical_tabs, '', $active_tab );
 
 		// Render the header
 		echo frl_ui_render_plugin_settings_header();
 
-		$this->frl_setup_tabs($active_tab);
+		$this->frl_setup_tabs( $active_tab );
 
 		// Allow adding content before the settings form
-		echo apply_filters('frl_before_settings_sections', '');
-?>
+		echo apply_filters( 'frl_before_settings_sections', '' );
+		?>
 
 		<div id="frl-tabs-content">
-			<form method="POST" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" id="frl-settings-form">
-				<input type="hidden" name="action" value="<?php echo frl_prefix('save_options'); ?>">
+			<form method="POST" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="frl-settings-form">
+				<input type="hidden" name="action" value="<?php echo frl_prefix( 'save_options' ); ?>">
 
 				<?php
 				// Generate a fresh nonce
-				frl_nonce_field('save_options', '_wpnonce', true, true);
+				frl_nonce_field( 'save_options', '_wpnonce', true, true );
 				?>
-				<input type="hidden" name="<?php echo frl_prefix('active_tab'); ?>" id="<?php echo frl_prefix('active_tab'); ?>" value="<?php echo $active_tab; ?>">
+				<input type="hidden" name="<?php echo frl_prefix( 'active_tab' ); ?>" id="<?php echo frl_prefix( 'active_tab' ); ?>" value="<?php echo $active_tab; ?>">
 
 				<?php
 				// Render all custom tabs from the registry - still inside the form
 				frl_tab_render_all_custom_tabs();
 
 				// Use the custom renderer with hooks for widget insertion
-				$this->custom_do_settings_sections(FRL_NAME);
+				$this->custom_do_settings_sections( FRL_NAME );
 
 				?>
-				<?php // submit_button(); // Removed from here, assuming it's in custom_do_settings_sections
+				<?php
+				// submit_button(); // Removed from here, assuming it's in custom_do_settings_sections
 				?>
 			</form>
 		</div>
 
-<?php
+		<?php
 		// Allow adding custom content after the settings form
-		echo apply_filters(FRL_PREFIX . '_after_settings_content', '');
+		echo apply_filters( FRL_PREFIX . '_after_settings_content', '' );
 
 		// Let the Tab Manager close the container
 		frl_tab_render_tab_container_end();
@@ -223,38 +219,45 @@ class Frl_Settings_Fields
 	 *
 	 * @return void
 	 */
-	public function frl_setup_sections()
-	{
-		if (!empty($this->processed_sections)) {
+	public function frl_setup_sections() {
+		if ( ! empty( $this->processed_sections ) ) {
 			return;
 		}
 
 		// Use cache_remember to store and retrieve the section structure
 		// This caches the processing but still allows for dynamic registration
-		$sections_structure = frl_cache_remember('adminui', 'settings_sections', function () {
-			$fields = $this->fields;
-			$sections = frl_group_array_by_key('section', $fields);
-			$section_names = frl_get_default_fields_sections();
+		// Split onto its own statement so the trailing `?: array()` fallback does not
+		// cause PHPCS to (incorrectly) treat every assignment inside the closure body
+		// as being "within a ternary condition".
+		$sections_structure = frl_cache_remember(
+			'adminui',
+			'settings_sections',
+			function () {
+				$fields        = $this->fields;
+				$sections      = frl_group_array_by_key( 'section', $fields );
+				$section_names = frl_get_default_fields_sections();
 
-			$processed = [];
-			foreach ($sections as $key => $section) {
-				$processed[$key] = [
-					'title' => $section_names[$key],
-					'class' => $key,
+				$processed = array();
+				foreach ( $sections as $key => $section ) {
+					$processed[ $key ] = array(
+						'title' => $section_names[ $key ],
+						'class' => $key,
 					// Capture any other metadata but not the actual fields
-				];
+					);
+				}
+				return $processed;
 			}
-			return $processed;
-		}) ?: [];
+		);
+		$sections_structure = $sections_structure ?: array();
 
 		// Register sections with WordPress using the cached structure
-		foreach ($sections_structure as $key => $section_data) {
-			$this->processed_sections[$key] = true;
+		foreach ( $sections_structure as $key => $section_data ) {
+			$this->processed_sections[ $key ] = true;
 
 			$args = array(
 				'before_section' => '<div id="tabs-%s" class="frl-section">',
-				'after_section' => '</div>',
-				'section_class' => $key,
+				'after_section'  => '</div>',
+				'section_class'  => $key,
 			);
 
 			// Use cached title instead of processing again
@@ -283,45 +286,44 @@ class Frl_Settings_Fields
 	 * @param string $page The slug name of the page whose settings sections are being rendered
 	 * @return void
 	 */
-	public function custom_do_settings_sections($page)
-	{
+	public function custom_do_settings_sections( $page ) {
 		global $wp_settings_sections, $wp_settings_fields;
 
-		if (!isset($wp_settings_sections[$page])) {
+		if ( ! isset( $wp_settings_sections[ $page ] ) ) {
 			return;
 		}
 
-		foreach ((array)$wp_settings_sections[$page] as $section) {
+		foreach ( (array) $wp_settings_sections[ $page ] as $section ) {
 			$section_id = $section['id'];
 
 			// Check if this section is specifically marked as restricted
-			$is_restricted_by_capability = apply_filters('frl_is_section_restricted', false, $section_id);
-			if ($is_restricted_by_capability) {
+			$is_restricted_by_capability = apply_filters( 'frl_is_section_restricted', false, $section_id );
+			if ( $is_restricted_by_capability ) {
 				continue; // Skip rendering this restricted section
 			}
 
-			if (isset($section['before_section'])) {
-				$opening_html = sprintf($section['before_section'], $section_id);
+			if ( isset( $section['before_section'] ) ) {
+				$opening_html = sprintf( $section['before_section'], $section_id );
 				echo $opening_html;
 			} else {
-				echo '<div id="' . esc_attr($section_id) . '" class="frl-section">';
+				echo '<div id="' . esc_attr( $section_id ) . '" class="frl-section">';
 			}
 
 			$before_action = FRL_PREFIX . "_before_section_{$section_id}_content";
-			do_action($before_action, $section);
+			do_action( $before_action, $section );
 
-			if ($section['title']) {
+			if ( $section['title'] ) {
 				echo "<h2>{$section['title']}</h2>\n";
 			}
 
-			if ($section['callback']) {
-				call_user_func($section['callback'], $section);
+			if ( $section['callback'] ) {
+				call_user_func( $section['callback'], $section );
 			}
 
-			if (isset($wp_settings_fields[$page][$section['id']])) {
+			if ( isset( $wp_settings_fields[ $page ][ $section['id'] ] ) ) {
 				echo '<div class="frl-widget form-section">
 					<table class="form-table" role="presentation">';
-				do_settings_fields($page, $section['id']);
+				do_settings_fields( $page, $section['id'] );
 				echo '</table>';
 
 				submit_button();
@@ -329,9 +331,9 @@ class Frl_Settings_Fields
 			}
 
 			$after_action = FRL_PREFIX . "_after_section_{$section_id}_content";
-			do_action($after_action, $section);
+			do_action( $after_action, $section );
 
-			if (isset($section['after_section'])) {
+			if ( isset( $section['after_section'] ) ) {
 				echo $section['after_section'];
 			} else {
 				echo '</div>';
@@ -339,39 +341,37 @@ class Frl_Settings_Fields
 		}
 	}
 
-	public function frl_setup_fields()
-	{
-		if (!empty($this->registered_fields)) {
+	public function frl_setup_fields() {
+		if ( ! empty( $this->registered_fields ) ) {
 			return;
 		}
 
-		if (!frl_is_array_not_empty($this->fields)) {
-			$this->fields = [];
+		if ( ! frl_is_array_not_empty( $this->fields ) ) {
+			$this->fields = array();
 			return;
 		}
 
-		foreach ($this->fields as $field) {
-			if (!isset($field['id'], $field['section'], $field['label'], $field['type'])) {
+		foreach ( $this->fields as $field ) {
+			if ( ! isset( $field['id'], $field['section'], $field['label'], $field['type'] ) ) {
 				continue;
 			}
 
-			$this->registered_fields[$field['id']] = true;
-			$prefixed_id = frl_prefix($field['id']);
+			$this->registered_fields[ $field['id'] ] = true;
+			$prefixed_id                             = frl_prefix( $field['id'] );
 
 			add_settings_field(
 				$prefixed_id,
 				$field['label'],
-				[$this, 'frl_field_callback'],
+				array( $this, 'frl_field_callback' ),
 				FRL_NAME,
 				$field['section'],
-				array_merge($field, ['id' => $prefixed_id])
+				array_merge( $field, array( 'id' => $prefixed_id ) )
 			);
 		}
 	}
 
-	public function frl_field_callback($field)
-	{
-		if (!isset($field['type'], $field['id'])) {
+	public function frl_field_callback( $field ) {
+		if ( ! isset( $field['type'], $field['id'] ) ) {
 			return;
 		}
 
@@ -379,67 +379,69 @@ class Frl_Settings_Fields
 		$field_id = $field['id'];
 
 		// Original key without prefix - for getting the current value and hidden input name
-		$original_key = substr($field_id, strlen(FRL_PREFIX) + 1);
+		$original_key = substr( $field_id, strlen( FRL_PREFIX ) + 1 );
 
 		// Handle formatting field types
-		if (in_array($field['type'], FRL_FIELD_FORMATTERS)) {
-			echo frl_ui_render_formatting_field($field, $field['type']);
+		if ( in_array( $field['type'], FRL_FIELD_FORMATTERS, true ) ) {
+			echo frl_ui_render_formatting_field( $field, $field['type'] );
 			return; // Formatting fields are fully handled, no option value needed.
 		}
 
 		// Common attributes for non-formatting fields
-		$is_restricted = !empty($field['restricted']);
-		$is_admin = frl_has_access();
-		$disabled_attr = ($is_restricted && !$is_admin) ? 'disabled="disabled"' : '';
-		$restricted_class = $field['type'];
-		$restricted_class .= ($is_restricted && !$is_admin) ? FRL_PREFIX . '-restricted-field' : '';
+		$is_restricted     = ! empty( $field['restricted'] );
+		$is_admin          = frl_has_access();
+		$disabled_attr     = ( $is_restricted && ! $is_admin ) ? 'disabled="disabled"' : '';
+		$restricted_class  = $field['type'];
+		$restricted_class .= ( $is_restricted && ! $is_admin ) ? FRL_PREFIX . '-restricted-field' : '';
 
 		// Handle 'custom' type separately as it gets its value from a callback, not an option.
-		if ($field['type'] === 'custom' && isset($field['callback']) && is_callable($field['callback'])) {
-			$value = call_user_func($field['callback']);
-			echo '<div class="frl-custom-field ' . esc_attr($restricted_class) . '">' . $value . '</div>';
+		if ( $field['type'] === 'custom' && isset( $field['callback'] ) && is_callable( $field['callback'] ) ) {
+			$value = call_user_func( $field['callback'] );
+			echo '<div class="frl-custom-field ' . esc_attr( $restricted_class ) . '">' . $value . '</div>';
 
 			$description = $field['description'] ?? '';
-			if ($description) {
-				printf('<p class="description">%s</p>', wp_kses_post($description));
+			if ( $description ) {
+				printf( '<p class="description">%s</p>', wp_kses_post( $description ) );
 			}
-			if ($is_restricted && !$is_admin) {
-				echo '<p class="frl-restricted-message">' . esc_html__('Critical field restricted to plugin admin', FRL_PREFIX) . '</p>';
-				echo '<input type="hidden" name="' . esc_attr(frl_prefix('field_restricted')) . '[]" value="' . esc_attr($original_key) . '" />';
+			if ( $is_restricted && ! $is_admin ) {
+				echo '<p class="frl-restricted-message">' . esc_html__( 'Critical field restricted to plugin admin', FRL_PREFIX ) . '</p>';
+				echo '<input type="hidden" name="' . esc_attr( frl_prefix( 'field_restricted' ) ) . '[]" value="' . esc_attr( $original_key ) . '" />';
 			}
 		} else {
 			// This block is for all other standard field types that DO represent options.
-			$value = frl_get_option($original_key, true);
+			$value = frl_get_option( $original_key, true );
 			$value = $value ?? '';
 
-			$renderer_args = array_merge($field, [
-				'disabled' => $disabled_attr,
-				'restricted_class' => $restricted_class,
-				'description_html' => $field['description'] ?? '',
-				'is_restricted_field' => $is_restricted,
-				'current_user_can_edit' => $is_admin,
-				'original_field_key' => $original_key
-			]);
+			$renderer_args = array_merge(
+				$field,
+				array(
+					'disabled'              => $disabled_attr,
+					'restricted_class'      => $restricted_class,
+					'description_html'      => $field['description'] ?? '',
+					'is_restricted_field'   => $is_restricted,
+					'current_user_can_edit' => $is_admin,
+					'original_field_key'    => $original_key,
+				)
+			);
 
-			echo frl_ui_render_field($renderer_args, $value);
+			echo frl_ui_render_field( $renderer_args, $value );
 		}
 	}
 
-	public function frl_setup_tabs($active_tab = 0)
-	{
+	public function frl_setup_tabs( $active_tab = 0 ) {
 		// Get sections from fields for registering tabs
 		$section_names = frl_get_default_fields_sections();
-		$section_keys = array_keys($section_names);
+		$section_keys  = array_keys( $section_names );
 
 		// Add section titles as tab labels for backward compatibility
-		foreach ($section_keys as $key => $name) {
-			if (!isset($this->tab_labels[$key])) {
-				$this->tab_labels[$key] = $section_names[$name];
+		foreach ( $section_keys as $key => $name ) {
+			if ( ! isset( $this->tab_labels[ $key ] ) ) {
+				$this->tab_labels[ $key ] = $section_names[ $name ];
 			}
 		}
 
 		// Use the Tab Manager to render tabs from sections
-		frl_tab_render_tabs_from_sections($section_keys);
+		frl_tab_render_tabs_from_sections( $section_keys );
 
 		// Store the active tab for use elsewhere in this class if needed
 		$this->active_tab = $active_tab;
@@ -451,28 +453,27 @@ class Frl_Settings_Fields
 	 * @param array $field The field configuration array to validate
 	 * @throws InvalidArgumentException If validation fails
 	 */
-	private function validate_field($field)
-	{
+	private function validate_field( $field ) {
 		$allowed_types = FRL_FIELD_TYPES;
 
-		if (!in_array($field['type'], $allowed_types)) {
+		if ( ! in_array( $field['type'], $allowed_types, true ) ) {
 			throw new InvalidArgumentException(
 				"Invalid field type: {$field['type']}"
 			);
 		}
 
 		// For formatting-only fields, we have different requirements
-		if (in_array($field['type'], FRL_FIELD_FORMATTERS)) {
+		if ( in_array( $field['type'], FRL_FIELD_FORMATTERS, true ) ) {
 			return;
 		}
 
-		if (empty($field['id'])) {
+		if ( empty( $field['id'] ) ) {
 			throw new InvalidArgumentException(
-				"Field ID is required"
+				'Field ID is required'
 			);
 		}
 
-		if (empty($field['label'])) {
+		if ( empty( $field['label'] ) ) {
 			throw new InvalidArgumentException(
 				"Field label is required for ID: {$field['id']}"
 			);
@@ -486,36 +487,34 @@ class Frl_Settings_Fields
 	 * @param mixed $value The value to sanitize
 	 * @return mixed The sanitized value
 	 */
-	private static function sanitize_field_value($type, $value)
-	{
-		switch ($type) {
+	private static function sanitize_field_value( $type, $value ) {
+		switch ( $type ) {
 			case 'checkbox':
-				return (int)!!$value;
+				return (int) ! ! $value;
 			case 'number':
-				return is_numeric($value) ? floatval($value) : 0;
+				return is_numeric( $value ) ? floatval( $value ) : 0;
 			case 'email':
-				return sanitize_email($value);
+				return sanitize_email( $value );
 			case 'textarea':
-				return wp_kses_post($value);
+				return wp_kses_post( $value );
 			case 'wysiwyg':
-				return wp_kses_post($value);
+				return wp_kses_post( $value );
 			case 'textlist':
-				return sanitize_textarea_field($value);
+				return sanitize_textarea_field( $value );
 			case 'checkboxes':
-				return frl_is_array_not_empty($value) ? array_map('sanitize_text_field', $value) : [];
+				return frl_is_array_not_empty( $value ) ? array_map( 'sanitize_text_field', $value ) : array();
 			case 'html':
 			case 'custom':
 				return $value; // Don't sanitize HTML content to preserve PHP tags
 			default:
-				return sanitize_text_field($value);
+				return sanitize_text_field( $value );
 		}
 	}
 
 	/**
 	 * Handle saving options from the settings form - Public Entry Point
 	 */
-	public static function handle_save_options()
-	{
+	public static function handle_save_options() {
 		// 1. Verify nonce and get initial redirect info
 		list($redirect_url_base, $redirect_args) = self::_verify_save_nonce();
 
@@ -524,7 +523,7 @@ class Frl_Settings_Fields
 		$redirect_args['tab'] = $active_tab_index; // Use numeric index for redirect arg
 
 		// 3. Save active tab index for potential use after redirect
-		frl_tab_save_active_tab($active_tab_index);
+		frl_tab_save_active_tab( $active_tab_index );
 
 		// 4. Get all potentially submitted values, sanitized
 		$submitted_values = self::_get_submitted_values();
@@ -536,7 +535,7 @@ class Frl_Settings_Fields
 		);
 
 		// 6. Compare with current options and prepare batch for actual updates
-		$updates = self::_prepare_update_batch($validated_values);
+		$updates = self::_prepare_update_batch( $validated_values );
 
 		// 7. Perform updates, handle notices, and redirect
 		self::_perform_updates_and_redirect(
@@ -553,18 +552,17 @@ class Frl_Settings_Fields
 	 *
 	 * @return array [redirect_url_base, initial_redirect_args]
 	 */
-	private static function _verify_save_nonce(): array
-	{
-		$redirect_url_base = admin_url('options-general.php');
-		$redirect_args = [
+	private static function _verify_save_nonce(): array {
+		$redirect_url_base = admin_url( 'options-general.php' );
+		$redirect_args     = array(
 			'page' => FRL_NAME,
 			// 'tab' will be added later
-		];
+		);
 
 		// Use centralized nonce verification (assuming frl_verify_admin_action_nonce handles exit on failure)
-        frl_verify_admin_action_nonce('_wpnonce', FRL_PREFIX . '_save_options', $redirect_url_base, $redirect_args);
+		frl_verify_admin_action_nonce( '_wpnonce', FRL_PREFIX . '_save_options', $redirect_url_base, $redirect_args );
 
-		return [$redirect_url_base, $redirect_args];
+		return array( $redirect_url_base, $redirect_args );
 	}
 
 	/**
@@ -572,41 +570,40 @@ class Frl_Settings_Fields
 	 *
 	 * @return array [active_tab_index, active_tab_id, active_tab_fragment]
 	 */
-	private static function _get_active_tab_info(): array
-	{
-		$post_action = frl_prefix('active_tab');
-		$active_tab_value = isset($_POST[$post_action]) ? sanitize_text_field($_POST[$post_action]) : '';
-		$is_fragment = !empty($active_tab_value) && str_starts_with($active_tab_value, 'tabs-');
+	private static function _get_active_tab_info(): array {
+		$post_action      = frl_prefix( 'active_tab' );
+		$active_tab_value = isset( $_POST[ $post_action ] ) ? sanitize_text_field( $_POST[ $post_action ] ) : '';
+		$is_fragment      = ! empty( $active_tab_value ) && str_starts_with( $active_tab_value, 'tabs-' );
 
-		$active_tab_id = null;
-		$active_tab_index = 0; // Default to first tab index
+		$active_tab_id       = null;
+		$active_tab_index    = 0; // Default to first tab index
 		$active_tab_fragment = null;
 
-		if ($is_fragment) {
+		if ( $is_fragment ) {
 			$active_tab_fragment = $active_tab_value; // e.g., tabs-general
-			$active_tab_id = substr($active_tab_value, 5); // e.g., general
+			$active_tab_id       = substr( $active_tab_value, 5 ); // e.g., general
 
 			// Find the numeric index corresponding to this ID
 			$all_tabs = frl_tab_get_sorted_tabs();
-			foreach ($all_tabs as $index => $tab_data) {
-				if ($tab_data['id'] === $active_tab_id) {
+			foreach ( $all_tabs as $index => $tab_data ) {
+				if ( $tab_data['id'] === $active_tab_id ) {
 					$active_tab_index = $index;
 					break;
 				}
 			}
 		} else {
 			// Legacy: Use numeric index directly from POST if available
-			$active_tab_index = isset($_POST[$post_action]) ? intval($_POST[$post_action]) : 0;
+			$active_tab_index = isset( $_POST[ $post_action ] ) ? intval( $_POST[ $post_action ] ) : 0;
 
 			// Find the ID corresponding to this numeric index
 			$all_tabs = frl_tab_get_sorted_tabs();
-			if (isset($all_tabs[$active_tab_index])) {
-				$active_tab_id = $all_tabs[$active_tab_index]['id'];
+			if ( isset( $all_tabs[ $active_tab_index ] ) ) {
+				$active_tab_id       = $all_tabs[ $active_tab_index ]['id'];
 				$active_tab_fragment = 'tabs-' . $active_tab_id; // Construct fragment
 			}
 		}
 
-		return [$active_tab_index, $active_tab_id, $active_tab_fragment];
+		return array( $active_tab_index, $active_tab_id, $active_tab_fragment );
 	}
 
 	/**
@@ -614,51 +611,52 @@ class Frl_Settings_Fields
 	 *
 	 * @return array Associative array of [option_key => sanitized_value]
 	 */
-	private static function _get_submitted_values(): array
-	{
-		$all_fields = frl_get_all_plugin_options_settings(null);
-		$submitted_values = [];
-		$restricted_fields_keys = isset($_POST[frl_prefix('field_restricted')]) ?
-			array_map('sanitize_text_field', $_POST[frl_prefix('field_restricted')]) : [];
+	private static function _get_submitted_values(): array {
+		$all_fields             = frl_get_all_plugin_options_settings( null );
+		$submitted_values       = array();
+		$restricted_fields_keys = isset( $_POST[ frl_prefix( 'field_restricted' ) ] ) ?
+			array_map( 'sanitize_text_field', $_POST[ frl_prefix( 'field_restricted' ) ] ) : array();
 
-		foreach ($all_fields as $field) {
-			if (!isset($field['id'])) continue;
+		foreach ( $all_fields as $field ) {
+			if ( ! isset( $field['id'] ) ) {
+				continue;
+			}
 
 			// Skip formatting fields
-			if (isset($field['type']) && in_array($field['type'], FRL_FIELD_FORMATTERS)) {
+			if ( isset( $field['type'] ) && in_array( $field['type'], FRL_FIELD_FORMATTERS, true ) ) {
 				continue;
 			}
 
 			// Skip fields explicitly marked not to be saved
-			if (isset($field['save_option']) && $field['save_option'] === false) {
+			if ( isset( $field['save_option'] ) && $field['save_option'] === false ) {
 				continue;
 			}
 
-			$option_key = $field['id'];
-			$prefixed_id = frl_prefix($option_key);
+			$option_key  = $field['id'];
+			$prefixed_id = frl_prefix( $option_key );
 
 			// Skip restricted fields if current user doesn't have access
 			if (
-				in_array($option_key, $restricted_fields_keys) ||
-				(isset($field['restricted']) && $field['restricted'] && !frl_has_access())
+				in_array( $option_key, $restricted_fields_keys, true ) ||
+				( isset( $field['restricted'] ) && $field['restricted'] && ! frl_has_access() )
 			) {
 				continue;
 			}
 
 			// Determine the submitted value based on field type
 			$submitted_value = null;
-			if ($field['type'] === 'checkbox') {
-				$submitted_value = isset($_POST[$prefixed_id]) ? 1 : 0;
-			} elseif (isset($_POST[$prefixed_id])) {
+			if ( $field['type'] === 'checkbox' ) {
+				$submitted_value = isset( $_POST[ $prefixed_id ] ) ? 1 : 0;
+			} elseif ( isset( $_POST[ $prefixed_id ] ) ) {
 				// Note: sanitize_field_value handles the actual sanitization based on type
 				// Crucially, 'html' and 'custom' are returned as-is here.
-				$submitted_value = self::sanitize_field_value($field['type'], $_POST[$prefixed_id]);
+				$submitted_value = self::sanitize_field_value( $field['type'], $_POST[ $prefixed_id ] );
 			} else {
 				// Field not in submission, skip
 				continue;
 			}
 
-			$submitted_values[$option_key] = $submitted_value;
+			$submitted_values[ $option_key ] = $submitted_value;
 		}
 
 		return $submitted_values;
@@ -671,44 +669,43 @@ class Frl_Settings_Fields
 	 * @param array $submitted_values Array of [option_key => sanitized_value].
 	 * @return array [validated_values, validation_errors]
 	 */
-	private static function _apply_field_validation(?string $active_tab_id, array $submitted_values): array
-	{
-		$validation_rules = $active_tab_id ? frl_tab_get_validation_rules($active_tab_id) : [];
-		$validated_values = [];
-		$validation_errors = [];
+	private static function _apply_field_validation( ?string $active_tab_id, array $submitted_values ): array {
+		$validation_rules  = $active_tab_id ? frl_tab_get_validation_rules( $active_tab_id ) : array();
+		$validated_values  = array();
+		$validation_errors = array();
 
-		$all_fields = frl_get_all_plugin_options_settings(null);
-		$fields_map = array_column($all_fields, null, 'id'); // Map fields by id for quick lookup
+		$all_fields = frl_get_all_plugin_options_settings( null );
+		$fields_map = array_column( $all_fields, null, 'id' ); // Map fields by id for quick lookup
 
-		foreach ($submitted_values as $option_key => $new_value) {
+		foreach ( $submitted_values as $option_key => $new_value ) {
 			// Apply tab-specific validation if available
-			if (isset($validation_rules[$option_key]) && is_callable($validation_rules[$option_key])) {
-				$current_value = frl_get_option($option_key); // Get current value for context
-				$field_config = $fields_map[$option_key] ?? null; // Get field config for context
+			if ( isset( $validation_rules[ $option_key ] ) && is_callable( $validation_rules[ $option_key ] ) ) {
+				$current_value = frl_get_option( $option_key ); // Get current value for context
+				$field_config  = $fields_map[ $option_key ] ?? null; // Get field config for context
 
 				$validation_result = call_user_func(
-					$validation_rules[$option_key],
+					$validation_rules[ $option_key ],
 					$new_value,
 					$current_value,
 					$field_config
 				);
 
 				// If validation returns an error message, store it and skip this field
-				if (is_string($validation_result)) {
-					$validation_errors[$option_key] = $validation_result;
+				if ( is_string( $validation_result ) ) {
+					$validation_errors[ $option_key ] = $validation_result;
 					continue; // Skip adding to validated values
 				}
 
 				// If validation returns a modified value, use that instead
-				if ($validation_result !== true) {
+				if ( $validation_result !== true ) {
 					$new_value = $validation_result;
 				}
 			}
 
-			$validated_values[$option_key] = $new_value;
+			$validated_values[ $option_key ] = $new_value;
 		}
 
-		return [$validated_values, $validation_errors];
+		return array( $validated_values, $validation_errors );
 	}
 
 	/**
@@ -717,45 +714,44 @@ class Frl_Settings_Fields
 	 * @param array $validated_values Array of [option_key => validated_value].
 	 * @return array Array of [option_key => new_value] for options that need updating.
 	 */
-	private static function _prepare_update_batch(array $validated_values): array
-	{
-		$updates = [];
-		$all_fields = frl_get_all_plugin_options_settings(null);
+	private static function _prepare_update_batch( array $validated_values ): array {
+		$updates    = array();
+		$all_fields = frl_get_all_plugin_options_settings( null );
 
-		$fields_map = array_column($all_fields, null, 'id'); // Map fields by id for quick lookup
+		$fields_map = array_column( $all_fields, null, 'id' ); // Map fields by id for quick lookup
 
-		foreach ($validated_values as $option_key => $new_value) {
+		foreach ( $validated_values as $option_key => $new_value ) {
 			// Get current value using frl_get_option with cache bypass
 			// to ensure we compare against the DB state at the start of this request.
-			$current_value = frl_get_option($option_key, true);
-			$field_config = $fields_map[$option_key] ?? null;
-			$field_type = $field_config['type'] ?? 'text';
+			$current_value = frl_get_option( $option_key, true );
+			$field_config  = $fields_map[ $option_key ] ?? null;
+			$field_type    = $field_config['type'] ?? 'text';
 
 			// Special handling for HTML content specifically
-			if ($field_type === 'html') {
-				$new_value = frl_normalize_html_content($new_value);
+			if ( $field_type === 'html' ) {
+				$new_value = frl_normalize_html_content( $new_value );
 			}
 
 			// Compare current and new values before adding to updates
 			// Apply specific comparison logic based on type
 			$compare_current = $current_value;
-			$compare_new = $new_value;
+			$compare_new     = $new_value;
 
-			if ($field_type === 'html') {
-				$compare_current = frl_normalize_html_content($current_value, true);
-				$compare_new = frl_normalize_html_content($new_value, true);
-			} elseif (in_array($field_type, ['textarea', 'textlist'])) {
-				$compare_current = frl_normalize_text_for_comparison($current_value);
-				$compare_new = frl_normalize_text_for_comparison($new_value);
+			if ( $field_type === 'html' ) {
+				$compare_current = frl_normalize_html_content( $current_value, true );
+				$compare_new     = frl_normalize_html_content( $new_value, true );
+			} elseif ( in_array( $field_type, array( 'textarea', 'textlist' ), true ) ) {
+				$compare_current = frl_normalize_text_for_comparison( $current_value );
+				$compare_new     = frl_normalize_text_for_comparison( $new_value );
 			} else {
 				// Default string comparison for other types
-				$compare_current = (string)$current_value;
-				$compare_new = (string)$new_value;
+				$compare_current = (string) $current_value;
+				$compare_new     = (string) $new_value;
 			}
 
 			// Only add to updates if the value has changed
-			if ($compare_new !== $compare_current) {
-				$updates[$option_key] = $new_value;
+			if ( $compare_new !== $compare_current ) {
+				$updates[ $option_key ] = $new_value;
 			}
 		}
 
@@ -778,46 +774,46 @@ class Frl_Settings_Fields
 		array $redirect_args,
 		?string $fragment = null
 	) {
-		$updated = false;
+		$updated       = false;
 		$updated_count = 0;
 
-		if (!empty($updates)) {
+		if ( ! empty( $updates ) ) {
 			// Use the utility function to update options in batch
-			$updated_count = frl_batch_update_options($updates);
+			$updated_count = frl_batch_update_options( $updates );
 
-			if ($updated_count > 0) {
+			if ( $updated_count > 0 ) {
 				frl_add_admin_notice(
-					sprintf(__('%d settings updated.', FRL_PREFIX), $updated_count),
+					sprintf( __( '%d settings updated.', FRL_PREFIX ), $updated_count ),
 					'success'
 				);
 				$updated = true;
 				// Fire an action with the updated options
-				do_action('frl_settings_updated', $updates);
+				do_action( 'frl_settings_updated', $updates );
 			}
 		}
 
 		// Add validation error notices
-		if (!empty($validation_errors)) {
-			foreach ($validation_errors as $field_id => $error_message) {
+		if ( ! empty( $validation_errors ) ) {
+			foreach ( $validation_errors as $field_id => $error_message ) {
 				frl_add_admin_notice(
-					__('Validation error for ', FRL_PREFIX) . $field_id . ': ' . $error_message,
+					__( 'Validation error for ', FRL_PREFIX ) . $field_id . ': ' . $error_message,
 					'error'
 				);
 			}
 		}
 
 		// Build the final redirect URL
-		$redirect_args['settings-updated'] = $updated ? 'true' : 'false';
-		$redirect_args['validation-errors'] = !empty($validation_errors) ? count($validation_errors) : false;
-		$redirect_url = add_query_arg($redirect_args, $redirect_url_base);
+		$redirect_args['settings-updated']  = $updated ? 'true' : 'false';
+		$redirect_args['validation-errors'] = ! empty( $validation_errors ) ? count( $validation_errors ) : false;
+		$redirect_url                       = add_query_arg( $redirect_args, $redirect_url_base );
 
 		// Add fragment identifier if provided
-		if (!empty($fragment)) {
+		if ( ! empty( $fragment ) ) {
 			$redirect_url .= '#' . $fragment;
 		}
 
 		// Use frl_safe_redirect instead of wp_redirect
-		frl_safe_redirect($redirect_url);
+		frl_safe_redirect( $redirect_url );
 		exit;
 	}
 
@@ -838,16 +834,15 @@ class Frl_Settings_Fields
 	 * @param callable $callback Function that returns the widget content
 	 * @param string $position Position of the widget ('before' or 'after'), defaults to 'after'
 	 */
-	public function register_widget($section_id, $callback, $position = 'after')
-	{
-		if (!is_callable($callback)) {
+	public function register_widget( $section_id, $callback, $position = 'after' ) {
+		if ( ! is_callable( $callback ) ) {
 			return;
 		}
 
-		$position = ($position === 'before') ? 'before' : 'after';
+		$position = ( $position === 'before' ) ? 'before' : 'after';
 
 		// Initialize the array if needed and add the callback
-		$this->widgets[$position][$section_id] = $this->widgets[$position][$section_id] ?? [];
-		$this->widgets[$position][$section_id][] = $callback;
+		$this->widgets[ $position ][ $section_id ]   = $this->widgets[ $position ][ $section_id ] ?? array();
+		$this->widgets[ $position ][ $section_id ][] = $callback;
 	}
 }

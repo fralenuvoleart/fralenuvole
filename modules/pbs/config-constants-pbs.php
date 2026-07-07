@@ -5,8 +5,8 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -16,9 +16,9 @@ const PBS_PREFIX = 'pbs';
 
 const PBS_JS_REMOVE_HTML_SELECTOR = '.section-services .wp-block-post-title a';
 
-const PBS_JS_REMOVE_HTML_STRINGS = [
-    'en' => ' in Georgia',
-    'ru' => ' В Грузии',
-    'ar' => 'في جورجيا ',
-    'zh' => '格鲁吉亚公',
-];
+const PBS_JS_REMOVE_HTML_STRINGS = array(
+	'en' => ' in Georgia',
+	'ru' => ' В Грузии',
+	'ar' => 'في جورجيا ',
+	'zh' => '格鲁吉亚公',
+);

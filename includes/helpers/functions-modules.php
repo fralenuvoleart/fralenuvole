@@ -6,8 +6,8 @@
  */
 
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -18,20 +18,18 @@ if (!defined('ABSPATH')) {
  *
  * @return string[]|false Array of module keys or false if no modules are available.
  */
-function frl_modules_get_keys()
-{
-    // Use the module list from the base default configuration
-    if (!isset(FRL_ENV_DEFAULT['modules']) || !is_array(FRL_ENV_DEFAULT['modules'])) {
-        frl_log('Modules Error: FRL_ENV_DEFAULT["modules"] is not defined or not an array.');
-        return false; // Cannot proceed without the module list
-    }
+function frl_modules_get_keys() {
+	// Use the module list from the base default configuration
+	if ( ! isset( FRL_ENV_DEFAULT['modules'] ) || ! is_array( FRL_ENV_DEFAULT['modules'] ) ) {
+		frl_log( 'Modules Error: FRL_ENV_DEFAULT["modules"] is not defined or not an array.' );
+		return false; // Cannot proceed without the module list
+	}
 
-    $available_modules = FRL_ENV_DEFAULT['modules'];
+	$available_modules = FRL_ENV_DEFAULT['modules'];
 
-
-    // Return just the module keys (no expensive file operations)
-    $module_keys = array_keys($available_modules);
-    return empty($module_keys) ? false : $module_keys;
+	// Return just the module keys (no expensive file operations)
+	$module_keys = array_keys( $available_modules );
+	return empty( $module_keys ) ? false : $module_keys;
 }
 
 /**
@@ -44,89 +42,87 @@ function frl_modules_get_keys()
  *         containing 'name', 'description', and 'file'. Returns false if no valid modules are found.
  * @see frl_modules_module_get_header_data()
  */
-function frl_modules_get_all_metadata()
-{
-    return frl_cache_remember(
-        'adminui',
-        'modules_default_metadata',
-        function () {
-            $available_modules = frl_modules_get_keys();
+function frl_modules_get_all_metadata() {
+	return frl_cache_remember(
+		'adminui',
+		'modules_default_metadata',
+		function () {
+			$available_modules = frl_modules_get_keys();
 
-            $valid_modules = array();
+			$valid_modules = array();
 
-            // Iterate through the KEYS (module keys) from the default config
-            if (frl_is_array_not_empty($available_modules)) { // Ensure $available_modules is an array
-                foreach ($available_modules as $module_key) {
-                    $module_file = frl_modules_module_get_file_path($module_key);
-                    if ($module_file) {
-                        $header_data = frl_modules_module_get_header_data($module_file);
-                        $valid_modules[$module_key] = [
-                            'name' => $header_data['name'],
-                            'description' => $header_data['description'],
-                            'file' => $module_file,
-                        ];
-                    } else {
-                        frl_log('Module file not found for key: {key}', ['key' => $module_key]);
-                    }
-                }
-            }
+			// Iterate through the KEYS (module keys) from the default config
+			if ( frl_is_array_not_empty( $available_modules ) ) { // Ensure $available_modules is an array
+				foreach ( $available_modules as $module_key ) {
+					$module_file = frl_modules_module_get_file_path( $module_key );
+					if ( $module_file ) {
+						$header_data                  = frl_modules_module_get_header_data( $module_file );
+						$valid_modules[ $module_key ] = array(
+							'name'        => $header_data['name'],
+							'description' => $header_data['description'],
+							'file'        => $module_file,
+						);
+					} else {
+						frl_log( 'Module file not found for key: {key}', array( 'key' => $module_key ) );
+					}
+				}
+			}
 
-            return empty($valid_modules) ? false : $valid_modules;
-        }
-    );
+			return empty( $valid_modules ) ? false : $valid_modules;
+		}
+	);
 }
 
 /**
  * Load option metadata from modules.
  *
  * Returns processed option defaults including the value, autoload status, and type.
- * 
+ *
  * Includes both the module's own configuration options and the standard module enable/disable toggle.
  *
  * @return array<string, array{value: mixed, autoload: string, type: string}>
  *         Option metadata keyed by option ID.
  */
-function frl_modules_load_options_defaults()
-{
-    return frl_cache_remember(
-        'options',
-        'modules_options_defaults',
-        function () {
-            $computed_defaults = [];
+function frl_modules_load_options_defaults() {
+	return frl_cache_remember(
+		'options',
+		'modules_options_defaults',
+		function () {
+			$computed_defaults = array();
 
-            foreach (frl_modules_get_combined_data_iterator() as $module_key => $data) {
-                // $module_info = $data['info']; // Available if needed
-                $module_config_options = $data['fields'];
+			foreach ( frl_modules_get_combined_data_iterator() as $module_key => $data ) {
+				// $module_info = $data['info']; // Available if needed
+				$module_config_options = $data['fields'];
 
-                // Add standard module enable/disable option for this module
-                $option_key_toggle = 'module_' . $module_key;
-                $computed_defaults[$option_key_toggle] = [
-                    'value'    => frl_normalize_option(0, 'checkbox'),
-                    'autoload' => frl_normalize_autoload('yes'),
-                    'type'     => 'checkbox'
-                ];
+				// Add standard module enable/disable option for this module
+				$option_key_toggle                       = 'module_' . $module_key;
+				$computed_defaults[ $option_key_toggle ] = array(
+					'value'    => frl_normalize_option( 0, 'checkbox' ),
+					'autoload' => frl_normalize_autoload( 'yes' ),
+					'type'     => 'checkbox',
+				);
 
-                // Add this module's specific configuration options
-                foreach ($module_config_options as $option_key => $option_config) {
-                    if (!isset($option_config['type'])) {
-                        continue;
-                    }
+				// Add this module's specific configuration options
+				foreach ( $module_config_options as $option_key => $option_config ) {
+					if ( ! isset( $option_config['type'] ) ) {
+						continue;
+					}
 
-                    $field_type    = $option_config['type'];
-                    $field_default = $option_config['default'] ?? null;
-                    $field_default = frl_normalize_option($field_default, $field_type);
-                    $autoload      = frl_normalize_autoload($option_config['autoload'] ?? 'yes');
+					$field_type    = $option_config['type'];
+					$field_default = $option_config['default'] ?? null;
+					$field_default = frl_normalize_option( $field_default, $field_type );
+					$autoload      = frl_normalize_autoload( $option_config['autoload'] ?? 'yes' );
 
-                    $computed_defaults[$option_key] = [
-                        'value'    => $field_default,
-                        'autoload' => $autoload,
-                        'type'     => $field_type
-                    ];
-                }
-            }
-            return $computed_defaults;
-        }
-    );
+					$computed_defaults[ $option_key ] = array(
+						'value'    => $field_default,
+						'autoload' => $autoload,
+						'type'     => $field_type,
+					);
+				}
+			}
+			return $computed_defaults;
+		}
+	);
 }
 
 
@@ -138,58 +134,57 @@ function frl_modules_load_options_defaults()
  * @return array<int, array> List of field definition arrays containing 'id', 'type',
  *         'default', 'label', 'description', 'section', etc.
  */
-function frl_modules_load_options_fields()
-{
-    return frl_cache_remember(
-        'adminui',
-        'modules_options_fields',
-        function () {
-            $final_module_fields = [];
-            $module_toggle_fields = [];
-            $module_specific_settings_fields = [];
+function frl_modules_load_options_fields() {
+	return frl_cache_remember(
+		'adminui',
+		'modules_options_fields',
+		function () {
+			$final_module_fields             = array();
+			$module_toggle_fields            = array();
+			$module_specific_settings_fields = array();
 
-            // Add section title first
-            $final_module_fields[] = [
-                'id'          => 'section_title_modules',
-                'label'       => 'Custom Modules',
-                'description' => 'Enable and configure additional plugin modules.',
-                'type'        => 'section_title',
-                'default'     => '',
-                'section'     => FRL_MODULES_SECTION, // Ensure it has a section
-                'restricted'  => false,
-                'autoload'    => 'no'
-            ];
+			// Add section title first
+			$final_module_fields[] = array(
+				'id'          => 'section_title_modules',
+				'label'       => 'Custom Modules',
+				'description' => 'Enable and configure additional plugin modules.',
+				'type'        => 'section_title',
+				'default'     => '',
+				'section'     => FRL_MODULES_SECTION, // Ensure it has a section
+				'restricted'  => false,
+				'autoload'    => 'no',
+			);
 
-            foreach (frl_modules_get_combined_data_iterator() as $module_key => $data) {
-                $module_info = $data['info'];
-                $module_specific_config = $data['fields'];
+			foreach ( frl_modules_get_combined_data_iterator() as $module_key => $data ) {
+				$module_info            = $data['info'];
+				$module_specific_config = $data['fields'];
 
-                // Collect module toggle field for the current module
-                $module_toggle_fields[] = [
-                    'id'          => 'module_' . $module_key,
-                    'label'       => $module_info['name'],
-                    'description' => $module_info['description'],
-                    'type'        => 'checkbox',
-                    'default'     => 0,
-                    'section'     => FRL_MODULES_SECTION, // Group under section
-                    'restricted'  => true,
-                    'autoload'    => 'yes'
-                ];
+				// Collect module toggle field for the current module
+				$module_toggle_fields[] = array(
+					'id'          => 'module_' . $module_key,
+					'label'       => $module_info['name'],
+					'description' => $module_info['description'],
+					'type'        => 'checkbox',
+					'default'     => 0,
+					'section'     => FRL_MODULES_SECTION, // Group under section
+					'restricted'  => true,
+					'autoload'    => 'yes',
+				);
 
-                // Collect specific settings fields for the current module
-                foreach ($module_specific_config as $field_id => $field_config) {
-                    $field_config['id']      = $field_id; // Add the field_id from the array key
-                    $field_config['section'] = $field_config['section'] ?? FRL_MODULES_SECTION; // Ensure 'section' is set
-                    $module_specific_settings_fields[] = $field_config;
-                }
-            }
+				// Collect specific settings fields for the current module
+				foreach ( $module_specific_config as $field_id => $field_config ) {
+					$field_config['id']                = $field_id; // Add the field_id from the array key
+					$field_config['section']           = $field_config['section'] ?? FRL_MODULES_SECTION; // Ensure 'section' is set
+					$module_specific_settings_fields[] = $field_config;
+				}
+			}
 
-            // Merge them in the desired order: Title (already added), Toggles, Specific Settings
-            $final_module_fields = array_merge($final_module_fields, $module_toggle_fields, $module_specific_settings_fields);
+			// Merge them in the desired order: Title (already added), Toggles, Specific Settings
+			$final_module_fields = array_merge( $final_module_fields, $module_toggle_fields, $module_specific_settings_fields );
 
-            return $final_module_fields;
-        }
-    );
+			return $final_module_fields;
+		}
+	);
 }
 
 /**
@@ -204,30 +199,29 @@ function frl_modules_load_options_fields()
  *         - 'fields': Module's default field configurations.
  *         Yields nothing if no modules are found.
  */
-function frl_modules_get_combined_data_iterator()
-{
-    // Fetch metadata for all available modules.
-    // This function call is expected to be internally cached per request.
-    $all_modules_metadata = frl_modules_get_all_metadata();
+function frl_modules_get_combined_data_iterator() {
+	// Fetch metadata for all available modules.
+	// This function call is expected to be internally cached per request.
+	$all_modules_metadata = frl_modules_get_all_metadata();
 
-    if (empty($all_modules_metadata)) {
-        // If there's no module metadata, there's nothing to process or yield.
-        return;
-    }
+	if ( empty( $all_modules_metadata ) ) {
+		// If there's no module metadata, there's nothing to process or yield.
+		return;
+	}
 
-    // Iterate through each module identified by its metadata.
-    foreach ($all_modules_metadata as $module_key => $module_info) {
-        // For each module, fetch its specific default fields.
-        // This function call is also expected to be internally cached per request.
-        $module_default_fields = frl_modules_module_get_default_config($module_key);
+	// Iterate through each module identified by its metadata.
+	foreach ( $all_modules_metadata as $module_key => $module_info ) {
+		// For each module, fetch its specific default fields.
+		// This function call is also expected to be internally cached per request.
+		$module_default_fields = frl_modules_module_get_default_config( $module_key );
 
-        // Yield the combined data for the current module.
-        yield $module_key => [
-            'key'    => $module_key,         // The unique key for the module
-            'info'   => $module_info,        // General metadata (name, description, etc.)
-            'fields' => $module_default_fields // Associated default fields/settings
-        ];
-    }
+		// Yield the combined data for the current module.
+		yield $module_key => array(
+			'key'    => $module_key,         // The unique key for the module
+			'info'   => $module_info,        // General metadata (name, description, etc.)
+			'fields' => $module_default_fields, // Associated default fields/settings
+		);
+	}
 }
 
 /**
@@ -236,38 +230,37 @@ function frl_modules_get_combined_data_iterator()
  * @param string $module_key The key of the module.
  * @return array The raw options/fields array from the module's config, or an empty array.
  */
-function frl_modules_module_get_default_config($module_key)
-{
-    static $loaded_module_configs = [];
+function frl_modules_module_get_default_config( $module_key ) {
+	static $loaded_module_configs = array();
 
-    // Check if we already loaded and processed this module's config in the current request.
-    if (array_key_exists($module_key, $loaded_module_configs)) {
-        return $loaded_module_configs[$module_key];
-    }
+	// Check if we already loaded and processed this module's config in the current request.
+	if ( array_key_exists( $module_key, $loaded_module_configs ) ) {
+		return $loaded_module_configs[ $module_key ];
+	}
 
-    // Get the validated path to the module's config file.
-    // This helper also handles static caching for the file_exists check.
-    $module_config_file_path = frl_modules_module_get_config_file_path($module_key);
+	// Get the validated path to the module's config file.
+	// This helper also handles static caching for the file_exists check.
+	$module_config_file_path = frl_modules_module_get_config_file_path( $module_key );
 
-    if ($module_config_file_path) {
-        // File exists, proceed to include and extract variables.
-        $config_data = (function () use ($module_config_file_path, $module_key) {
-            include $module_config_file_path; // Use the validated path
+	if ( $module_config_file_path ) {
+		// File exists, proceed to include and extract variables.
+		$config_data = ( function () use ( $module_config_file_path, $module_key ) {
+			include $module_config_file_path; // Use the validated path
 
-            $var_name = frl_prefix($module_key . '_default_fields');
-            if (frl_is_array_not_empty($$var_name)) {
-                return $$var_name;
-            }
-            return [];
-        })();
+			$var_name = frl_prefix( $module_key . '_default_fields' );
+			if ( frl_is_array_not_empty( $$var_name ) ) {
+				return $$var_name;
+			}
+			return array();
+		} )();
 
-        $loaded_module_configs[$module_key] = $config_data;
-        return $config_data;
-    }
+		$loaded_module_configs[ $module_key ] = $config_data;
+		return $config_data;
+	}
 
-    // Config file does not exist or module key was invalid.
-    $loaded_module_configs[$module_key] = []; // Cache empty result.
-    return [];
+	// Config file does not exist or module key was invalid.
+	$loaded_module_configs[ $module_key ] = array(); // Cache empty result.
+	return array();
 }
 
 /**
@@ -277,39 +270,38 @@ function frl_modules_module_get_default_config($module_key)
  * @return array{name: string, description: string} An array containing 'name' and 'description'
  *         from the module header, or default/fallback values if not found.
  */
-function frl_modules_module_get_header_data($module_file_path)
-{
-    // The $module_file_path is already expected to be valid and exist,
-    // as it comes from frl_modules_module_get_file_path()
+function frl_modules_module_get_header_data( $module_file_path ) {
+	// The $module_file_path is already expected to be valid and exist,
+	// as it comes from frl_modules_module_get_file_path()
 
-    // Define the headers we want to extract
-    $default_headers = array(
-        'ModuleName' => 'Module Name',
-        'Description' => 'Description',
-    );
+	// Define the headers we want to extract
+	$default_headers = array(
+		'ModuleName'  => 'Module Name',
+		'Description' => 'Description',
+	);
 
-    $module_data = get_file_data($module_file_path, $default_headers, 'module');
+	$module_data = get_file_data( $module_file_path, $default_headers, 'module' );
 
-    // Prepare the return array with fallbacks
-    $return_data = [];
+	// Prepare the return array with fallbacks
+	$return_data = array();
 
-    // Fallback for Module Name
-    if (!empty($module_data['ModuleName'])) {
-        $return_data['name'] = $module_data['ModuleName'];
-    } else {
-        // Fallback: try to generate a name from the file path if Module Name is missing
-        $file_name = basename($module_file_path, '.php');
-        $return_data['name'] = frl_format_file_name($file_name) . ' Module';
-    }
+	// Fallback for Module Name
+	if ( ! empty( $module_data['ModuleName'] ) ) {
+		$return_data['name'] = $module_data['ModuleName'];
+	} else {
+		// Fallback: try to generate a name from the file path if Module Name is missing
+		$file_name           = basename( $module_file_path, '.php' );
+		$return_data['name'] = frl_format_file_name( $file_name ) . ' Module';
+	}
 
-    // Fallback for Description
-    if (!empty($module_data['Description'])) {
-        $return_data['description'] = $module_data['Description'];
-    } else {
-        $return_data['description'] = 'Enable the ' . $return_data['name'] . '.'; // Generic description
-    }
+	// Fallback for Description
+	if ( ! empty( $module_data['Description'] ) ) {
+		$return_data['description'] = $module_data['Description'];
+	} else {
+		$return_data['description'] = 'Enable the ' . $return_data['name'] . '.'; // Generic description
+	}
 
-    return $return_data;
+	return $return_data;
 }
 
 /**
@@ -322,31 +314,30 @@ function frl_modules_module_get_header_data($module_file_path)
  * @return string|false The full, validated file path, or false if the module key is invalid
  *                      or the file does not exist.
  */
-function frl_modules_module_get_file_path($module_key)
-{
-    static $main_file_paths = [];
+function frl_modules_module_get_file_path( $module_key ) {
+	static $main_file_paths = array();
 
-    if (array_key_exists($module_key, $main_file_paths)) {
-        return $main_file_paths[$module_key];
-    }
+	if ( array_key_exists( $module_key, $main_file_paths ) ) {
+		return $main_file_paths[ $module_key ];
+	}
 
-    if (empty($module_key) || !is_string($module_key) || str_contains($module_key, '/') || str_contains($module_key, '\\')) {
-        // Basic validation for module key to prevent path traversal issues.
-        // Module keys should be simple directory/file names.
-        frl_log('Modules: Invalid module key provided for frl_modules_module_get_file_path: {key}', ['key' => $module_key]);
-        $main_file_paths[$module_key] = false;
-        return false;
-    }
+	if ( empty( $module_key ) || ! is_string( $module_key ) || str_contains( $module_key, '/' ) || str_contains( $module_key, '\\' ) ) {
+		// Basic validation for module key to prevent path traversal issues.
+		// Module keys should be simple directory/file names.
+		frl_log( 'Modules: Invalid module key provided for frl_modules_module_get_file_path: {key}', array( 'key' => $module_key ) );
+		$main_file_paths[ $module_key ] = false;
+		return false;
+	}
 
-    $module_file = FRL_MODULES_DIR_PATH . $module_key . '/' . $module_key . '.php';
+	$module_file = FRL_MODULES_DIR_PATH . $module_key . '/' . $module_key . '.php';
 
-    if (file_exists($module_file)) {
-        $main_file_paths[$module_key] = $module_file;
-        return $module_file;
-    }
+	if ( file_exists( $module_file ) ) {
+		$main_file_paths[ $module_key ] = $module_file;
+		return $module_file;
+	}
 
-    $main_file_paths[$module_key] = false;
-    return false;
+	$main_file_paths[ $module_key ] = false;
+	return false;
 }
 
 /**
@@ -359,28 +350,27 @@ function frl_modules_module_get_file_path($module_key)
  * @return string|false The full, validated file path to the config file, or false if the module key
  *                      is invalid or the config file does not exist.
  */
-function frl_modules_module_get_config_file_path($module_key)
-{
-    static $config_file_paths = [];
+function frl_modules_module_get_config_file_path( $module_key ) {
+	static $config_file_paths = array();
 
-    if (array_key_exists($module_key, $config_file_paths)) {
-        return $config_file_paths[$module_key];
-    }
+	if ( array_key_exists( $module_key, $config_file_paths ) ) {
+		return $config_file_paths[ $module_key ];
+	}
 
-    if (empty($module_key) || !is_string($module_key) || str_contains($module_key, '/') || str_contains($module_key, '\\')) {
-        // Basic validation for module key to prevent path traversal issues.
-        frl_log('Modules: Invalid module key provided in frl_modules_module_get_config_file_path for: {key}', ['key' => $module_key]);
-        $config_file_paths[$module_key] = false;
-        return false;
-    }
+	if ( empty( $module_key ) || ! is_string( $module_key ) || str_contains( $module_key, '/' ) || str_contains( $module_key, '\\' ) ) {
+		// Basic validation for module key to prevent path traversal issues.
+		frl_log( 'Modules: Invalid module key provided in frl_modules_module_get_config_file_path for: {key}', array( 'key' => $module_key ) );
+		$config_file_paths[ $module_key ] = false;
+		return false;
+	}
 
-    $config_file = FRL_MODULES_DIR_PATH . $module_key . '/config-options-' . $module_key . '.php';
+	$config_file = FRL_MODULES_DIR_PATH . $module_key . '/config-options-' . $module_key . '.php';
 
-    if (file_exists($config_file)) {
-        $config_file_paths[$module_key] = $config_file;
-        return $config_file;
-    }
+	if ( file_exists( $config_file ) ) {
+		$config_file_paths[ $module_key ] = $config_file;
+		return $config_file;
+	}
 
-    $config_file_paths[$module_key] = false;
-    return false;
+	$config_file_paths[ $module_key ] = false;
+	return false;
 }

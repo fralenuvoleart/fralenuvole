@@ -50,13 +50,13 @@ final class Frl_Cache_Operations {
 		if ( null === $config ) {
 			$msg = sprintf( 'Unknown cache operation: %s', $operation );
 			frl_log( $msg );
-			return [
+			return array(
 				'operation' => $operation,
 				'label'     => '',
 				'success'   => false,
 				'error'     => $msg,
-				'steps'     => [],
-			];
+				'steps'     => array(),
+			);
 		}
 
 		// Re-entrancy guard.
@@ -64,21 +64,21 @@ final class Frl_Cache_Operations {
 		if ( frl_is_already_running( $guard_key ) ) {
 			$msg = sprintf( 'Cache operation already running: %s', $operation );
 			frl_log( $msg );
-			return [
+			return array(
 				'operation' => $operation,
 				'label'     => $config['label'],
 				'success'   => false,
 				'error'     => $msg,
-				'steps'     => [],
-			];
+				'steps'     => array(),
+			);
 		}
 
-		$results = [
+		$results = array(
 			'operation' => $operation,
 			'label'     => $config['label'],
-			'steps'     => [],
+			'steps'     => array(),
 			'success'   => true,
-		];
+		);
 
 		// Before hook.
 		if ( ! empty( $config['hooks']['before'] ) ) {
@@ -88,28 +88,28 @@ final class Frl_Cache_Operations {
 		// Execute all steps sequentially (no early abort).
 		foreach ( $config['steps'] as $index => $step ) {
 			$fn   = $step['fn'];
-			$args = $step['args'] ?? [];
+			$args = $step['args'] ?? array();
 
-			$step_result = [
+			$step_result = array(
 				'step'     => $index + 1,
 				'function' => is_array( $fn ) ? implode( '::', $fn ) : $fn,
 				'args'     => $args,
 				'success'  => false,
-			];
+			);
 
 			if ( is_callable( $fn ) ) {
 				try {
-					$returned                  = call_user_func_array( $fn, $args );
-					$step_result['success']    = true;
-					$step_result['result']     = $returned;
+					$returned               = call_user_func_array( $fn, $args );
+					$step_result['success'] = true;
+					$step_result['result']  = $returned;
 				} catch ( Throwable $e ) {
 					$step_result['error'] = $e->getMessage();
 					frl_log(
 						'Cache operation step failed: {fn} - {error}',
-						[
+						array(
 							'fn'    => $step_result['function'],
 							'error' => $e->getMessage(),
-						]
+						)
 					);
 				}
 			} else {
@@ -119,7 +119,7 @@ final class Frl_Cache_Operations {
 				);
 				frl_log(
 					'Cache operation step not callable: {fn}',
-					[ 'fn' => $step_result['function'] ]
+					array( 'fn' => $step_result['function'] )
 				);
 			}
 
@@ -150,23 +150,23 @@ final class Frl_Cache_Operations {
 	 * @return array<string, array{label: string, steps: array, hooks: array}>
 	 */
 	public static function get_operation_map(): array {
-		$map = [];
+		$map = array();
 
 		foreach ( \FRL_CACHE_OPERATIONS as $key => $config ) {
-			$steps = [];
+			$steps = array();
 			foreach ( $config['steps'] as $step ) {
-				$steps[] = [
+				$steps[] = array(
 					'function' => is_array( $step['fn'] ) ? implode( '::', $step['fn'] ) : $step['fn'],
 					'args'     => $step['args'],
 					'note'     => $step['note'] ?? '',
-				];
+				);
 			}
 
-			$map[ $key ] = [
+			$map[ $key ] = array(
 				'label' => $config['label'],
 				'steps' => $steps,
-				'hooks' => $config['hooks'] ?? [],
-			];
+				'hooks' => $config['hooks'] ?? array(),
+			);
 		}
 
 		return $map;

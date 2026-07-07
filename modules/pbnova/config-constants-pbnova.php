@@ -5,8 +5,8 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -14,9 +14,9 @@ if (!defined('ABSPATH')) {
  */
 const PBNOVA_PREFIX = 'pbnova';
 
-const PBNOVA_ACF_AUTO_CONTENT = [
-    'page',
-    'service',
-    'flag',
-    'jurisdiction'
-];
+const PBNOVA_ACF_AUTO_CONTENT = array(
+	'page',
+	'service',
+	'flag',
+	'jurisdiction',
+);

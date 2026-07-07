@@ -7,8 +7,8 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -26,22 +26,25 @@ if (!defined('ABSPATH')) {
  *
  * @see Frl_Subdomain_Adapter::detect()
  */
-define('FRL_SUBDOMAIN_ADAPTER_MAP', [
-    'pbservices.ge' => [
-        'ru'      => 'ru.pbservices.ge',
-        // Future: 'ar' => 'ar.pbservices.ge',
-        'default_lang' => 'en',
-    ],
-    'staging.pbservices.ge' => [
-        'ru'      => 'ru.pbservices.ge',
-        'default_lang' => 'en',
-    ],
-    // Future cross-env example:
-    // 'pbproperty.ge' => [
-    //     'ru'      => 'ru.pbproperty.ge',
-    //     'default_lang' => 'en',
-    // ],
-]);
+define(
+	'FRL_SUBDOMAIN_ADAPTER_MAP',
+	array(
+		'pbservices.ge'         => array(
+			'ru'           => 'ru.pbservices.ge',
+			// Future: 'ar' => 'ar.pbservices.ge',
+			'default_lang' => 'en',
+		),
+		'staging.pbservices.ge' => array(
+			'ru'           => 'ru.pbservices.ge',
+			'default_lang' => 'en',
+		),
+	// Future cross-env example:
+	// 'pbproperty.ge' => [
+	//     'ru'      => 'ru.pbproperty.ge',
+	//     'default_lang' => 'en',
+	// ],
+	)
+);
 
 /**
  * Block types that commonly contain site URLs.
@@ -49,11 +52,11 @@ define('FRL_SUBDOMAIN_ADAPTER_MAP', [
  * Extend to add third-party block types that frequently contain
  * site URLs to skip the host-scan guard for those blocks.
  */
-const FRL_SUBDOMAIN_ADAPTER_LEGACY_URL_BLOCKS = [
-    'core/navigation',
-    'core/navigation-link',
-    'core/navigation-submenu',
-    'core/button',
-    'core/image',
-    'core/custom-html',
-];
+const FRL_SUBDOMAIN_ADAPTER_LEGACY_URL_BLOCKS = array(
+	'core/navigation',
+	'core/navigation-link',
+	'core/navigation-submenu',
+	'core/button',
+	'core/image',
+	'core/custom-html',
+);

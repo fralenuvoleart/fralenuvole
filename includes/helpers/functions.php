@@ -10,15 +10,16 @@
  */
 
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /*
  * BOOTSTRAP: Load Helper Files
  */
 require_once FRL_DIR_PATH . 'includes/helpers/utilities.php';
-require_once FRL_DIR_PATH . 'includes/helpers/functions-error-log.php';require_once FRL_DIR_PATH . 'includes/helpers/functions-access-control.php';
+require_once FRL_DIR_PATH . 'includes/helpers/functions-error-log.php';
+require_once FRL_DIR_PATH . 'includes/helpers/functions-access-control.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-options.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-class-helpers.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-translator-helpers.php';
@@ -42,10 +43,9 @@ require_once FRL_DIR_PATH . 'includes/helpers/functions-schema.php';
  *
  * @return string The referer URL, or the current request URI as fallback.
  */
-function frl_wp_get_referer(): string
-{
-    $referer = wp_get_referer();
-    return $referer ?: ($_SERVER['REQUEST_URI'] ?? '');
+function frl_wp_get_referer(): string {
+	$referer = wp_get_referer();
+	return $referer ?: ( $_SERVER['REQUEST_URI'] ?? '' );
 }
 
 /**
@@ -53,18 +53,17 @@ function frl_wp_get_referer(): string
  *
  * @return bool True if the current request is over HTTPS.
  */
-function frl_is_https(): bool
-{
-    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-        return true;
-    }
-    if (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443) {
-        return true;
-    }
-    if (function_exists('is_ssl') && is_ssl()) {
-        return true;
-    }
-    return false;
+function frl_is_https(): bool {
+	if ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' ) {
+		return true;
+	}
+	if ( isset( $_SERVER['SERVER_PORT'] ) && (int) $_SERVER['SERVER_PORT'] === 443 ) {
+		return true;
+	}
+	if ( function_exists( 'is_ssl' ) && is_ssl() ) {
+		return true;
+	}
+	return false;
 }
 
 /**
@@ -73,14 +72,13 @@ function frl_is_https(): bool
  * @param string $name The name to prefix.
  * @return string The prefixed string.
  */
-function frl_prefix($name = '')
-{
-    $prefixed = FRL_PREFIX . '_';
+function frl_prefix( $name = '' ) {
+	$prefixed = FRL_PREFIX . '_';
 
-    if (!empty($name)) {
-        $prefixed .= $name;
-    }
-    return $prefixed;
+	if ( ! empty( $name ) ) {
+		$prefixed .= $name;
+	}
+	return $prefixed;
 }
 
 /**
@@ -89,15 +87,14 @@ function frl_prefix($name = '')
  * @param string $name_prefix Optional prefix to prepend to the plugin name.
  * @return string The formatted plugin name.
  */
-function frl_name($name_prefix = '')
-{
-    $base_name = ucfirst(FRL_NAME);
-    // Add space only if prefix is provided
-    if (!empty($name_prefix)) {
-        return $name_prefix . ' ' . $base_name;
-    }
-    // Return base name
-    return $base_name;
+function frl_name( $name_prefix = '' ) {
+	$base_name = ucfirst( FRL_NAME );
+	// Add space only if prefix is provided
+	if ( ! empty( $name_prefix ) ) {
+		return $name_prefix . ' ' . $base_name;
+	}
+	// Return base name
+	return $base_name;
 }
 
 /**
@@ -108,57 +105,61 @@ function frl_name($name_prefix = '')
  *
  * @return WP_User The current user object (ID=0 if not logged in).
  */
-function frl_get_current_user()
-{
-    // Static cache
-    static $current_user = null;
+function frl_get_current_user() {
+	// Static cache
+	static $current_user = null;
 
-    // Return cached user
-    if ($current_user !== null) {
-        return $current_user;
-    }
+	// Return cached user
+	if ( $current_user !== null ) {
+		return $current_user;
+	}
 
-    // Return dummy user if WP is loading early
-    if (!function_exists('wp_get_current_user') || (!doing_action('plugins_loaded') && !did_action('plugins_loaded'))) {
-        return $current_user = new WP_User(0);
-    }
+	// Return dummy user if WP is loading early
+	if ( ! function_exists( 'wp_get_current_user' ) || ( ! doing_action( 'plugins_loaded' ) && ! did_action( 'plugins_loaded' ) ) ) {
+		$current_user = new WP_User( 0 );
+		return $current_user;
+	}
 
-    // Use auth cookie for cache key.
-    // Include a short hash of the full cookie value (token portion) to bind the
-    // cache entry to the specific session, preventing cross-session cache hits.
-    // Otherwise, stale WP_User objects from the persistent 'admin' cache group
-    // (1-hour TTL) could be served to a different user's session.
-    $auth_cookie = isset($_COOKIE[LOGGED_IN_COOKIE]) ? $_COOKIE[LOGGED_IN_COOKIE] : 'anonymous';
-    $cookie_username = strtok($auth_cookie, '|');
-    $cookie_token   = substr(md5($auth_cookie), 0, 8);
-    $cache_key      = 'user_' . $cookie_username . '_' . $cookie_token;
+	// Use auth cookie for cache key.
+	// Include a short hash of the full cookie value (token portion) to bind the
+	// cache entry to the specific session, preventing cross-session cache hits.
+	// Otherwise, stale WP_User objects from the persistent 'admin' cache group
+	// (1-hour TTL) could be served to a different user's session.
+	$auth_cookie     = isset( $_COOKIE[ LOGGED_IN_COOKIE ] ) ? $_COOKIE[ LOGGED_IN_COOKIE ] : 'anonymous';
+	$cookie_username = strtok( $auth_cookie, '|' );
+	$cookie_token    = substr( md5( $auth_cookie ), 0, 8 );
+	$cache_key       = 'user_' . $cookie_username . '_' . $cookie_token;
 
-    // Cache user lookup
-    $current_user = frl_cache_remember('admin', $cache_key, function () {
-        $user = wp_get_current_user();
+	// Cache user lookup
+	$current_user = frl_cache_remember(
+		'admin',
+		$cache_key,
+		function () {
+			$user = wp_get_current_user();
 
-        // Ensure valid WP_User object
-        if (!($user instanceof WP_User)) {
-            return new WP_User(0);
-        }
+			// Ensure valid WP_User object
+			if ( ! ( $user instanceof WP_User ) ) {
+				return new WP_User( 0 );
+			}
 
-        return $user;
-    });
+			return $user;
+		}
+	);
 
-    // 2. Ensure the cached value is actually a WP_User object
-    if (!($current_user instanceof WP_User)) {
-        $current_user = new WP_User(0);
-    }
+	// 2. Ensure the cached value is actually a WP_User object
+	if ( ! ( $current_user instanceof WP_User ) ) {
+		$current_user = new WP_User( 0 );
+	}
 
-    // 3. Cross-session safety: verify the cached user's login matches the
-    //    current request's cookie username. If the persistent cache returned a
-    //    stale WP_User for a different user, invalidate and re-fetch.
-    if ($current_user->ID > 0 && $current_user->user_login !== $cookie_username) {
-        frl_cache_clear('admin', $cache_key, false);
-        $current_user = new WP_User(0);
-    }
-    
-    return $current_user;
+	// 3. Cross-session safety: verify the cached user's login matches the
+	//    current request's cookie username. If the persistent cache returned a
+	//    stale WP_User for a different user, invalidate and re-fetch.
+	if ( $current_user->ID > 0 && $current_user->user_login !== $cookie_username ) {
+		frl_cache_clear( 'admin', $cache_key, false );
+		$current_user = new WP_User( 0 );
+	}
+
+	return $current_user;
 }
 
 /**
@@ -169,13 +170,12 @@ function frl_get_current_user()
  * @param bool        $single  Whether to return a single value or an array. Defaults to true.
  * @return mixed The meta value(s), or false on failure.
  */
-function frl_get_user_meta($user_id, $key = '', $single = true)
-{
-    if (empty($key)) {
-        return get_user_meta($user_id, $key, $single);
-    }
+function frl_get_user_meta( $user_id, $key = '', $single = true ) {
+	if ( empty( $key ) ) {
+		return get_user_meta( $user_id, $key, $single );
+	}
 
-    return get_user_meta($user_id, frl_prefix($key), $single);
+	return get_user_meta( $user_id, frl_prefix( $key ), $single );
 }
 
 /**
@@ -187,9 +187,8 @@ function frl_get_user_meta($user_id, $key = '', $single = true)
  * @param mixed       $prev_value Optional. Previous value to check against.
  * @return bool True on success, false on failure.
  */
-function frl_update_user_meta($user_id, $key, $value, $prev_value = '')
-{
-    return update_user_meta($user_id, frl_prefix($key), $value, $prev_value);
+function frl_update_user_meta( $user_id, $key, $value, $prev_value = '' ) {
+	return update_user_meta( $user_id, frl_prefix( $key ), $value, $prev_value );
 }
 
 /**
@@ -200,58 +199,57 @@ function frl_update_user_meta($user_id, $key, $value, $prev_value = '')
  * @param array  $deps      Associative array of dependencies for each asset handle.
  * @return void
  */
-function frl_enqueue_scripts($assets, $assets_key, $deps = [])
-{
+function frl_enqueue_scripts( $assets, $assets_key, $deps = array() ) {
 	// Prevent duplicate enqueuing per group
-	static $enqueued_groups = [];
-    if (!frl_is_array_not_empty($assets)) {
-        return;
-    }
-	if (isset($enqueued_groups[$assets_key])) {
+	static $enqueued_groups = array();
+	if ( ! frl_is_array_not_empty( $assets ) ) {
 		return;
 	}
-	$enqueued_groups[$assets_key] = true;
+	if ( isset( $enqueued_groups[ $assets_key ] ) ) {
+		return;
+	}
+	$enqueued_groups[ $assets_key ] = true;
 
-    $assets_key .= '_scripts';
+	$assets_key .= '_scripts';
 
-    $versions = frl_get_assets_versions($assets, $assets_key);
+	$versions = frl_get_assets_versions( $assets, $assets_key );
 
-    if (empty($versions)) {
-        return;
-    }
+	if ( empty( $versions ) ) {
+		return;
+	}
 
-    $prefix = FRL_PREFIX . '-';
+	$prefix = FRL_PREFIX . '-';
 
-    foreach ($assets as $handle => $path) {
-        if (!isset($versions[$handle]) || empty($path)) {
-            continue;
-        }
+	foreach ( $assets as $handle => $path ) {
+		if ( ! isset( $versions[ $handle ] ) || empty( $path ) ) {
+			continue;
+		}
 
 		// Normalize handle to avoid duplicate extensions in ID
-        $normalized_handle = $handle;
-        if (str_ends_with($handle, '-js')) {
-            $normalized_handle = substr($handle, 0, -3);
-        } elseif (str_ends_with($handle, '-css')) {
-            $normalized_handle = substr($handle, 0, -4);
-        }
-		
+		$normalized_handle = $handle;
+		if ( str_ends_with( $handle, '-js' ) ) {
+			$normalized_handle = substr( $handle, 0, -3 );
+		} elseif ( str_ends_with( $handle, '-css' ) ) {
+			$normalized_handle = substr( $handle, 0, -4 );
+		}
+
 		$full_handle = $prefix . $normalized_handle;
 
-        // Use absolute URL or prepend FRL_DIR_URL
-        $url = str_contains($path, '://') ? $path : FRL_DIR_URL . $path;
+		// Use absolute URL or prepend FRL_DIR_URL
+		$url = str_contains( $path, '://' ) ? $path : FRL_DIR_URL . $path;
 
-        $version = $versions[$handle];
-        $dependencies = $deps[$handle] ?? [];
+		$version      = $versions[ $handle ];
+		$dependencies = $deps[ $handle ] ?? array();
 
-		$is_js = str_ends_with($path, '.js');
-		$is_css = str_ends_with($path, '.css');
+		$is_js  = str_ends_with( $path, '.js' );
+		$is_css = str_ends_with( $path, '.css' );
 
-		if ($is_js) {
-            wp_enqueue_script($full_handle, $url, $dependencies, $version, true);
-		} elseif ($is_css) {
-            wp_enqueue_style($full_handle, $url, $dependencies, $version);
-        }
-    }
+		if ( $is_js ) {
+			wp_enqueue_script( $full_handle, $url, $dependencies, $version, true );
+		} elseif ( $is_css ) {
+			wp_enqueue_style( $full_handle, $url, $dependencies, $version );
+		}
+	}
 }
 
 /**
@@ -260,21 +258,20 @@ function frl_enqueue_scripts($assets, $assets_key, $deps = [])
  * @param WP_Post|int $post The post object or post ID.
  * @return string The image size name (e.g., 'large', 'full').
  */
-function frl_get_featured_image_size($post)
-{
-    if (is_numeric($post)) {
-        $post = get_post($post);
-    }
+function frl_get_featured_image_size( $post ) {
+	if ( is_numeric( $post ) ) {
+		$post = get_post( $post );
+	}
 
-    if (!$post instanceof WP_Post) {
-        return 'full'; // Fallback
-    }
+	if ( ! $post instanceof WP_Post ) {
+		return 'full'; // Fallback
+	}
 
-    // Determine base size: 'large' for posts, 'full' for other post types
-    $default_size = ($post->post_type === 'post') ? 'large' : 'full';
+	// Determine base size: 'large' for posts, 'full' for other post types
+	$default_size = ( $post->post_type === 'post' ) ? 'large' : 'full';
 
-    // Apply the same filter used in preload function
-    return apply_filters('preload_post_thumbnail_image_size', $default_size, $post);
+	// Apply the same filter used in preload function
+	return apply_filters( 'preload_post_thumbnail_image_size', $default_size, $post );
 }
 
 /**
@@ -294,13 +291,12 @@ function frl_get_featured_image_size($post)
  * @param int $post_id Post ID.
  * @return int Cache version.
  */
-function frl_get_post_cache_version(int $post_id): int
-{
-    static $versions = [];
-    if (!isset($versions[$post_id])) {
-        $versions[$post_id] = (int) get_post_meta($post_id, '_frl_post_version', true) ?: 1;
-    }
-    return $versions[$post_id];
+function frl_get_post_cache_version( int $post_id ): int {
+	static $versions = array();
+	if ( ! isset( $versions[ $post_id ] ) ) {
+		$versions[ $post_id ] = (int) get_post_meta( $post_id, '_frl_post_version', true ) ?: 1;
+	}
+	return $versions[ $post_id ];
 }
 
 /**
@@ -310,10 +306,9 @@ function frl_get_post_cache_version(int $post_id): int
  * @param string ...$segments Additional segments to append.
  * @return string Formatted cache key.
  */
-function frl_generate_cache_key(string $prefix, string ...$segments): string
-{
-    $filtered = array_filter($segments, fn(string $s) => $s !== '');
-    return $prefix . ($filtered ? '_' . implode('_', $filtered) : '');
+function frl_generate_cache_key( string $prefix, string ...$segments ): string {
+	$filtered = array_filter( $segments, fn( string $s ) => $s !== '' );
+	return $prefix . ( $filtered ? '_' . implode( '_', $filtered ) : '' );
 }
 
 /**
@@ -321,14 +316,13 @@ function frl_generate_cache_key(string $prefix, string ...$segments): string
  *
  * @return int The current post ID, or 0 if not found.
  */
-function frl_get_current_post_id(): int
-{
-    $loop_id = get_the_ID();
-    if ($loop_id) {
-        return (int) $loop_id;
-    }
-    global $post;
-    return ($post && isset($post->ID)) ? (int) $post->ID : 0;
+function frl_get_current_post_id(): int {
+	$loop_id = get_the_ID();
+	if ( $loop_id ) {
+		return (int) $loop_id;
+	}
+	global $post;
+	return ( $post && isset( $post->ID ) ) ? (int) $post->ID : 0;
 }
 
 /**
@@ -337,45 +331,62 @@ function frl_get_current_post_id(): int
  * @param string $slug The post slug or hierarchical path.
  * @return int The post ID, or 0 if not found.
  */
-function frl_get_post_id_by_slug($slug)
-{
-    $lang = frl_get_language();
-    // Safe cache key
-    $cache_key = "postslug2id_" . sanitize_key($slug);
+function frl_get_post_id_by_slug( $slug ) {
+	$lang = frl_get_language();
+	// Safe cache key
+	$cache_key = 'postslug2id_' . sanitize_key( $slug );
 
-    return frl_cache_remember('permalinks', $cache_key, function () use ($slug, $lang) {
-        // Try 'pagename' for hierarchical slugs — narrow to hierarchical types
-        // only, since pagename resolution requires parent→child path structure
-        // that non-hierarchical post types don't support.
-        $posts = get_posts([
-            'post_type' => get_post_types(['public' => true, 'hierarchical' => true]),
-            'pagename' => $slug,
-            'post_status' => 'publish',
-            'numberposts' => 1,
-            'lang' => $lang,
-        ]);
+	return frl_cache_remember(
+		'permalinks',
+		$cache_key,
+		function () use ( $slug, $lang ) {
+			// Try 'pagename' for hierarchical slugs — narrow to hierarchical types
+			// only, since pagename resolution requires parent→child path structure
+			// that non-hierarchical post types don't support.
+			$posts = get_posts(
+				array(
+					'post_type'   => get_post_types(
+						array(
+							'public'       => true,
+							'hierarchical' => true,
+						)
+					),
+					'pagename'    => $slug,
+					'post_status' => 'publish',
+					'numberposts' => 1,
+					'lang'        => $lang,
+				)
+			);
 
-        if (!empty($posts)) {
-            return $posts[0]->ID;
-        }
+			if ( ! empty( $posts ) ) {
+				return $posts[0]->ID;
+			}
 
-        // Fallback for non-hierarchical post types
-        if (!str_contains($slug, '/')) {
-            $posts = get_posts([
-                'post_type' => get_post_types(['public' => true, 'hierarchical' => false]),
-                'name' => $slug,
-                'post_status' => 'publish',
-                'numberposts' => 1,
-                'lang' => $lang,
-            ]);
+			// Fallback for non-hierarchical post types
+			if ( ! str_contains( $slug, '/' ) ) {
+				$posts = get_posts(
+					array(
+						'post_type'   => get_post_types(
+							array(
+								'public'       => true,
+								'hierarchical' => false,
+							)
+						),
+						'name'        => $slug,
+						'post_status' => 'publish',
+						'numberposts' => 1,
+						'lang'        => $lang,
+					)
+				);
 
-            if (!empty($posts)) {
-                return $posts[0]->ID;
-            }
-        }
+				if ( ! empty( $posts ) ) {
+					return $posts[0]->ID;
+				}
+			}
 
-        return 0;
-    });
+			return 0;
+		}
+	);
 }
 
 /**
@@ -385,18 +396,21 @@ function frl_get_post_id_by_slug($slug)
  * @param string $taxonomy The taxonomy slug. Defaults to 'category'.
  * @return int The term ID, or 0 if not found.
  */
-function frl_get_term_id_by_slug($slug, $taxonomy = 'category')
-{
-    if (empty($slug)) {
-        return 0;
-    }
+function frl_get_term_id_by_slug( $slug, $taxonomy = 'category' ) {
+	if ( empty( $slug ) ) {
+		return 0;
+	}
 
-    $cache_key = 'termslug2id_' . sanitize_key($taxonomy) . '_' . sanitize_key($slug);
+	$cache_key = 'termslug2id_' . sanitize_key( $taxonomy ) . '_' . sanitize_key( $slug );
 
-    return frl_cache_remember('permalinks', $cache_key, function () use ($slug, $taxonomy) {
-        $term = get_term_by('slug', $slug, $taxonomy);
-        return ($term && !is_wp_error($term)) ? (int) $term->term_id : 0;
-    });
+	return frl_cache_remember(
+		'permalinks',
+		$cache_key,
+		function () use ( $slug, $taxonomy ) {
+			$term = get_term_by( 'slug', $slug, $taxonomy );
+			return ( $term && ! is_wp_error( $term ) ) ? (int) $term->term_id : 0;
+		}
+	);
 }
 
 /**
@@ -406,18 +420,21 @@ function frl_get_term_id_by_slug($slug, $taxonomy = 'category')
  * @param string $cpt  The custom post-type slug.
  * @return int The post ID, or 0 if not found.
  */
-function frl_get_cpt_id_by_slug($slug, $cpt)
-{
-    if (empty($slug) || empty($cpt)) {
-        return 0;
-    }
+function frl_get_cpt_id_by_slug( $slug, $cpt ) {
+	if ( empty( $slug ) || empty( $cpt ) ) {
+		return 0;
+	}
 
-    $cache_key = 'cptslug2id_' . sanitize_key($cpt) . '_' . md5($slug);
+	$cache_key = 'cptslug2id_' . sanitize_key( $cpt ) . '_' . md5( $slug );
 
-    return frl_cache_remember('permalinks', $cache_key, function () use ($slug, $cpt) {
-        $post = get_page_by_path($slug, OBJECT, $cpt);
-        return ($post) ? (int) $post->ID : 0;
-    });
+	return frl_cache_remember(
+		'permalinks',
+		$cache_key,
+		function () use ( $slug, $cpt ) {
+			$post = get_page_by_path( $slug, OBJECT, $cpt );
+			return ( $post ) ? (int) $post->ID : 0;
+		}
+	);
 }
 
 /**
@@ -429,91 +446,90 @@ function frl_get_cpt_id_by_slug($slug, $cpt)
  * @param string $url The URL to process.
  * @return string The generated page title or label.
  */
-function frl_get_page_title_from_url($url)
-{
+function frl_get_page_title_from_url( $url ) {
 
-    if (!is_string($url) || empty($url)) {
-        return 'Unknown Page';
-    }
+	if ( ! is_string( $url ) || empty( $url ) ) {
+		return 'Unknown Page';
+	}
 
-    $path = parse_url($url, PHP_URL_PATH);
-    $query_str = parse_url($url, PHP_URL_QUERY);
-    parse_str($query_str ?? '', $params);
+	$path      = parse_url( $url, PHP_URL_PATH );
+	$query_str = parse_url( $url, PHP_URL_QUERY );
+	parse_str( $query_str ?? '', $params );
 
-    // Admin URLs
-    if (str_contains($url, admin_url())) {
-        // Path relative to admin directory
-        $admin_url_path = trailingslashit(parse_url(admin_url(), PHP_URL_PATH) ?? '/wp-admin/');
-        $current_path_relative = ltrim(str_replace($admin_url_path, '', $path ?? ''), '/');
+	// Admin URLs
+	if ( str_contains( $url, admin_url() ) ) {
+		// Path relative to admin directory
+		$admin_url_path        = trailingslashit( parse_url( admin_url(), PHP_URL_PATH ) ?? '/wp-admin/' );
+		$current_path_relative = ltrim( str_replace( $admin_url_path, '', $path ?? '' ), '/' );
 
-        // Post Edit Screen check
-        if ($current_path_relative === 'post.php' && isset($params['action']) && $params['action'] === 'edit' && isset($params['post'])) {
-            $post_id = (int) $params['post'];
-            if ($post_id > 0) {
-                $post_title = get_the_title($post_id);
-                if (!empty($post_title)) {
-                    // Return immediately if title is found
-                    return sprintf('Edit: %s', esc_html($post_title));
-                } else {
-                    // Fallback for empty title
-                    return sprintf('Edit: Post (ID: %d)', $post_id);
-                }
-            }
-            // Fall through if post_id is invalid, might be 'post-new.php' handled below
-        }
+		// Post Edit Screen check
+		if ( $current_path_relative === 'post.php' && isset( $params['action'] ) && $params['action'] === 'edit' && isset( $params['post'] ) ) {
+			$post_id = (int) $params['post'];
+			if ( $post_id > 0 ) {
+				$post_title = get_the_title( $post_id );
+				if ( ! empty( $post_title ) ) {
+					// Return immediately if title is found
+					return sprintf( 'Edit: %s', esc_html( $post_title ) );
+				} else {
+					// Fallback for empty title
+					return sprintf( 'Edit: Post (ID: %d)', $post_id );
+				}
+			}
+			// Fall through if post_id is invalid, might be 'post-new.php' handled below
+		}
 
-        // Other admin pages
-        $page_param = $params['page'] ?? null;
+		// Other admin pages
+		$page_param = $params['page'] ?? null;
 
-        if ($page_param) {
-            // Format slugs for readability
-            $admin_page_title = ucfirst(str_replace(['-', '_'], ' ', $page_param));
-            return sprintf('Admin Page: %s', esc_html($admin_page_title));
-        } else {
-            // Filename-based pages
-            $filename = basename($current_path_relative); // Use relative path here
-            // Dashboard check
-            if (empty($filename) || $filename === 'index.php') {
-                return 'Admin Dashboard'; // Return dashboard title directly
-            }
-            // Format other filenames
-            $admin_page_title = frl_format_file_name($filename);
-            return sprintf('Admin Screen: %s', esc_html($admin_page_title));
-        }
-    }
+		if ( $page_param ) {
+			// Format slugs for readability
+			$admin_page_title = ucfirst( str_replace( array( '-', '_' ), ' ', $page_param ) );
+			return sprintf( 'Admin Page: %s', esc_html( $admin_page_title ) );
+		} else {
+			// Filename-based pages
+			$filename = basename( $current_path_relative ); // Use relative path here
+			// Dashboard check
+			if ( empty( $filename ) || $filename === 'index.php' ) {
+				return 'Admin Dashboard'; // Return dashboard title directly
+			}
+			// Format other filenames
+			$admin_page_title = frl_format_file_name( $filename );
+			return sprintf( 'Admin Screen: %s', esc_html( $admin_page_title ) );
+		}
+	}
 
-    // Frontend URLs
+	// Frontend URLs
 
-            // Check language-specific homepage
-    $path = parse_url($url, PHP_URL_PATH);
-    $parts = explode('/', trim($path ?? '', '/'));
-    $last_part = end($parts);
+			// Check language-specific homepage
+	$path      = parse_url( $url, PHP_URL_PATH );
+	$parts     = explode( '/', trim( $path ?? '', '/' ) );
+	$last_part = end( $parts );
 
-    if (empty($last_part)) {
-        return 'Homepage'; // Default homepage
-    }
+	if ( empty( $last_part ) ) {
+		return 'Homepage'; // Default homepage
+	}
 
-    // Language-specific homepage check
-    if (count($parts) === 1 && strlen($last_part) === 2 && ctype_alpha($last_part)) {
-        return 'Homepage ' . strtoupper($last_part);
-    }
+	// Language-specific homepage check
+	if ( count( $parts ) === 1 && strlen( $last_part ) === 2 && ctype_alpha( $last_part ) ) {
+		return 'Homepage ' . strtoupper( $last_part );
+	}
 
-    // WordPress post resolution
-    $post_id = url_to_postid($url); // Attempt to get Post ID from URL
+	// WordPress post resolution
+	$post_id = url_to_postid( $url ); // Attempt to get Post ID from URL
 
-    if ($post_id > 0) {
-        $post_title = get_the_title($post_id);
-        if (!empty($post_title)) {
-            return esc_html($post_title);
-        }
-        // Fall through to slug formatting if title is empty for some reason
-    }
+	if ( $post_id > 0 ) {
+		$post_title = get_the_title( $post_id );
+		if ( ! empty( $post_title ) ) {
+			return esc_html( $post_title );
+		}
+		// Fall through to slug formatting if title is empty for some reason
+	}
 
-    // Fallback slug formatting
+	// Fallback slug formatting
 
-    // Format slug paths
-    $formatted_title = ucfirst(str_replace(['-', '_'], ' ', $last_part));
-    return esc_html($formatted_title);
+	// Format slug paths
+	$formatted_title = ucfirst( str_replace( array( '-', '_' ), ' ', $last_part ) );
+	return esc_html( $formatted_title );
 }
 
 /**
@@ -522,12 +538,11 @@ function frl_get_page_title_from_url($url)
  * @param string $plugin_path The full plugin path (e.g., 'plugin-folder/plugin-file.php').
  * @return string The formatted plugin name.
  */
-function frl_get_plugin_name_from_path($plugin_path)
-{
-    $name = explode('/', $plugin_path)[0];
-    $name = frl_format_file_name($name);
+function frl_get_plugin_name_from_path( $plugin_path ) {
+	$name = explode( '/', $plugin_path )[0];
+	$name = frl_format_file_name( $name );
 
-    return $name;
+	return $name;
 }
 
 /**
@@ -538,109 +553,108 @@ function frl_get_plugin_name_from_path($plugin_path)
  *
  * @return array|WP_Error Operation results with statistics, or WP_Error on failure.
  */
-function frl_mu_plugins_sync()
-{
-    // Paths
-    $mu_plugin_dir = WPMU_PLUGIN_DIR;
-    $template_dir = FRL_DIR_PATH . 'assets/mu/';
+function frl_mu_plugins_sync() {
+	// Paths
+	$mu_plugin_dir = WPMU_PLUGIN_DIR;
+	$template_dir  = FRL_DIR_PATH . 'assets/mu/';
 
-    // Template directory check
-    if (!is_dir($template_dir)) {
-        return frl_error('missing_template_dir', 'Template directory not found: ' . $template_dir);
-    }
+	// Template directory check
+	if ( ! is_dir( $template_dir ) ) {
+		return frl_error( 'missing_template_dir', 'Template directory not found: ' . $template_dir );
+	}
 
-    // Get template PHP files
-    $template_files = glob($template_dir . '*.php');
+	// Get template PHP files
+	$template_files = glob( $template_dir . '*.php' );
 
-    if (empty($template_files)) {
-        return frl_error('no_template_files', 'No PHP template files found in: ' . $template_dir);
-    }
+	if ( empty( $template_files ) ) {
+		return frl_error( 'no_template_files', 'No PHP template files found in: ' . $template_dir );
+	}
 
-    // Ensure mu-plugins directory exists
-    if (!is_dir($mu_plugin_dir)) {
-        if (!wp_mkdir_p($mu_plugin_dir)) {
-            return frl_error('create_dir_failed', 'Could not create mu-plugins directory');
-        }
-    }
+	// Ensure mu-plugins directory exists
+	if ( ! is_dir( $mu_plugin_dir ) ) {
+		if ( ! wp_mkdir_p( $mu_plugin_dir ) ) {
+			return frl_error( 'create_dir_failed', 'Could not create mu-plugins directory' );
+		}
+	}
 
-    // Write permissions check
-    if (!is_writable($mu_plugin_dir)) {
-        return frl_error('write_permission', 'Insufficient permissions to write to mu-plugins directory');
-    }
+	// Write permissions check
+	if ( ! is_writable( $mu_plugin_dir ) ) {
+		return frl_error( 'write_permission', 'Insufficient permissions to write to mu-plugins directory' );
+	}
 
-    $copied_files = [];
-    $overwritten_files = [];
-    $removed_files = [];
+	$copied_files      = array();
+	$overwritten_files = array();
+	$removed_files     = array();
 
-    // Expected filenames for cleanup
-    $expected_files = [];
-    foreach ($template_files as $template_file) {
-        $expected_files[] = basename($template_file);
-    }
+	// Expected filenames for cleanup
+	$expected_files = array();
+	foreach ( $template_files as $template_file ) {
+		$expected_files[] = basename( $template_file );
+	}
 
-    // Copy/overwrite template files
-    foreach ($template_files as $template_file) {
-        $filename = basename($template_file);
-        $mu_plugin_file = $mu_plugin_dir . '/' . $filename;
+	// Copy/overwrite template files
+	foreach ( $template_files as $template_file ) {
+		$filename       = basename( $template_file );
+		$mu_plugin_file = $mu_plugin_dir . '/' . $filename;
 
-        // Track existence
-        $file_existed = file_exists($mu_plugin_file);
+		// Track existence
+		$file_existed = file_exists( $mu_plugin_file );
 
-        // Copy template to mu-plugins
-        if (!copy($template_file, $mu_plugin_file)) {
-            return frl_error('copy_failed', 'Failed to copy ' . $filename . ' to mu-plugins directory');
-        }
+		// Copy template to mu-plugins
+		if ( ! copy( $template_file, $mu_plugin_file ) ) {
+			return frl_error( 'copy_failed', 'Failed to copy ' . $filename . ' to mu-plugins directory' );
+		}
 
-        // Preserve modification time
-        $template_mtime = filemtime($template_file);
-        if ($template_mtime !== false) {
-            touch($mu_plugin_file, $template_mtime);
-        }
+		// Preserve modification time
+		$template_mtime = filemtime( $template_file );
+		if ( $template_mtime !== false ) {
+			touch( $mu_plugin_file, $template_mtime );
+		}
 
-        // Verify copy
-        if (!file_exists($mu_plugin_file)) {
-            return frl_error('verify_failed', 'Failed to verify ' . $filename . ' exists after copy');
-        }
+		// Verify copy
+		if ( ! file_exists( $mu_plugin_file ) ) {
+			return frl_error( 'verify_failed', 'Failed to verify ' . $filename . ' exists after copy' );
+		}
 
-        // Track operation
-        if ($file_existed) {
-            $overwritten_files[] = $filename;
-        } else {
-            $copied_files[] = $filename;
-        }
-    }
+		// Track operation
+		if ( $file_existed ) {
+			$overwritten_files[] = $filename;
+		} else {
+			$copied_files[] = $filename;
+		}
+	}
 
-    // Cleanup orphaned files
-    $existing_mu_files = glob($mu_plugin_dir . '/frl-*.php');
+	// Cleanup orphaned files
+	$existing_mu_files = glob( $mu_plugin_dir . '/frl-*.php' );
 
-    foreach ($existing_mu_files as $existing_file) {
-        $filename = basename($existing_file);
+	foreach ( $existing_mu_files as $existing_file ) {
+		$filename = basename( $existing_file );
 
-        // Remove orphaned files
-        if (!in_array($filename, $expected_files)) {
-            if (unlink($existing_file)) {
-                $removed_files[] = $filename;
-            } else {
-                return frl_error('cleanup_failed', 'Failed to remove orphaned file: ' . $filename);
-            }
-        }
-    }
+		// Remove orphaned files
+		if ( ! in_array( $filename, $expected_files, true ) ) {
+			if ( unlink( $existing_file ) ) {
+				$removed_files[] = $filename;
+			} else {
+				return frl_error( 'cleanup_failed', 'Failed to remove orphaned file: ' . $filename );
+			}
+		}
+	}
 
-    // Return results
-    return [
-        'success' => true,
-        'copied' => $copied_files,
-        'overwritten' => $overwritten_files,
-        'removed' => $removed_files,
-        'total_expected' => count($expected_files),
-        'total_processed' => count($copied_files) + count($overwritten_files),
-        'message' => sprintf(
-            'MU plugins sync completed: %d copied, %d overwritten, %d removed',
-            count($copied_files),
-            count($overwritten_files),
-            count($removed_files)
-        )
-    ];
+	// Return results
+	return array(
+		'success'         => true,
+		'copied'          => $copied_files,
+		'overwritten'     => $overwritten_files,
+		'removed'         => $removed_files,
+		'total_expected'  => count( $expected_files ),
+		'total_processed' => count( $copied_files ) + count( $overwritten_files ),
+		'message'         => sprintf(
+			'MU plugins sync completed: %d copied, %d overwritten, %d removed',
+			count( $copied_files ),
+			count( $overwritten_files ),
+			count( $removed_files )
+		),
+	);
 }
 
 /**
@@ -648,57 +662,56 @@ function frl_mu_plugins_sync()
  *
  * @return array|WP_Error Operation results with statistics, or WP_Error on failure.
  */
-function frl_mu_plugins_delete()
-{
-    $mu_plugin_dir = WPMU_PLUGIN_DIR;
+function frl_mu_plugins_delete() {
+	$mu_plugin_dir = WPMU_PLUGIN_DIR;
 
-    // Directory check
-    if (!is_dir($mu_plugin_dir)) {
-        return [
-            'success' => true,
-            'removed' => [],
-            'total_found' => 0,
-            'total_removed' => 0,
-            'message' => 'MU plugins directory does not exist - nothing to remove'
-        ];
-    }
+	// Directory check
+	if ( ! is_dir( $mu_plugin_dir ) ) {
+		return array(
+			'success'       => true,
+			'removed'       => array(),
+			'total_found'   => 0,
+			'total_removed' => 0,
+			'message'       => 'MU plugins directory does not exist - nothing to remove',
+		);
+	}
 
-    // Get plugin MU plugins
-    $existing_mu_files = glob($mu_plugin_dir . '/frl-*.php');
+	// Get plugin MU plugins
+	$existing_mu_files = glob( $mu_plugin_dir . '/frl-*.php' );
 
-    if (empty($existing_mu_files)) {
-        return [
-            'success' => true,
-            'removed' => [],
-            'total_found' => 0,
-            'total_removed' => 0,
-            'message' => 'No MU plugins found - nothing to remove'
-        ];
-    }
+	if ( empty( $existing_mu_files ) ) {
+		return array(
+			'success'       => true,
+			'removed'       => array(),
+			'total_found'   => 0,
+			'total_removed' => 0,
+			'message'       => 'No MU plugins found - nothing to remove',
+		);
+	}
 
-    $removed_files = [];
+	$removed_files = array();
 
-    foreach ($existing_mu_files as $existing_file) {
-        $filename = basename($existing_file);
+	foreach ( $existing_mu_files as $existing_file ) {
+		$filename = basename( $existing_file );
 
-        if (unlink($existing_file)) {
-            $removed_files[] = $filename;
-        } else {
-            return frl_error('cleanup_failed', 'Failed to remove mu-plugin file: ' . $filename);
-        }
-    }
+		if ( unlink( $existing_file ) ) {
+			$removed_files[] = $filename;
+		} else {
+			return frl_error( 'cleanup_failed', 'Failed to remove mu-plugin file: ' . $filename );
+		}
+	}
 
-    // Return results
-    return [
-        'success' => true,
-        'removed' => $removed_files,
-        'total_found' => count($existing_mu_files),
-        'total_removed' => count($removed_files),
-        'message' => sprintf(
-            'MU plugins deletion completed: %d files removed',
-            count($removed_files)
-        )
-    ];
+	// Return results
+	return array(
+		'success'       => true,
+		'removed'       => $removed_files,
+		'total_found'   => count( $existing_mu_files ),
+		'total_removed' => count( $removed_files ),
+		'message'       => sprintf(
+			'MU plugins deletion completed: %d files removed',
+			count( $removed_files )
+		),
+	);
 }
 
 /**
@@ -708,42 +721,41 @@ function frl_mu_plugins_delete()
  *
  * @return array Results of the deletion operations.
  */
-function frl_delete_plugin()
-{
-    global $wpdb;
-    $prefix = frl_prefix();
-    $results = [
-        'options_deleted' => 0,
-        'options_restored' => 0,
-        'options_preserved' => 0,
-        'cache_cleared' => [
-            'runtime' => 0,
-            'object_cache' => 0,
-            'transients' => 0
-        ]
-    ];
+function frl_delete_plugin() {
+	global $wpdb;
+	$prefix  = frl_prefix();
+	$results = array(
+		'options_deleted'   => 0,
+		'options_restored'  => 0,
+		'options_preserved' => 0,
+		'cache_cleared'     => array(
+			'runtime'      => 0,
+			'object_cache' => 0,
+			'transients'   => 0,
+		),
+	);
 
-    // Initial DB flush
-    frl_flush_db();
+	// Initial DB flush
+	frl_flush_db();
 
-    // Clear all caches
-    frl_cache_clear('all');
+	// Clear all caches
+	frl_cache_clear( 'all' );
 
-    // Matches plain `frl_%` (regular options) and `_frl_%` (internal-state flags
-    // excluded from Import/Export, e.g. `_frl_disable_comments_completed` — see
-    // frl_disable_comments()). Derived from $prefix so both stay in sync with FRL_PREFIX.
-    $query = "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s";
-    $args = [$wpdb->esc_like($prefix) . '%', $wpdb->esc_like('_' . $prefix) . '%'];
-    if ($wpdb instanceof wpdb) {
-        $results['options_deleted'] = $wpdb->query($wpdb->prepare($query, $args));
-    } else {
-        frl_log("ERROR - $wpdb is not a valid wpdb object before deleting options during reset.");
-    }
+	// Matches plain `frl_%` (regular options) and `_frl_%` (internal-state flags
+	// excluded from Import/Export, e.g. `_frl_disable_comments_completed` — see
+	// frl_disable_comments()). Derived from $prefix so both stay in sync with FRL_PREFIX.
+	$query = "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s";
+	$args  = array( $wpdb->esc_like( $prefix ) . '%', $wpdb->esc_like( '_' . $prefix ) . '%' );
+	if ( $wpdb instanceof wpdb ) {
+		$results['options_deleted'] = $wpdb->query( $wpdb->prepare( $query, $args ) );
+	} else {
+		frl_log( "ERROR - $wpdb is not a valid wpdb object before deleting options during reset." );
+	}
 
-    // Final DB flush
-    frl_flush_db();
+	// Final DB flush
+	frl_flush_db();
 
-    return $results;
+	return $results;
 }
 
 /**
@@ -755,12 +767,11 @@ function frl_delete_plugin()
  *
  * @return void
  */
-function frl_flush_db()
-{
-    global $wpdb;
-    if (isset($wpdb) && is_object($wpdb) && method_exists($wpdb, 'flush')) {
-        $wpdb->flush();
-    }
+function frl_flush_db() {
+	global $wpdb;
+	if ( isset( $wpdb ) && is_object( $wpdb ) && method_exists( $wpdb, 'flush' ) ) {
+		$wpdb->flush();
+	}
 }
 
 /**
@@ -771,14 +782,13 @@ function frl_flush_db()
  * @param int    $timeout Seconds before the notice expires. Defaults to 30.
  * @return void
  */
-function frl_add_admin_notice($message, $type = 'info', $timeout = 30)
-{
-    $notices = frl_get_transient('admin_notices') ?: [];
-    $notices[] = [
-        'message' => $message,
-        'type' => $type
-    ];
-    frl_set_transient('admin_notices', $notices, $timeout);
+function frl_add_admin_notice( $message, $type = 'info', $timeout = 30 ) {
+	$notices   = frl_get_transient( 'admin_notices' ) ?: array();
+	$notices[] = array(
+		'message' => $message,
+		'type'    => $type,
+	);
+	frl_set_transient( 'admin_notices', $notices, $timeout );
 }
 
 /**
@@ -790,50 +800,49 @@ function frl_add_admin_notice($message, $type = 'info', $timeout = 30)
  * @param string $redirect_url Optional URL to redirect to. If empty, the referer or plugin URL is used.
  * @return void
  */
-function frl_safe_redirect($redirect_url = '')
-{
-    // Action parameter name
-    $action = '';
-    $action_param = frl_prefix('action');
-    $is_plugin_action = isset($_GET[$action_param]) ? true : false;
+function frl_safe_redirect( $redirect_url = '' ) {
+	// Action parameter name
+	$action           = '';
+	$action_param     = frl_prefix( 'action' );
+	$is_plugin_action = isset( $_GET[ $action_param ] ) ? true : false;
 
-    // Get action if present
-    if ($is_plugin_action) {
-        $action = $_GET[$action_param];
-    }
+	// Get action if present
+	if ( $is_plugin_action ) {
+		$action = $_GET[ $action_param ];
+	}
 
-    // Determine default redirect URL
-    if (empty($redirect_url)) {
-        // Referer as fallback — frl_wp_get_referer() handles Nginx false return
-        $referer = frl_wp_get_referer();
-        // Redirect to plugin admin for resets, otherwise referer
-        $redirect_url = ($is_plugin_action && str_contains($action, 'reset_')) ? FRL_PLUGIN_ADMIN_URL : $referer;
-    }
+	// Determine default redirect URL
+	if ( empty( $redirect_url ) ) {
+		// Referer as fallback — frl_wp_get_referer() handles Nginx false return
+		$referer = frl_wp_get_referer();
+		// Redirect to plugin admin for resets, otherwise referer
+		$redirect_url = ( $is_plugin_action && str_contains( $action, 'reset_' ) ) ? FRL_PLUGIN_ADMIN_URL : $referer;
+	}
 
-    // Parameters to remove
-    $params_to_remove = [$action_param];
+	// Parameters to remove
+	$params_to_remove = array( $action_param );
 
-    // Add nonce parameters
-    if (!empty($action)) {
-        $params_to_remove[] = $action_param . '_nonce';
-    } else {
-        // Scan for any prefixed nonce parameters
-        foreach ($_GET as $key => $value) {
-            if (str_contains($key, '_nonce') && str_starts_with($key, frl_prefix())) {
-                $params_to_remove[] = $key;
-            }
-        }
-    }
+	// Add nonce parameters
+	if ( ! empty( $action ) ) {
+		$params_to_remove[] = $action_param . '_nonce';
+	} else {
+		// Scan for any prefixed nonce parameters
+		foreach ( $_GET as $key => $value ) {
+			if ( str_contains( $key, '_nonce' ) && str_starts_with( $key, frl_prefix() ) ) {
+				$params_to_remove[] = $key;
+			}
+		}
+	}
 
-    // Sanitize URL
-    $redirect_url = wp_validate_redirect($redirect_url, admin_url());
+	// Sanitize URL
+	$redirect_url = wp_validate_redirect( $redirect_url, admin_url() );
 
-    // Remove parameters
-    $redirect_url = remove_query_arg($params_to_remove, $redirect_url);
+	// Remove parameters
+	$redirect_url = remove_query_arg( $params_to_remove, $redirect_url );
 
-    // Redirect
-    wp_safe_redirect($redirect_url);
-    exit;
+	// Redirect
+	wp_safe_redirect( $redirect_url );
+	exit;
 }
 
 /**
@@ -842,9 +851,8 @@ function frl_safe_redirect($redirect_url = '')
  * @param string $action The action name.
  * @return string The generated nonce.
  */
-function frl_create_nonce($action)
-{
-    return wp_create_nonce(frl_prefix($action));
+function frl_create_nonce( $action ) {
+	return wp_create_nonce( frl_prefix( $action ) );
 }
 
 /**
@@ -856,9 +864,8 @@ function frl_create_nonce($action)
  * @param bool   $display Whether to echo the field or return it. Defaults to true.
  * @return string The nonce field HTML if $display is false.
  */
-function frl_nonce_field($action, $name = '_wpnonce', $referer = true, $display = true)
-{
-    return wp_nonce_field(frl_prefix($action), $name, $referer, $display);
+function frl_nonce_field( $action, $name = '_wpnonce', $referer = true, $display = true ) {
+	return wp_nonce_field( frl_prefix( $action ), $name, $referer, $display );
 }
 
 /**
@@ -878,58 +885,62 @@ function frl_nonce_field($action, $name = '_wpnonce', $referer = true, $display 
  *                                       post ID or taxonomy was provided.
  */
 function frl_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' ) {
-    $post_id = ( $post instanceof WP_Post ) ? $post->ID : (int) $post;
-    if ( ! $post_id ) {
-        $post_id = get_the_ID();
-    }
-    if ( ! $post_id || empty( $taxonomy ) ) {
-        return false;
-    }
+	$post_id = ( $post instanceof WP_Post ) ? $post->ID : (int) $post;
+	if ( ! $post_id ) {
+		$post_id = get_the_ID();
+	}
+	if ( ! $post_id || empty( $taxonomy ) ) {
+		return false;
+	}
 
-    // Include language in cache key for multilingual compatibility
-    $lang      = frl_get_language();
-    $cache_key = 'cf_terms_' . $post_id . '_' . sanitize_key( $taxonomy ) . '_' . $lang;
+	// Include language in cache key for multilingual compatibility
+	$lang      = frl_get_language();
+	$cache_key = 'cf_terms_' . $post_id . '_' . sanitize_key( $taxonomy ) . '_' . $lang;
 
-    return frl_cache_remember( 'permalinks', $cache_key, function () use ( $post_id, $taxonomy, $field, $lang ) {
-        $terms = get_the_terms( $post_id, $taxonomy );
+	return frl_cache_remember(
+		'permalinks',
+		$cache_key,
+		function () use ( $post_id, $taxonomy, $field, $lang ) {
+			$terms = get_the_terms( $post_id, $taxonomy );
 
-        // Normalize false and WP_Error to empty array so the result is
-        // safely cacheable across requests. get_the_terms() returns false
-        // when no terms exist, but caching 'false' via transient fallback
-        // is unreliable (get_transient returns false for both "key missing"
-        // and "stored value is false").
-        if ( ! $terms || is_wp_error( $terms ) ) {
-            return [];
-        }
+			// Normalize false and WP_Error to empty array so the result is
+			// safely cacheable across requests. get_the_terms() returns false
+			// when no terms exist, but caching 'false' via transient fallback
+			// is unreliable (get_transient returns false for both "key missing"
+			// and "stored value is false").
+			if ( ! $terms || is_wp_error( $terms ) ) {
+				return array();
+			}
 
-        // Filter by current language when a translation plugin is active
-        if ( frl_translator_is_enabled() && function_exists( 'pll_get_term_language' ) ) {
-            $filtered = [];
-            foreach ( $terms as $term ) {
-                /** @disregard P1010 Undefined type */
-                $term_lang_obj = pll_get_term_language( $term->term_id );
-                /** @disregard P1009 Undefined type */
-                $term_lang     = ( $term_lang_obj instanceof PLL_Language ) ? $term_lang_obj->slug : '';
-                if ( $term_lang === $lang || '' === $term_lang ) {
-                    $filtered[] = $term;
-                }
-            }
-            $terms = ! empty( $filtered ) ? $filtered : [];
-        }
+			// Filter by current language when a translation plugin is active
+			if ( frl_translator_is_enabled() && function_exists( 'pll_get_term_language' ) ) {
+				$filtered = array();
+				foreach ( $terms as $term ) {
+					/** @disregard P1010 Undefined type */
+					$term_lang_obj = pll_get_term_language( $term->term_id );
+					/** @disregard P1009 Undefined type */
+					$term_lang = ( $term_lang_obj instanceof PLL_Language ) ? $term_lang_obj->slug : '';
+					if ( $term_lang === $lang || '' === $term_lang ) {
+						$filtered[] = $term;
+					}
+				}
+				$terms = ! empty( $filtered ) ? $filtered : array();
+			}
 
-        if ( empty( $terms ) ) {
-            return [];
-        }
+			if ( empty( $terms ) ) {
+				return array();
+			}
 
-        if ( 'all' === $field ) {
-            return $terms;
-        }
+			if ( 'all' === $field ) {
+				return $terms;
+			}
 
-        // Map 'id' to 'term_id' for WP_Term compatibility
-        $pluck_field = ( 'id' === $field ) ? 'term_id' : $field;
+			// Map 'id' to 'term_id' for WP_Term compatibility
+			$pluck_field = ( 'id' === $field ) ? 'term_id' : $field;
 
-        return wp_list_pluck( $terms, $pluck_field );
-    } );
+			return wp_list_pluck( $terms, $pluck_field );
+		}
+	);
 }
 
 /**
@@ -943,28 +954,27 @@ function frl_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' )
  * @param bool   $single  Whether to return a single value.
  * @return mixed Meta value.
  */
-function frl_get_post_meta(int $post_id, string $key, bool $single = true)
-{
-    // Primary: raw post meta (ACPT or standard WP)
-    $value = get_post_meta($post_id, $key, $single);
-    if ($value !== null && $value !== '' && $value !== false) {
-        return $value;
-    }
+function frl_get_post_meta( int $post_id, string $key, bool $single = true ) {
+	// Primary: raw post meta (ACPT or standard WP)
+	$value = get_post_meta( $post_id, $key, $single );
+	if ( $value !== null && $value !== '' && $value !== false ) {
+		return $value;
+	}
 
-    // Empty/false is ambiguous ("missing" vs "exists but empty"); only fall
-    // back to ACF when the key truly doesn't exist, avoiding a wasted get_field() call.
-    if (metadata_exists('post', $post_id, $key)) {
-        return $value;
-    }
+	// Empty/false is ambiguous ("missing" vs "exists but empty"); only fall
+	// back to ACF when the key truly doesn't exist, avoiding a wasted get_field() call.
+	if ( metadata_exists( 'post', $post_id, $key ) ) {
+		return $value;
+	}
 
-    // Fallback: ACF (handles serialization, repeaters, etc.)
-    if (function_exists('get_field')) {
-        $acf_value = get_field($key, $post_id, $single);
-        if ($acf_value !== null && $acf_value !== false) {
-            return $acf_value;
-        }
-    }
-    return $value;
+	// Fallback: ACF (handles serialization, repeaters, etc.)
+	if ( function_exists( 'get_field' ) ) {
+		$acf_value = get_field( $key, $post_id, $single );
+		if ( $acf_value !== null && $acf_value !== false ) {
+			return $acf_value;
+		}
+	}
+	return $value;
 }
 
 /**
@@ -981,55 +991,54 @@ function frl_get_post_meta(int $post_id, string $key, bool $single = true)
  * @param string|null $subfield Optional subfield key. Requires $index.
  * @return mixed Row-indexed array, scalar string, or null if not found.
  */
-function frl_get_repeater_field(int $post_id, string $field, ?int $index = null, ?string $subfield = null)
-{
-    $raw = get_post_meta($post_id, $field, true);
+function frl_get_repeater_field( int $post_id, string $field, ?int $index = null, ?string $subfield = null ) {
+	$raw = get_post_meta( $post_id, $field, true );
 
-    // ACF/SCF: get_post_meta returns row count (int), get_field returns the array
-    if (!is_array($raw) && function_exists('get_field')) {
-        $raw = get_field($field, $post_id, false);
-    }
+	// ACF/SCF: get_post_meta returns row count (int), get_field returns the array
+	if ( ! is_array( $raw ) && function_exists( 'get_field' ) ) {
+		$raw = get_field( $field, $post_id, false );
+	}
 
-    if (!is_array($raw) || empty($raw)) {
-        return null;
-    }
+	if ( ! is_array( $raw ) || empty( $raw ) ) {
+		return null;
+	}
 
-    // Detect ACPT columnar format: first column's first row has 'original_name' envelope key.
-    // ACPT: {subfield_name: [{original_name, type, value}, ...]}
-    // SCF:  already [{subfield: val}, ...] — passthrough.
-    $first_col = reset($raw);
-    $first_cell = is_array($first_col) ? reset($first_col) : null;
-    if (is_array($first_cell) && array_key_exists('original_name', $first_cell)) {
-        $max = 0;
-        foreach ($raw as $col) {
-            if (is_array($col)) {
-                $max = max($max, count($col));
-            }
-        }
-        $rows = [];
-        for ($i = 0; $i < $max; $i++) {
-            $row = [];
-            foreach ($raw as $sub_name => $col) {
-                if (isset($col[$i]['value'])) {
-                    $val = $col[$i]['value'];
-                    $row[$sub_name] = is_scalar($val) ? (string) $val : $val;
-                }
-            }
-            $rows[] = $row;
-        }
-        $raw = $rows;
-    }
+	// Detect ACPT columnar format: first column's first row has 'original_name' envelope key.
+	// ACPT: {subfield_name: [{original_name, type, value}, ...]}
+	// SCF:  already [{subfield: val}, ...] — passthrough.
+	$first_col  = reset( $raw );
+	$first_cell = is_array( $first_col ) ? reset( $first_col ) : null;
+	if ( is_array( $first_cell ) && array_key_exists( 'original_name', $first_cell ) ) {
+		$max = 0;
+		foreach ( $raw as $col ) {
+			if ( is_array( $col ) ) {
+				$max = max( $max, count( $col ) );
+			}
+		}
+		$rows = array();
+		for ( $i = 0; $i < $max; $i++ ) {
+			$row = array();
+			foreach ( $raw as $sub_name => $col ) {
+				if ( isset( $col[ $i ]['value'] ) ) {
+					$val              = $col[ $i ]['value'];
+					$row[ $sub_name ] = is_scalar( $val ) ? (string) $val : $val;
+				}
+			}
+			$rows[] = $row;
+		}
+		$raw = $rows;
+	}
 
-    // Drill down to subfield if requested
-    if ($index !== null && $subfield !== null) {
-        if (!isset($raw[$index][$subfield])) {
-            return null;
-        }
-        $val = $raw[$index][$subfield];
-        return is_scalar($val) ? (string) $val : $val;
-    }
+	// Drill down to subfield if requested
+	if ( $index !== null && $subfield !== null ) {
+		if ( ! isset( $raw[ $index ][ $subfield ] ) ) {
+			return null;
+		}
+		$val = $raw[ $index ][ $subfield ];
+		return is_scalar( $val ) ? (string) $val : $val;
+	}
 
-    return $raw;
+	return $raw;
 }
 
 /**
@@ -1046,15 +1055,21 @@ function frl_get_repeater_field(int $post_id, string $field, ?int $index = null,
  * @param mixed $raw Raw meta value (scalar, numeric string, or array of IDs).
  * @return int[] Deduplicated list of positive integer IDs, in original order.
  */
-function frl_extract_relation_ids($raw): array
-{
-    if (empty($raw)) {
-        return [];
-    }
+function frl_extract_relation_ids( $raw ): array {
+	if ( empty( $raw ) ) {
+		return array();
+	}
 
-    $ids = is_array($raw) ? $raw : (array) $raw;
+	$ids = is_array( $raw ) ? $raw : (array) $raw;
 
-    return array_values(array_unique(array_filter(array_map('intval', $ids), function ($v) {
-        return $v > 0;
-    })));
+	return array_values(
+		array_unique(
+			array_filter(
+				array_map( 'intval', $ids ),
+				function ( $v ) {
+					return $v > 0;
+				}
+			)
+		)
+	);
 }

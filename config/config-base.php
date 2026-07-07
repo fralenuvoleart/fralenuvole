@@ -9,36 +9,36 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
  * Core Path & Identity Constants
  */
-const FRL_PREFIX = 'frl';
-const FRL_NAME = 'fralenuvole';
+const FRL_PREFIX      = 'frl';
+const FRL_NAME        = 'fralenuvole';
 const FRL_PLUGIN_FILE = FRL_NAME . '.php';
 
-if (!defined('FRL_DIR_PATH')) {
-	define('FRL_DIR_PATH', dirname(__DIR__) . '/');
+if ( ! defined( 'FRL_DIR_PATH' ) ) {
+	define( 'FRL_DIR_PATH', dirname( __DIR__ ) . '/' );
 }
 
-if (!defined('FRL_DIR_URL')) {
-	define('FRL_DIR_URL', plugin_dir_url(dirname(__FILE__)));
+if ( ! defined( 'FRL_DIR_URL' ) ) {
+	define( 'FRL_DIR_URL', plugin_dir_url( __DIR__ ) );
 }
 
-if (!defined('FRL_PLUGIN_ADMIN_URL')) {
-	define('FRL_PLUGIN_ADMIN_URL', get_admin_url() . 'admin.php?page=' . FRL_NAME);
+if ( ! defined( 'FRL_PLUGIN_ADMIN_URL' ) ) {
+	define( 'FRL_PLUGIN_ADMIN_URL', get_admin_url() . 'admin.php?page=' . FRL_NAME );
 }
 
 const FRL_MODULES_SECTION = 'modules';
-if (!defined('FRL_MODULES_DIR_PATH')) {
-	define('FRL_MODULES_DIR_PATH', FRL_DIR_PATH . FRL_MODULES_SECTION . '/');
+if ( ! defined( 'FRL_MODULES_DIR_PATH' ) ) {
+	define( 'FRL_MODULES_DIR_PATH', FRL_DIR_PATH . FRL_MODULES_SECTION . '/' );
 }
 
 const FRL_PLUGIN_SUPERADMIN_ID = 1;
-const FRL_PLUGIN_ACCESS = 'delete_plugins';
+const FRL_PLUGIN_ACCESS        = 'delete_plugins';
 
 
 // Default team-member fallback for blog author and editor
@@ -46,53 +46,53 @@ const FRL_DEFAULT_AUTHOR_CPT_ID = 18765;
 const FRL_DEFAULT_EDITOR_CPT_ID = 18765;
 
 // Hooks context map
-const FRL_AB_CPT_LIST = [
-	'page' 		=> [
-		'title' 	=> 'All Pages',
-		'href' 		=> '/wp-admin/edit.php?post_type=page',
-		'access' 	=> 'publish_pages',
-	],
-	'post' 		=> [
-		'title' 	=> 'All Posts',
-		'href' 		=> '/wp-admin/edit.php',
-		'access' 	=> 'edit_posts',
-	],
-	'media' 	=> [
-		'title' 	=> 'All Media',
-		'href' 		=> '/wp-admin/upload.php',
-		'access' 	=> 'upload_files',
-	],
-];
+const FRL_AB_CPT_LIST = array(
+	'page'  => array(
+		'title'  => 'All Pages',
+		'href'   => '/wp-admin/edit.php?post_type=page',
+		'access' => 'publish_pages',
+	),
+	'post'  => array(
+		'title'  => 'All Posts',
+		'href'   => '/wp-admin/edit.php',
+		'access' => 'edit_posts',
+	),
+	'media' => array(
+		'title'  => 'All Media',
+		'href'   => '/wp-admin/upload.php',
+		'access' => 'upload_files',
+	),
+);
 
 // Directory containing custom SVG flag files for the language switcher. `{slug}.svg` (e.g., en.svg, ru.svg).
 const FRL_LANGSWITCHER_FLAGS_DIR = __DIR__ . '/../assets/images/flags';
 
 // Arguments for default langs switcher
-const FRL_LANGSWITCHER_ARGS = [
-	'dropdown' 				=> 0, 		// 0 = flags, 1 = dropdown
-	'display_names_as' 		=> 'slug',	// Dropdown only: option text: 'name' or 'slug'
-	'hide_current' 			=> 0,  		// Flag only: default 0
-	'hide_if_no_translation'=> 0,  		// Both: default 0
-	'hide_languages' 		=> '', 		// Both: comma-separated list of lang slugs
-];
+const FRL_LANGSWITCHER_ARGS = array(
+	'dropdown'               => 0,       // 0 = flags, 1 = dropdown
+	'display_names_as'       => 'slug',  // Dropdown only: option text: 'name' or 'slug'
+	'hide_current'           => 0,       // Flag only: default 0
+	'hide_if_no_translation' => 0,       // Both: default 0
+	'hide_languages'         => '',      // Both: comma-separated list of lang slugs
+);
 
 // Email notifications
-const FRL_EMAIL_NOTIFICATIONS = [
-	'rate_key' => 'email_rate_limit',
-	'rate_limit' => 5,
+const FRL_EMAIL_NOTIFICATIONS = array(
+	'rate_key'      => 'email_rate_limit',
+	'rate_limit'    => 5,
 	'rate_interval' => MINUTE_IN_SECONDS,
-	'to' => 'francesco.csto@gmail.com',
-];
+	'to'            => 'francesco.csto@gmail.com',
+);
 
 // Strings to ignore for debug log count bubble
-const FRL_LOG_COUNT_IGNORE = [
+const FRL_LOG_COUNT_IGNORE = array(
 	'Automatic updates',
-];
+);
 
 // List of actions that can be executed without a nonce check if the user is logged in
-const FRL_PUBLIC_ACTIONS = [
-    'clear_website_transients',
-];
+const FRL_PUBLIC_ACTIONS = array(
+	'clear_website_transients',
+);
 
 /**
  * REST API endpoints disabled for unauthenticated users.
@@ -102,19 +102,19 @@ const FRL_PUBLIC_ACTIONS = [
  * @see includes/shared/website-features.php:124
  * @see public/public.php:frl_disable_rest_endpoints()
  */
-const FRL_REST_ENDPOINTS = [
-    '/wp/v2/users',
-    '/wp/v2/settings',
-    '/wp/v2/themes',
-    '/wp/v2/plugins',
-    '/wp/v2/types',
-    '/wp/v2/statuses',
-    '/wp/v2/taxonomies',
-    '/wp/v2/categories',
-    '/wp/v2/tags',
-    '/wp/v2/media',
-    '/wp/v2/comments',
-];
+const FRL_REST_ENDPOINTS = array(
+	'/wp/v2/users',
+	'/wp/v2/settings',
+	'/wp/v2/themes',
+	'/wp/v2/plugins',
+	'/wp/v2/types',
+	'/wp/v2/statuses',
+	'/wp/v2/taxonomies',
+	'/wp/v2/categories',
+	'/wp/v2/tags',
+	'/wp/v2/media',
+	'/wp/v2/comments',
+);
 
 // PHP 8.0+ error code for errors suppressed with the @ operator.
 const FRL_PHP8_SUPPRESSED_ERROR_CODE = 4437;

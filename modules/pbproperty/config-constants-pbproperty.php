@@ -6,55 +6,55 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
  * Translation: CSS classes that trigger block translation
  */
-const PBP_TRANSLATE_CLASSES = [
-    "wp-block-blockstrap-blockstrap-widget-container",
-];
+const PBP_TRANSLATE_CLASSES = array(
+	'wp-block-blockstrap-blockstrap-widget-container',
+);
 
 /**
  * Translation: Hardcoded strings to translate in output
  */
-const PBP_TRANSLATE_STRINGS = [
-    "Apartment",
-    "Properties",
-    "Property Price",
-    "Property Tax",
-    "Down Payment",
-    "Monthly Mortgage Payment",
-    "Interest Rate",
-    "Loan Amount",
-    "Loan Term (Years)",
-    "Home Insurance",
-    "PMI",
-    "Monthly HOA Fees",
-    "Monthly",
-    "Area (m2)",
-];
+const PBP_TRANSLATE_STRINGS = array(
+	'Apartment',
+	'Properties',
+	'Property Price',
+	'Property Tax',
+	'Down Payment',
+	'Monthly Mortgage Payment',
+	'Interest Rate',
+	'Loan Amount',
+	'Loan Term (Years)',
+	'Home Insurance',
+	'PMI',
+	'Monthly HOA Fees',
+	'Monthly',
+	'Area (m2)',
+);
 
 /**
  * Search: Language-specific search page slugs
  */
-const PBP_SEARCH_SLUGS = [
-    "ru" => "search",
-];
+const PBP_SEARCH_SLUGS = array(
+	'ru' => 'search',
+);
 
 /**
  * GeoDirectory: HTML markers to identify GD widget content
  */
-const PBP_GEODIR_MARKERS = [
-    'geodir_bestof_widget',
-    'geodir-tabs-content',
-    'geo-bestof-contentwrap',
-    'geodir-bestof-cat-list',
-    'geodir_widget_listings',
-    'gd-bestof-tabs',
-];
+const PBP_GEODIR_MARKERS = array(
+	'geodir_bestof_widget',
+	'geodir-tabs-content',
+	'geo-bestof-contentwrap',
+	'geodir-bestof-cat-list',
+	'geodir_widget_listings',
+	'gd-bestof-tabs',
+);
 
 /**
  * GeoDirectory: Field htmlvar_names to translate via geodir_get_cf_value filter
@@ -68,8 +68,8 @@ const PBP_GEODIR_MARKERS = [
  * - '%_details'                - Suffix wildcard
  * - 'amenities_%'              - Prefix wildcard
  */
-const FRL_GEODIR_TRANSLATOR_FIELDS = [
-    // Add field htmlvar_names here to enable translation 
-    'property_%',
-    // Example: '%_description',
-];
+const FRL_GEODIR_TRANSLATOR_FIELDS = array(
+	// Add field htmlvar_names here to enable translation
+	'property_%',
+	// Example: '%_description',
+);

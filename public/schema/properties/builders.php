@@ -7,8 +7,8 @@
  * @package Fralenuvole
  */
 
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -19,38 +19,37 @@ if (!defined('ABSPATH')) {
  *
  * @return array Filterable map of schema @type => field definitions.
  */
-function frl_schema_builder_get_term_map(): array
-{
-    if (!frl_get_option('schema_properties')) {
-        return [];
-    }
+function frl_schema_builder_get_term_map(): array {
+	if ( ! frl_get_option( 'schema_properties' ) ) {
+		return array();
+	}
 
-    $file = frl_schema_get_data_file('default-schema-terms.php');
-    $raw = file_exists($file) ? include $file : [];
-    $map = [];
-    foreach ($raw as $type => $pairs) {
-        if (!is_array($pairs)) {
-            continue;
-        }
-        foreach ($pairs as $property => $taxonomy) {
-            if (!is_string($property) || !is_string($taxonomy) || empty($property) || empty($taxonomy)) {
-                continue;
-            }
-            $map[$type][] = [
-                'taxonomy' => $taxonomy,
-                'property' => $property,
-                'field'    => 'name',
-                'format'   => 'csv',
-            ];
-        }
-    }
+	$file = frl_schema_get_data_file( 'default-schema-terms.php' );
+	$raw  = file_exists( $file ) ? include $file : array();
+	$map  = array();
+	foreach ( $raw as $type => $pairs ) {
+		if ( ! is_array( $pairs ) ) {
+			continue;
+		}
+		foreach ( $pairs as $property => $taxonomy ) {
+			if ( ! is_string( $property ) || ! is_string( $taxonomy ) || empty( $property ) || empty( $taxonomy ) ) {
+				continue;
+			}
+			$map[ $type ][] = array(
+				'taxonomy' => $taxonomy,
+				'property' => $property,
+				'field'    => 'name',
+				'format'   => 'csv',
+			);
+		}
+	}
 
-    /**
-     * Filter the post-term schema property map.
-     *
-     * @param array $map Schema type => field definition array.
-     */
-    return apply_filters('frl_schema_term_map', $map);
+	/**
+	 * Filter the post-term schema property map.
+	 *
+	 * @param array $map Schema type => field definition array.
+	 */
+	return apply_filters( 'frl_schema_term_map', $map );
 }
 
 /**
@@ -66,59 +65,58 @@ function frl_schema_builder_get_term_map(): array
  * @param array &$taxonomy_cache Internal cache of resolved taxonomy => term values.
  * @return array Schema properties to inject (property key => formatted value).
  */
-function frl_schema_builder_build_term_properties(int $post_id, array $type_map, array &$taxonomy_cache): array
-{
-    $props = [];
+function frl_schema_builder_build_term_properties( int $post_id, array $type_map, array &$taxonomy_cache ): array {
+	$props = array();
 
-    foreach ($type_map as $def) {
-        $taxonomy = $def['taxonomy'] ?? '';
-        $field    = $def['field'] ?? 'name';
-        $property = $def['property'] ?? '';
-        $format   = $def['format'] ?? 'string';
+	foreach ( $type_map as $def ) {
+		$taxonomy = $def['taxonomy'] ?? '';
+		$field    = $def['field'] ?? 'name';
+		$property = $def['property'] ?? '';
+		$format   = $def['format'] ?? 'string';
 
-        if (empty($taxonomy) || empty($property)) {
-            continue;
-        }
+		if ( empty( $taxonomy ) || empty( $property ) ) {
+			continue;
+		}
 
-        // Fetch terms once per taxonomy, reuse across type maps
-        if (!isset($taxonomy_cache[$taxonomy])) {
-            $terms = frl_get_post_terms($post_id, $taxonomy, $field);
-            $taxonomy_cache[$taxonomy] = (is_array($terms)) ? array_values(array_filter($terms, 'is_string')) : [];
-        }
+		// Fetch terms once per taxonomy, reuse across type maps
+		if ( ! isset( $taxonomy_cache[ $taxonomy ] ) ) {
+			$terms                       = frl_get_post_terms( $post_id, $taxonomy, $field );
+			$taxonomy_cache[ $taxonomy ] = ( is_array( $terms ) ) ? array_values( array_filter( $terms, 'is_string' ) ) : array();
+		}
 
-        $values = $taxonomy_cache[$taxonomy];
+		$values = $taxonomy_cache[ $taxonomy ];
 
-        if (empty($values)) {
-            continue;
-        }
+		if ( empty( $values ) ) {
+			continue;
+		}
 
-        switch ($format) {
-            case 'string':
-                $props[$property] = $values[0];
-                break;
+		switch ( $format ) {
+			case 'string':
+				$props[ $property ] = $values[0];
+				break;
 
-            case 'csv':
-                $props[$property] = implode(', ', $values);
-                break;
+			case 'csv':
+				$props[ $property ] = implode( ', ', $values );
+				break;
 
-            case 'array':
-                $props[$property] = $values;
-                break;
+			case 'array':
+				$props[ $property ] = $values;
+				break;
 
-            case 'thing':
-                $things = [];
-                foreach ($values as $val) {
-                    $things[] = [
-                        '@type' => 'Thing',
-                        'name'  => $val,
-                    ];
-                }
-                $props[$property] = count($things) === 1 ? $things[0] : $things;
-                break;
-        }
-    }
+			case 'thing':
+				$things = array();
+				foreach ( $values as $val ) {
+					$things[] = array(
+						'@type' => 'Thing',
+						'name'  => $val,
+					);
+				}
+				$props[ $property ] = count( $things ) === 1 ? $things[0] : $things;
+				break;
+		}
+	}
 
-    return $props;
+	return $props;
 }
 
 /**
@@ -129,21 +127,20 @@ function frl_schema_builder_build_term_properties(int $post_id, array $type_map,
  *
  * @return array Filterable map of schema @type => person field defs.
  */
-function frl_schema_builder_get_person_map(): array
-{
-    if (!frl_get_option('schema_properties')) {
-        return [];
-    }
+function frl_schema_builder_get_person_map(): array {
+	if ( ! frl_get_option( 'schema_properties' ) ) {
+		return array();
+	}
 
-    $file = frl_schema_get_data_file('default-schema-person.php');
-    $map = file_exists($file) ? include $file : [];
+	$file = frl_schema_get_data_file( 'default-schema-person.php' );
+	$map  = file_exists( $file ) ? include $file : array();
 
-    /**
-     * Filter the person reference map.
-     *
-     * @param array $map Schema type => person field defs.
-     */
-    return apply_filters('frl_schema_person_map', $map);
+	/**
+	 * Filter the person reference map.
+	 *
+	 * @param array $map Schema type => person field defs.
+	 */
+	return apply_filters( 'frl_schema_person_map', $map );
 }
 
 /**
@@ -156,88 +153,87 @@ function frl_schema_builder_get_person_map(): array
  * @param array &$ref_cache Cache of resolved property => Person arrays.
  * @return array Schema properties to inject.
  */
-function frl_schema_builder_build_person_properties(int $post_id, array $type_map, array &$ref_cache): array
-{
-    $props = [];
+function frl_schema_builder_build_person_properties( int $post_id, array $type_map, array &$ref_cache ): array {
+	$props = array();
 
-    foreach ($type_map as $property => $field_def) {
-        if (!is_string($property) || empty($property) || !is_array($field_def)) {
-            continue;
-        }
+	foreach ( $type_map as $property => $field_def ) {
+		if ( ! is_string( $property ) || empty( $property ) || ! is_array( $field_def ) ) {
+			continue;
+		}
 
-        $cache_key = "{$post_id}_{$property}";
+		$cache_key = "{$post_id}_{$property}";
 
-        if (!isset($ref_cache[$cache_key])) {
-            // _force: always use this value, skip _ref entirely
-            if (isset($field_def['_force'])) {
-                $force = $field_def['_force'];
-                if (is_int($force)) {
-                    $person = frl_schema_builder_build_person_from_ref($force, $field_def);
-                    $ref_cache[$cache_key] = $person !== null ? [$person] : [];
-                } elseif (is_array($force)) {
-                    $ref_cache[$cache_key] = [$force];
-                } else {
-                    $ref_cache[$cache_key] = [];
-                }
-            } else {
-                $ref_ids = [];
-                $ref_source = $field_def['_ref'] ?? null;
+		if ( ! isset( $ref_cache[ $cache_key ] ) ) {
+			// _force: always use this value, skip _ref entirely
+			if ( isset( $field_def['_force'] ) ) {
+				$force = $field_def['_force'];
+				if ( is_int( $force ) ) {
+					$person                  = frl_schema_builder_build_person_from_ref( $force, $field_def );
+					$ref_cache[ $cache_key ] = $person !== null ? array( $person ) : array();
+				} elseif ( is_array( $force ) ) {
+					$ref_cache[ $cache_key ] = array( $force );
+				} else {
+					$ref_cache[ $cache_key ] = array();
+				}
+			} else {
+				$ref_ids    = array();
+				$ref_source = $field_def['_ref'] ?? null;
 
-                // Resolve ref IDs via helper (handles ACF + ACPT)
-                $raw = $ref_source ? frl_get_post_meta($post_id, $ref_source, true) : null;
+				// Resolve ref IDs via helper (handles ACF + ACPT)
+				$raw = $ref_source ? frl_get_post_meta( $post_id, $ref_source, true ) : null;
 
-                if ($raw !== null) {
-                    if (is_numeric($raw)) {
-                        $ref_ids = [(int) $raw];
-                    } elseif ($raw instanceof \WP_Post) {
-                        $ref_ids = [$raw->ID];
-                    } elseif (is_array($raw)) {
-                        foreach ($raw as $item) {
-                            if ($item instanceof \WP_Post) {
-                                $ref_ids[] = $item->ID;
-                            } elseif (is_numeric($item)) {
-                                $ref_ids[] = (int) $item;
-                            }
-                        }
-                    }
-                }
+				if ( $raw !== null ) {
+					if ( is_numeric( $raw ) ) {
+						$ref_ids = array( (int) $raw );
+					} elseif ( $raw instanceof \WP_Post ) {
+						$ref_ids = array( $raw->ID );
+					} elseif ( is_array( $raw ) ) {
+						foreach ( $raw as $item ) {
+							if ( $item instanceof \WP_Post ) {
+								$ref_ids[] = $item->ID;
+							} elseif ( is_numeric( $item ) ) {
+								$ref_ids[] = (int) $item;
+							}
+						}
+					}
+				}
 
-                // Build Person objects from reference IDs
-                $persons = [];
-                foreach ($ref_ids as $rid) {
-                    $person = frl_schema_builder_build_person_from_ref($rid, $field_def);
-                    if ($person !== null) {
-                        $persons[] = $person;
-                    }
-                }
+				// Build Person objects from reference IDs
+				$persons = array();
+				foreach ( $ref_ids as $rid ) {
+					$person = frl_schema_builder_build_person_from_ref( $rid, $field_def );
+					if ( $person !== null ) {
+						$persons[] = $person;
+					}
+				}
 
-                $ref_cache[$cache_key] = $persons;
-            }
-        }
+				$ref_cache[ $cache_key ] = $persons;
+			}
+		}
 
-        $persons = $ref_cache[$cache_key];
+		$persons = $ref_cache[ $cache_key ];
 
-        if (!empty($persons)) {
-            $props[$property] = count($persons) === 1 ? $persons[0] : $persons;
-        } elseif (isset($field_def['_fallback'])) {
-            // _fallback: CPT post ID (int) or static Person array
-            $fallback = $field_def['_fallback'];
-            if (is_int($fallback)) {
-                $person = frl_schema_builder_build_person_from_ref($fallback, $field_def);
-                if ($person !== null) {
-                    $props[$property] = $person;
-                } elseif (!empty($field_def['_remove'])) {
-                    $props[$property] = null;
-                }
-            } elseif (is_array($fallback)) {
-                $props[$property] = $fallback;
-            }
-        } elseif (!empty($field_def['_remove'])) {
-            $props[$property] = null;
-        }
-    }
+		if ( ! empty( $persons ) ) {
+			$props[ $property ] = count( $persons ) === 1 ? $persons[0] : $persons;
+		} elseif ( isset( $field_def['_fallback'] ) ) {
+			// _fallback: CPT post ID (int) or static Person array
+			$fallback = $field_def['_fallback'];
+			if ( is_int( $fallback ) ) {
+				$person = frl_schema_builder_build_person_from_ref( $fallback, $field_def );
+				if ( $person !== null ) {
+					$props[ $property ] = $person;
+				} elseif ( ! empty( $field_def['_remove'] ) ) {
+					$props[ $property ] = null;
+				}
+			} elseif ( is_array( $fallback ) ) {
+				$props[ $property ] = $fallback;
+			}
+		} elseif ( ! empty( $field_def['_remove'] ) ) {
+			$props[ $property ] = null;
+		}
+	}
 
-    return $props;
+	return $props;
 }
 
 /**
@@ -250,79 +246,78 @@ function frl_schema_builder_build_person_properties(int $post_id, array $type_ma
  * @param array $field_def Field definition (_ref + Person property map).
  * @return array|null Person array or null if post not found.
  */
-function frl_schema_builder_build_person_from_ref(int $ref_id, array $field_def): ?array
-{
-    $post = get_post($ref_id);
+function frl_schema_builder_build_person_from_ref( int $ref_id, array $field_def ): ?array {
+	$post = get_post( $ref_id );
 
-    if (!$post) {
-        return null;
-    }
+	if ( ! $post ) {
+		return null;
+	}
 
-    $person = ['@type' => 'Person'];
+	$person = array( '@type' => 'Person' );
 
-    foreach ($field_def as $sub_field => $source) {
-        // Skip reserved key — it's the ref source, not a Person property
-        if ($sub_field === '_ref') {
-            continue;
-        }
+	foreach ( $field_def as $sub_field => $source ) {
+		// Skip reserved key — it's the ref source, not a Person property
+		if ( $sub_field === '_ref' ) {
+			continue;
+		}
 
-        // Array of meta keys → resolve each, collect non-empty values (e.g. sameAs)
-        if (is_array($source)) {
-            $values = [];
-            foreach ($source as $meta_key) {
-                $v = frl_schema_extract_scalar_value(frl_get_post_meta($ref_id, (string) $meta_key, true));
-                if ($v !== null) {
-                    $values[] = $v;
-                }
-            }
-            if (!empty($values)) {
-                $person[$sub_field] = count($values) === 1 ? $values[0] : $values;
-            }
-            continue;
-        }
+		// Array of meta keys → resolve each, collect non-empty values (e.g. sameAs)
+		if ( is_array( $source ) ) {
+			$values = array();
+			foreach ( $source as $meta_key ) {
+				$v = frl_schema_extract_scalar_value( frl_get_post_meta( $ref_id, (string) $meta_key, true ) );
+				if ( $v !== null ) {
+					$values[] = $v;
+				}
+			}
+			if ( ! empty( $values ) ) {
+				$person[ $sub_field ] = count( $values ) === 1 ? $values[0] : $values;
+			}
+			continue;
+		}
 
-        $value = null;
+		$value = null;
 
-        // Single convention: 'post_' prefix = WP-native functionality
-        if (str_starts_with($source, 'post_')) {
-            if ($source === 'post_permalink') {
-                $value = get_permalink($ref_id);
-            } elseif ($source === 'post_thumbnail') {
-                $id = get_post_thumbnail_id($ref_id);
-                if ($id) {
-                    $size = apply_filters('frl_schema_thumbnail_size', 'medium');
-                    $url = wp_get_attachment_image_url($id, $size);
-                    $data = wp_get_attachment_image_src($id, $size);
-                    $value = [
-                        '@type'  => 'ImageObject',
-                        'url'    => $url ?: '',
-                        'height' => $data[2] ?? 0,
-                        'width'  => $data[1] ?? 0,
-                    ];
-                }
-            } elseif ($source === 'post_thumbnail_url') {
-                $value = get_the_post_thumbnail_url($ref_id, 'full');
-            } else {
-                // Native WP field: $post->{field}
-                $value = $post->{$source} ?? null;
-            }
-        } else {
-            $value = frl_get_post_meta($ref_id, $source, true);
-        }
+		// Single convention: 'post_' prefix = WP-native functionality
+		if ( str_starts_with( $source, 'post_' ) ) {
+			if ( $source === 'post_permalink' ) {
+				$value = get_permalink( $ref_id );
+			} elseif ( $source === 'post_thumbnail' ) {
+				$id = get_post_thumbnail_id( $ref_id );
+				if ( $id ) {
+					$size  = apply_filters( 'frl_schema_thumbnail_size', 'medium' );
+					$url   = wp_get_attachment_image_url( $id, $size );
+					$data  = wp_get_attachment_image_src( $id, $size );
+					$value = array(
+						'@type'  => 'ImageObject',
+						'url'    => $url ?: '',
+						'height' => $data[2] ?? 0,
+						'width'  => $data[1] ?? 0,
+					);
+				}
+			} elseif ( $source === 'post_thumbnail_url' ) {
+				$value = get_the_post_thumbnail_url( $ref_id, 'full' );
+			} else {
+				// Native WP field: $post->{field}
+				$value = $post->{$source} ?? null;
+			}
+		} else {
+			$value = frl_get_post_meta( $ref_id, $source, true );
+		}
 
-        $scalar = frl_schema_extract_scalar_value($value);
-        if ($scalar !== null) {
-            $person[$sub_field] = $scalar;
-        } elseif (is_array($value) && !empty($value)) {
-            $person[$sub_field] = $value;
-        }
-    }
+		$scalar = frl_schema_extract_scalar_value( $value );
+		if ( $scalar !== null ) {
+			$person[ $sub_field ] = $scalar;
+		} elseif ( is_array( $value ) && ! empty( $value ) ) {
+			$person[ $sub_field ] = $value;
+		}
+	}
 
-    /**
-     * Filter the resolved Person schema object.
-     *
-     * @param array $person Person schema array.
-     * @param int   $ref_id Referenced post ID.
-     */
-    return apply_filters('frl_schema_person_fields', $person, $ref_id);
+	/**
+	 * Filter the resolved Person schema object.
+	 *
+	 * @param array $person Person schema array.
+	 * @param int   $ref_id Referenced post ID.
+	 */
+	return apply_filters( 'frl_schema_person_fields', $person, $ref_id );
 }

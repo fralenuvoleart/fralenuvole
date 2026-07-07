@@ -1,6 +1,6 @@
 <?php
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
@@ -9,16 +9,19 @@ if (!defined('ABSPATH')) {
  * custom-post-types.php
  */
 
-add_action("init",
-	"frl_pbs_register_custom_post_types",
+add_action(
+	'init',
+	'frl_pbs_register_custom_post_types',
 	0,
-	0);
+	0
+);
 
-add_filter("pre_get_posts",
-	"frl_pbs_kill_taxonomy_archives");
+add_filter(
+	'pre_get_posts',
+	'frl_pbs_kill_taxonomy_archives'
+);
 
-function frl_pbs_register_custom_post_types()
-{
+function frl_pbs_register_custom_post_types() {
 	// Register custom post types
 	frl_pbs_custom_post_type_service();
 	frl_pbs_custom_post_type_team_member();
@@ -30,9 +33,8 @@ function frl_pbs_register_custom_post_types()
 }
 
 // Register Service Post Type
-function frl_pbs_custom_post_type_service()
-{
-	$labels = array(
+function frl_pbs_custom_post_type_service() {
+	$labels  = array(
 		'name'                  => _x( 'Services', 'Post Type General Name', PBS_PREFIX ),
 		'singular_name'         => _x( 'Service', 'Post Type Singular Name', PBS_PREFIX ),
 		'menu_name'             => __( 'Services', PBS_PREFIX ),
@@ -62,39 +64,38 @@ function frl_pbs_custom_post_type_service()
 		'filter_items_list'     => __( 'Filter services list', PBS_PREFIX ),
 	);
 	$rewrite = array(
-		'with_front'            => false,
-		'pages'                 => true,
-		'feeds'                 => false,
+		'with_front' => false,
+		'pages'      => true,
+		'feeds'      => false,
 	);
-	$args = array(
-		'label'                 => __( 'Service', PBS_PREFIX ),
-		'description'           => __( 'Post Type Description', PBS_PREFIX ),
-		'labels'                => $labels,
-		'supports'              => array( 'title', 'editor', 'thumbnail', 'revisions', 'custom-fields', 'page-attributes', 'excerpt' ),
-		'taxonomies'            => array( 'service_category', 'service_tag' ),
-		'hierarchical'          => false,
-		'public'                => true,
-		'show_ui'               => true,
-		'show_in_menu'          => true,
-		'menu_position'         => 20,
-		'menu_icon'             => 'dashicons-star-filled',
-		'show_in_admin_bar'     => true,
-		'show_in_nav_menus'     => true,
-		'can_export'            => true,
-		'has_archive'           => false,
-		'exclude_from_search'   => false,
-		'publicly_queryable'    => true,
-		'rewrite'               => $rewrite,
-		'capability_type'       => 'page',
-		'show_in_rest'          => true,
+	$args    = array(
+		'label'               => __( 'Service', PBS_PREFIX ),
+		'description'         => __( 'Post Type Description', PBS_PREFIX ),
+		'labels'              => $labels,
+		'supports'            => array( 'title', 'editor', 'thumbnail', 'revisions', 'custom-fields', 'page-attributes', 'excerpt' ),
+		'taxonomies'          => array( 'service_category', 'service_tag' ),
+		'hierarchical'        => false,
+		'public'              => true,
+		'show_ui'             => true,
+		'show_in_menu'        => true,
+		'menu_position'       => 20,
+		'menu_icon'           => 'dashicons-star-filled',
+		'show_in_admin_bar'   => true,
+		'show_in_nav_menus'   => true,
+		'can_export'          => true,
+		'has_archive'         => false,
+		'exclude_from_search' => false,
+		'publicly_queryable'  => true,
+		'rewrite'             => $rewrite,
+		'capability_type'     => 'page',
+		'show_in_rest'        => true,
 	);
 
 	register_post_type( 'service', $args );
 }
 
 // Register Service Taxonomy
-function frl_pbs_service_taxonomy()
-{
+function frl_pbs_service_taxonomy() {
 	$labels_category = array(
 		'name'                       => _x( 'Service Categories', 'Taxonomy General Name', PBS_PREFIX ),
 		'singular_name'              => _x( 'Service Category', 'Taxonomy Singular Name', PBS_PREFIX ),
@@ -117,22 +118,22 @@ function frl_pbs_service_taxonomy()
 		'items_list'                 => __( 'Categories list', PBS_PREFIX ),
 		'items_list_navigation'      => __( 'Categories list navigation', PBS_PREFIX ),
 	);
-	$arg_category = array(
-		'labels'                     => $labels_category,
-		'hierarchical'               => true,
-		'public'                     => true,
-		'show_ui'                    => true,
-		'show_admin_column'          => true,
-		'show_in_nav_menus'          => true,
-		'show_tagcloud'              => false,
-		'show_in_rest'               => true,
+	$arg_category    = array(
+		'labels'            => $labels_category,
+		'hierarchical'      => true,
+		'public'            => true,
+		'show_ui'           => true,
+		'show_admin_column' => true,
+		'show_in_nav_menus' => true,
+		'show_tagcloud'     => false,
+		'show_in_rest'      => true,
 	);
 
 	register_taxonomy( 'service_category', 'service', $arg_category );
 
 	$labels_tag = array(
-		'name'                       => __( 'Service Tags', 'Taxonomy General Name', PBS_PREFIX ),
-		'singular_name'              => __( 'Service Tag', 'Taxonomy Singular Name', PBS_PREFIX ),
+		'name'                       => _x( 'Service Tags', 'Taxonomy General Name', PBS_PREFIX ),
+		'singular_name'              => _x( 'Service Tag', 'Taxonomy Singular Name', PBS_PREFIX ),
 		'menu_name'                  => __( 'Service Tags', PBS_PREFIX ),
 		'all_items'                  => __( 'All Tags', PBS_PREFIX ),
 		'parent_item'                => __( 'Parent Tag', PBS_PREFIX ),
@@ -152,15 +153,15 @@ function frl_pbs_service_taxonomy()
 		'items_list'                 => __( 'Tags list', PBS_PREFIX ),
 		'items_list_navigation'      => __( 'Tags list navigation', PBS_PREFIX ),
 	);
-	$args_tag = array(
-		'labels'                     => $labels_tag,
-		'hierarchical'               => false,
-		'public'                     => true,
-		'show_ui'                    => true,
-		'show_admin_column'          => true,
-		'show_in_nav_menus'          => true,
-		'show_tagcloud'              => false,
-		'show_in_rest'               => true,
+	$args_tag   = array(
+		'labels'            => $labels_tag,
+		'hierarchical'      => false,
+		'public'            => true,
+		'show_ui'           => true,
+		'show_admin_column' => true,
+		'show_in_nav_menus' => true,
+		'show_tagcloud'     => false,
+		'show_in_rest'      => true,
 	);
 
 	register_taxonomy( 'service_tag', 'service', $args_tag );
@@ -168,9 +169,8 @@ function frl_pbs_service_taxonomy()
 
 
 // Register Team member Post Type
-function frl_pbs_custom_post_type_team_member()
-{
-	$labels = array(
+function frl_pbs_custom_post_type_team_member() {
+	$labels  = array(
 		'name'                  => _x( 'Team members', 'Post Type General Name', PBS_PREFIX ),
 		'singular_name'         => _x( 'Team member', 'Post Type Singular Name', PBS_PREFIX ),
 		'menu_name'             => __( 'Team members', PBS_PREFIX ),
@@ -200,40 +200,39 @@ function frl_pbs_custom_post_type_team_member()
 		'filter_items_list'     => __( 'Filter team members list', PBS_PREFIX ),
 	);
 	$rewrite = array(
-		'slug'                  => 'about',
-		'with_front'            => false,
-		'pages'                 => true,
-		'feeds'                 => false,
+		'slug'       => 'about',
+		'with_front' => false,
+		'pages'      => true,
+		'feeds'      => false,
 	);
-	$args = array(
-		'label'                 => __( 'Team member', PBS_PREFIX ),
-		'description'           => __( 'Post Type Description', PBS_PREFIX ),
-		'labels'                => $labels,
-		'supports'              => array( 'title', 'editor', 'thumbnail', 'revisions', 'custom-fields', 'page-attributes', 'excerpt' ),
-		'taxonomies'            => array( 'team_category', 'team_tag' ),
-		'hierarchical'          => false,
-		'public'                => true,
-		'show_ui'               => true,
-		'show_in_menu'          => true,
-		'menu_position'         => 22,
-		'menu_icon'             => 'dashicons-groups',
-		'show_in_admin_bar'     => true,
-		'show_in_nav_menus'     => true,
-		'can_export'            => true,
-		'has_archive'           => false,
-		'exclude_from_search'   => true,
-		'publicly_queryable'    => true,
-		'rewrite'               => $rewrite,
-		'capability_type'       => 'page',
-		'show_in_rest'          => true,
+	$args    = array(
+		'label'               => __( 'Team member', PBS_PREFIX ),
+		'description'         => __( 'Post Type Description', PBS_PREFIX ),
+		'labels'              => $labels,
+		'supports'            => array( 'title', 'editor', 'thumbnail', 'revisions', 'custom-fields', 'page-attributes', 'excerpt' ),
+		'taxonomies'          => array( 'team_category', 'team_tag' ),
+		'hierarchical'        => false,
+		'public'              => true,
+		'show_ui'             => true,
+		'show_in_menu'        => true,
+		'menu_position'       => 22,
+		'menu_icon'           => 'dashicons-groups',
+		'show_in_admin_bar'   => true,
+		'show_in_nav_menus'   => true,
+		'can_export'          => true,
+		'has_archive'         => false,
+		'exclude_from_search' => true,
+		'publicly_queryable'  => true,
+		'rewrite'             => $rewrite,
+		'capability_type'     => 'page',
+		'show_in_rest'        => true,
 	);
 
 	register_post_type( 'team-member', $args );
 }
 
 // Register Team member Taxonomy
-function frl_pbs_team_member_taxonomy()
-{
+function frl_pbs_team_member_taxonomy() {
 	$labels_category = array(
 		'name'                       => _x( 'Team Categories', 'Taxonomy General Name', PBS_PREFIX ),
 		'singular_name'              => _x( 'Team Category', 'Taxonomy Singular Name', PBS_PREFIX ),
@@ -256,15 +255,15 @@ function frl_pbs_team_member_taxonomy()
 		'items_list'                 => __( 'Categories list', PBS_PREFIX ),
 		'items_list_navigation'      => __( 'Categories list navigation', PBS_PREFIX ),
 	);
-	$arg_category = array(
-		'labels'                     => $labels_category,
-		'hierarchical'               => true,
-		'public'                     => true,
-		'show_ui'                    => true,
-		'show_admin_column'          => true,
-		'show_in_nav_menus'          => true,
-		'show_tagcloud'              => false,
-		'show_in_rest'               => true,
+	$arg_category    = array(
+		'labels'            => $labels_category,
+		'hierarchical'      => true,
+		'public'            => true,
+		'show_ui'           => true,
+		'show_admin_column' => true,
+		'show_in_nav_menus' => true,
+		'show_tagcloud'     => false,
+		'show_in_rest'      => true,
 	);
 
 	register_taxonomy( 'team_category', 'team-member', $arg_category );
@@ -291,24 +290,23 @@ function frl_pbs_team_member_taxonomy()
 		'items_list'                 => __( 'Tags list', PBS_PREFIX ),
 		'items_list_navigation'      => __( 'Tags list navigation', PBS_PREFIX ),
 	);
-	$args_tag = array(
-		'labels'                     => $labels_tag,
-		'hierarchical'               => false,
-		'public'                     => true,
-		'show_ui'                    => true,
-		'show_admin_column'          => true,
-		'show_in_nav_menus'          => true,
-		'show_tagcloud'              => false,
-		'show_in_rest'               => true,
+	$args_tag   = array(
+		'labels'            => $labels_tag,
+		'hierarchical'      => false,
+		'public'            => true,
+		'show_ui'           => true,
+		'show_admin_column' => true,
+		'show_in_nav_menus' => true,
+		'show_tagcloud'     => false,
+		'show_in_rest'      => true,
 	);
 
 	register_taxonomy( 'team_tag', 'team-member', $args_tag );
 }
 
 // Register University Post Type
-function frl_pbs_custom_post_type_university()
-{
-	$labels = array(
+function frl_pbs_custom_post_type_university() {
+	$labels  = array(
 		'name'                  => _x( 'Universities', 'Post Type General Name', PBS_PREFIX ),
 		'singular_name'         => _x( 'University', 'Post Type Singular Name', PBS_PREFIX ),
 		'menu_name'             => __( 'Universities', PBS_PREFIX ),
@@ -338,31 +336,31 @@ function frl_pbs_custom_post_type_university()
 		'filter_items_list'     => __( 'Filter universities list', PBS_PREFIX ),
 	);
 	$rewrite = array(
-		'slug'                  => 'info/university',
-		'with_front'            => false,
-		'pages'                 => true,
-		'feeds'                 => false,
+		'slug'       => 'info/university',
+		'with_front' => false,
+		'pages'      => true,
+		'feeds'      => false,
 	);
-	$args = array(
-		'label'                 => __( 'University', PBS_PREFIX ),
-		'description'           => __( 'Post Type Description', PBS_PREFIX ),
-		'labels'                => $labels,
-		'supports'              => array( 'title', 'editor', 'thumbnail', 'revisions', 'custom-fields', 'page-attributes', 'excerpt' ),
-		'hierarchical'          => false,
-		'public'                => true,
-		'show_ui'               => true,
-		'show_in_menu'          => true,
-		'menu_position'         => 20,
-		'menu_icon'             => 'dashicons-bank',
-		'show_in_admin_bar'     => true,
-		'show_in_nav_menus'     => true,
-		'can_export'            => true,
-		'has_archive'           => false,
-		'exclude_from_search'   => false,
-		'publicly_queryable'    => true,
-		'rewrite'               => $rewrite,
-		'capability_type'       => 'page',
-		'show_in_rest'          => true,
+	$args    = array(
+		'label'               => __( 'University', PBS_PREFIX ),
+		'description'         => __( 'Post Type Description', PBS_PREFIX ),
+		'labels'              => $labels,
+		'supports'            => array( 'title', 'editor', 'thumbnail', 'revisions', 'custom-fields', 'page-attributes', 'excerpt' ),
+		'hierarchical'        => false,
+		'public'              => true,
+		'show_ui'             => true,
+		'show_in_menu'        => true,
+		'menu_position'       => 20,
+		'menu_icon'           => 'dashicons-bank',
+		'show_in_admin_bar'   => true,
+		'show_in_nav_menus'   => true,
+		'can_export'          => true,
+		'has_archive'         => false,
+		'exclude_from_search' => false,
+		'publicly_queryable'  => true,
+		'rewrite'             => $rewrite,
+		'capability_type'     => 'page',
+		'show_in_rest'        => true,
 	);
 
 	register_post_type( 'university', $args );
@@ -371,14 +369,14 @@ function frl_pbs_custom_post_type_university()
 // Remove Service taxonomy in frontend
 function frl_pbs_kill_taxonomy_archives( $query ) {
 
-    if (frl_is_admin() || !is_archive()) {
-        return;
-    }
+	if ( frl_is_admin() || ! is_archive() ) {
+		return;
+	}
 
-    $service_taxonomies = array('service_category', 'service_tag');
-    if ($query->is_tax($service_taxonomies)) {
-        $query->set_404();
-    }
+	$service_taxonomies = array( 'service_category', 'service_tag' );
+	if ( $query->is_tax( $service_taxonomies ) ) {
+		$query->set_404();
+	}
 }
 
 /**
@@ -403,60 +401,65 @@ function frl_pbs_kill_taxonomy_archives( $query ) {
  * Hooks at parse_request priority 1 — rewrites matched_rule and query_vars
  * before WP_Query parses, so WordPress resolves the page natively.
  */
-add_action('parse_request', function ($wp) {
-    if (empty($wp->query_vars['team-member'])) {
-        return;
-    }
+add_action(
+	'parse_request',
+	function ( $wp ) {
+		if ( empty( $wp->query_vars['team-member'] ) ) {
+			return;
+		}
 
-    $slug = $wp->query_vars['team-member'];
+		$slug = $wp->query_vars['team-member'];
 
-    // If a real team-member post exists, let it win.
-    $team_member = get_page_by_path($slug, OBJECT, 'team-member');
-    if ($team_member) {
-        return;
-    }
+		// If a real team-member post exists, let it win.
+		$team_member = get_page_by_path( $slug, OBJECT, 'team-member' );
+		if ( $team_member ) {
+			return;
+		}
 
-    // Check for child page of 'about' (English) or any translated parent.
-    // Try English first, then search for any page ending with /{$slug}.
-    $page = get_page_by_path("about/{$slug}", OBJECT, 'page');
-    if (!$page) {
-        // Fallback: find any published page with this slug, regardless of parent.
-        $candidates = get_posts([
-            'name'        => $slug,
-            'post_type'   => 'page',
-            'post_status' => 'publish',
-            'numberposts' => 1,
-        ]);
-        if (!empty($candidates)) {
-            $page = $candidates[0];
-        }
-    }
-    if (!$page) {
-        return;
-    }
+		// Check for child page of 'about' (English) or any translated parent.
+		// Try English first, then search for any page ending with /{$slug}.
+		$page = get_page_by_path( "about/{$slug}", OBJECT, 'page' );
+		if ( ! $page ) {
+			// Fallback: find any published page with this slug, regardless of parent.
+			$candidates = get_posts(
+				array(
+					'name'        => $slug,
+					'post_type'   => 'page',
+					'post_status' => 'publish',
+					'numberposts' => 1,
+				)
+			);
+			if ( ! empty( $candidates ) ) {
+				$page = $candidates[0];
+			}
+		}
+		if ( ! $page ) {
+			return;
+		}
 
-    // Build the correct pagename from the page's hierarchy.
-    $pagename = $page->post_name;
-    $parent_id = $page->post_parent;
-    while ($parent_id) {
-        $parent = get_post($parent_id);
-        if (!$parent) {
-            break;
-        }
-        $pagename = $parent->post_name . '/' . $pagename;
-        $parent_id = $parent->post_parent;
-    }
+		// Build the correct pagename from the page's hierarchy.
+		$pagename  = $page->post_name;
+		$parent_id = $page->post_parent;
+		while ( $parent_id ) {
+			$parent = get_post( $parent_id );
+			if ( ! $parent ) {
+				break;
+			}
+			$pagename  = $parent->post_name . '/' . $pagename;
+			$parent_id = $parent->post_parent;
+		}
 
-    // Rewrite query vars and matched rule so WP resolves this as a page.
-    unset(
-        $wp->query_vars['team-member'],
-        $wp->query_vars['post_type'],
-        $wp->query_vars['name'],
-        $wp->query_vars['error']
-    );
-    $wp->query_vars['page_id']   = $page->ID;
-    $wp->query_vars['pagename']  = $pagename;
-    $wp->matched_rule  = '(.?.+?)(/[0-9]+)?/?$';
-    $wp->matched_query = 'pagename=' . $pagename . '&page=';
-}, 1);
-
+		// Rewrite query vars and matched rule so WP resolves this as a page.
+		unset(
+			$wp->query_vars['team-member'],
+			$wp->query_vars['post_type'],
+			$wp->query_vars['name'],
+			$wp->query_vars['error']
+		);
+		$wp->query_vars['page_id']  = $page->ID;
+		$wp->query_vars['pagename'] = $pagename;
+		$wp->matched_rule           = '(.?.+?)(/[0-9]+)?/?$';
+		$wp->matched_query          = 'pagename=' . $pagename . '&page=';
+	},
+	1
+);

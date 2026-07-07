@@ -9,8 +9,8 @@
  * @package Fralenuvole
  */
 
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 require_once FRL_DIR_PATH . 'public/schema/properties/resolver.php';

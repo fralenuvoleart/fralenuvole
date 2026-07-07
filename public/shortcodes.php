@@ -710,8 +710,8 @@ function frl_shortcode_meta_rel( $atts ) {
 				return '';
 			}
 
-			$output       = sanitize_key( $a['output'] );
-			$sep          = (string) $a['sep'];
+			$output    = sanitize_key( $a['output'] );
+			$sep       = (string) $a['sep'];
 			$wrap_span = ( strtolower( trim( $sep ) ) === 'span' );
 
 			// Prepare optional anchor fragment

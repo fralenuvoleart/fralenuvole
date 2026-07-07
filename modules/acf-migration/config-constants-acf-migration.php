@@ -9,15 +9,15 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 // ─── Batch processing ───────────────────────────────────────────
 
-const ACF_MIGRATION_BATCH_SIZE = 100;
-const ACF_MIGRATION_VALIDATION_SAMPLE_SIZE = 20;
-const ACF_MIGRATION_DEFAULT_DRY_RUN = true;
+const ACF_MIGRATION_BATCH_SIZE              = 100;
+const ACF_MIGRATION_VALIDATION_SAMPLE_SIZE  = 20;
+const ACF_MIGRATION_DEFAULT_DRY_RUN         = true;
 const ACF_MIGRATION_SHIM_ENABLED_BY_DEFAULT = true;
 
 // ─── Storage — all use frl_ prefix ─────────────────────────────
@@ -82,14 +82,14 @@ const ACF_MIGRATION_CACHE_GROUP = 'frl_acf_migration';
 
 // ─── Field key generation ──────────────────────────────────────
 
-const ACF_MIGRATION_GROUP_KEY_PREFIX = 'group_';
-const ACF_MIGRATION_FIELD_KEY_PREFIX = 'field_';
+const ACF_MIGRATION_GROUP_KEY_PREFIX  = 'group_';
+const ACF_MIGRATION_FIELD_KEY_PREFIX  = 'field_';
 const ACF_MIGRATION_KEY_ENTROPY_BYTES = 6;
 
 // ─── Post types ─────────────────────────────────────────────────
 
 const ACF_MIGRATION_POST_TYPE_GROUP = 'acf-field-group';
-const ACF_MIGRATION_POST_TYPE_FIELD  = 'acf-field';
+const ACF_MIGRATION_POST_TYPE_FIELD = 'acf-field';
 
 // ─── UFJ version ────────────────────────────────────────────────
 

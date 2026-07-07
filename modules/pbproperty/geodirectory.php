@@ -6,79 +6,90 @@
  */
 
 // Exit if accessed directly
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
  * Initialize GeoDirectory integration
  */
-function frl_pbproperty_geodir_init(): void
-{
-    // Guard: Only load if GeoDirectory is active
-    if (!function_exists('geodir_get_cf_value')) {
-        return;
-    }
+function frl_pbproperty_geodir_init(): void {
+	// Guard: Only load if GeoDirectory is active
+	if ( ! function_exists( 'geodir_get_cf_value' ) ) {
+		return;
+	}
 
-    // Filter: Query modifications for language-specific listings
-    add_filter('geodir_filter_widget_listings_where', 'frl_pbproperty_geodir_filter_widget_listings_where', 10, 2);
-    add_filter('geodir_posts_where',                  'frl_pbproperty_geodir_posts_where',                  10, 2);
+	// Filter: Query modifications for language-specific listings
+	add_filter( 'geodir_filter_widget_listings_where', 'frl_pbproperty_geodir_filter_widget_listings_where', 10, 2 );
+	add_filter( 'geodir_posts_where', 'frl_pbproperty_geodir_posts_where', 10, 2 );
 
-    // Action: AJAX listings output translation
-    add_action('geodir_widget_ajax_listings_after',
-        'frl_pbproperty_translate_ajax_listings_output',
-        10,
-        1);
+	// Action: AJAX listings output translation
+	add_action(
+		'geodir_widget_ajax_listings_after',
+		'frl_pbproperty_translate_ajax_listings_output',
+		10,
+		1
+	);
 
-    // Filter: Widget content translation via the_content
-    add_filter('the_content',
-        'frl_pbproperty_translate_geodir_the_content',
-        999,
-        1);
+	// Filter: Widget content translation via the_content
+	add_filter(
+		'the_content',
+		'frl_pbproperty_translate_geodir_the_content',
+		999,
+		1
+	);
 
-    // Filter: Custom field output translation for select/multiselect fields (labels, not values)
-    if (defined('FRL_GEODIR_TRANSLATOR_FIELDS') && FRL_GEODIR_TRANSLATOR_FIELDS) {
-        $field_types = ['select', 'multiselect', 'radio'];
-        foreach ($field_types as $type) {
-            add_filter("geodir_custom_field_output_{$type}",
-                'frl_pbproperty_geodir_translate_option_label',
-                20,
-                5);
-        }
-    }
+	// Filter: Custom field output translation for select/multiselect fields (labels, not values)
+	if ( defined( 'FRL_GEODIR_TRANSLATOR_FIELDS' ) && FRL_GEODIR_TRANSLATOR_FIELDS ) {
+		$field_types = array( 'select', 'multiselect', 'radio' );
+		foreach ( $field_types as $type ) {
+			add_filter(
+				"geodir_custom_field_output_{$type}",
+				'frl_pbproperty_geodir_translate_option_label',
+				20,
+				5
+			);
+		}
+	}
 }
 
 /**
  * Filter: Restrict widget listings to current language properties
+ *
+ * @param string $where     SQL WHERE clause fragment.
+ * @param string $post_type Post type being queried.
+ * @return string
  */
-function frl_pbproperty_geodir_filter_widget_listings_where($where, $post_type)
-{
-    $property_ids = frl_pbproperty_get_properties_ids();
+function frl_pbproperty_geodir_filter_widget_listings_where( $where, $post_type ) {
+	$property_ids = frl_pbproperty_get_properties_ids();
 
-    if (!empty($property_ids)) {
-        $properties_by_lang = implode(',', $property_ids);
-        $where .= ' AND pbp_posts.ID IN (' . $properties_by_lang . ') ';
-    }
+	if ( ! empty( $property_ids ) ) {
+		$properties_by_lang = implode( ',', $property_ids );
+		$where             .= ' AND pbp_posts.ID IN (' . $properties_by_lang . ') ';
+	}
 
-    return $where;
+	return $where;
 }
 
 /**
  * Filter: Restrict search queries to current language properties
+ *
+ * @param string   $where SQL WHERE clause fragment.
+ * @param WP_Query $query The WP_Query instance.
+ * @return string
  */
-function frl_pbproperty_geodir_posts_where($where, $query)
-{
-    $property_ids = frl_pbproperty_get_properties_ids();
+function frl_pbproperty_geodir_posts_where( $where, $query ) {
+	$property_ids = frl_pbproperty_get_properties_ids();
 
-    if (!empty($property_ids)) {
-        $properties_by_lang = implode(',', $property_ids);
+	if ( ! empty( $property_ids ) ) {
+		$properties_by_lang = implode( ',', $property_ids );
 
-        if (isset($query->get_queried_object()->post_name) && $query->get_queried_object()->post_name === 'search') {
-            $where .= ' AND pbp_posts.ID IN (' . $properties_by_lang . ') ';
-        }
-    }
+		if ( isset( $query->get_queried_object()->post_name ) && $query->get_queried_object()->post_name === 'search' ) {
+			$where .= ' AND pbp_posts.ID IN (' . $properties_by_lang . ') ';
+		}
+	}
 
-    return $where;
+	return $where;
 }
 
 /**
@@ -92,143 +103,151 @@ function frl_pbproperty_geodir_posts_where($where, $query)
  * If performance becomes critical, replace with a single wp_get_object_terms()
  * batch call for all post IDs at once.
  */
-function frl_pbproperty_get_properties_ids()
-{
-    $property_ids = frl_cache_remember(
-        'blocks',
-        'places_by_lang',
-        function () {
-            $posts = get_posts(
-                array(
-                    'post_type'      => 'gd_place',
-                    'posts_per_page' => -1,
-                    'fields'         => 'ids',
-                )
-            );
+function frl_pbproperty_get_properties_ids() {
+	$property_ids = frl_cache_remember(
+		'blocks',
+		'places_by_lang',
+		function () {
+			$posts = get_posts(
+				array(
+					'post_type'      => 'gd_place',
+					'posts_per_page' => -1,
+					'fields'         => 'ids',
+				)
+			);
 
-            $post_ids = array();
+			$post_ids = array();
 
-            foreach ($posts as $post_id) {
-                $post_language = pll_get_post_language($post_id);
+			foreach ( $posts as $post_id ) {
+				$post_language = pll_get_post_language( $post_id );
 
-                if ($post_language && $post_language === frl_get_language()) {
-                    $post_ids[] = $post_id;
-                }
-            }
-            return $post_ids;
-        }
-    );
+				if ( $post_language && $post_language === frl_get_language() ) {
+					$post_ids[] = $post_id;
+				}
+			}
+			return $post_ids;
+		}
+	);
 
-    return $property_ids;
+	return $property_ids;
 }
 
 /**
  * Action: Translate GeoDirectory AJAX listings output
  */
-function frl_pbproperty_translate_ajax_listings_output($data)
-{
-    $output = ob_get_contents();
+function frl_pbproperty_translate_ajax_listings_output( $data ) {
+	$output = ob_get_contents();
 
-    if (empty($output)) {
-        return;
-    }
+	if ( empty( $output ) ) {
+		return;
+	}
 
-    foreach (PBP_TRANSLATE_STRINGS as $string) {
-        $translation = frl_get_translation($string);
-        if ($translation !== $string) {
-            $output = str_replace($string, $translation, $output);
-        }
-    }
+	foreach ( PBP_TRANSLATE_STRINGS as $string ) {
+		$translation = frl_get_translation( $string );
+		if ( $translation !== $string ) {
+			$output = str_replace( $string, $translation, $output );
+		}
+	}
 
-    ob_clean();
-    echo $output;
+	ob_clean();
+	echo $output;
 }
 
 /**
  * Filter: Translate GeoDirectory widget content in the_content
+ *
+ * @param string $content The post content.
+ * @return string
  */
-function frl_pbproperty_translate_geodir_the_content($content)
-{
-    $is_geodir_widget = false;
-    foreach (PBP_GEODIR_MARKERS as $marker) {
-        if (str_contains($content, $marker)) {
-            $is_geodir_widget = true;
-            break;
-        }
-    }
+function frl_pbproperty_translate_geodir_the_content( $content ) {
+	$is_geodir_widget = false;
+	foreach ( PBP_GEODIR_MARKERS as $marker ) {
+		if ( str_contains( $content, $marker ) ) {
+			$is_geodir_widget = true;
+			break;
+		}
+	}
 
-    if (!$is_geodir_widget) {
-        return $content;
-    }
+	if ( ! $is_geodir_widget ) {
+		return $content;
+	}
 
-    foreach (PBP_TRANSLATE_STRINGS as $string) {
-        $translation = frl_get_translation($string);
-        if ($translation !== $string) {
-            $content = str_replace($string, $translation, $content);
-        }
-    }
+	foreach ( PBP_TRANSLATE_STRINGS as $string ) {
+		$translation = frl_get_translation( $string );
+		if ( $translation !== $string ) {
+			$content = str_replace( $string, $translation, $content );
+		}
+	}
 
-    return $content;
+	return $content;
 }
 
 /**
  * Filter: Translate option labels for select/multiselect/radio fields
  *
  * This translates the DISPLAY LABEL (e.g., "Apartment") not the stored value (e.g., "32")
+ *
+ * @param string $html     The field output HTML.
+ * @param string $location Display location context.
+ * @param array  $cf       Custom field configuration array.
+ * @param mixed  $p        Additional parameter (unused here).
+ * @param mixed  $output   Additional parameter (unused here).
+ * @return string
  */
-function frl_pbproperty_geodir_translate_option_label($html, $location, $cf, $p = '', $output = '')
-{
-    global $gd_post;
+function frl_pbproperty_geodir_translate_option_label( $html, $location, $cf, $p = '', $output = '' ) {
+	global $gd_post;
 
-    $htmlvar_name = $cf['htmlvar_name'] ?? '';
+	$htmlvar_name = $cf['htmlvar_name'] ?? '';
 
-    // Only process if field is configured for translation
-    if (!frl_string_matches_pattern($htmlvar_name, FRL_GEODIR_TRANSLATOR_FIELDS)) {
-        return $html;
-    }
+	// Only process if field is configured for translation
+	if ( ! frl_string_matches_pattern( $htmlvar_name, FRL_GEODIR_TRANSLATOR_FIELDS ) ) {
+		return $html;
+	}
 
-    // Get the stored value from post
-    $stored_value = $gd_post->{$htmlvar_name} ?? '';
-    if (empty($stored_value)) {
-        return $html;
-    }
+	// Get the stored value from post
+	$stored_value = $gd_post->{$htmlvar_name} ?? '';
+	if ( empty( $stored_value ) ) {
+		return $html;
+	}
 
-    // Parse option values to find the label
-    if (empty($cf['option_values'])) {
-        return $html;
-    }
+	// Parse option values to find the label
+	if ( empty( $cf['option_values'] ) ) {
+		return $html;
+	}
 
-    $options = geodir_string_to_options($cf['option_values'], false);
-    if (empty($options) || !is_array($options)) {
-        return $html;
-    }
+	/** @disregard P1010 Undefined type */
+	$options = geodir_string_to_options( $cf['option_values'], false );
+	if ( empty( $options ) || ! is_array( $options ) ) {
+		return $html;
+	}
 
-    // Find the label for the stored value
-    $original_label = '';
-    foreach ($options as $option) {
-        if (isset($option['value']) && $option['value'] == $stored_value && !empty($option['label'])) {
-            $original_label = $option['label'];
-            break;
-        }
-    }
+	// Find the label for the stored value
+	$original_label = '';
+	foreach ( $options as $option ) {
+		// phpcs:ignore Universal.Operators.StrictComparisons.LooseEqual -- Intentional loose comparison: $option['value'] (parsed from GeoDirectory option string) and $stored_value (dynamic post field) may differ in type (e.g. int vs numeric string) while representing the same value.
+		if ( isset( $option['value'] ) && $option['value'] == $stored_value && ! empty( $option['label'] ) ) {
+			$original_label = $option['label'];
+			break;
+		}
+	}
 
-    if (empty($original_label)) {
-        return $html;
-    }
+	if ( empty( $original_label ) ) {
+		return $html;
+	}
 
-    // Translate the label
-    $translated_label = frl_get_translation($original_label);
+	// Translate the label
+	$translated_label = frl_get_translation( $original_label );
 
-    // If translation changed, replace in HTML output
-    if ($translated_label !== $original_label) {
-        $html = str_replace(
-            ['>' . $original_label . '<', '>' . esc_html($original_label) . '<'],
-            ['>' . $translated_label . '<', '>' . esc_html($translated_label) . '<'],
-            $html
-        );
-    }
+	// If translation changed, replace in HTML output
+	if ( $translated_label !== $original_label ) {
+		$html = str_replace(
+			array( '>' . $original_label . '<', '>' . esc_html( $original_label ) . '<' ),
+			array( '>' . $translated_label . '<', '>' . esc_html( $translated_label ) . '<' ),
+			$html
+		);
+	}
 
-    return $html;
+	return $html;
 }
 
 // Initialize

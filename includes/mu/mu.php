@@ -7,8 +7,8 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 // Load MU-plugin-specific helpers
@@ -21,6 +21,4 @@ frl_maybe_throttle_user_agent();
 /**
  * Setup plugin exclusion filter before other plugins load.
  */
-add_action('muplugins_loaded', 'frl_filter_plugin_exclusions', 5);
-
-
+add_action( 'muplugins_loaded', 'frl_filter_plugin_exclusions', 5 );

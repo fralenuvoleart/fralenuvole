@@ -17,8 +17,8 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 // Upgrade routines trigger only when the first 3 version numbers change: 1.1.1 -> 1.1.2
@@ -33,152 +33,158 @@ require_once __DIR__ . '/includes/bootstrap.php';
 require_once FRL_DIR_PATH . 'includes/plugin-lifecycle.php';
 
 // FRL_MODE=disable: Stop loading the plugin entirely
-if (defined('FRL_MODE') && FRL_MODE === 'disable') {
-    return;
+if ( defined( 'FRL_MODE' ) && FRL_MODE === 'disable' ) {
+	return;
 }
 
 // Register lifecycle hooks (callbacks defined in includes/lifecycle.php)
-register_activation_hook(__FILE__, 'frl_activate_plugin');
-register_deactivation_hook(__FILE__, 'frl_deactivate_plugin');
-register_uninstall_hook(__FILE__, 'frl_uninstall_plugin');
+register_activation_hook( __FILE__, 'frl_activate_plugin' );
+register_deactivation_hook( __FILE__, 'frl_deactivate_plugin' );
+register_uninstall_hook( __FILE__, 'frl_uninstall_plugin' );
 
-add_action('plugins_loaded',
-    'frl_plugins_loaded',
-    5,
-    0);
+add_action(
+	'plugins_loaded',
+	'frl_plugins_loaded',
+	5,
+	0
+);
 
 
 // Security headers for all requests
 // Uses wp_headers filter instead of send_headers action.
-add_filter('wp_headers', function ($headers) {
-    $headers['X-Content-Type-Options'] = 'nosniff';
-    $headers['X-Frame-Options'] = 'SAMEORIGIN';
-    $headers['X-XSS-Protection'] = '1; mode=block';
-    return $headers;
-});
+add_filter(
+	'wp_headers',
+	function ( $headers ) {
+		$headers['X-Content-Type-Options'] = 'nosniff';
+		$headers['X-Frame-Options']        = 'SAMEORIGIN';
+		$headers['X-XSS-Protection']       = '1; mode=block';
+		return $headers;
+	}
+);
 
 /**
  * Initialize plugin and register hooks
  * @return void
  */
-function frl_plugins_loaded()
-{
-    // Load core components
-    frl_load_core_components();
+function frl_plugins_loaded() {
+	// Load core components
+	frl_load_core_components();
 
-    // Use enhanced admin detection function
-    if (frl_is_admin()) {
-        frl_load_admin_components();
-    }
+	// Use enhanced admin detection function
+	if ( frl_is_admin() ) {
+		frl_load_admin_components();
+	}
 
-    // Exit early if plugin is disabled or request context is invalid
-    if (frl_get_option('disable_plugin') || (defined('FRL_MODE') && FRL_MODE === 'core')) {
-        return;
-    }
+	// Exit early if plugin is disabled or request context is invalid
+	if ( frl_get_option( 'disable_plugin' ) || ( defined( 'FRL_MODE' ) && FRL_MODE === 'core' ) ) {
+		return;
+	}
 
-    // Load public components strictly for frontend requests
-    if (frl_is_valid_frontend_page_request()) {
-        frl_load_public_components();
-    }
+	// Load public components strictly for frontend requests
+	if ( frl_is_valid_frontend_page_request() ) {
+		frl_load_public_components();
+	}
 
-    // Load modules file and apply filters to FRL_DEFAULT_FIELDS
-    frl_modules_init();
+	// Load modules file and apply filters to FRL_DEFAULT_FIELDS
+	frl_modules_init();
 }
 
 /**
  * Load the Core Components
  */
-function frl_load_core_components()
-{
-    // Load core files first (cache-manager already loaded in bootstrap)
-    require_once FRL_DIR_PATH . 'core/cache/cache-cleanup.php';
+function frl_load_core_components() {
+	// Load core files first (cache-manager already loaded in bootstrap)
+	require_once FRL_DIR_PATH . 'core/cache/cache-cleanup.php';
 
-    // Environment Manager — only load + init if not explicitly disabled.
-    if (!frl_get_option('disable_environment')) {
-        require_once FRL_DIR_PATH . 'core/environment/environment-manager.php';
-        frl_environment_init();
-    }
+	// Environment Manager — only load + init if not explicitly disabled.
+	if ( ! frl_get_option( 'disable_environment' ) ) {
+		require_once FRL_DIR_PATH . 'core/environment/environment-manager.php';
+		frl_environment_init();
+	}
 
-    // Translator — only load + init if a multilingual plugin is active AND translator is not disabled.
-    // frl_is_multilingual_plugin_active() checks Polylang/WPML constants which are defined
-    // during plugin file inclusion (before plugins_loaded), so it is safe to call here.
-    if (frl_is_multilingual_plugin_active() && !frl_get_option('disable_translator')) {
-        require_once FRL_DIR_PATH . 'core/translator/translator.php';
-        frl_translator_init();
-    }
+	// Translator — only load + init if a multilingual plugin is active AND translator is not disabled.
+	// frl_is_multilingual_plugin_active() checks Polylang/WPML constants which are defined
+	// during plugin file inclusion (before plugins_loaded), so it is safe to call here.
+	if ( frl_is_multilingual_plugin_active() && ! frl_get_option( 'disable_translator' ) ) {
+		require_once FRL_DIR_PATH . 'core/translator/translator.php';
+		frl_translator_init();
+	}
 
-    // Rewriter — only load + init if not explicitly disabled
-    if (!frl_get_option('disable_rewriter')) {
-        require_once FRL_DIR_PATH . 'core/rewriter/class-rewriter.php';
-        frl_rewriter_init();
-    }
+	// Rewriter — only load + init if not explicitly disabled
+	if ( ! frl_get_option( 'disable_rewriter' ) ) {
+		require_once FRL_DIR_PATH . 'core/rewriter/class-rewriter.php';
+		frl_rewriter_init();
+	}
 
-    // Themekit — always loaded (no master disable toggle)
-    require_once FRL_DIR_PATH . 'core/themekit/themekit.php';
+	// Themekit — always loaded (no master disable toggle)
+	require_once FRL_DIR_PATH . 'core/themekit/themekit.php';
 
-    // Load always-active features
-    require_once FRL_DIR_PATH . 'includes/main.php';
-    require_once FRL_DIR_PATH . 'public/shortcodes.php';
+	// Load always-active features
+	require_once FRL_DIR_PATH . 'includes/main.php';
+	require_once FRL_DIR_PATH . 'public/shortcodes.php';
 
-    // These init functions handle their own internal guards:
-    // - frl_environment_enforce_settings() calls frl_environment_is_loaded() which returns false if EM file wasn't loaded
-    // - frl_shortcodes_init() / frl_themekit_init() are always safe (files loaded unconditionally above)
-    add_action('init',
-        'frl_environment_enforce_settings',
-        10,
-        0);
+	// These init functions handle their own internal guards:
+	// - frl_environment_enforce_settings() calls frl_environment_is_loaded() which returns false if EM file wasn't loaded
+	// - frl_shortcodes_init() / frl_themekit_init() are always safe (files loaded unconditionally above)
+	add_action(
+		'init',
+		'frl_environment_enforce_settings',
+		10,
+		0
+	);
 
-    add_action('init',
-        'frl_shortcodes_init',
-        10,
-        0);
+	add_action(
+		'init',
+		'frl_shortcodes_init',
+		10,
+		0
+	);
 
-    add_action('init',
-        'frl_themekit_init',
-        20,
-        0);
+	add_action(
+		'init',
+		'frl_themekit_init',
+		20,
+		0
+	);
 }
 
 /**
  * Load admin components
  */
-function frl_load_admin_components()
-{
-    // Critical hooks for immediate registration: admin_menu and admin_post_frl_save_options
-    require_once FRL_DIR_PATH . 'admin/admin.php';
+function frl_load_admin_components() {
+	// Critical hooks for immediate registration: admin_menu and admin_post_frl_save_options
+	require_once FRL_DIR_PATH . 'admin/admin.php';
 }
 
 /**
  * Load public components
  */
-function frl_load_public_components()
-{
-    require_once FRL_DIR_PATH . 'public/public.php';
-    require_once FRL_DIR_PATH . 'public/schema/schema.php';
+function frl_load_public_components() {
+	require_once FRL_DIR_PATH . 'public/public.php';
+	require_once FRL_DIR_PATH . 'public/schema/schema.php';
 }
 
 /**
  * Apply module settings filters to default fields
  * This allows modules to register their settings
  */
-function frl_modules_init()
-{
-    // Use the module list from the base default configuration
-    $modules = frl_modules_get_keys();
-    if (!$modules) {
-        return;
-    }
+function frl_modules_init() {
+	// Use the module list from the base default configuration
+	$modules = frl_modules_get_keys();
+	if ( ! $modules ) {
+		return;
+	}
 
-    // Iterate through the KEYS (module names) from the default config
-    foreach ($modules as $module_key) {
-        $option_name = 'module_' . $module_key;
+	// Iterate through the KEYS (module names) from the default config
+	foreach ( $modules as $module_key ) {
+		$option_name = 'module_' . $module_key;
 
-        // Check the WP option to see if this module should be loaded
-        if (frl_get_option($option_name) === '1') {
-            $module_file = frl_modules_module_get_file_path($module_key);
-            if ($module_file) {
-                include_once $module_file;
-            }
-        }
-    }
+		// Check the WP option to see if this module should be loaded
+		if ( frl_get_option( $option_name ) === '1' ) {
+			$module_file = frl_modules_module_get_file_path( $module_key );
+			if ( $module_file ) {
+				include_once $module_file;
+			}
+		}
+	}
 }

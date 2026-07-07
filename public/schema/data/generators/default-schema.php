@@ -25,27 +25,27 @@
  * @package Fralenuvole
  */
 
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
-return [
-    'post' => [
-        [
-            '@type' => 'HowTo',
-            'name'  => 'service-howtos_title',
-            'description' => 'service-howtos_description', // optional          
-            'about' => '{{post_title}}', // optional
-            'totalTime'   => 'service-howtos_time', // optional: ACF field (e.g. 'PT30M')
-            'estimatedCost' => 'service-howtos_cost', // optional: ACF field
-            'step'         => [
-                '@type'    => 'HowToStep',
-                'repeater' => 'service-howtos_howto',
-                'source'   => 'acpt',
-                'position' => '{{index}}',
-                'name'     => 'title',
-                'text'     => 'answer',
-            ],
-        ],
-    ],
-];
+return array(
+	'post' => array(
+		array(
+			'@type'         => 'HowTo',
+			'name'          => 'service-howtos_title',
+			'description'   => 'service-howtos_description', // optional
+			'about'         => '{{post_title}}', // optional
+			'totalTime'     => 'service-howtos_time', // optional: ACF field (e.g. 'PT30M')
+			'estimatedCost' => 'service-howtos_cost', // optional: ACF field
+			'step'          => array(
+				'@type'    => 'HowToStep',
+				'repeater' => 'service-howtos_howto',
+				'source'   => 'acpt',
+				'position' => '{{index}}',
+				'name'     => 'title',
+				'text'     => 'answer',
+			),
+		),
+	),
+);
