@@ -28,6 +28,7 @@
   1. **Cache-group/bypass immunity:** cache groups are wiped wholesale by `purge_all()`/`clear_group_with_dependencies()` on any "Clear Cache" action, and bypassed entirely by `disable_cache`/`?frlmode=nocache`. Either condition would silently re-trigger the guarded heavy operation if the flag lived there. A non-autoloaded `wp_options` row is immune to both, and to object-cache backend eviction under memory pressure.
   2. **Import/Export contamination:** `frl_get_plugin_options_db()` (used both to build the plugin's own options cache and, directly and unfiltered, by Import/Export's `frl_prepare_settings_for_export()`) does a raw `LIKE 'frl_%'` DB scan. Any option whose name literally starts with `frl_` — even one written via raw `update_option()` rather than `frl_update_option()` — gets swept into every settings export and, on import into a *different* environment, would incorrectly transplant "already completed" state onto a site where the underlying DB work was never done. The `_frl_` leading-underscore form opts out of this scan entirely.
   - **Uninstall cleanup:** `frl_delete_plugin()`'s bulk-delete query matches both `LIKE 'frl_%'` (regular options) and `LIKE '_frl_%'` (internal-state flags), deriving both patterns from `frl_prefix()` — so any `_frl_`-prefixed flag is cleaned up automatically on uninstall/reset with no per-key `delete_option()` call needed.
+- **`frl_delete_plugin()` Is Dual-Use — Options-Only Scope Is Load-Bearing:** Called by both `frl_uninstall_plugin()` (one-way uninstall) and the "Reset Plugin" admin action (`frl_handle_action_reset_plugin()`, which restores defaults immediately after). Never add anything beyond `wp_options` cleanup to this function — e.g. postmeta cleanup — since it would also fire on every routine "Reset Plugin" click. Uninstall-only cleanup (like `_frl_post_version`) belongs directly in `frl_uninstall_plugin()`, after the `frl_delete_plugin()` call.
 
 ## 🌐 Translation Fallback Architecture
 - **Adapter self-contained fallbacks:** `Frl_Polylang_Adapter` encapsulates its own fallback logic — private methods `get_default_language_internal()` and `get_active_languages_internal()` read Polylang's DB options directly when Polylang's API is unavailable.
@@ -48,6 +49,8 @@
 4. Bump the version in `frl_clear_post_cache()` on `save_post` via `update_post_meta($post_id, '_frl_post_version', time())`.
 
 **When to apply:** cache key contains post-specific data with dynamic/unknown segments (e.g., shortcode `field=` attribute values). **Not needed** for slug-based keys — a slug change naturally produces a different key.
+
+**Deliberately immune to cache-clear operations:** `_frl_post_version` is postmeta, not cache — `Frl_Cache_Manager` never touches `wp_postmeta`, and adding it to `purge_all()`/"Clear Cache" would be pure overhead (a full-group purge already invalidates every versioned key regardless of the version number) plus DB cost scaling with total post count. Only cleaned up on full uninstall (`frl_uninstall_plugin()`), never on routine cache clears or plugin resets.
 
 ## 🛠️ Developer Working Method
 - **Standard:** Modular, elegant, SEO-performant.
