@@ -339,12 +339,7 @@ class Frl_Cache_Manager
         if (!$has_drop_in) {
             $provider_info['slug'] = 'transients';
             $provider_info['label'] = 'WordPress Transients';
-            self::$cached_provider_details = $provider_info;
-            
-            // Store in transient to avoid recursion with self::set()
-            set_transient($transient_key, $provider_info, WEEK_IN_SECONDS);
-            
-            return self::$cached_provider_details;
+            return self::finalize_provider_details($provider_info, $transient_key);
         }
 
         // --- Read object-cache.php content ONCE ---
@@ -378,12 +373,7 @@ class Frl_Cache_Manager
                 $provider_info['slug'] = 'litespeed_inactive_dropin';
                 $provider_info['is_effectively_functional'] = false;
             }
-            self::$cached_provider_details = $provider_info;
-
-            // Store in transient to avoid recursion with self::set()
-            set_transient($transient_key, $provider_info, WEEK_IN_SECONDS);
-
-            return self::$cached_provider_details;
+            return self::finalize_provider_details($provider_info, $transient_key);
         }
 
         // Docket Cache Detection
@@ -412,12 +402,7 @@ class Frl_Cache_Manager
                 $provider_info['slug'] = 'docket_cache_inactive_dropin';
                 $provider_info['is_effectively_functional'] = false;
             }
-            self::$cached_provider_details = $provider_info;
-
-            // Store in transient to avoid recursion with self::set()
-            set_transient($transient_key, $provider_info, WEEK_IN_SECONDS);
-
-            return self::$cached_provider_details;
+            return self::finalize_provider_details($provider_info, $transient_key);
         }
 
         // Redis Detection
@@ -425,12 +410,7 @@ class Frl_Cache_Manager
             $provider_info['slug'] = 'redis_active';
             $provider_info['label'] = 'Redis';
             $provider_info['is_effectively_functional'] = true;
-            self::$cached_provider_details = $provider_info;
-
-            // Store in transient to avoid recursion with self::set()
-            set_transient($transient_key, $provider_info, WEEK_IN_SECONDS);
-
-            return self::$cached_provider_details;
+            return self::finalize_provider_details($provider_info, $transient_key);
         }
 
         // Memcached Detection
@@ -438,12 +418,7 @@ class Frl_Cache_Manager
             $provider_info['slug'] = 'memcached_active';
             $provider_info['label'] = 'Memcached';
             $provider_info['is_effectively_functional'] = true;
-            self::$cached_provider_details = $provider_info;
-
-            // Store in transient to avoid recursion with self::set()
-            set_transient($transient_key, $provider_info, WEEK_IN_SECONDS);
-
-            return self::$cached_provider_details;
+            return self::finalize_provider_details($provider_info, $transient_key);
         }
 
         // Final Fallbacks for generic or unknown drop-ins
@@ -468,6 +443,23 @@ class Frl_Cache_Manager
             $provider_info['label'] = 'Unknown Drop-in (No Class)';
         }
         // is_effectively_functional remains false for these generic/unknown cases.
+        return self::finalize_provider_details($provider_info, $transient_key);
+    }
+
+    /**
+     * Store resolved provider details in-memory and persist them to a transient.
+     *
+     * Single write path for get_provider_details() so every detection branch
+     * (transients/Litespeed/Docket/Redis/Memcached/generic-fallback) persists
+     * identically — a future branch cannot forget the transient write and
+     * silently lose the week-long cache.
+     *
+     * @param array $provider_info Resolved provider details.
+     * @param string $transient_key Transient key to persist under.
+     * @return array The same $provider_info, for convenient `return` chaining.
+     */
+    private static function finalize_provider_details(array $provider_info, string $transient_key): array
+    {
         self::$cached_provider_details = $provider_info;
 
         // Store in transient to avoid recursion with self::set()

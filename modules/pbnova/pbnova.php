@@ -29,6 +29,11 @@ add_action('wp_after_insert_post',
     20,
     3);
 
+add_filter('frl_breadcrumbs_extra_items',
+    'frl_pbnova_breadcrumbs_extra_items',
+    10,
+    3);
+
 /**
  * Add common scripts
  */
@@ -127,4 +132,59 @@ function frl_pbnova__acf_update_has_content($post, $update, $post_before) {
 	if ($old !== $new) {
 		update_post_meta($post_id, 'has_content', $new);
 	}
+}
+
+/**
+	* Inject PB Nova-specific breadcrumb items for the 'service' and 'jurisdiction' CPTs.
+	*
+	* Hooked into the generic [frl_breadcrumbs] shortcode's 'frl_breadcrumbs_extra_items'
+	* filter (see public/shortcodes.php:frl_shortcode_breadcrumbs()) so this brand-specific
+	* business rule lives in the PB Nova module instead of the shared core shortcode file.
+	* Runs after ancestors are computed but before they're appended to $links, matching the
+	* original inline placement exactly.
+	*
+	* - 'service' CPT: inserts the post's first 'jurisdiction' relation (if any, and not
+	*   already an ancestor) as a breadcrumb link.
+	* - 'jurisdiction' CPT: prepends a link to the 'jurisdictions' archive page.
+	*
+	* @param array   $links     Breadcrumb link HTML strings built so far.
+	* @param WP_Post $post      The queried singular post.
+	* @param int[]   $ancestors Reversed list of ancestor post IDs (root first).
+	* @return array Updated breadcrumb link HTML strings.
+	*/
+function frl_pbnova_breadcrumbs_extra_items($links, $post, $ancestors)
+{
+	if (!($post instanceof WP_Post)) {
+		return $links;
+	}
+
+	$post_type = get_post_type($post);
+
+	// Insert first jurisdiction (if any) only for the 'service' CPT.
+	// frl_extract_relation_ids() is the same normalization helper
+	// frl_shortcode_meta_rel() uses internally, so behavior (including
+	// dedup) stays identical to reading it via that shortcode.
+	if ($post_type === 'service') {
+		$jur_raw = frl_get_post_meta($post->ID, 'jurisdiction', true);
+		$jur_ids = frl_extract_relation_ids($jur_raw);
+		$first_jur_id = !empty($jur_ids) ? $jur_ids[0] : 0;
+		if ($first_jur_id > 0 && !in_array($first_jur_id, $ancestors, true)) {
+			$jur_title = get_the_title($first_jur_id);
+			$jur_link  = get_permalink($first_jur_id);
+			if ($jur_title && $jur_link) {
+				$links[] = sprintf('<a href="%s">%s</a>', esc_url($jur_link), esc_html($jur_title));
+			}
+		}
+	}
+
+	// Prepend the 'jurisdictions' page for the 'jurisdiction' CPT.
+	if ($post_type === 'jurisdiction') {
+		$pg_title = frl_get_translation('Jurisdictions');
+		$pg_link = frl_get_translation_permalink('jurisdictions');
+		if ($pg_link && $pg_title) {
+			$links[] = sprintf('<a href="%s">%s</a>', esc_url($pg_link), esc_html($pg_title));
+		}
+	}
+
+	return $links;
 }

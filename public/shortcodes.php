@@ -634,10 +634,7 @@ function frl_shortcode_meta_rel($atts)
             return '';
         }
 
-        $ids = is_array($raw) ? $raw : (array) $raw;
-        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), function ($v) {
-            return $v > 0;
-        })));
+        $ids = frl_extract_relation_ids($raw);
         if (empty($ids)) {
             return '';
         }
@@ -1035,30 +1032,11 @@ function frl_shortcode_breadcrumbs($atts)
             $ancestors = get_post_ancestors($post);
             $ancestors = array_reverse($ancestors);
 
- 			// Insert first jurisdiction (if any) only for the 'service' CPT
-			if (get_post_type($post) === 'service') {
-				$jur_id_raw = frl_shortcode_meta_rel([
-					'field' => 'jurisdiction',
-					'output' => 'id'
-				]);
-				$first_jur_id = (int) trim((string) $jur_id_raw);
-				if ($first_jur_id > 0 && !in_array($first_jur_id, $ancestors, true)) {
-					$jur_title = get_the_title($first_jur_id);
-					$jur_link  = get_permalink($first_jur_id);
-					if ($jur_title && $jur_link) {
-						$links[] = sprintf('<a href="%s">%s</a>', esc_url($jur_link), esc_html($jur_title));
-					}
-				}
-			}
-
-			// Prepend the 'jurisdictions' page for the 'jurisdiction' CPT
-			if (get_post_type($post) === 'jurisdiction') {
-                $pg_title = frl_get_translation('Jurisdictions');
-                $pg_link = frl_get_translation_permalink('jurisdictions');
-                if ($pg_link && $pg_title) {
-                    $links[] = sprintf('<a href="%s">%s</a>', esc_url($pg_link), esc_html($pg_title));
-                }
-			}
+ 		// Brand-specific breadcrumb items (e.g. PB Nova's 'service'/'jurisdiction'
+ 		// CPT rules) are intentionally NOT hardcoded here — this shortcode is shared
+ 		// across every brand deployment. Modules that need to inject extra items
+ 		// hook into this filter instead (see modules/pbnova/pbnova.php).
+ 		$links = apply_filters('frl_breadcrumbs_extra_items', $links, $post, $ancestors);
 
            foreach ($ancestors as $ancestor_id) {
                 $links[] = sprintf('<a href="%s">%s</a>', esc_url(get_permalink($ancestor_id)), esc_html(get_the_title($ancestor_id)));

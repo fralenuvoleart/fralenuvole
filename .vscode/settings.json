@@ -1,7 +1,11 @@
 {
-    "phpSniffer.executablesFolder": "vendor/bin/",
+    "phpsab.executablePathCS": "${workspaceFolder}/vendor/bin/phpcs",
+    "phpsab.executablePathCBF": "${workspaceFolder}/vendor/bin/phpcbf",
+    "phpsab.composerJsonPath": "composer.json",
     "phpstan.config": ".dev/phpstan.neon",
-    "intelephense.environment.includePaths": [],
+    "intelephense.environment.includePaths": [
+        "${workspaceFolder}/.dev/stubs"
+    ],
     "files.watcherExclude": {
         ".dev/stubs/**": true,
         "vendor/**": true

@@ -201,3 +201,66 @@ if (!function_exists('pll_get_term_translations')) {
         return [];
     }
 }
+
+if (!class_exists('PLL_Language')) {
+    /**
+     * Minimal stand-in for Polylang's PLL_Language value object.
+     * Only the properties this codebase actually reads are declared.
+     */
+    class PLL_Language
+    {
+        /** @var string */
+        public $name = '';
+        /** @var string */
+        public $slug = '';
+        /** @var string */
+        public $locale = '';
+        /** @var int */
+        public $term_group = 0;
+        /** @var bool */
+        public $is_rtl = false;
+    }
+}
+
+if (!class_exists('PLL_Model')) {
+    /**
+     * Minimal stand-in for Polylang's PLL_Model, exposing only the
+     * method this codebase actually calls (PLL()->model->get_language()).
+     */
+    class PLL_Model
+    {
+        /**
+         * @param string $lang
+         * @return PLL_Language|false
+         */
+        public function get_language($lang) {
+            return false;
+        }
+    }
+}
+
+if (!class_exists('PLL_Base_Stub')) {
+    /**
+     * Minimal stand-in for the object returned by PLL() (PLL_Frontend/
+     * PLL_Admin/PLL_REST in real Polylang), exposing only the ->model
+     * property this codebase accesses.
+     */
+    class PLL_Base_Stub
+    {
+        /** @var PLL_Model */
+        public $model;
+
+        public function __construct() {
+            $this->model = new PLL_Model();
+        }
+    }
+}
+
+if (!function_exists('PLL')) {
+    /**
+     * @return PLL_Base_Stub
+     */
+    function PLL() {
+        return new PLL_Base_Stub();
+    }
+}

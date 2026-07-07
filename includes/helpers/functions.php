@@ -1031,3 +1031,30 @@ function frl_get_repeater_field(int $post_id, string $field, ?int $index = null,
 
     return $raw;
 }
+
+/**
+ * Normalize a relational meta field's raw value into a deduplicated list of positive integer post IDs.
+ *
+ * Shared normalization logic for meta fields that store one or more related post IDs
+ * (e.g. ACF relationship/post-object fields, or simple comma-less repeaters of IDs).
+ * Single source of truth for "clean ID list" semantics — used by frl_shortcode_meta_rel()
+ * and by any other code (e.g. frl_shortcode_breadcrumbs()) that needs the same result
+ * without going through the shortcode/cache layer.
+ *
+ * @since 5.9.1
+ *
+ * @param mixed $raw Raw meta value (scalar, numeric string, or array of IDs).
+ * @return int[] Deduplicated list of positive integer IDs, in original order.
+ */
+function frl_extract_relation_ids($raw): array
+{
+    if (empty($raw)) {
+        return [];
+    }
+
+    $ids = is_array($raw) ? $raw : (array) $raw;
+
+    return array_values(array_unique(array_filter(array_map('intval', $ids), function ($v) {
+        return $v > 0;
+    })));
+}

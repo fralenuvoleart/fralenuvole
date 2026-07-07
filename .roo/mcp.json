@@ -63,6 +63,9 @@
         "-y",
         "@modelcontextprotocol/server-memory"
       ],
+      "env": {
+        "MEMORY_FILE_PATH": "/home/francesco/.config/Code - OSS/User/globalStorage/zoocodeorganization.zoo-code/memory.jsonl"
+      },
       "alwaysAllow": [
         "read_graph",
         "add_observations",
