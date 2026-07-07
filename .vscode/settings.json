@@ -1,4 +1,5 @@
 {
+    "phpSniffer.executablesFolder": "vendor/bin/",
     "phpstan.config": ".dev/phpstan.neon",
     "intelephense.environment.includePaths": [],
     "files.watcherExclude": {
