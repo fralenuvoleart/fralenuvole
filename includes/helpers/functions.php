@@ -154,7 +154,7 @@ function frl_get_current_user()
     //    current request's cookie username. If the persistent cache returned a
     //    stale WP_User for a different user, invalidate and re-fetch.
     if ($current_user->ID > 0 && $current_user->user_login !== $cookie_username) {
-        frl_cache_delete('admin', $cache_key);
+        frl_cache_clear('admin', $cache_key, false);
         $current_user = new WP_User(0);
     }
     
@@ -729,9 +729,11 @@ function frl_delete_plugin()
     // Clear all caches
     frl_cache_clear('all');
 
-    // Delete options from DB
-    $query = "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s";
-    $args = [$wpdb->esc_like($prefix) . '%'];
+    // Matches plain `frl_%` (regular options) and `_frl_%` (internal-state flags
+    // excluded from Import/Export, e.g. `_frl_disable_comments_completed` — see
+    // frl_disable_comments()). Derived from $prefix so both stay in sync with FRL_PREFIX.
+    $query = "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s";
+    $args = [$wpdb->esc_like($prefix) . '%', $wpdb->esc_like('_' . $prefix) . '%'];
     if ($wpdb instanceof wpdb) {
         $results['options_deleted'] = $wpdb->query($wpdb->prepare($query, $args));
     } else {
@@ -904,7 +906,9 @@ function frl_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' )
         if ( frl_translator_is_enabled() && function_exists( 'pll_get_term_language' ) ) {
             $filtered = [];
             foreach ( $terms as $term ) {
+                /** @disregard P1010 Undefined type */
                 $term_lang_obj = pll_get_term_language( $term->term_id );
+                /** @disregard P1009 Undefined type */
                 $term_lang     = ( $term_lang_obj instanceof PLL_Language ) ? $term_lang_obj->slug : '';
                 if ( $term_lang === $lang || '' === $term_lang ) {
                     $filtered[] = $term;
@@ -946,6 +950,13 @@ function frl_get_post_meta(int $post_id, string $key, bool $single = true)
     if ($value !== null && $value !== '' && $value !== false) {
         return $value;
     }
+
+    // Empty/false is ambiguous ("missing" vs "exists but empty"); only fall
+    // back to ACF when the key truly doesn't exist, avoiding a wasted get_field() call.
+    if (metadata_exists('post', $post_id, $key)) {
+        return $value;
+    }
+
     // Fallback: ACF (handles serialization, repeaters, etc.)
     if (function_exists('get_field')) {
         $acf_value = get_field($key, $post_id, $single);

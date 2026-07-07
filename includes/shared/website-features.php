@@ -233,6 +233,10 @@ function frl_remove_emojis()
  */
 function frl_disable_comments()
 {
+    if (frl_is_already_running(__FUNCTION__)) {
+        return;
+    }
+
     // Remove comment support from all post types
     foreach (get_post_types() as $post_type) {
         if (post_type_supports($post_type, 'comments')) {
@@ -241,14 +245,17 @@ function frl_disable_comments()
         }
     }
 
-    // Schedule a one-time cron to close comments on all published posts.
-    // This avoids running a potentially expensive UPDATE across the entire
-    // wp_posts table synchronously on admin_init, which can lock the table
-    // for seconds on sites with millions of posts.
-    if (frl_is_admin()) {
-        // Check if the operation is already marked as completed BEFORE
-        // hitting the cron system, which queries the DB on every admin request.
-        $completed = frl_cache_get('options', 'disable_comments');
+    // Schedule a one-time cron to batch-close existing comments (avoids a
+    // synchronous table-wide UPDATE on admin_init). Completion marker uses
+    // the `_frl_` internal-state convention (like `_frl_post_version`), not
+    // a cache entry and not a plain `frl_`-prefixed option: it must survive
+    // "Clear Cache", and frl_-prefixed options leak into Import/Export via
+    // frl_get_plugin_options_db()'s raw `LIKE 'frl_%'` scan — which would
+    // wrongly mark a *different* environment's comments as already closed.
+    // Cleaned up in frl_delete_plugin(). Skipped for REST/AJAX (no admin UI
+    // to protect there, and the check is moot once the batch has run).
+    if (frl_is_admin() && !frl_is_rest_api_request() && !wp_doing_ajax()) {
+        $completed = get_option('_frl_disable_comments_completed');
         if ($completed !== '1' && !wp_next_scheduled('frl_disable_comments_batch')) {
             wp_schedule_single_event(time() + 5, 'frl_disable_comments_batch');
         }
@@ -259,23 +266,33 @@ function frl_disable_comments()
         add_action('frl_disable_comments_batch', 'frl_run_disable_comments_batch');
     }
 
-    // Hide existing comments menu and admin bar items
-    add_action('admin_menu', function () {
-        remove_menu_page('edit-comments.php');
-    }, 10, 0);
+    // Admin-UI-only hooks: nothing here renders during REST/AJAX dispatch.
+    if (!frl_is_rest_api_request() && !wp_doing_ajax()) {
+        add_action('admin_menu', function () {
+            remove_menu_page('edit-comments.php');
+        }, 10, 0);
 
-    add_action('admin_bar_menu', function ($wp_admin_bar) {
-        $wp_admin_bar->remove_node('comments');
-    }, 999, 1);
+        add_action('admin_bar_menu', function ($wp_admin_bar) {
+            $wp_admin_bar->remove_node('comments');
+        }, 999, 1);
 
-    // Disable comments REST API endpoints
+        add_action('widgets_init', function () {
+            unregister_widget('WP_Widget_Recent_Comments');
+        }, 10, 0);
+
+        add_action('admin_init', function () {
+            remove_meta_box('dashboard_recent_comments', 'dashboard', 'normal');
+        }, 10, 0);
+    }
+
+    // REST/feed/policy filters stay unconditional — these are what actually
+    // enforce "comments disabled" for REST requests, not just admin UI.
     add_filter('rest_endpoints', function ($endpoints) {
         unset($endpoints['/wp/v2/comments']);
         unset($endpoints['/wp/v2/comments/(?P<id>[\d]+)']);
         return $endpoints;
     });
 
-    // Disable comment feed
     add_action('template_redirect', function () {
         if (is_comment_feed()) {
             $redirect_url = home_url();
@@ -287,28 +304,18 @@ function frl_disable_comments()
         }
     }, 999, 0);
 
-    // Remove comment-related widgets
-    add_action('widgets_init', function () {
-        unregister_widget('WP_Widget_Recent_Comments');
-    }, 10, 0);
-
-    // Disable comment form and display
     add_filter('comments_open',  '__return_false',       20, 2);
     add_filter('pings_open',     '__return_false',       20, 2);
     add_filter('comments_array', '__return_empty_array', 10, 2);
 
-    // Remove comments from admin dashboard
-    add_action('admin_init', function () {
-        remove_meta_box('dashboard_recent_comments', 'dashboard', 'normal');
-    }, 10, 0);
+    frl_is_already_running(__FUNCTION__, true);
 }
 
 /**
  * Cron handler: batch-close comments on all published posts.
  *
- * Runs as a scheduled background task to avoid synchronous table locks
- * on admin_init for sites with large wp_posts tables. Marks completion
- * in the cache so the schedule is never re-queued.
+ * Scheduled background task to avoid a synchronous table-wide UPDATE on
+ * admin_init. See frl_disable_comments() for the completion-marker rationale.
  *
  * @return void
  */
@@ -322,6 +329,5 @@ function frl_run_disable_comments_batch(): void
         ['post_status' => 'publish', 'comment_status' => 'open']
     );
 
-    // Mark as completed so frl_disable_comments() never schedules this again.
-    frl_cache_set('options', 'disable_comments', '1', YEAR_IN_SECONDS);
+    update_option('_frl_disable_comments_completed', '1', false);
 }

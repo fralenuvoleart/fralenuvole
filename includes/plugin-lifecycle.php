@@ -146,6 +146,14 @@ function frl_uninstall_plugin(): void
         frl_delete_plugin();
     }
 
+    // Not in frl_delete_plugin(): that's shared with "Reset Plugin", which must
+    // stay options-only. `_frl_post_version` is a harmless cache-busting
+    // timestamp (no user content), safe to purge only on a real uninstall.
+    global $wpdb;
+    if (isset($wpdb) && $wpdb instanceof wpdb) {
+        $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key = '_frl_post_version'");
+    }
+
     if (function_exists('frl_mu_plugins_delete')) {
         frl_mu_plugins_delete();
     }

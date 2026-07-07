@@ -1044,6 +1044,33 @@ class Frl_Cache_Manager
     }
 
     /**
+     * Hydrate a result array from the runtime cache for all known keys of a group.
+     *
+     * Shared by get_multi()'s "already loaded" and "object cache, keys unknown"
+     * paths, which both need to rebuild a [key => value] map from the group's
+     * tracked cache keys and whatever currently lives in the runtime cache.
+     *
+     * @param string $group Cache group name.
+     * @return array Associative array of found values keyed by the unprefixed key.
+     */
+    private static function hydrate_result_from_group_keys(string $group): array
+    {
+        $result = [];
+        $group_prefix = $group . '_';
+        $prefix_len = strlen($group_prefix);
+        $group_cache_keys = self::$group_keys[$group] ?? [];
+
+        foreach (array_keys($group_cache_keys) as $cache_key) {
+            if (isset(self::$runtime_cache[$cache_key])) {
+                $key = substr($cache_key, $prefix_len);
+                $result[$key] = self::$runtime_cache[$cache_key];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Get multiple values from cache.
      *
      * @param string $group Cache group name.
@@ -1064,16 +1091,7 @@ class Frl_Cache_Manager
             // Check if we've already loaded all keys for this group in this request
             if (isset(self::$loaded_groups[$group])) {
                 if ($return_values) {
-                    $group_prefix = $group . '_';
-                    $prefix_len = strlen($group_prefix);
-                    $group_cache_keys = self::$group_keys[$group] ?? [];
-                    
-                    foreach (array_keys($group_cache_keys) as $cache_key) {
-                        if (isset(self::$runtime_cache[$cache_key])) {
-                            $key = substr($cache_key, $prefix_len);
-                            $result[$key] = self::$runtime_cache[$cache_key];
-                        }
-                    }
+                    $result = self::hydrate_result_from_group_keys($group);
                 }
                 return $return_values ? $result : null;
             }
@@ -1150,16 +1168,7 @@ class Frl_Cache_Manager
                     // Since we can't get all keys efficiently from object cache,
                     // we rely on the runtime cache for any existing entries
                     if ($return_values) {
-                        $group_prefix = $group . '_';
-                        $prefix_len = strlen($group_prefix);
-                        $group_cache_keys = self::$group_keys[$group] ?? [];
-
-                        foreach (array_keys($group_cache_keys) as $cache_key) {
-                            if (isset(self::$runtime_cache[$cache_key])) {
-                                $key = substr($cache_key, $prefix_len);
-                                $result[$key] = self::$runtime_cache[$cache_key];
-                            }
-                        }
+                        $result = self::hydrate_result_from_group_keys($group);
                     }
 
                     // Still mark as loaded to prevent repeated access attempts
@@ -1403,14 +1412,19 @@ class Frl_Cache_Manager
         if (self::is_object_cache_truly_functional()) {
             $wp_cache_group = self::PREFIX . $group;
 
-            // Canary check (diagnostic only, does not alter $count or behavior):
-            // some object-cache drop-ins implement wp_cache_flush_group() as a
-            // no-op stub, or don't support group-scoped flushing at all. Without
-            // this, we'd silently report a successful clear while stale data
-            // remains cached until natural TTL expiry. We set a marker key before
-            // flushing and check afterward whether it survived.
+            // Canary check (diagnostic only, never alters $count/behavior): detects
+            // drop-ins where wp_cache_flush_group() is a no-op. Runs once per
+            // request, not once per group — backend support doesn't vary per
+            // group, so re-checking on every purge_all() group would add
+            // 30-45 redundant round-trips for no extra signal.
+            static $canary_checked = false;
+            $run_canary_check = !$canary_checked;
             $canary_key = '__frl_flush_canary__';
-            wp_cache_set($canary_key, 1, $wp_cache_group, MINUTE_IN_SECONDS);
+
+            if ($run_canary_check) {
+                $canary_checked = true;
+                wp_cache_set($canary_key, 1, $wp_cache_group, MINUTE_IN_SECONDS);
+            }
 
             // Use WP's group flush if available
             if (function_exists('wp_cache_flush_group')) {
@@ -1421,7 +1435,7 @@ class Frl_Cache_Manager
                 $count = 1; // Indicate that *something* was likely cleared, though not precisely countable
             }
 
-            if (wp_cache_get($canary_key, $wp_cache_group) !== false) {
+            if ($run_canary_check && wp_cache_get($canary_key, $wp_cache_group) !== false) {
                 if (function_exists('frl_log')) {
                     $provider = self::get_provider_details();
                     frl_log(
