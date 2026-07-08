@@ -627,15 +627,8 @@ function frl_validate_html_fragment( string $html ): string {
 		return $html;
 	}
 
-	// Fast path: strings with neither '<' nor '&' cannot contain malformed
-	// markup AND cannot be affected by DOMDocument's entity re-encoding
-	// (a bare '&' gets normalized to '&amp;' on the saveHTML() round-trip
-	// even with no tags present — verified empirically; excluding only '<'
-	// would silently drop that normalization for plain strings like
-	// "Terms & Conditions"). Most translatable UI strings (button labels,
-	// headings, etc.) contain neither character — this avoids constructing
-	// a DOMDocument, parsing, and re-serializing on every translation
-	// cache-miss for the common case, with zero behavioral difference.
+	// Fast path: strings without '<' or '&' are unaffected by DOMDocument's
+	// entity re-encoding on saveHTML() round-trip (bare '&' → '&').
 	if ( ! str_contains( $html, '<' ) && ! str_contains( $html, '&' ) ) {
 		return $html;
 	}

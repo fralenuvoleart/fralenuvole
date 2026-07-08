@@ -404,12 +404,8 @@ function frl_wsf_spam_filter_submission( $field_error_action_array, $post_mode, 
  * Reuses frl_wsf_should_send_webhook() for dedupe and frl_wsf_execute_webhook_submission() for dispatch.
  */
 function frl_wsf_button_webhook_handler() {
-	// Note: Nonce verification intentionally skipped.
-	// This is a public analytics endpoint (nopriv) that handles button-click tracking.
-	// Protection is provided via: (1) input sanitization, (2) deduplication logic,
-	// (3) rate limiting via frl_wsf_should_send_webhook().
-	// Nonce verification was removed because Cloudflare CDN page caching causes
-	// nonce expiration, leading to 403 errors and lost contact form submissions.
+	// Public analytics endpoint (nopriv). Protected by sanitization, deduplication,
+	// and rate limiting. No nonce: Cloudflare CDN caching causes nonce expiration.
 
 	$action_id = sanitize_text_field( $_POST['action_id'] ?? '' );
 	if ( empty( $action_id ) || ! defined( 'WS_BUTTON_ACTIONS' ) ) {

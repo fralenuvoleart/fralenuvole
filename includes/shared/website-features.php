@@ -238,15 +238,8 @@ function frl_disable_comments() {
 		}
 	}
 
-	// Schedule a one-time cron to batch-close existing comments (avoids a
-	// synchronous table-wide UPDATE on admin_init). Completion marker uses
-	// the `_frl_` internal-state convention (like `_frl_post_version`), not
-	// a cache entry and not a plain `frl_`-prefixed option: it must survive
-	// "Clear Cache", and frl_-prefixed options leak into Import/Export via
-	// frl_get_plugin_options_db()'s raw `LIKE 'frl_%'` scan — which would
-	// wrongly mark a *different* environment's comments as already closed.
-	// Cleaned up in frl_delete_plugin(). Skipped for REST/AJAX (no admin UI
-	// to protect there, and the check is moot once the batch has run).
+	// Schedule one-time cron to batch-close comments. Completion marker uses
+	// the _frl_ internal-state convention (see systemPatterns.md). Skipped for REST/AJAX.
 	if ( frl_is_admin() && ! frl_is_rest_api_request() && ! wp_doing_ajax() ) {
 		$completed = get_option( '_frl_disable_comments_completed' );
 		if ( $completed !== '1' && ! wp_next_scheduled( 'frl_disable_comments_batch' ) ) {
@@ -259,7 +252,7 @@ function frl_disable_comments() {
 		add_action( 'frl_disable_comments_batch', 'frl_run_disable_comments_batch' );
 	}
 
-	// Admin-UI-only hooks: nothing here renders during REST/AJAX dispatch.
+	// Admin-UI-only hooks (skipped during REST/AJAX).
 	if ( ! frl_is_rest_api_request() && ! wp_doing_ajax() ) {
 		add_action(
 			'admin_menu',
@@ -298,8 +291,7 @@ function frl_disable_comments() {
 		);
 	}
 
-	// REST/feed/policy filters stay unconditional — these are what actually
-	// enforce "comments disabled" for REST requests, not just admin UI.
+	// Unconditional filters: enforce "comments disabled" for REST/feed requests.
 	add_filter(
 		'rest_endpoints',
 		function ( $endpoints ) {

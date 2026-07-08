@@ -217,11 +217,7 @@ class Frl_Environment_Manager {
 		// Check if environment state has changed before throttling
 		$state_changed = self::check_environment_state();
 
-		// Different throttle periods based on user type and force flag
-		// Note: frl_has_access() returns true for migrate mode, so we rely on explicit check for throttle bypass if needed,
-		// but since migrate mode implies manual intervention, we can treat it as 'admin' (60s) or force it.
-		// If we want zero throttle for migrate, we check FRL_MODE explicitly here or just let the force flag handle it if passed.
-		// However, checking FRL_MODE is safer for the specific migrate use case.
+		// Admin and migrate-mode users: 60s throttle. Others: 300s.
 		$is_migrate       = defined( 'FRL_MODE' ) && FRL_MODE === 'migrate';
 		$throttle_seconds = ( $force || $is_migrate ) ? 0 : ( frl_has_access() ? 60 : 300 );
 

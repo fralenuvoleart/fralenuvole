@@ -525,16 +525,10 @@ function frl_handle_action_reset_plugin() {
 	// Flush after bulk option writes.
 	frl_flush_db();
 
-	// STEP 4: CRITICAL - Ensure WordPress and plugin option caches reflect DB defaults.
-	// This clear is ESSENTIAL before environment/debug settings are applied, as those
-	// functions read option values to update wp-config.php. Stale cache data could
-	// result in incorrect values being written to wp-config.
+	// STEP 4: Clear option caches so environment/debug settings read fresh DB defaults.
 	frl_cache_clear( 'all' );
 
-	// STEP 5: Run functions that rely on the new default options to set up plugin state.
-	// frl_environment_enforce_settings(true) also calls frl_cache_clear('all') internally,
-	// but that occurs AFTER it applies settings. The Step 4 clear above ensures clean
-	// caches before any settings are read.
+	// STEP 5: Apply environment and debug settings with clean caches from Step 4.
 	frl_environment_enforce_settings( true );
 
 	// frl_apply_debug_settings should run after environment settings are enforced

@@ -33,11 +33,6 @@ add_action(
 			return;
 		}
 
-		// Administrators already have access via the original menu.
-		if ( current_user_can( 'manage_options' ) ) {
-			return;
-		}
-
 		// Only users with edit_pages (Editors and up) get access.
 		if ( ! current_user_can( 'edit_pages' ) ) {
 			return;

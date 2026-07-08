@@ -109,26 +109,13 @@ function frl_mu_check_access( string $capability ): bool {
 }
 
 /**
- * Retrieves user data from the authentication cookie during early WordPress loading.
+ * Reads and verifies the WordPress auth cookie before pluggable.php loads.
  *
- * Used by frl_mu_check_access() when the global $current_user is not yet available
- * (before plugins_loaded). Performs direct database queries with cross-request
- * caching via frl_cache_remember (300s TTL, username-scoped key).
+ * Replicates wp_validate_auth_cookie()'s HMAC algorithm using LOGGED_IN_KEY/SALT
+ * from wp-config.php. Does NOT check WP_Session_Tokens revocation (see systemPatterns.md).
+ * Cached 300s per username via frl_cache_remember.
  *
- * The cookie's cryptographic signature IS verified (see below) even though this
- * runs before wp-includes/pluggable.php loads — wp_validate_auth_cookie() and
- * wp_hash() aren't callable yet, but the raw material they use (the LOGGED_IN_KEY/
- * LOGGED_IN_SALT constants from wp-config.php, and the native hash_hmac() function)
- * is available from the moment wp-config.php loads, well before mu-plugins run.
- * This function replicates that algorithm directly instead of calling the
- * not-yet-defined pluggable wrappers.
- *
- * Known trade-off vs. wp_validate_auth_cookie(): this does NOT check the token
- * against WP_Session_Tokens (i.e. explicit "Log Out Everywhere" revocation is not
- * honored here until the cookie naturally expires). Accepted as a documented
- * limitation — still a strict improvement over no verification at all.
- *
- * @return array|false Associative array with 'id' (int) and 'caps' (array) on success, false on failure.
+ * @return array|false User data with 'id' and 'caps', or false on failure.
  */
 function frl_get_auth_cookie_user_data() {
 	static $cache = null;
@@ -205,13 +192,8 @@ function frl_get_auth_cookie_user_data() {
 		return $cache;
 	}
 
-	// Verify the cookie's HMAC signature before trusting the username — replicates
-	// wp_validate_auth_cookie() / wp_hash() (wp-includes/pluggable.php) exactly:
-	//   key  = hash_hmac('md5',    "user|pass_frag|expiration|token", LOGGED_IN_KEY.LOGGED_IN_SALT)
-	//   hmac = hash_hmac('sha256', "user|expiration|token",            key)
-	// Without this, any visitor could set a cookie with a known/guessed username
-	// (e.g. from author archives) and this function would return that user's real
-	// capabilities to frl_mu_check_access() unverified.
+	// Verify HMAC signature (replicates wp_validate_auth_cookie/wp_hash algorithm).
+	// Without this, any visitor could impersonate a known username from author archives.
 	$pass_frag     = substr( (string) $row->user_pass, 8, 4 );
 	$salt          = LOGGED_IN_KEY . LOGGED_IN_SALT;
 	$key           = hash_hmac( 'md5', $username . '|' . $pass_frag . '|' . $expiration . '|' . $token, $salt );
@@ -245,9 +227,7 @@ function frl_filter_plugin_exclusions(): void {
 		return;
 	}
 
-	// Determine if we're in a frontend context (HTML page or AJAX from frontend)
-	// This is true for: frontend HTML pages + frontend AJAX requests
-	// This is false for: admin pages, REST API, MCP, cron
+	// Frontend context: HTML pages + frontend AJAX (not admin, REST, or cron)
 	$is_frontend_context = ! frl_is_admin()
 		&& ! frl_is_rest_api_request()
 		&& ! frl_is_cron_job_request();
@@ -319,9 +299,7 @@ function frl_filter_plugin_exclusions(): void {
 	$plugin_handle = FRL_MU_NAME . '/' . FRL_MU_NAME . '.php';
 	$excluded      = array_diff( $excluded, array( $plugin_handle ) );
 
-	// During WP Cron, add cron filter BEFORE the empty-exclusion check,
-	// because the cron filter also sanitizes args to prevent TypeError
-	// (count() on null), which is valuable regardless of exclusion state.
+	// Cron filter also sanitizes args — needed even with empty exclusion list.
 	if ( frl_is_cron_job_request() ) {
 		frl_add_exclusion_filter_cron();
 	}
@@ -357,10 +335,7 @@ function frl_get_exclusion_options(): array {
 
 	global $wpdb;
 
-	// Cache active_plugins in the 'options' group with WEEK_IN_SECONDS TTL.
-	// This data changes only on plugin activation/deactivation — stable, ideal for caching.
-	// frl_cache_remember uses object cache/transients, never the option system,
-	// so it is safe inside pre_option_* filters (no recursion risk).
+	// Cache with WEEK_IN_SECONDS TTL. frl_cache_remember is safe inside pre_option_* (no recursion risk).
 	$options['active_plugins'] = frl_cache_remember(
 		'options',
 		'mu_plugin_active_plugins',
@@ -437,11 +412,7 @@ function frl_add_exclusion_filter_network_active_plugins( array $excluded ): voi
 				return $cache;
 			}
 
-			// Use frl_cache_remember to wrap the direct DB query.
-			// The callback still uses $wpdb->get_var() to bypass pre_site_option filter
-			// (calling get_site_option() inside this filter would cause infinite recursion).
-			// frl_cache_remember uses object cache/transients (never get_site_option),
-			// so it is safe inside pre_site_option_* filters — no recursion risk.
+			// Direct DB query wrapped in frl_cache_remember (safe inside pre_site_option_* filter — no recursion).
 			$plugins = frl_cache_remember(
 				'options',
 				'mu_plugin_network_active_plugins',
@@ -476,22 +447,11 @@ function frl_add_exclusion_filter_network_active_plugins( array $excluded ): voi
 }
 
 /**
- * Sanitizes the cron option to remove orphaned events and prevent TypeError on null args.
+ * Sanitizes the cron option: removes orphaned events from excluded plugins and
+ * ensures $event['args'] is always an array (prevents PHP 8+ TypeError on null).
  *
- * Uses the `option_cron` filter (not `pre_option_cron`) because the cron option is often
- * stored in WordPress' `alloptions` cache for autoloaded options, which bypasses
- * `pre_option_*` filters entirely. `option_cron` fires unconditionally — whether the
- * value came from the alloptions cache or from a direct DB query.
- *
- * What this filter does:
- * 1. Removes events with unregistered schedules (orphaned when a plugin is excluded).
-* 2. Sanitizes `$event['args']` to always be an array, preventing a PHP 8+ TypeError
- *   (`count(): Argument #1 must be of type Countable|array, null given`) when
- *   wp-cron.php passes null args to do_action_ref_array().
- *
- * Note: This is a read-time filter only — it does not modify the database.
- * If the exclusion is later removed, the plugin will load, register its
- * schedules, and its cron events will work again.
+ * Uses option_cron (not pre_option_cron) because alloptions cache bypasses
+ * pre_option_* filters. Read-time only — does not modify the database.
  *
  * @return void
  */
@@ -516,14 +476,10 @@ function frl_add_exclusion_filter_cron(): void {
 				return $cache;
 			}
 
-			// Get all registered schedules.
-			// At this point (during WP Cron processing), all non-excluded plugins
-			// have already loaded and registered their schedules via cron_schedules filter.
+			// Non-excluded plugins have registered their schedules by now.
+			// Non-array keys (e.g. 'version' => 2) pass through untouched.
 			$schedules = wp_get_schedules();
 
-			// Non-array top-level keys (e.g. 'version' => 2) are skipped by the
-			// !is_array check below and pass through untouched, preserving the
-			// v2 cron array structure without needing explicit version handling.
 			foreach ( $cron as $timestamp => $hooks ) {
 				if ( ! is_array( $hooks ) ) {
 					continue;
@@ -542,10 +498,7 @@ function frl_add_exclusion_filter_cron(): void {
 							continue;
 						}
 
-						// Ensure args is always an array to prevent TypeError in
-						// do_action_ref_array at wp-cron.php:191 when $v['args'] is null.
-						// wp-cron.php passes $v['args'] directly to do_action_ref_array,
-						// and class-wp-hook.php calls count() on it, which throws with null.
+						// Prevent TypeError when wp-cron.php passes null args to do_action_ref_array().
 						if ( ! isset( $event['args'] ) || ! is_array( $event['args'] ) ) {
 							$cron[ $timestamp ][ $hook ][ $hash ]['args'] = array();
 						}

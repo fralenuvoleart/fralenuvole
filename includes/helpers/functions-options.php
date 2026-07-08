@@ -807,11 +807,8 @@ function frl_set_missing_option_default( string $key, bool $bypass_cache, array 
 	// The operation that led to this (e.g., plugin reset) should handle bulk cache clearing.
 	frl_update_option( $key, $default_value, false, $autoload );
 
-	// Invalidate the stale 'all_options' persistent cache so the next request picks up this newly written option.
-	// $clear_cache=false prevents dependency cascade — single-key clear only.
-	// Batched to once per request: when seeding multiple missing options on cold cache,
-	// clearing all_options after the first write is sufficient; subsequent saves in the
-	// same request would only re-clear the already-stale key.
+	// Invalidate stale all_options cache so next request picks up this new option.
+	// Batched once per request: first write is sufficient for cold-cache seeding.
 	static $all_options_cleared = false;
 	if ( ! $all_options_cleared ) {
 		frl_cache_clear( 'options', 'all_options', false );
