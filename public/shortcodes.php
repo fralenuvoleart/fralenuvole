@@ -203,7 +203,7 @@ function frl_shortcode_language( $atts, $content = null ) {
  */
 function frl_shortcode_langswitcher( $atts = array() ) {
 	// Early exit if multilingual support (Polylang) is not available
-	if ( ! frl_is_multilingual_active( 'pll_the_languages' ) ) {
+	if ( ! frl_multilingual_function_exists( 'pll_the_languages' ) ) {
 		return '';
 	}
 
@@ -1086,7 +1086,7 @@ function frl_shortcode_category_link( $atts, $content = null ) {
 		$cache_key,
 		function () use ( $identifier ) {
 			$term_id = 0;
-			if ( frl_is_multilingual_active( 'icl_object_id' ) ) {
+			if ( frl_multilingual_function_exists( 'icl_object_id' ) ) {
 				$lang = frl_get_language();
 				if ( is_numeric( $identifier ) ) {
 					$term_id = icl_object_id( (int) $identifier, 'category', true, $lang );

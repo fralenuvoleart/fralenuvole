@@ -102,9 +102,8 @@ function frl_load_core_components() {
 		frl_environment_init();
 	}
 
-	// Translator — only load + init if enabled. frl_translator_is_enabled() checks
-	// Polylang/WPML constants (defined during plugin file inclusion, before
-	// plugins_loaded) and the disable_translator option, so it is safe to call here.
+	// Translator checks
+	// Polylang/WPML constants and the disable_translator option.
 	if ( frl_translator_is_enabled() ) {
 		require_once FRL_DIR_PATH . 'core/translator/translator.php';
 		frl_translator_init();

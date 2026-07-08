@@ -35,7 +35,7 @@ function frl_making_wp_navigation_translatable( $post_types, $is_settings ) {
  */
 function frl_render_block_core_navigation_translation( $settings, $metadata ) {
 	// Only target core navigation blocks in multilingual environments
-	if ( 'core/navigation' !== $metadata['name'] || ! frl_is_multilingual_active( 'pll_get_post' ) ) {
+	if ( 'core/navigation' !== $metadata['name'] || ! frl_multilingual_function_exists( 'pll_get_post' ) ) {
 		return $settings;
 	}
 
