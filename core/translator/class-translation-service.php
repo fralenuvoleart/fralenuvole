@@ -87,31 +87,29 @@ final class Frl_Translation_Service {
 	}
 
 	/**
-	 * Checks for multilingual function availability.
+	 * Does a specific multilingual function exist right now?
 	 *
-	 * @param string|null $function_name Optional function name to check for existence.
+	 * Only called after frl_translator_is_enabled() has already passed
+	 * (see frl_multilingual_function_exists()), so no re-check of adapter
+	 * availability is needed here — only the specific function matters.
+	 *
+	 * @param string $function_name Function name to check for existence.
 	 * @return bool
 	 */
-	public function is_multilingual( ?string $function_name = null ): bool {
-		$check_type = $function_name ?? 'all';
-
-		if ( isset( $this->is_multilingual_cache[ $check_type ] ) ) {
-			return $this->is_multilingual_cache[ $check_type ];
+	public function multilingual_function_exists( string $function_name ): bool {
+		if ( isset( $this->is_multilingual_cache[ $function_name ] ) ) {
+			return $this->is_multilingual_cache[ $function_name ];
 		}
 
-		if ( $function_name !== null ) {
-			$check_result = function_exists( $function_name );
+		$check_result = function_exists( $function_name );
 
-			$log_missing = defined( 'FRL_TRANSLATOR_LOG_MISSING_TRANSLATION' ) && FRL_TRANSLATOR_LOG_MISSING_TRANSLATION;
-			if ( $log_missing && frl_is_multilingual_plugin_active() && ! $check_result ) {
-				frl_log( 'Multilingual function ' . $function_name . ' does not exist' );
-			}
-		} else {
-			$check_result = frl_is_multilingual_plugin_active();
+		$log_missing = defined( 'FRL_TRANSLATOR_LOG_MISSING_TRANSLATION' ) && FRL_TRANSLATOR_LOG_MISSING_TRANSLATION;
+		if ( $log_missing && ! $check_result ) {
+			frl_log( 'Multilingual function ' . $function_name . ' does not exist' );
 		}
 
-		$this->is_multilingual_cache[ $check_type ] = $check_result;
-		return $this->is_multilingual_cache[ $check_type ];
+		$this->is_multilingual_cache[ $function_name ] = $check_result;
+		return $this->is_multilingual_cache[ $function_name ];
 	}
 
 	/**
@@ -373,7 +371,7 @@ final class Frl_Translation_Service {
 				if ( ! $term_id ) {
 					return '#';
 				}
-				if ( ! $this->is_multilingual( 'icl_object_id' ) ) {
+				if ( ! $this->multilingual_function_exists( 'icl_object_id' ) ) {
 					return '#';
 				}
 
@@ -507,7 +505,7 @@ final class Frl_Translation_Service {
 							$link = get_post_type_archive_link( $type->name );
 							if ( $link ) {
 								if ( $language !== $this->get_language() ) {
-									if ( $this->is_multilingual( 'pll_home_url' ) ) {
+									if ( $this->multilingual_function_exists( 'pll_home_url' ) ) {
 										$pll_home = call_user_func( 'pll_home_url', $language );
 										$link     = preg_replace(
 											'~^' . preg_quote( home_url(), '~' ) . '~',
@@ -565,7 +563,7 @@ final class Frl_Translation_Service {
 	 * @return void
 	 */
 	public function register_translation( string $str ): void {
-		if ( empty( $str ) || ! $this->is_multilingual( 'icl_register_string' ) ) {
+		if ( empty( $str ) || ! $this->multilingual_function_exists( 'icl_register_string' ) ) {
 			return;
 		}
 

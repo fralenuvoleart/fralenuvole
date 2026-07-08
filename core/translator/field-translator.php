@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function frl_translator_init(): void {
 	// Abort if the master switch is disabled or not multilingual website.
-	if ( ! frl_is_multilingual_active() ) {
+	if ( ! frl_translator_is_enabled() ) {
 		return;
 	}
 

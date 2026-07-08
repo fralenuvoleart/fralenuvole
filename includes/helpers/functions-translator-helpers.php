@@ -81,16 +81,16 @@ function frl_translator_is_enabled(): bool {
 }
 
 /**
- * Checks for multilingual function availability.
+ * Does a specific multilingual function exist right now?
  *
- * @param string|null $function_name Optional function name to check for existence.
- * @return bool True if multilingual capabilities are active and available.
+ * @param string $function_name Function name to check for existence.
+ * @return bool
  */
-function frl_is_multilingual_active( ?string $function_name = null ): bool {
+function frl_multilingual_function_exists( string $function_name ): bool {
 	if ( ! frl_translator_is_enabled() ) {
 		return false;
 	}
-	return Frl_Translation_Service::get_instance()->is_multilingual( $function_name );
+	return Frl_Translation_Service::get_instance()->multilingual_function_exists( $function_name );
 }
 
 /**
