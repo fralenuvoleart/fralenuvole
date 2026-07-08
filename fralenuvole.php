@@ -57,7 +57,12 @@ add_filter(
 	function ( $headers ) {
 		$headers['X-Content-Type-Options'] = 'nosniff';
 		$headers['X-Frame-Options']        = 'SAMEORIGIN';
-		$headers['X-XSS-Protection']       = '1; mode=block';
+		// Replaces the obsolete X-XSS-Protection header (deprecated, removed from
+		// Chromium, ignored by all modern browsers). object-src/base-uri are safe,
+		// non-breaking directives — they don't restrict script-src, so custom
+		// header/footer scripts (frl_get_option('header_scripts'/'footer_scripts'))
+		// keep working unmodified.
+		$headers['Content-Security-Policy'] = "object-src 'none'; base-uri 'self';";
 		return $headers;
 	}
 );
