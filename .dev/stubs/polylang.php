@@ -243,7 +243,7 @@ if (!class_exists('PLL_Base_Stub')) {
     /**
      * Minimal stand-in for the object returned by PLL() (PLL_Frontend/
      * PLL_Admin/PLL_REST in real Polylang), exposing only the ->model
-     * property this codebase accesses.
+     * property and ->languages_page() method this codebase accesses.
      */
     class PLL_Base_Stub
     {
@@ -253,6 +253,14 @@ if (!class_exists('PLL_Base_Stub')) {
         public function __construct() {
             $this->model = new PLL_Model();
         }
+
+        /**
+         * Renders the Polylang "Strings translations" admin screen.
+         * Real implementation lives in PLL_Admin_Strings (Polylang core).
+         *
+         * @return void
+         */
+        public function languages_page() {}
     }
 }
 

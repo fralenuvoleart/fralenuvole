@@ -17,6 +17,7 @@ require_once FRL_DIR_PATH . 'core/translator/adapters/interface.php';
 require_once FRL_DIR_PATH . 'core/translator/adapters/polylang.php';
 require_once FRL_DIR_PATH . 'core/translator/class-translation-service.php';
 require_once FRL_DIR_PATH . 'core/translator/field-translator.php';
+require_once FRL_DIR_PATH . 'core/translator/translation-access.php';
 
 // Global queue for tracking meta keys to avoid re-entrant cache calls.
 $frl_translator_tracking_queue = array();
