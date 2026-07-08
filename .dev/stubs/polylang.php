@@ -225,7 +225,8 @@ if (!class_exists('PLL_Language')) {
 if (!class_exists('PLL_Model')) {
     /**
      * Minimal stand-in for Polylang's PLL_Model, exposing only the
-     * method this codebase actually calls (PLL()->model->get_language()).
+     * methods this codebase actually calls (PLL()->model->get_language(),
+     * PLL()->model->clean_languages_cache()).
      */
     class PLL_Model
     {
@@ -236,6 +237,13 @@ if (!class_exists('PLL_Model')) {
         public function get_language($lang) {
             return false;
         }
+
+        /**
+         * Flushes Polylang's internal languages cache.
+         *
+         * @return void
+         */
+        public function clean_languages_cache() {}
     }
 }
 
