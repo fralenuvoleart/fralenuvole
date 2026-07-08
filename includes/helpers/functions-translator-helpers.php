@@ -9,7 +9,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  * functions-translator-helpers.php - Global helper functions for the Translator module.
  *
  * These functions provide a procedural API for the Frl_Translation_Service,
- * ensuring backward compatibility and ease of use across the plugin.
+ * for ease of use across the plugin's own internal code. This is a
+ * self-contained plugin with no external theme/plugin API contract — these
+ * function names can be renamed/removed freely as long as every internal
+ * caller (verified via grep) is updated in the same change.
  */
 
 /**
