@@ -1601,8 +1601,8 @@ class Frl_Cache_Manager {
 	private static function execute_with_transaction( callable $operations, $operation_name = 'cache_transaction' ) {
 		global $wpdb;
 
-		// Check if transactions are supported
-		$supports_transactions = $wpdb->has_cap( 'set_charset' );
+		// Check if transactions are supported (mysqli driver — all modern MySQL/MariaDB with InnoDB)
+		$supports_transactions = $wpdb->use_mysqli;
 
 		if ( $supports_transactions ) {
 			$wpdb->query( 'START TRANSACTION' );

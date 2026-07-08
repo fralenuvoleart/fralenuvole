@@ -571,6 +571,7 @@ function frl_alter_query( WP_Query $query ): void {
 	$query->set( 'update_post_term_cache', false );
 	$query->set( 'no_found_rows', true );
 	$query->set( 'ignore_sticky_posts', true );
+	// Deliberate: secondary queries are scoped to public, published, non-password-protected content by design.
 	$query->set( 'post_status', 'publish' );
 	$query->set( 'has_password', false );
 

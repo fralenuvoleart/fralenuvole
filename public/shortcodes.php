@@ -45,12 +45,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Register all public shortcodes and attach filters for content rendering.
  */
 function frl_shortcodes_init() {
-	// Register apply_shortcodes on render_block at priority 20.
+	// Register a fast-fail-guarded shortcode pass on render_block at priority 20.
 	// Block translation ({{}} delimiters) is handled independently by the
 	// translator module at priority 10 via frl_translate_block_content().
 	add_filter(
 		'render_block',
-		'apply_shortcodes',
+		'frl_maybe_apply_shortcodes_block',
 		20,
 		2
 	);
@@ -106,12 +106,30 @@ function frl_shortcodes_init() {
 }
 
 /**
- * [frl] - Translates the enclosed content using the translation service.
- *
- * @param array       $atts    Shortcode attributes.
- * @param string|null $content Content to be translated.
- * @return string Translated content or empty string.
- */
+	* Fast-fail-guarded shortcode pass for render_block.
+	*
+	* All plugin shortcode tags start with the FRL_PREFIX ('frl'), so a cheap
+	* str_contains() check on '[' . FRL_PREFIX skips the full do_shortcode()
+	* parser for the vast majority of blocks that contain no plugin shortcode.
+	*
+	* @param string $block_content Rendered block HTML.
+	* @param array  $block         Block data array.
+	* @return string Possibly shortcode-processed block content.
+	*/
+function frl_maybe_apply_shortcodes_block( $block_content, $block ) {
+	if ( ! is_string( $block_content ) || ! str_contains( $block_content, '[' . FRL_PREFIX ) ) {
+		return $block_content;
+	}
+	return apply_shortcodes( $block_content, $block );
+}
+
+/**
+	* [frl] - Translates the enclosed content using the translation service.
+	*
+	* @param array       $atts    Shortcode attributes.
+	* @param string|null $content Content to be translated.
+	* @return string Translated content or empty string.
+	*/
 function frl_shortcode_translation( $atts, $content = null ) {
 	if ( empty( $content ) ) {
 		return '';
