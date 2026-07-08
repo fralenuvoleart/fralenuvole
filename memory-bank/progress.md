@@ -69,6 +69,8 @@ These are deliberate choices, not defects — documented so future maintainers d
 - **`frl_get_post_id_by_slug()` runs two queries** (hierarchical via `pagename`, then non-hierarchical via `name`) rather than one UNION query — `pagename` resolution requires parent→child path structure that non-hierarchical post types don't support, and a UNION would bypass Polylang's `lang` filtering.
 - **GeoDirectory language filtering** (`modules/pbproperty/geodirectory.php`) calls `pll_get_post_language()` once per post in a loop — an N+1 pattern amortized by a 24-hour cache; acceptable at the scale of a property listing.
 - **The Rewriter's `Frl_Cache_Manager` and `Frl_Environment_Manager` are fully static classes** — not unit-testable in isolation, but this is the established convention across the codebase and consistent with how WordPress itself is typically extended.
+- **No automated test suite (PHPUnit or otherwise) — deliberate, not an oversight.** `composer.json` intentionally scopes `require-dev` to static analysis (`phpstan`, `phpstan-wordpress`) and coding-standards tooling (`phpcs`/`wpcs`) only. This is a considered project-philosophy decision, not a gap to flag in future reviews — do not recommend adding a test suite unless explicitly asked to scope one.
+- **Brand-specific modules (`modules/pbnova`, `modules/pbs`, `modules/pbproperty`, `modules/wsform`, `modules/frl`, etc.) are disposable by design.** Any of them can be deleted in their entirety at any time at the maintainer's discretion — they exist to serve one deployment's specific needs and are not core plugin surface. Their presence, absence, or eventual removal is never itself a code-quality finding; do not flag "module X could be removed/consolidated/is site-specific" as an issue.
 
 ---
 

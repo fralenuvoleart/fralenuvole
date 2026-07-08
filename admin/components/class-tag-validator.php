@@ -81,8 +81,12 @@ class Frl_Tag_Validator {
 				CURLOPT_FOLLOWLOCATION       => true,
 				CURLOPT_MAXREDIRS            => 5,
 				CURLOPT_TIMEOUT              => 30,
-				CURLOPT_SSL_VERIFYPEER       => false,
-				CURLOPT_SSL_VERIFYHOST       => false,
+				// TLS verification kept ON (unlike an earlier version of this code): this tool is
+				// manage_options-gated, but a MITM able to feed it fabricated "validated" content
+				// is a real risk with verification off, and disabling it has no bearing on the
+				// loopback/internal-URL testing purpose below — only the DNS/firewall options do.
+				CURLOPT_SSL_VERIFYPEER       => true,
+				CURLOPT_SSL_VERIFYHOST       => 2,
 				CURLOPT_HTTPHEADER           => array(
 					'Host: ' . $host,
 					'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/96.0.4664.110 Safari/537.36',

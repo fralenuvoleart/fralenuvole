@@ -11,9 +11,12 @@ document.addEventListener('DOMContentLoaded', function() {
       });
 
       // Batch reads first — avoid interleaved read/write forced reflow.
+      // textContent (not innerText) on both read and write: pure text substitution,
+      // never re-parsed as markup, so a title containing '<' or '&' can't be corrupted
+      // or turn into live HTML on write-back.
       var texts = [];
       elems.forEach(function(elem) {
-          texts.push(elem.innerText);
+          texts.push(elem.textContent);
       });
 
       // Batch writes second.
@@ -22,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
           regexPatterns.forEach(function(regex) {
               text = text.replace(regex, '');
           });
-          elem.innerHTML = text;
+          elem.textContent = text;
       });
   }
 

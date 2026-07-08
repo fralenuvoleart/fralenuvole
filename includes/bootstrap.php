@@ -1,7 +1,4 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) {
-	define( 'ABSPATH', __DIR__ . '/' );
-}
 /**
  * Plugin bootstrap.
  *
@@ -10,7 +7,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @package Fralenuvole
  */
 
-// Exit if accessed directly.
+// Exit if accessed directly. ABSPATH is always defined by WordPress core (wp-load.php)
+// before any MU-plugin or regular plugin file executes.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }

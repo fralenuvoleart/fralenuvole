@@ -614,8 +614,14 @@ class Frl_Settings_Fields {
 	private static function _get_submitted_values(): array {
 		$all_fields             = frl_get_all_plugin_options_settings( null );
 		$submitted_values       = array();
+		// wp_unslash() before sanitizing: WordPress adds a level of backslash-escaping to
+		// every superglobal on every request (wp_magic_quotes()) — none of sanitize_text_field()/
+		// sanitize_email()/wp_kses_post()/sanitize_textarea_field() (nor the 'html'/'custom'
+		// passthrough below) strip it back out. Without this, any saved value containing a
+		// quote or backslash (an API key, "O'Brien's", an HTML/PHP snippet) accumulates a
+		// literal extra backslash on every save.
 		$restricted_fields_keys = isset( $_POST[ frl_prefix( 'field_restricted' ) ] ) ?
-			array_map( 'sanitize_text_field', $_POST[ frl_prefix( 'field_restricted' ) ] ) : array();
+			array_map( 'sanitize_text_field', wp_unslash( $_POST[ frl_prefix( 'field_restricted' ) ] ) ) : array();
 
 		foreach ( $all_fields as $field ) {
 			if ( ! isset( $field['id'] ) ) {
@@ -649,8 +655,8 @@ class Frl_Settings_Fields {
 				$submitted_value = isset( $_POST[ $prefixed_id ] ) ? 1 : 0;
 			} elseif ( isset( $_POST[ $prefixed_id ] ) ) {
 				// Note: sanitize_field_value handles the actual sanitization based on type
-				// Crucially, 'html' and 'custom' are returned as-is here.
-				$submitted_value = self::sanitize_field_value( $field['type'], $_POST[ $prefixed_id ] );
+				// Crucially, 'html' and 'custom' are returned as-is here (post wp_unslash()).
+				$submitted_value = self::sanitize_field_value( $field['type'], wp_unslash( $_POST[ $prefixed_id ] ) );
 			} else {
 				// Field not in submission, skip
 				continue;

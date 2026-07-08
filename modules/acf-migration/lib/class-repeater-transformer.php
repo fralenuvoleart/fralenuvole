@@ -230,7 +230,7 @@ class Frl_Repeater_Transformer {
 		);
 		if ( ! $row ) {
 			return null; }
-		$data = @unserialize( $row->acpt_data );
+		$data = @unserialize( $row->acpt_data, array( 'allowed_classes' => false ) );
 		return is_array( $data ) ? $data : null;
 	}
 

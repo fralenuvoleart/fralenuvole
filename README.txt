@@ -1,8 +1,8 @@
 === Fralenuvole ===
 
 Tags: administration, performance, optimization, tools, tweaks
-Requires at least: 6.6.2
-Tested up to: 6.6.2
+Requires at least: 7.0
+Tested up to: 7.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,9 +17,5 @@ A comprehensive framework for administrators and developers, engineered for high
 1. Upload `fralenuvole` to the `/wp-content/plugins/` directory
 2. Activate the plugin through the 'Plugins' menu in WordPress
 
-== Changelog ==
-
-= 1.0 =
-* Initial release.
 
 

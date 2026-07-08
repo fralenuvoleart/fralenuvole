@@ -254,7 +254,7 @@ class Frl_Acpt_Migrate_Command {
 
 		$restored = 0;
 		foreach ( (array) $backups as $b ) {
-			$data = @unserialize( $b['acpt_data'] );
+			$data = @unserialize( $b['acpt_data'], array( 'allowed_classes' => false ) );
 			if ( is_array( $data ) ) {
 				update_post_meta( (int) $b['post_id'], $b['field_name'], $data );
 				delete_post_meta( (int) $b['post_id'], '_' . $b['field_name'] );

@@ -434,6 +434,11 @@ class Frl_Log_Manager {
 	public function clear_debug_log() {
 		check_ajax_referer( 'log_manager_nonce', 'nonce' );
 
+		if ( ! frl_has_access( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'You do not have sufficient permissions to perform this action.' ) );
+			return;
+		}
+
 		if ( file_exists( $this->log_file ) ) {
 			file_put_contents( $this->log_file, '' );
 		}
@@ -466,6 +471,11 @@ class Frl_Log_Manager {
 	public function download_debug_log() {
 		check_ajax_referer( 'log_manager_nonce', 'nonce' );
 
+		if ( ! frl_has_access( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'You do not have sufficient permissions to perform this action.' ) );
+			return;
+		}
+
 		if ( ! file_exists( $this->log_file ) ) {
 			wp_send_json_error( array( 'message' => 'Debug log file not found.' ) );
 			return;
@@ -491,6 +501,11 @@ class Frl_Log_Manager {
 	 */
 	public function ajax_get_log_entries() {
 		check_ajax_referer( 'log_manager_nonce', 'nonce' );
+
+		if ( ! frl_has_access( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'You do not have sufficient permissions to perform this action.' ) );
+			return;
+		}
 
 		if ( isset( $_POST['limit'] ) ) {
 			$this->set_entries_limit( intval( $_POST['limit'] ) );

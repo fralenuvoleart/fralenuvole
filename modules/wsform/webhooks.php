@@ -407,7 +407,11 @@ function frl_wsf_button_webhook_handler() {
 	// Public analytics endpoint (nopriv). Protected by sanitization, deduplication,
 	// and rate limiting. No nonce: Cloudflare CDN caching causes nonce expiration.
 
-	$action_id = sanitize_text_field( $_POST['action_id'] ?? '' );
+	// wp_unslash() before sanitizing: these free-text values (reference_id, UTM params, etc.)
+	// are sent verbatim to a third-party webhook — without unslashing, any submitted value
+	// containing a quote or backslash would arrive at the webhook with a spurious extra
+	// backslash (sanitize_text_field()/sanitize_url() do not strip WP's added magic-quote slash).
+	$action_id = sanitize_text_field( wp_unslash( $_POST['action_id'] ?? '' ) );
 	if ( empty( $action_id ) || ! defined( 'WS_BUTTON_ACTIONS' ) ) {
 		wp_send_json_error( 'Invalid action', 400 );
 	}
@@ -427,7 +431,7 @@ function frl_wsf_button_webhook_handler() {
 	}
 
 	$service  = 'Webpage';
-	$page_url = sanitize_url( $_POST['page_url'] ?? '' );
+	$page_url = sanitize_url( wp_unslash( $_POST['page_url'] ?? '' ) );
 	$post_id  = url_to_postid( $page_url );
 	if ( $post_id > 0 && defined( 'WS_BUTTON_WEBHOOK_SERVICE_META' ) ) {
 		$meta = frl_get_post_meta( $post_id, WS_BUTTON_WEBHOOK_SERVICE_META, true );
@@ -437,21 +441,21 @@ function frl_wsf_button_webhook_handler() {
 	}
 
 	$post_data = array(
-		'Reference ID'     => sanitize_text_field( $_POST['reference_id'] ?? '' ),
+		'Reference ID'     => sanitize_text_field( wp_unslash( $_POST['reference_id'] ?? '' ) ),
 		'CTA'              => ucfirst( $action_id ),
 		'Service'          => $service,
-		'Language'         => sanitize_text_field( $_POST['language'] ?? '' ),
-		'Referer'          => sanitize_url( $_POST['referer'] ?? '' ),
+		'Language'         => sanitize_text_field( wp_unslash( $_POST['language'] ?? '' ) ),
+		'Referer'          => sanitize_url( wp_unslash( $_POST['referer'] ?? '' ) ),
 		'User IP'          => sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' ),
-		'Page URL'         => sanitize_url( $_POST['page_url'] ?? '' ),
-		'Channel Source'   => sanitize_text_field( $_POST['source'] ?? '' ),
-		'Channel Medium'   => sanitize_text_field( $_POST['medium'] ?? '' ),
-		'Channel Campaign' => sanitize_text_field( $_POST['campaign'] ?? '' ),
-		'Channel Term'     => sanitize_text_field( $_POST['term'] ?? '' ),
-		'Channel Content'  => sanitize_text_field( $_POST['content'] ?? '' ),
-		'Channel GCLID'    => sanitize_text_field( $_POST['gclid'] ?? '' ),
-		'Channel FBCLID'   => sanitize_text_field( $_POST['fbclid'] ?? '' ),
-		'Channel Landing'  => sanitize_text_field( $_POST['landing'] ?? '' ),
+		'Page URL'         => $page_url,
+		'Channel Source'   => sanitize_text_field( wp_unslash( $_POST['source'] ?? '' ) ),
+		'Channel Medium'   => sanitize_text_field( wp_unslash( $_POST['medium'] ?? '' ) ),
+		'Channel Campaign' => sanitize_text_field( wp_unslash( $_POST['campaign'] ?? '' ) ),
+		'Channel Term'     => sanitize_text_field( wp_unslash( $_POST['term'] ?? '' ) ),
+		'Channel Content'  => sanitize_text_field( wp_unslash( $_POST['content'] ?? '' ) ),
+		'Channel GCLID'    => sanitize_text_field( wp_unslash( $_POST['gclid'] ?? '' ) ),
+		'Channel FBCLID'   => sanitize_text_field( wp_unslash( $_POST['fbclid'] ?? '' ) ),
+		'Channel Landing'  => sanitize_text_field( wp_unslash( $_POST['landing'] ?? '' ) ),
 	);
 
 	if ( ! frl_wsf_should_send_webhook( $post_data ) ) {
