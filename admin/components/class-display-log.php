@@ -398,10 +398,8 @@ class Frl_Log_Manager {
 	/**
 	 * Determine the error type from a log message.
 	 *
-	 * Thin wrapper delegating to the shared, always-loaded
-	 * frl_determine_log_error_type() (includes/helpers/functions-error-log.php)
-	 * so the classification rules stay in one place -- also used by the
-	 * admin bar's fast entry counter (frl_count_debug_log_entries()).
+	 * Delegates to the shared frl_determine_log_error_type() so the admin
+	 * bar's counter uses the same classification rules.
 	 *
 	 * @param string $message Log message.
 	 * @return string Error type.
@@ -427,7 +425,7 @@ class Frl_Log_Manager {
 			file_put_contents( $this->log_file, '' );
 		}
 
-		// Clear both count transients (fast/admin-bar and full/Log Manager) when log is cleared.
+		// Clear both count transients (admin bar + Log Manager).
 		frl_delete_transient( 'debug_log_count_fast' );
 		frl_delete_transient( 'debug_log_count_full' );
 
@@ -508,9 +506,7 @@ class Frl_Log_Manager {
 
 		$entries = $this->get_log_entries();
 
-		// Force a fresh full-file recount (also re-caches into 'debug_log_count_full' below);
-		// no need to pre-seed the transient here since get_log_entry_count(true) always
-		// bypasses and overwrites it.
+		// force_recount=true re-caches into 'debug_log_count_full'.
 		$total_count = $this->get_log_entry_count( true );
 		$html        = $this->render_table_rows( $entries );
 		$count_html  = '';
@@ -531,16 +527,11 @@ class Frl_Log_Manager {
 	}
 
 	/**
-	 * Get count of log entries, excluding Info-type entries and any
-	 * FRL_LOG_COUNT_IGNORE matches.
+	 * Get count of log entries, excluding Info-type and FRL_LOG_COUNT_IGNORE matches.
 	 *
-	 * Thin wrapper around the shared frl_count_debug_log_entries() (full-file
-	 * scan, no byte cap) so this authoritative Log Manager total always uses
-	 * the same entry-detection/classification rules as the admin bar's fast
-	 * counter (frl_get_debug_log_count()). Cached separately under
-	 * 'debug_log_count_full' -- distinct from the admin bar's
-	 * 'debug_log_count_fast' -- since the two intentionally scan different
-	 * amounts of the file and must never overwrite each other's cache.
+	 * Wraps frl_count_debug_log_entries() (full-file scan). Cached under
+	 * 'debug_log_count_full' -- separate from the admin bar's
+	 * 'debug_log_count_fast' key.
 	 *
 	 * @param bool $force_recount Whether to force a recount even if the transient exists.
 	 * @return int Number of non-ignored, non-Info log entries.
