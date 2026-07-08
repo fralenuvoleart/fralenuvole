@@ -349,7 +349,7 @@ function frl_generate_style_remove_admin_menu( $target, $is_class = false ) {
  * @return void
  */
 function frl_add_translation_menu() {
-	if ( frl_is_multilingual( 'pll_get_post' ) ) {
+	if ( frl_is_multilingual_active( 'pll_get_post' ) ) {
 		$parent_slug = 'mlang';
 		$page_title  = __( 'Menu Translation', FRL_PREFIX );
 		$menu_title  = __( 'Menu Translation', FRL_PREFIX );

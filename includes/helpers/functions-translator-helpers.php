@@ -86,7 +86,7 @@ function frl_translator_is_enabled(): bool {
  * @param string|null $function_name Optional function name to check for existence.
  * @return bool True if multilingual capabilities are active and available.
  */
-function frl_is_multilingual( ?string $function_name = null ): bool {
+function frl_is_multilingual_active( ?string $function_name = null ): bool {
 	if ( ! frl_translator_is_enabled() ) {
 		return false;
 	}
