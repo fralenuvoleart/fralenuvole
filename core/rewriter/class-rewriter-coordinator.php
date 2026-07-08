@@ -15,10 +15,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Load the feature configuration
 require_once FRL_DIR_PATH . 'config/config-rewriter.php';
 
-// Autoload all feature classes
-foreach ( glob( __DIR__ . '/features/*.php' ) as $feature_file ) {
-	require_once $feature_file;
-}
+// Explicitly load all feature classes (avoids a glob()/directory-scan filesystem
+// call on every request that loads this file). The base class must load first
+// since every concrete feature below extends it.
+require_once __DIR__ . '/features/abstract-base-feature.php';
+require_once __DIR__ . '/features/class-cpt-archive-base-translation-feature.php';
+require_once __DIR__ . '/features/class-cpt-base-removal-feature.php';
+require_once __DIR__ . '/features/class-cpt-single-base-translation-feature.php';
+require_once __DIR__ . '/features/class-taxonomy-base-removal-feature.php';
 
 /**
  * Central coordinator for all rewriter features

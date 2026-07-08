@@ -271,8 +271,11 @@ function frl_post_ajax_import_settings() {
 				continue;
 			}
 
-			// Strip the prefix from the key if it exists - using simple str_replace
-			$unprefixed_key = str_replace( frl_prefix(), '', $key );
+			// Strip the prefix from the key only when it's a genuine leading prefix -
+			// str_replace() would incorrectly mangle a key that merely contains the
+			// prefix substring somewhere other than the start (e.g. "my_frl_setting").
+			$prefix         = frl_prefix();
+			$unprefixed_key = str_starts_with( $key, $prefix ) ? substr( $key, strlen( $prefix ) ) : $key;
 
 			// Handle newline-separated lists
 			if ( is_string( $setting ) && str_contains( $setting, '\r\n' ) ) {

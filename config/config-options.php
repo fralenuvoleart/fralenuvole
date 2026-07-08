@@ -113,9 +113,16 @@ const FRL_DEFAULT_FIELDS = array(
 			),
 			'image_preload_featured'              => array(
 				'label'             => 'Preload featured images',
-				'description'       => 'Preload featured images with responsive srcset.',
+				'description'       => 'Preload featured images for early download above the fold.',
 				'type'              => 'checkbox',
 				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'image_preload_featured_responsive'   => array(
+				'label'             => ' Preload Link with Responsive Images',
+				'description'       => 'Preload featured images with responsive srcset.',
+				'type'              => 'checkbox',
+				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
 			'image_preload_featured_ext'          => array(

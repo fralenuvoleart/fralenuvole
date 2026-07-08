@@ -139,13 +139,16 @@ function frl_wsf_should_send_webhook( array $post_data ) {
 		return true;
 	}
 
-	$dedupe_key = 'frl_wsf_webhook_dedupe_' . md5( $reference_id . '|' . strtolower( $channel ) );
-	if ( get_transient( $dedupe_key ) ) {
+	// Unprefixed key: frl_get_transient()/frl_set_transient() apply the plugin's
+	// frl_ prefix and static per-request cache layer themselves (same convention
+	// used by every other subsystem), so no manual "frl_" prefix is added here.
+	$dedupe_key = 'wsf_webhook_dedupe_' . md5( $reference_id . '|' . strtolower( $channel ) );
+	if ( frl_get_transient( $dedupe_key ) ) {
 		return false;
 	}
 
 	$ttl = 6 * HOUR_IN_SECONDS;
-	set_transient( $dedupe_key, 1, $ttl );
+	frl_set_transient( $dedupe_key, 1, $ttl );
 
 	return true;
 }
