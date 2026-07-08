@@ -1,79 +1,79 @@
 {
-  "mcpServers": {
-    "cloudways": {
-      "command": "npx",
-      "args": [
-        "--yes",
-        "mcp-remote@latest",
-        "https://mcp.cloudways.com/mcp/",
-        "--header",
-        "X-CW-Email: francesco.csto@gmail.com",
-        "--header",
-        "X-CW-Api-Key: mblIZAjXSZdjk3EVawajQ2MBZV2FZM",
-        "--header",
-        "X-Mcp-Host: vs-code"
-      ],
-      "alwaysAllow": [
-        "server_list",
-        "server_get",
-        "app_list",
-        "app_get",
-        "service_status",
-        "addon_list",
-        "server_settings_get",
-        "server_disk_cleanup_settings_get",
-        "monitoring_server_summary",
-        "analytics_app_php",
-        "analytics_app_cron"
-      ],
-      "disabled": true
-    },
-    "context7": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp"
-      ],
-      "env": {
-        "DEFAULT_MINIMUM_TOKENS": ""
-      },
-      "alwaysAllow": [
-        "resolve-library-id",
-        "query-docs"
-      ]
-    },
-    "tavily": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "tavily-mcp@0.2.3"
-      ],
-      "env": {
-        "TAVILY_API_KEY": "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"
-      },
-      "alwaysAllow": [
-        "tavily-extract",
-        "tavily-crawl",
-        "tavily-search"
-      ]
-    },
-    "memory": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-memory"
-      ],
-      "env": {
-        "MEMORY_FILE_PATH": "/home/francesco/.config/Code - OSS/User/globalStorage/zoocodeorganization.zoo-code/memory.jsonl"
-      },
-      "alwaysAllow": [
-        "read_graph",
-        "add_observations",
-        "delete_entities",
-        "delete_relations",
-        "create_entities",
-        "create_relations"
-      ]
-    }
-  }
+	"mcpServers": {
+		"cloudways": {
+			"command": "npx",
+			"args": [
+				"--yes",
+				"mcp-remote@latest",
+				"https://mcp.cloudways.com/mcp/",
+				"--header",
+				"X-CW-Email: francesco.csto@gmail.com",
+				"--header",
+				"X-CW-Api-Key: mblIZAjXSZdjk3EVawajQ2MBZV2FZM",
+				"--header",
+				"X-Mcp-Host: vs-code"
+			],
+			"alwaysAllow": [
+				"server_list",
+				"server_get",
+				"app_list",
+				"app_get",
+				"service_status",
+				"addon_list",
+				"server_settings_get",
+				"server_disk_cleanup_settings_get",
+				"monitoring_server_summary",
+				"analytics_app_php",
+				"analytics_app_cron"
+			],
+			"disabled": true
+		},
+		"context7": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@upstash/context7-mcp"
+			],
+			"env": {
+				"DEFAULT_MINIMUM_TOKENS": ""
+			},
+			"alwaysAllow": [
+				"resolve-library-id",
+				"query-docs"
+			]
+		},
+		"tavily": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"tavily-mcp@0.2.3"
+			],
+			"env": {
+				"TAVILY_API_KEY": "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"
+			},
+			"alwaysAllow": [
+				"tavily-extract",
+				"tavily-crawl",
+				"tavily-search"
+			]
+		},
+		"memory": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@modelcontextprotocol/server-memory"
+			],
+			"env": {
+				"MEMORY_FILE_PATH": "/home/francesco/.config/Code - OSS/User/globalStorage/zoocodeorganization.zoo-code/memory.jsonl"
+			},
+			"alwaysAllow": [
+				"read_graph",
+				"add_observations",
+				"delete_entities",
+				"delete_relations",
+				"create_entities",
+				"create_relations"
+			]
+		}
+	}
 }
