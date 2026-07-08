@@ -434,7 +434,7 @@ This prevents collisions between post IDs and term IDs that may use the same num
 2. **Permalinks:** `post_{$post_id}` key
 3. **Metafields:** All tracked translated meta keys for the post
 4. **Shortcodes:** Language switcher key (`langswitcher_{type}_post_{$post_id}`)
-5. **Postdata (featured image):** `featured_img_post_{$post_id}_{$size}` + all common sizes
+5. **Postdata (featured image):** `featured_img_{$post_id}_{$size}_{$ext}_{responsive|single}` (both `responsive`/`single` variants and all extension combinations) + mobile hero variants (`featured_img_mobile_{$post_id}_{$size}_{$ext}`)
 
 ---
 

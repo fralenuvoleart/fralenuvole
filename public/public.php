@@ -130,10 +130,105 @@ function frl_output_preload_link( array $preload_data, string $media = '', strin
 }
 
 /**
+ * Build non-responsive (single href) featured-image preload data for one attachment size.
+ *
+ * Cheap by design: one `wp_get_attachment_image_src()` lookup plus an optional per-size
+ * extension-variant check — no enumeration of every registered intermediate size. Used for
+ * the desktop preload when `image_preload_featured_responsive` is disabled, and always for
+ * the mobile hero preload (which targets exactly one configured size regardless of that option).
+ *
+ * @param int    $thumbnail_id Attachment ID.
+ * @param string $size         WP image size name (e.g. 'full', 'large', a registered custom size).
+ * @param string $extension    File extension to prefer (e.g. '.avif'), empty for original format.
+ * @return array{href: string}|null Preload data, or null if no image src could be resolved.
+ */
+function frl_build_single_featured_image_preload( int $thumbnail_id, string $size, string $extension ): ?array {
+	$img_src = wp_get_attachment_image_src( $thumbnail_id, $size );
+	if ( ! $img_src || empty( $img_src[0] ) ) {
+		return null;
+	}
+
+	$url = $img_src[0];
+
+	// Apply extension if configured and a variant exists for this specific size
+	if ( ! empty( $extension ) ) {
+		$original_path = get_attached_file( $thumbnail_id );
+		if ( $original_path && file_exists( $original_path . $extension ) ) {
+			$metadata = wp_get_attachment_metadata( $thumbnail_id );
+			if ( $metadata && ! empty( $metadata['file'] ) ) {
+				$upload_dir = wp_upload_dir();
+				$dirname    = trailingslashit( dirname( $metadata['file'] ) );
+				$sizes      = $metadata['sizes'] ?? array();
+
+				if ( isset( $sizes[ $size ] ) ) {
+					$variant_path = $upload_dir['basedir'] . '/' . $dirname . $sizes[ $size ]['file'] . $extension;
+					if ( file_exists( $variant_path ) ) {
+						$url = $upload_dir['baseurl'] . '/' . $dirname . $sizes[ $size ]['file'] . $extension;
+					}
+				} else {
+					// Size resolved to full/original — use original file path
+					$variant_path = $original_path . $extension;
+					if ( file_exists( $variant_path ) ) {
+						$url = wp_get_attachment_url( $thumbnail_id ) . $extension;
+					}
+				}
+			}
+		}
+	}
+
+	return array( 'href' => $url );
+}
+
+/**
+ * Build responsive (imagesrcset/imagesizes) featured-image preload data.
+ *
+ * More expensive than {@see frl_build_single_featured_image_preload()}: enumerates every
+ * registered intermediate size via {@see frl_build_featured_image_srcset()} and checks disk
+ * for each when an extension variant is requested. Only invoked when
+ * `image_preload_featured_responsive` is enabled.
+ *
+ * @param int    $thumbnail_id Attachment ID.
+ * @param string $extension    File extension to prefer (e.g. '.avif'), empty for original format.
+ * @param string $image_size   WP image size name used to resolve the `sizes` attribute.
+ * @return array{srcset: string, sizes: string}|null Preload data, or null if no srcset could be built.
+ */
+function frl_build_responsive_featured_image_preload( int $thumbnail_id, string $extension, string $image_size ): ?array {
+	// If extension is set but no variant files exist, fall back to original format
+	if ( ! empty( $extension ) ) {
+		$original_path = get_attached_file( $thumbnail_id );
+		if ( ! $original_path || ! file_exists( $original_path . $extension ) ) {
+			$extension = '';
+		}
+	}
+
+	$upload_dir = wp_upload_dir();
+	$srcset     = frl_build_featured_image_srcset(
+		$thumbnail_id,
+		$extension,
+		$upload_dir['basedir'],
+		$upload_dir['baseurl']
+	);
+
+	if ( empty( $srcset ) ) {
+		return null;
+	}
+
+	$sizes = wp_get_attachment_image_sizes( $thumbnail_id, $image_size );
+
+	return array(
+		'srcset' => $srcset,
+		'sizes'  => $sizes,
+	);
+}
+
+/**
  * Preload the featured image of a singular post, using an optional file extension (e.g., .avif, .webp).
  *
  * Outputs up to two <link> tags:
- * - Desktop: responsive imagesrcset/imagesizes (with media="(min-width: 768px)" when mobile is active).
+ * - Desktop: single href by default, or responsive imagesrcset/imagesizes when
+ *   `image_preload_featured_responsive` is enabled (with media="(min-width: 768px)" when
+ *   mobile is active). Additive by design — the more expensive responsive srcset computation
+ *   only runs when the option is explicitly turned on.
  * - Mobile:  single href targeting a configurable thumbnail size with media="(max-width: 767px)".
  */
 function frl_preload_featured_image() {
@@ -165,44 +260,24 @@ function frl_preload_featured_image() {
 	} else {
 		$image_size = frl_get_featured_image_size( $post );
 		$extension  = (string) frl_get_option( 'image_preload_featured_ext' );
+		$responsive = (bool) frl_get_option( 'image_preload_featured_responsive' );
 
-		$cache_key = frl_generate_cache_key( 'featured_img', (string) $post->ID, $image_size, (string) $extension );
+		// Cache key includes the responsive flag so toggling the option never serves a
+		// stale, differently-shaped ('srcset' vs 'href') cached entry.
+		$cache_key = frl_generate_cache_key( 'featured_img', (string) $post->ID, $image_size, (string) $extension, $responsive ? 'responsive' : 'single' );
 
 		$preload_data = frl_cache_remember(
 			'postdata',
 			$cache_key,
-			function () use ( $post, $image_size, $extension, $resolve_thumbnail_id ) {
+			function () use ( $image_size, $extension, $resolve_thumbnail_id, $responsive ) {
 				$thumbnail_id = $resolve_thumbnail_id();
 				if ( ! $thumbnail_id ) {
 					return null;
 				}
 
-				// If extension is set but no variant files exist, fall back to original format
-				if ( ! empty( $extension ) ) {
-					$original_path = get_attached_file( $thumbnail_id );
-					if ( ! $original_path || ! file_exists( $original_path . $extension ) ) {
-						$extension = '';
-					}
-				}
-
-				$upload_dir = wp_upload_dir();
-				$srcset     = frl_build_featured_image_srcset(
-					$thumbnail_id,
-					$extension,
-					$upload_dir['basedir'],
-					$upload_dir['baseurl']
-				);
-
-				if ( empty( $srcset ) ) {
-					return null;
-				}
-
-				$sizes = wp_get_attachment_image_sizes( $thumbnail_id, $image_size );
-
-				return array(
-					'srcset' => $srcset,
-					'sizes'  => $sizes,
-				);
+				return $responsive
+					? frl_build_responsive_featured_image_preload( $thumbnail_id, $extension, $image_size )
+					: frl_build_single_featured_image_preload( $thumbnail_id, $image_size, $extension );
 			}
 		);
 
@@ -228,11 +303,12 @@ function frl_preload_featured_image() {
 
 	$desktop_media = $has_mobile ? '(min-width: 768px)' : '';
 
-	if ( $preload_data && ! empty( $preload_data['srcset'] ) ) {
+	if ( $preload_data && ( ! empty( $preload_data['srcset'] ) || ! empty( $preload_data['href'] ) ) ) {
 		frl_output_preload_link( $preload_data, $desktop_media );
 	}
 
-	// Mobile hero preload: single href targeting a specific thumbnail size
+	// Mobile hero preload: always single href targeting a specific thumbnail size,
+	// regardless of image_preload_featured_responsive (mobile never needs a srcset).
 	if ( $has_mobile ) {
 		$mobile_size = (string) frl_get_option( 'image_preload_hero_mobile_size' );
 		if ( empty( $mobile_size ) ) {
@@ -245,46 +321,13 @@ function frl_preload_featured_image() {
 		$mobile_data = frl_cache_remember(
 			'postdata',
 			$mobile_cache_key,
-			function () use ( $post, $mobile_size, $extension, $resolve_thumbnail_id ) {
+			function () use ( $mobile_size, $extension, $resolve_thumbnail_id ) {
 				$thumbnail_id = $resolve_thumbnail_id();
 				if ( ! $thumbnail_id ) {
 					return null;
 				}
 
-				$img_src = wp_get_attachment_image_src( $thumbnail_id, $mobile_size );
-				if ( ! $img_src || empty( $img_src[0] ) ) {
-					return null;
-				}
-
-				$url = $img_src[0];
-
-				// Apply extension if configured and variant exists for this specific size
-				if ( ! empty( $extension ) ) {
-					$original_path = get_attached_file( $thumbnail_id );
-					if ( $original_path && file_exists( $original_path . $extension ) ) {
-						$metadata = wp_get_attachment_metadata( $thumbnail_id );
-						if ( $metadata && ! empty( $metadata['file'] ) ) {
-							$upload_dir = wp_upload_dir();
-							$dirname    = trailingslashit( dirname( $metadata['file'] ) );
-							$sizes      = $metadata['sizes'] ?? array();
-
-							if ( isset( $sizes[ $mobile_size ] ) ) {
-								$variant_path = $upload_dir['basedir'] . '/' . $dirname . $sizes[ $mobile_size ]['file'] . $extension;
-								if ( file_exists( $variant_path ) ) {
-									$url = $upload_dir['baseurl'] . '/' . $dirname . $sizes[ $mobile_size ]['file'] . $extension;
-								}
-							} else {
-								// Mobile size resolved to full/original — use original file path
-								$variant_path = $original_path . $extension;
-								if ( file_exists( $variant_path ) ) {
-									$url = wp_get_attachment_url( $thumbnail_id ) . $extension;
-								}
-							}
-						}
-					}
-				}
-
-				return array( 'href' => $url );
+				return frl_build_single_featured_image_preload( $thumbnail_id, $mobile_size, $extension );
 			}
 		);
 
