@@ -28,8 +28,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 add_action(
 	'admin_menu',
 	function () {
-		// Bail if no multilingual plugin is active.
-		if ( ! frl_is_multilingual_plugin_active() ) {
+		// Bail if Polylang isn't active — this file is Polylang-only.
+		if ( ! frl_is_polylang_active() ) {
 			return;
 		}
 

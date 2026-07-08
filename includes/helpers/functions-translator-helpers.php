@@ -13,6 +13,65 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 
 /**
+ * Detect whether Polylang is the active multilingual plugin.
+ *
+ * @return bool
+ */
+function frl_is_polylang_active(): bool {
+	static $is_active = null;
+	if ( $is_active === null ) {
+		$is_active = ( function_exists( 'pll_the_languages' ) || defined( 'PLL' ) );
+	}
+	return $is_active;
+}
+
+/**
+ * Detect whether WPML is the active multilingual plugin.
+ *
+ * @return bool
+ */
+function frl_is_wpml_active(): bool {
+	static $is_active = null;
+	if ( $is_active === null ) {
+		$is_active = defined( 'ICL_SITEPRESS_VERSION' );
+	}
+	return $is_active;
+}
+
+/**
+ * FQCN of the translation adapter for the active plugin, or null if none
+ * is implemented. Single source of truth: frl_is_multilingual_plugin_active()
+ * and Frl_Translation_Service's adapter selection both derive from this —
+ * adding a new adapter is a one-line change, here only.
+ *
+ * @return string|null
+ */
+function frl_get_translation_adapter_class(): ?string {
+	if ( frl_is_polylang_active() ) {
+		return 'Frl_Polylang_Adapter';
+	}
+	if ( frl_is_wpml_active() ) {
+		return null; // No Frl_Wpml_Adapter yet.
+	}
+	return null;
+}
+
+/**
+ * Whether this codebase has a working adapter for the active plugin.
+ * Gatekeeper for loading the translator module (fralenuvole.php) and for
+ * instantiating Frl_Translation_Service.
+ *
+ * @return bool
+ */
+function frl_is_multilingual_plugin_active(): bool {
+	static $is_active = null;
+	if ( $is_active === null ) {
+		$is_active = ( frl_get_translation_adapter_class() !== null );
+	}
+	return $is_active;
+}
+
+/**
  * Central guard to check if the translation system is active and enabled.
  *
  * @return bool True if a multilingual plugin is active AND the translator is not disabled in settings.

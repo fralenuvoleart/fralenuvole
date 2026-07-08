@@ -194,3 +194,7 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface {
 		}
 	}
 }
+
+// Companion admin-menu patch — Polylang-specific, owned by this adapter
+// file rather than the generic translator.php module entry point.
+require_once __DIR__ . '/polylang-admin-access.php';

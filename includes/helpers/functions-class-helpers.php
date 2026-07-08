@@ -318,25 +318,6 @@ function frl_environment_reset_ignored(): array {
 }
 
 /**
- * Check if any multilingual translation plugin (Polylang/WPML) is active.
- * This serves as a high-performance gatekeeper to avoid initializing the
- * Translation Service and its caching layer when no translation is possible.
- *
- * @return bool True if a multilingual plugin is active, false otherwise.
- */
-function frl_is_multilingual_plugin_active(): bool {
-	static $is_active = null;
-
-	if ( $is_active !== null ) {
-		return $is_active;
-	}
-
-	$is_active = ( defined( 'ICL_SITEPRESS_VERSION' ) || function_exists( 'pll_the_languages' ) || defined( 'PLL' ) );
-
-	return $is_active;
-}
-
-/**
  * Check whether the Rewriter subsystem is available and enabled.
  *
  * Mirrors frl_environment_is_loaded() / frl_cache_is_loaded(): centralises the

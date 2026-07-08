@@ -60,10 +60,6 @@ final class Frl_Translation_Service {
 
 	// Private constructor to enforce the singleton pattern.
 	private function __construct() {
-		// Adapter files are loaded early in translator.php so the class
-		// is always available regardless of whether the service is instantiated.
-
-		// Initialize configuration properties from constants.
 		$this->prefix               = FRL_PREFIX;
 		$this->name                 = FRL_NAME;
 		$this->delimiter_text_start = FRL_TRANSLATOR_DELIMITER_TEXT['start'];
@@ -71,8 +67,11 @@ final class Frl_Translation_Service {
 		$this->delimiter_link_start = FRL_TRANSLATOR_DELIMITER_LINK['start'];
 		$this->delimiter_link_end   = FRL_TRANSLATOR_DELIMITER_LINK['end'];
 
-		// Default to Polylang adapter. In a more complex system, this could be determined by a config.
-		$this->adapter = new Frl_Polylang_Adapter();
+		// frl_get_translation_adapter_class() is the single source of truth
+		// shared with frl_is_multilingual_plugin_active(); that gate
+		// guarantees a non-null class name whenever this constructor runs.
+		$adapter_class = frl_get_translation_adapter_class();
+		$this->adapter = new $adapter_class();
 	}
 
 	/**
@@ -85,15 +84,6 @@ final class Frl_Translation_Service {
 			self::$instance = new self();
 		}
 		return self::$instance;
-	}
-
-	/**
-	 * Checks for multilingual function availability.
-	 *
-	 * @return bool
-	 */
-	public function has_multilingual_plugin(): bool {
-		return ( defined( 'ICL_SITEPRESS_VERSION' ) || function_exists( 'pll_the_languages' ) || defined( 'PLL' ) );
 	}
 
 	/**
@@ -113,11 +103,11 @@ final class Frl_Translation_Service {
 			$check_result = function_exists( $function_name );
 
 			$log_missing = defined( 'FRL_TRANSLATOR_LOG_MISSING_TRANSLATION' ) && FRL_TRANSLATOR_LOG_MISSING_TRANSLATION;
-			if ( $log_missing && $this->has_multilingual_plugin() && ! $check_result ) {
+			if ( $log_missing && frl_is_multilingual_plugin_active() && ! $check_result ) {
 				frl_log( 'Multilingual function ' . $function_name . ' does not exist' );
 			}
 		} else {
-			$check_result = $this->has_multilingual_plugin();
+			$check_result = frl_is_multilingual_plugin_active();
 		}
 
 		$this->is_multilingual_cache[ $check_type ] = $check_result;
@@ -316,7 +306,7 @@ final class Frl_Translation_Service {
 		$source_language = $this->get_source_language();
 
 		// Source language permalink is already the correct identity — no cache needed.
-		if ( ! $this->has_multilingual_plugin() || $lang === $source_language ) {
+		if ( ! frl_is_multilingual_plugin_active() || $lang === $source_language ) {
 			return get_permalink( $id ) ?: '#';
 		}
 

@@ -18,10 +18,36 @@ The system solves the following problems:
 ### Key Components
 - **`Frl_Translation_Service`**: The central hub. Manages caching, batching, and the translation lifecycle.
 - **`Frl_Translation_Adapter_Interface`**: Defines the contract for translation plugins.
-- **`Frl_Polylang_Adapter`**: The current implementation for Polylang. Fallback logic is self-contained — the adapter knows its own plugin's database schema and provides fallbacks independently of global helper functions.
+- **`Frl_Polylang_Adapter`**: The current (and only) implementation. Fallback logic is self-contained. Requires its own companion, `adapters/polylang-admin-access.php` (Polylang-only `admin_menu` patch), at the bottom of its own file — the generic module entry point doesn't need to know it exists.
 - **`field-translator.php`**: The hook-based layer that intercepts WordPress metadata calls to provide transparent translations.
-- **`functions-translator-helpers.php`**: The public API for developers.
-- **`translator.php`**: Module entry point. Loads adapter interface and implementation early so the adapter class is always available after the module loads, regardless of whether the service singleton is instantiated.
+- **`functions-translator-helpers.php`**: The public API for developers, including the adapter-detection helpers below.
+- **`translator.php`**: Module entry point — requires the interface, `Frl_Polylang_Adapter`, and the service. Nothing here needs to know which companion files an adapter pulls in.
+
+### Adapter Selection: One Source of Truth
+
+`frl_get_translation_adapter_class()` (`includes/helpers/functions-translator-helpers.php`) returns the FQCN of the adapter for the active plugin, or `null` if none is implemented:
+
+```php
+function frl_get_translation_adapter_class(): ?string {
+    if ( frl_is_polylang_active() ) {
+        return 'Frl_Polylang_Adapter';
+    }
+    if ( frl_is_wpml_active() ) {
+        return null; // No Frl_Wpml_Adapter yet.
+    }
+    return null;
+}
+```
+
+Two things derive from this single function, so they can never drift apart:
+- `frl_is_multilingual_plugin_active()` — `true` iff it returns non-null. Gates whether the translator module loads (`fralenuvole.php`) and whether `Frl_Translation_Service` can be instantiated.
+- `Frl_Translation_Service::__construct()` — `$this->adapter = new (frl_get_translation_adapter_class())();`, safe unconditionally because the gate above already guarantees a non-null result.
+
+**Adding WPML support:** write `Frl_Wpml_Adapter implements Frl_Translation_Adapter_Interface`, then change one line — the `return null;` in the WPML branch above to `return 'Frl_Wpml_Adapter';`.
+
+### Polylang-Only Admin Patch
+
+`adapters/polylang-admin-access.php` (formerly `translation-access.php`) hardcodes `PLL()` and Polylang's `mlang_strings` admin page. It's `require_once`d by `adapters/polylang.php` itself, and self-guards with `frl_is_polylang_active()` as defense in depth.
 
 ### Fallback Architecture
 
