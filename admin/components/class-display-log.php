@@ -398,32 +398,16 @@ class Frl_Log_Manager {
 	/**
 	 * Determine the error type from a log message.
 	 *
+	 * Thin wrapper delegating to the shared, always-loaded
+	 * frl_determine_log_error_type() (includes/helpers/functions-error-log.php)
+	 * so the classification rules stay in one place -- also used by the
+	 * admin bar's fast entry counter (frl_count_debug_log_entries()).
+	 *
 	 * @param string $message Log message.
 	 * @return string Error type.
 	 */
 	private function determine_error_type( $message ) {
-		// Check for FRL logs first (takes priority)
-		if ( str_contains( $message, strtoupper( FRL_PREFIX ) . '_LOG:' ) ) {
-			return FRL_PREFIX;
-		}
-
-		$message = strtolower( $message );
-
-		if ( str_contains( $message, 'fatal error' ) ) {
-			return 'fatal';
-		} elseif ( str_contains( $message, 'parse error' ) ) {
-			return 'parse';
-		} elseif ( str_contains( $message, 'warning' ) ) {
-			return 'warning';
-		} elseif ( str_contains( $message, 'notice' ) ) {
-			return 'notice';
-		} elseif ( str_contains( $message, 'deprecated' ) ) {
-			return 'deprecated';
-		} elseif ( str_contains( $message, 'error' ) ) {
-			return 'error';
-		}
-
-		return 'info';
+		return frl_determine_log_error_type( $message );
 	}
 
 	/**
@@ -443,8 +427,9 @@ class Frl_Log_Manager {
 			file_put_contents( $this->log_file, '' );
 		}
 
-		// Clear the count transient when log is cleared
-		frl_delete_transient( 'debug_log_count' );
+		// Clear both count transients (fast/admin-bar and full/Log Manager) when log is cleared.
+		frl_delete_transient( 'debug_log_count_fast' );
+		frl_delete_transient( 'debug_log_count_full' );
 
 		// Also clear any navigation cache that might store the count
 		$user_id   = frl_get_current_user()->ID;
@@ -521,12 +506,11 @@ class Frl_Log_Manager {
 			$this->set_error_filter( sanitize_text_field( $_POST['filter'] ) );
 		}
 
-		$entries   = $this->get_log_entries();
-		$new_count = count( $entries );
+		$entries = $this->get_log_entries();
 
-		frl_delete_transient( 'debug_log_count' );
-		frl_set_transient( 'debug_log_count', $new_count, 5 * MINUTE_IN_SECONDS );
-
+		// Force a fresh full-file recount (also re-caches into 'debug_log_count_full' below);
+		// no need to pre-seed the transient here since get_log_entry_count(true) always
+		// bypasses and overwrites it.
 		$total_count = $this->get_log_entry_count( true );
 		$html        = $this->render_table_rows( $entries );
 		$count_html  = '';
@@ -547,42 +531,29 @@ class Frl_Log_Manager {
 	}
 
 	/**
-	 * Get count of log entries
+	 * Get count of log entries, excluding Info-type entries and any
+	 * FRL_LOG_COUNT_IGNORE matches.
 	 *
-	 * @param bool $force_recount Whether to force a recount even if the transient exists
-	 * @return int Number of log entries
+	 * Thin wrapper around the shared frl_count_debug_log_entries() (full-file
+	 * scan, no byte cap) so this authoritative Log Manager total always uses
+	 * the same entry-detection/classification rules as the admin bar's fast
+	 * counter (frl_get_debug_log_count()). Cached separately under
+	 * 'debug_log_count_full' -- distinct from the admin bar's
+	 * 'debug_log_count_fast' -- since the two intentionally scan different
+	 * amounts of the file and must never overwrite each other's cache.
+	 *
+	 * @param bool $force_recount Whether to force a recount even if the transient exists.
+	 * @return int Number of non-ignored, non-Info log entries.
 	 */
 	public function get_log_entry_count( $force_recount = false ) {
-		// Try to get count from transient first for performance
 		$count = false;
 		if ( ! $force_recount ) {
-			$count = frl_get_transient( 'debug_log_count' );
+			$count = frl_get_transient( 'debug_log_count_full' );
 		}
 
-		// If transient doesn't exist or force recount is true, count entries
 		if ( $count === false ) {
-			$count = 0;
-
-			if ( file_exists( $this->log_file ) ) {
-				// Regular expression to match the timestamp pattern that starts a new entry
-				$timestamp_pattern = '/^\[\d{2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2}:\d{2} UTC\]/';
-
-				// Faster than loading entire file into memory
-				$handle = fopen( $this->log_file, 'r' );
-				if ( $handle ) {
-					while ( ! feof( $handle ) ) {
-						$line = fgets( $handle );
-						// Only count lines that start with a timestamp (i.e., new entries)
-						if ( ! empty( trim( $line ) ) && preg_match( $timestamp_pattern, $line ) ) {
-							++$count;
-						}
-					}
-					fclose( $handle );
-				}
-			}
-
-			// Cache for 5 minutes
-			frl_set_transient( 'debug_log_count', $count, 5 * MINUTE_IN_SECONDS );
+			$count = frl_count_debug_log_entries( 0 );
+			frl_set_transient( 'debug_log_count_full', $count, 5 * MINUTE_IN_SECONDS );
 		}
 
 		return (int) $count;

@@ -543,3 +543,109 @@ function frl_log_capture_shortcode( $output, $tag, $attr, $m ) {
 	);
 	return $output;
 }
+
+/**
+ * Determine the error type/category from a debug.log message line.
+ *
+ * Shared by frl_count_debug_log_entries() and Frl_Log_Manager::determine_error_type()
+ * -- always loaded, unlike Frl_Log_Manager which only loads on the plugin's own page.
+ *
+ * @param string $message Log message (typically the entry's first/timestamp line).
+ * @return string One of: FRL_PREFIX, 'fatal', 'parse', 'warning', 'notice', 'deprecated', 'error', or 'info'.
+ */
+function frl_determine_log_error_type( $message ) {
+	// FRL logs take priority.
+	if ( str_contains( $message, strtoupper( FRL_PREFIX ) . '_LOG:' ) ) {
+		return FRL_PREFIX;
+	}
+
+	$message = strtolower( $message );
+
+	if ( str_contains( $message, 'fatal error' ) ) {
+		return 'fatal';
+	} elseif ( str_contains( $message, 'parse error' ) ) {
+		return 'parse';
+	} elseif ( str_contains( $message, 'warning' ) ) {
+		return 'warning';
+	} elseif ( str_contains( $message, 'notice' ) ) {
+		return 'notice';
+	} elseif ( str_contains( $message, 'deprecated' ) ) {
+		return 'deprecated';
+	} elseif ( str_contains( $message, 'error' ) ) {
+		return 'error';
+	}
+
+	return 'info';
+}
+
+/**
+ * Count non-ignored, non-Info entries in the debug.log file.
+ *
+ * Shared by frl_get_debug_log_count() (admin bar, byte-capped) and
+ * Frl_Log_Manager::get_log_entry_count() (Log Manager, full scan). Counts
+ * entries (via the timestamp line pattern), not raw lines, so multi-line
+ * stack traces count once.
+ *
+ * @param int $max_bytes Bytes to read from the end of the file (0 = full scan).
+ * @return int Count of non-ignored, non-Info log entries.
+ */
+function frl_count_debug_log_entries( $max_bytes = 0 ) {
+	$count    = 0;
+	$log_file = WP_CONTENT_DIR . '/debug.log';
+
+	if ( ! file_exists( $log_file ) ) {
+		return 0;
+	}
+
+	$handle = @fopen( $log_file, 'r' );
+	if ( ! $handle ) {
+		return 0;
+	}
+
+	if ( $max_bytes > 0 ) {
+		$file_size = filesize( $log_file );
+		$offset    = ( $file_size > $max_bytes ) ? $file_size - $max_bytes : 0;
+		if ( $offset > 0 ) {
+			// Seek to near the end of the file, then align to next newline.
+			fseek( $handle, $offset );
+			fgets( $handle ); // Discard partial first line.
+		}
+	}
+
+	$ignore_list       = defined( 'FRL_LOG_COUNT_IGNORE' ) && is_array( FRL_LOG_COUNT_IGNORE ) ? FRL_LOG_COUNT_IGNORE : array();
+	$timestamp_pattern = '/^\[\d{2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2}:\d{2} UTC\]/';
+
+	// phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition -- Canonical PHP idiom for reading a file line-by-line until EOF; fgets() returning false is the only way to detect end-of-file, there is no assignment-free alternative.
+	while ( ( $line = fgets( $handle ) ) !== false ) {
+		$trimmed_line = trim( $line );
+		if ( empty( $trimmed_line ) ) {
+			continue;
+		}
+
+		// Continuation lines (stack traces, etc.) belong to the entry above.
+		if ( ! preg_match( $timestamp_pattern, $trimmed_line ) ) {
+			continue;
+		}
+
+		$ignore_line = false;
+		foreach ( $ignore_list as $ignore_string ) {
+			if ( str_contains( $trimmed_line, $ignore_string ) ) {
+				$ignore_line = true;
+				break;
+			}
+		}
+
+		if ( $ignore_line ) {
+			continue;
+		}
+
+		if ( frl_determine_log_error_type( $trimmed_line ) === 'info' ) {
+			continue;
+		}
+
+		++$count;
+	}
+	fclose( $handle );
+
+	return $count;
+}

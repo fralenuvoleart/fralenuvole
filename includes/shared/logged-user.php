@@ -405,72 +405,20 @@ function frl_admin_bar_remove_menu( $data ) {
 }
 
 /**
- * Get the number of entries in the debug log.
+ * Get the number of non-Info, non-ignored entries in the debug log.
  *
- * Uses transients for performance and supports an ignore list for specific log patterns.
+ * Wraps frl_count_debug_log_entries(), capped to the last 100KB since this
+ * runs on every admin-bar render. Cached under 'debug_log_count_fast' --
+ * separate from the Log Manager's 'debug_log_count_full' key.
  *
- * @return int Total count of non-ignored log entries.
+ * @return int Total count of non-ignored, non-Info log entries (last 100KB).
  */
 function frl_get_debug_log_count() {
-	// Try to get count from transient first for performance
-	$count = frl_get_transient( 'debug_log_count' );
+	$count = frl_get_transient( 'debug_log_count_fast' );
 
-	// If transient doesn't exist, count entries and store in transient
 	if ( $count === false ) {
-		$count    = 0;
-		$log_file = WP_CONTENT_DIR . '/debug.log';
-
-		if ( file_exists( $log_file ) ) {
-			$file_size = filesize( $log_file );
-			// Cap read to last 100KB to avoid scanning huge log files.
-			// For files over 1MB, only the most recent portion is counted,
-			// which is what admins care about in the toolbar anyway.
-			$max_read = 100 * 1024; // 100KB
-			$offset   = ( $file_size > $max_read ) ? $file_size - $max_read : 0;
-
-			$handle = @fopen( $log_file, 'r' );
-			if ( $handle ) {
-				if ( $offset > 0 ) {
-					// Seek to near the end of the file, then align to next newline
-					fseek( $handle, $offset );
-					fgets( $handle ); // Discard partial first line
-				}
-
-				$ignore_list = defined( 'FRL_LOG_COUNT_IGNORE' ) && is_array( FRL_LOG_COUNT_IGNORE ) ? FRL_LOG_COUNT_IGNORE : array();
-
-				// phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition -- Canonical PHP idiom for reading a file line-by-line until EOF; fgets() returning false is the only way to detect end-of-file, there is no assignment-free alternative.
-				while ( ( $line = fgets( $handle ) ) !== false ) {
-					$trimmed_line = trim( $line );
-					if ( empty( $trimmed_line ) ) {
-						continue;
-					}
-
-					$ignore_line = false;
-					if ( ! empty( $ignore_list ) ) {
-						foreach ( $ignore_list as $ignore_string ) {
-							if ( str_contains( $trimmed_line, $ignore_string ) ) {
-								$ignore_line = true;
-								break;
-							}
-						}
-					}
-
-					if ( ! $ignore_line ) {
-						++$count;
-					}
-				}
-				fclose( $handle );
-			} else {
-				// File exists but can't be opened - cache 0 to avoid repeated failed attempts
-				$count = 0;
-			}
-		} else {
-			// File doesn't exist - cache 0
-			$count = 0;
-		}
-
-		// Cache for 5 minutes (including 0 counts)
-		frl_set_transient( 'debug_log_count', $count, 5 * MINUTE_IN_SECONDS );
+		$count = frl_count_debug_log_entries( 100 * 1024 );
+		frl_set_transient( 'debug_log_count_fast', $count, 5 * MINUTE_IN_SECONDS );
 	}
 
 	return (int) $count;
