@@ -198,9 +198,7 @@ function frl_cache_clear( string $group, ?string $key = null, bool $include_depe
 	}
 
 	// Direct Frl_Cache_Manager calls for groups that don't need orchestration.
-	if ( $group === 'opcache' ) {
-		return Frl_Cache_Manager::opcache_reset();
-	} elseif ( $group === 'plugin_transients' ) {
+	if ( $group === 'plugin_transients' ) {
 		return Frl_Cache_Manager::clear_transients();
 	} elseif ( $group === 'website_transients' ) {
 		return Frl_Cache_Manager::clear_all_website_transients();

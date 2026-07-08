@@ -39,55 +39,50 @@ function frl_get_option( $key, $bypass_cache = false ) {
 		return null;
 	}
 
-	try {
-		// --- 1. Request-local static cache check ---
-		if ( ! $bypass_cache && $loaded && isset( $options[ $key ] ) ) {
+	// --- 1. Request-local static cache check ---
+	if ( ! $bypass_cache && $loaded && isset( $options[ $key ] ) ) {
+		return $options[ $key ];
+	}
+
+	// --- 2. Populate static $options if not loaded or if bypassing cache ---
+	if ( $bypass_cache ) {
+		// Bypassing cache: fetch fresh from DB. $loaded state is not changed.
+		$options = frl_get_plugin_options_db();
+		if ( isset( $options[ $key ] ) ) {
 			return $options[ $key ];
 		}
-
-		// --- 2. Populate static $options if not loaded or if bypassing cache ---
-		if ( $bypass_cache ) {
-			// Bypassing cache: fetch fresh from DB. $loaded state is not changed.
-			$options = frl_get_plugin_options_db();
-			if ( isset( $options[ $key ] ) ) {
-				return $options[ $key ];
-			}
-		} elseif ( ! $loaded ) {
-			// Not bypassing, and $options not loaded yet. Load from persistent cache.
-			$options = frl_get_plugin_options( 'all' );
-			$loaded  = true; // Mark as loaded for this request.
-			if ( isset( $options[ $key ] ) ) {
-				return $options[ $key ];
-			}
+	} elseif ( ! $loaded ) {
+		// Not bypassing, and $options not loaded yet. Load from persistent cache.
+		$options = frl_get_plugin_options( 'all' );
+		$loaded  = true; // Mark as loaded for this request.
+		if ( isset( $options[ $key ] ) ) {
+			return $options[ $key ];
 		}
-		// If fall through:
-		// - $key was not found in the $options populated above (either fresh from DB or from frl_cache_remember).
-		// - OR ($bypass_cache was false AND $loaded was true initially), and initial static check $options[$key] failed.
-		// The next block handles these cases.
+	}
+	// If fall through:
+	// - $key was not found in the $options populated above (either fresh from DB or from frl_cache_remember).
+	// - OR ($bypass_cache was false AND $loaded was true initially), and initial static check $options[$key] failed.
+	// The next block handles these cases.
 
-		// --- 3. Key not in (loaded) $options: Check DB directly (handles stale 'all_options' cache) ---
-		if ( ! isset( $options[ $key ] ) ) {
-			$result = frl_handle_missing_option_key( $key, $bypass_cache, $options );
-			if ( $result !== '__missing_option__' ) {
-				return $result;
-			}
-			// If '__missing_option__' received, option is genuinely not in DB.
+	// --- 3. Key not in (loaded) $options: Check DB directly (handles stale 'all_options' cache) ---
+	if ( ! isset( $options[ $key ] ) ) {
+		$result = frl_handle_missing_option_key( $key, $bypass_cache, $options );
+		if ( $result !== '__missing_option__' ) {
+			return $result;
 		}
+		// If '__missing_option__' received, option is genuinely not in DB.
+	}
 
-		// --- 4. Option genuinely missing: Set and return its default value ---
-		if ( empty( $write_attempted[ $key ] ) ) {
-			$write_attempted[ $key ] = true;
-			return frl_set_missing_option_default( $key, $bypass_cache, $options );
-		} else {
-			if ( isset( $options[ $key ] ) ) {
-				return $options[ $key ];
-			}
-			$default = frl_get_all_plugin_options_settings( $key ); // Changed from $option_default_info_final_fallback
-			return $default !== null ? $default['value'] : null;
+	// --- 4. Option genuinely missing: Set and return its default value ---
+	if ( empty( $write_attempted[ $key ] ) ) {
+		$write_attempted[ $key ] = true;
+		return frl_set_missing_option_default( $key, $bypass_cache, $options );
+	} else {
+		if ( isset( $options[ $key ] ) ) {
+			return $options[ $key ];
 		}
-	} finally {
-		// Re-entrancy guard intentionally omitted: the $loaded static (line 32)
-		// and $write_attempted array (line 33) provide the actual protection.
+		$default = frl_get_all_plugin_options_settings( $key ); // Changed from $option_default_info_final_fallback
+		return $default !== null ? $default['value'] : null;
 	}
 }
 

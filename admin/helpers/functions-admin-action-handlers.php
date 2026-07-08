@@ -39,20 +39,34 @@ function frl_autodiscover_admin_actions() {
 	// action handler like dashboard widget
 	// frl_post_action_dashboard_widgets is auto-discovered
 
-	// Get all defined user functions
-	$user_functions = get_defined_functions()['user'];
+	// Cache the frl_post_* function-name scan instead of running it every request.
+	// Version-scoped key + activate/deactivate/update hooks + 1-day TTL all invalidate it.
+	$post_functions = frl_cache_remember(
+		'staticdata',
+		'admin_post_handlers_' . FRL_VERSION,
+		function () {
+			$prefix = frl_prefix( 'post_' );
+			return array_values(
+				array_filter(
+					get_defined_functions()['user'],
+					function ( $func ) use ( $prefix ) {
+						return str_starts_with( $func, $prefix );
+					}
+				)
+			);
+		},
+		DAY_IN_SECONDS
+	);
 
-	foreach ( $user_functions as $func ) {
-		if ( str_starts_with( $func, frl_prefix( 'post_' ) ) ) {
-			// Register all frl_post_ functions to admin-post system
-			$hook_name = 'admin_post_' . $func;
-			add_action( $hook_name, $func, 10, 0 );
+	foreach ( $post_functions as $func ) {
+		// Register all frl_post_ functions to admin-post system
+		$hook_name = 'admin_post_' . $func;
+		add_action( $hook_name, $func, 10, 0 );
 
-			// Check if this is also an AJAX handler (has "ajax_" after the prefix)
-			if ( str_starts_with( $func, frl_prefix( 'post_ajax_' ) ) ) {
-				$ajax_hook = 'wp_ajax_' . $func;
-				add_action( $ajax_hook, $func, 10, 0 );
-			}
+		// Check if this is also an AJAX handler (has "ajax_" after the prefix)
+		if ( str_starts_with( $func, frl_prefix( 'post_ajax_' ) ) ) {
+			$ajax_hook = 'wp_ajax_' . $func;
+			add_action( $ajax_hook, $func, 10, 0 );
 		}
 	}
 	// Allow extensions
@@ -251,40 +265,6 @@ function frl_handle_action_clear_cache_group( $action ) {
 			'notice_type'   => 'info',
 		);
 	}
-}
-
-/**
- * Handle clear OPcache action.
- *
- * @return array{success: bool, message_parts: array, notice_type: string} Result of the OPcache reset.
- */
-function frl_handle_action_clear_cache_opcache() {
-	if ( ! frl_has_access() ) { // Ensure user has capabilities
-		return array(
-			'success'       => false,
-			'message_parts' => array( __( 'You are not authorized to perform this action.', FRL_PREFIX ) ),
-			'notice_type'   => 'error',
-		);
-	}
-
-	$stats = frl_cache_clear( 'opcache' );
-
-	$message_parts = array( '<strong>' . __( 'OPcache Reset:', FRL_PREFIX ) . '</strong>' );
-	$notice_type   = 'success';
-
-	// OPcache Reset
-	$opcache_status = $stats['opcache_reset'] ?? 'not_attempted_in_manager'; // Default if key doesn't exist because it's commented out
-	if ( $opcache_status !== 'not_attempted_in_manager' ) {
-		$message_parts[] = __( '- PHP OPcache Reset:', FRL_PREFIX ) . ' ' . esc_html( ucfirst( str_replace( '_', ' ', $opcache_status ) ) );
-	} else {
-		$message_parts[] = __( '- PHP OPcache Reset: Not currently performed by Cache Manager.', FRL_PREFIX );
-	}
-
-	return array(
-		'success'       => true,
-		'message_parts' => $message_parts,
-		'notice_type'   => $notice_type,
-	);
 }
 
 /**

@@ -49,7 +49,6 @@ function frl_process_plugin_actions() {
 		'clear_cache_light'         => 'frl_handle_action_clear_cache_light',
 		'clear_cache_all'           => 'frl_handle_action_clear_cache_all',
 		'clear_cache_hard'          => 'frl_handle_action_clear_cache_hard',
-		'clear_cache_opcache'       => 'frl_handle_action_clear_cache_opcache',
 		'clear_plugin_transients'   => 'frl_handle_action_clear_plugin_transients',
 		'clear_website_transients'  => 'frl_handle_action_clear_website_transients',
 		'clear_scripts_tags'        => 'frl_handle_action_clear_scripts_tags',

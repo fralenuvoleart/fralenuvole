@@ -223,15 +223,6 @@ function frl_render_admin_actions_buttons() {
 		'Clear all Website Transients from the database'
 	);
 
-	/*
-	$output .= frl_render_action_button(
-		'clear_cache_opcache',
-		'reset_plugin button-primary',
-		'Clear Caches (OPcache)',
-		'WARNING: May affect other sites on same server.'
-	);
-	*/
-
 	return frl_ui_render_widget( 'admin-action-buttons', $output, 'Reset Actions', 'widget-admin-actions' );
 }
 

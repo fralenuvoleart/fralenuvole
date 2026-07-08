@@ -1936,26 +1936,6 @@ class Frl_Cache_Manager {
 	}
 
 	/**
-	 * Reset PHP OPcache if available and enabled.
-	 *
-	 * WARNING: On shared hosting, this may affect other sites on the same server.
-	 *
-	 * @return string Status: 'opcache_reset_not_available', 'opcache_not_enabled', 'success', or 'failed'.
-	 */
-	public static function opcache_reset() {
-		if ( ! function_exists( 'opcache_reset' ) ) {
-			return 'opcache_reset_not_available';
-		}
-
-		if ( ! ini_get( 'opcache.enable' ) && ! ini_get( 'opcache.enable_cli' ) ) {
-			return 'opcache_not_enabled';
-		}
-
-		$opcache_result = opcache_reset();
-		return $opcache_result ? 'success' : 'failed';
-	}
-
-	/**
 	 * Perform the most comprehensive cache reset possible by this plugin.
 	 *
 	 * Scoped entirely to this plugin's own data — it never touches transients
@@ -1981,12 +1961,9 @@ class Frl_Cache_Manager {
 		// Transients" action for a full-site purge.
 		$stats['plugin_transients_deleted'] = self::clear_transients();
 
-		// 3. Reset PHP OPcache if available and enabled.
-		//$stats['opcache_reset'] = self::opcache_reset();
-
 		$stats['browser_cache_headers_sent_via_purge_all'] = 'dependent_on_group_config';
 
-		// 4. Action hook for other plugins/themes to hook into.
+		// 3. Action hook for other plugins/themes to hook into.
 		// Use the defined PREFIX to make the hook unique and discoverable.
 		do_action( self::PREFIX . '_after_hard_cache_reset', $stats );
 
