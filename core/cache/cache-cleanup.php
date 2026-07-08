@@ -276,15 +276,3 @@ function frl_purge_mu_plugin_exclusion_cache( $plugin = '', $network_wide = fals
 }
 add_action( 'activated_plugin', 'frl_purge_mu_plugin_exclusion_cache', 10, 2 );
 add_action( 'deactivated_plugin', 'frl_purge_mu_plugin_exclusion_cache', 10, 2 );
-
-/**
- * Invalidate the cached frl_post_* admin-action handler list.
- *
- * @return void
- */
-function frl_purge_admin_action_handlers_cache(): void {
-	frl_cache_clear( 'staticdata', 'admin_post_handlers_' . FRL_VERSION );
-}
-add_action( 'activated_plugin', 'frl_purge_admin_action_handlers_cache', 10, 0 );
-add_action( 'deactivated_plugin', 'frl_purge_admin_action_handlers_cache', 10, 0 );
-add_action( 'upgrader_process_complete', 'frl_purge_admin_action_handlers_cache', 10, 0 );

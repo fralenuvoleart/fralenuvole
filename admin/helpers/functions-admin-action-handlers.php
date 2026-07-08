@@ -39,23 +39,24 @@ function frl_autodiscover_admin_actions() {
 	// action handler like dashboard widget
 	// frl_post_action_dashboard_widgets is auto-discovered
 
-	// Cache the frl_post_* function-name scan instead of running it every request.
-	// Version-scoped key + activate/deactivate/update hooks + 1-day TTL all invalidate it.
-	$post_functions = frl_cache_remember(
-		'staticdata',
-		'admin_post_handlers_' . FRL_VERSION,
-		function () {
-			$prefix = frl_prefix( 'post_' );
-			return array_values(
-				array_filter(
-					get_defined_functions()['user'],
-					function ( $func ) use ( $prefix ) {
-						return str_starts_with( $func, $prefix );
-					}
-				)
-			);
-		},
-		DAY_IN_SECONDS
+	// Scan for frl_post_* functions fresh on every request (deliberately NOT cached).
+	// This must run live because completeness depends on which admin/components/*.php
+	// files have already been require'd in *this* request (gated by frl_is_plugin_context()
+	// via frl_load_plugin_ui()) -- that varies per request and is unrelated to FRL_VERSION.
+	// Caching this by FRL_VERSION alone previously caused a production incident: a request
+	// landing mid-deploy (deploy.sh does a non-atomic `git reset --hard` on the live docroot)
+	// could scan with a partially-updated file tree, cache an incomplete function list under
+	// the new version's key, and silently drop AJAX/admin-post hooks (e.g. the Log Manager's
+	// refresh/clear/download actions) for a full day. The scan itself is cheap and already
+	// deduped by the `static $discovered` guard above, so it only runs once per request.
+	$prefix         = frl_prefix( 'post_' );
+	$post_functions = array_values(
+		array_filter(
+			get_defined_functions()['user'],
+			function ( $func ) use ( $prefix ) {
+				return str_starts_with( $func, $prefix );
+			}
+		)
 	);
 
 	foreach ( $post_functions as $func ) {
