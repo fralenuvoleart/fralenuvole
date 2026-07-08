@@ -104,23 +104,27 @@ function frl_process_deferred_writes(): void {
 		}
 	}
 
-	// Process merged writes and track failures for re-queuing
+	// Process merged writes as one batch per group (via frl_cache_set_multi()) instead of
+	// N individual frl_cache_set() calls — collapses N object-cache round-trips (or N
+	// set_transient() DB writes) per group into a single batched operation.
+	// On failure, the whole group's items are re-queued for the next cycle; re-queuing a
+	// few already-succeeded keys alongside the failed one is harmless since cache writes
+	// are idempotent, and avoids requiring per-key granularity from the batch call.
 	$failed_items = array();
 	foreach ( $merged as $group => $items ) {
-		foreach ( $items as $key => $value ) {
-			try {
-				frl_cache_set( $group, $key, $value );
-			} catch ( Exception $e ) {
-				frl_log(
-					'Error processing deferred write for group {group}, key {key}: {error}',
-					array(
-						'group' => $group,
-						'key'   => $key,
-						'error' => $e->getMessage(),
-					)
-				);
-				$failed_items[ $group ][ $key ] = $value;
+		try {
+			if ( ! frl_cache_set_multi( $group, $items ) ) {
+				$failed_items[ $group ] = $items;
 			}
+		} catch ( Exception $e ) {
+			frl_log(
+				'Error processing deferred write batch for group {group}: {error}',
+				array(
+					'group' => $group,
+					'error' => $e->getMessage(),
+				)
+			);
+			$failed_items[ $group ] = $items;
 		}
 	}
 

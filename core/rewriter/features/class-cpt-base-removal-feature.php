@@ -244,6 +244,60 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 	}
 
 	/**
+	 * Resolve a slug against all configured CPTs via a single direct query.
+	 *
+	 * Shared fast path for applies_to_request() and resolve_request() — both call this with
+	 * the same $slug for the same request (see late_rescue()), and both read/write the same
+	 * persistent frl_cache_remember() key, so a single shared per-request static cache here
+	 * (rather than one static per method, as before extraction) is strictly safe: it can only
+	 * ever short-circuit an in-memory lookup that would otherwise hit the identical persistent
+	 * cache entry. Replaces get_page_by_path(), which internally runs 2-3 queries (path lookup
+	 * + post_name fallback).
+	 *
+	 * @param string $slug The post slug (without CPT base) to resolve.
+	 * @return array{cpt: string, id: int, name: string}|array{} Match data, or empty array if no match.
+	 */
+	private function resolve_multi_cpt_slug( string $slug ): array {
+		static $multi_index = array();
+
+		if ( ! array_key_exists( $slug, $multi_index ) ) {
+			$multi_index[ $slug ] = frl_cache_remember(
+				'permalinks',
+				'rewriter_cpt_multislug_' . md5( $slug ),
+				function () use ( $slug ) {
+					// Single direct query instead of get_page_by_path() multi-query approach
+					$posts = get_posts(
+						array(
+							'name'           => $slug,
+							'post_type'      => $this->cpt_slugs,
+							'post_status'    => 'publish',
+							'posts_per_page' => 1,
+							'fields'         => 'ids',
+						)
+					);
+					if ( ! empty( $posts ) ) {
+						$post = get_post( $posts[0] );
+						return ( $post && isset( $post->ID, $post->post_type ) )
+							? array(
+								'cpt'  => $post->post_type,
+								'id'   => (int) $post->ID,
+								'name' => basename( $slug ),
+							)
+							: array();
+					}
+					return array();
+				}
+			);
+
+			if ( count( $multi_index ) > 4096 ) {
+				$multi_index = array();
+			}
+		}
+
+		return $multi_index[ $slug ];
+	}
+
+	/**
 	 * Check if this feature should handle the given request URI
 	 *
 	 * @param string $request_uri The raw request URI
@@ -284,49 +338,14 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 		$pagination = Frl_Rewriter_Path_Utils::parse_pagination( $slug, '#^(.+?)/page/?([0-9]+)/?$#', 1, 2 );
 		$slug       = $pagination['path'];
 
-		// Per-request caches to minimize DB work. Note: PHP static variables are
-		// method-scoped, so these are NOT shared with resolve_request()'s statics.
-		// The persistent frl_cache_remember layer IS shared (same cache key), so both
-		// methods store the same shape: ['cpt', 'id', 'name'] or [].
+		// Per-request cache for the $slug_hit_map fallback loop below. Note: this static is
+		// method-scoped and intentionally NOT shared with resolve_request()'s — the two
+		// store different shapes (bool here vs. post-like object there) under the same key.
+		// The multi-CPT fast path above is shared via resolve_multi_cpt_slug() instead.
 		static $slug_hit_map = array();
-		static $multi_index  = array();
 
-		// Fast path: single multi-CPT resolution via direct query.
-		// Replaces get_page_by_path() which internally runs 2-3 queries (path lookup + post_name fallback).
-		if ( ! array_key_exists( $slug, $multi_index ) ) {
-			$multi_index[ $slug ] = frl_cache_remember(
-				'permalinks',
-				'rewriter_cpt_multislug_' . md5( $slug ),
-				function () use ( $slug ) {
-					// Single direct query instead of get_page_by_path() multi-query approach
-					$posts = get_posts(
-						array(
-							'name'           => $slug,
-							'post_type'      => $this->cpt_slugs,
-							'post_status'    => 'publish',
-							'posts_per_page' => 1,
-							'fields'         => 'ids',
-						)
-					);
-					if ( ! empty( $posts ) ) {
-						$post = get_post( $posts[0] );
-						return ( $post && isset( $post->ID, $post->post_type ) )
-							? array(
-								'cpt'  => $post->post_type,
-								'id'   => (int) $post->ID,
-								'name' => basename( $slug ),
-							)
-							: array();
-					}
-					return array();
-				}
-			);
-
-			if ( count( $multi_index ) > 4096 ) {
-				$multi_index = array();
-			}
-		}
-		if ( $multi_index[ $slug ] ) {
+		// Fast path: single multi-CPT resolution via direct query (shared with resolve_request()).
+		if ( $this->resolve_multi_cpt_slug( $slug ) ) {
 			return true;
 		}
 
@@ -385,50 +404,18 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 		$slug       = $pagination['path'];
 		$paged      = $pagination['paged'];
 
-		// Per-request caches. The persistent frl_cache_remember layer is shared with
-		// applies_to_request() via the same cache key; both store ['cpt','id','name'] or [].
+		// Per-request cache for the $slug_hit_map fallback loop below. Note: this static is
+		// method-scoped and intentionally NOT shared with applies_to_request()'s — the two
+		// store different shapes (post-like object here vs. bool there) under the same key.
+		// The multi-CPT fast path below is shared via resolve_multi_cpt_slug() instead.
 		static $slug_hit_map = array();
-		static $multi_index  = array();
 
-		// Fast path: single multi-CPT resolution via direct query.
-		// Replaces get_page_by_path() which internally runs 2-3 queries (path lookup + post_name fallback).
-		if ( ! array_key_exists( $slug, $multi_index ) ) {
-			$multi_index[ $slug ] = frl_cache_remember(
-				'permalinks',
-				'rewriter_cpt_multislug_' . md5( $slug ),
-				function () use ( $slug ) {
-					// Single direct query instead of get_page_by_path() multi-query approach
-					$posts = get_posts(
-						array(
-							'name'           => $slug,
-							'post_type'      => $this->cpt_slugs,
-							'post_status'    => 'publish',
-							'posts_per_page' => 1,
-							'fields'         => 'ids',
-						)
-					);
-					if ( ! empty( $posts ) ) {
-						$post = get_post( $posts[0] );
-						return ( $post && isset( $post->ID, $post->post_type ) )
-							? array(
-								'cpt'  => $post->post_type,
-								'id'   => (int) $post->ID,
-								'name' => basename( $slug ),
-							)
-							: array();
-					}
-					return array();
-				}
-			);
-
-			if ( count( $multi_index ) > 4096 ) {
-				$multi_index = array();
-			}
-		}
-		if ( $multi_index[ $slug ] ) {
-			$cpt  = $multi_index[ $slug ]['cpt'];
+		// Fast path: single multi-CPT resolution via direct query (shared with applies_to_request()).
+		$multi_match = $this->resolve_multi_cpt_slug( $slug );
+		if ( $multi_match ) {
+			$cpt  = $multi_match['cpt'];
 			$post = (object) array(
-				'ID'        => $multi_index[ $slug ]['id'],
+				'ID'        => $multi_match['id'],
 				'post_name' => basename( $slug ),
 				'post_type' => $cpt,
 			);

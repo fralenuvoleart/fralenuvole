@@ -40,11 +40,12 @@ add_action(
 
 		add_menu_page(
 			__( 'Strings translations', 'polylang' ),
-			__( 'Languages', 'polylang' ),
+			__( 'Translations', 'polylang' ),
 			'edit_pages',
 			'mlang_strings',
 			array( PLL(), 'languages_page' ),
-			'dashicons-translation'
+			'dashicons-translation',
+			61
 		);
 	}
 );

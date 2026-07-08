@@ -20,6 +20,11 @@ function frl_post_ajax_import_translations() {
 		wp_send_json_error( array( 'message' => __( 'Security check failed.', FRL_PREFIX ) ) );
 	}
 
+	// Verify capability - this writes term meta / polylang_wpml_strings option, restricted to admins.
+	if ( ! frl_has_access( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You do not have sufficient permissions to perform this action.', FRL_PREFIX ) ) );
+	}
+
 	// Check for upload errors
 	if ( ! isset( $_FILES['translation_file'] ) ) {
 		wp_send_json_error( array( 'message' => __( 'No file data received.', FRL_PREFIX ) ) );
@@ -199,6 +204,12 @@ function frl_post_ajax_import_settings() {
 	// Verify nonce
 	if ( ! isset( $_POST['security'] ) || ! frl_verify_nonce( $_POST['security'], 'ajax_import_nonce' ) ) {
 		wp_send_json_error( array( 'message' => __( 'Security check failed.', FRL_PREFIX ) ) );
+	}
+
+	// Verify capability - this writes arbitrary frl_-prefixed options (including raw-echoed
+	// header_html/footer_html), so it must be restricted to admins, same as the export handlers.
+	if ( ! frl_has_access( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => __( 'You do not have sufficient permissions to perform this action.', FRL_PREFIX ) ) );
 	}
 
 	// Check for upload errors

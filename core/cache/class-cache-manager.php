@@ -624,22 +624,98 @@ class Frl_Cache_Manager {
 	}
 
 	/**
-	 * Get a value from cache, optionally generating it via callback.
+	 * Set multiple values in a single cache group in one batch.
+	 *
+	 * For object-cache backends, this collapses N network round-trips into one via
+	 * wp_cache_set_multiple() (WP 6.0+; falls back to a per-item loop on older cores or
+	 * drop-ins that don't implement it). Intended for callers writing several keys to the
+	 * same group at once (e.g. shutdown-time deferred writes) where the individual TTL is
+	 * uniform. Transient-fallback storage still writes one row-pair per item via
+	 * set_transient() — batching that path would require bypassing WordPress's option
+	 * hooks/autoload/cache-invalidation machinery, which is not done here to avoid
+	 * introducing behavioral regressions for a comparatively rare code path (no external
+	 * object cache configured).
 	 *
 	 * @param string $group Cache group name.
-	 * @param string|array $key Cache key.
-	 * @param callable|null $callback Callback to generate value if not found.
+	 * @param array<string, mixed> $items Map of key => value to store.
 	 * @param int|null $ttl Time to live in seconds (uses group default if null).
-	 * @return mixed|null Cached value, callback result, or null.
+	 * @return bool True on success (or when bypassed/empty).
 	 */
-	public static function get( $group, $key, $callback = null, $ttl = null ) {
-		$cache_key = self::generate_key( $group, $key );
-
-		// Early bypass check
-		if ( self::should_bypass() ) {
-			return is_callable( $callback ) ? $callback() : null;
+	public static function set_multi( string $group, array $items, ?int $ttl = null ): bool {
+		if ( self::should_bypass() || empty( $items ) ) {
+			return true;
 		}
 
+		$ttl = $ttl ?? ( self::$default_ttls[ $group ] ?? self::$default_ttls['default'] );
+
+		$sanitized_items = array();
+		foreach ( $items as $key => $value ) {
+			// Sanitize value for serialization if needed (mirrors set()'s per-value handling).
+			if ( function_exists( 'frl_sanitize_for_serialization' ) ) {
+				$sanitized_value = $value;
+				frl_sanitize_for_serialization( $sanitized_value );
+				try {
+					serialize( $value );
+				} catch ( \Throwable $e ) {
+					$value = $sanitized_value;
+				}
+			} else {
+				try {
+					serialize( $value );
+				} catch ( \Throwable $e ) {
+					// Skip caching unserializable values when sanitizer unavailable.
+					continue;
+				}
+			}
+
+			$cache_key                       = self::generate_key( $group, $key );
+			$sanitized_items[ $cache_key ]    = $value;
+
+			// Store in runtime cache individually (cheap, in-memory).
+			self::set_runtime( $cache_key, $value, $group );
+		}
+
+		if ( empty( $sanitized_items ) ) {
+			return true;
+		}
+
+		if ( self::is_object_cache_truly_functional() ) {
+			if ( function_exists( 'wp_cache_set_multiple' ) ) {
+				$results = wp_cache_set_multiple( $sanitized_items, self::PREFIX . $group, $ttl );
+				return ! in_array( false, $results, true );
+			}
+			// Backend/core doesn't support batch set — fall back to individual calls.
+			$all_ok = true;
+			foreach ( $sanitized_items as $cache_key => $value ) {
+				$all_ok = wp_cache_set( $cache_key, $value, self::PREFIX . $group, $ttl ) && $all_ok;
+			}
+			return $all_ok;
+		}
+
+		if ( self::use_transient_fallback( $group ) ) {
+			$all_ok = true;
+			foreach ( $sanitized_items as $cache_key => $value ) {
+				$all_ok = set_transient( self::PREFIX . $cache_key, $value, $ttl ) && $all_ok;
+			}
+			return $all_ok;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Check runtime + persistent cache layers for an existing value (no callback generation).
+	 *
+	 * Callers MUST verify should_bypass() themselves before calling this — extracted so that
+	 * get() and remember() can share the lookup logic without each re-checking should_bypass()
+	 * (already confirmed false by the caller) on every invocation.
+	 *
+	 * @param string $group Cache group name.
+	 * @param string|array $key Original cache key (pre-generate_key()), needed for is_array() check.
+	 * @param string $cache_key Pre-generated cache key.
+	 * @return mixed|null Cached value, or null if not found in any layer.
+	 */
+	private static function get_cached_value( $group, $key, $cache_key ) {
 		// Check runtime cache
 		$data = self::get_runtime( $cache_key );
 		if ( $data !== null ) {
@@ -669,6 +745,31 @@ class Frl_Cache_Manager {
 				self::set_runtime( $cache_key, $data, $group );
 				return $data;
 			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Get a value from cache, optionally generating it via callback.
+	 *
+	 * @param string $group Cache group name.
+	 * @param string|array $key Cache key.
+	 * @param callable|null $callback Callback to generate value if not found.
+	 * @param int|null $ttl Time to live in seconds (uses group default if null).
+	 * @return mixed|null Cached value, callback result, or null.
+	 */
+	public static function get( $group, $key, $callback = null, $ttl = null ) {
+		$cache_key = self::generate_key( $group, $key );
+
+		// Early bypass check
+		if ( self::should_bypass() ) {
+			return is_callable( $callback ) ? $callback() : null;
+		}
+
+		$data = self::get_cached_value( $group, $key, $cache_key );
+		if ( $data !== null ) {
+			return $data;
 		}
 
 		// Generate new value if needed
@@ -711,8 +812,11 @@ class Frl_Cache_Manager {
 			return is_callable( $callback ) ? $callback() : null;
 		}
 
-		// Check cache first
-		$value = self::get( $group, $key, null );
+		// Check cache first. Uses the shared lookup helper directly (rather than self::get())
+		// since should_bypass() was already confirmed false above — avoids re-evaluating it
+		// a second time on every remember() call, which is the hottest cache entry point.
+		$cache_key = self::generate_key( $group, $key );
+		$value     = self::get_cached_value( $group, $key, $cache_key );
 		if ( $value !== null ) {
 			return $value;
 		}

@@ -146,6 +146,18 @@ function frl_preload_featured_image() {
 		return;
 	}
 
+	// Lazily resolved and shared between the desktop/mobile cache-miss closures below so a
+	// request that misses both caches for the same post only calls get_post_thumbnail_id()
+	// once. Declared here (not inside either closure) so it stays unset — and therefore
+	// free — on the common cache-hit path, where neither closure runs at all.
+	$resolved_thumbnail_id = null;
+	$resolve_thumbnail_id  = function () use ( $post, &$resolved_thumbnail_id ) {
+		if ( $resolved_thumbnail_id === null ) {
+			$resolved_thumbnail_id = get_post_thumbnail_id( $post->ID ) ?: 0;
+		}
+		return $resolved_thumbnail_id;
+	};
+
 	// Cache processed images within a request
 	static $preload_cache = array();
 	if ( isset( $preload_cache[ $post->ID ] ) ) {
@@ -159,8 +171,8 @@ function frl_preload_featured_image() {
 		$preload_data = frl_cache_remember(
 			'postdata',
 			$cache_key,
-			function () use ( $post, $image_size, $extension ) {
-				$thumbnail_id = get_post_thumbnail_id( $post->ID );
+			function () use ( $post, $image_size, $extension, $resolve_thumbnail_id ) {
+				$thumbnail_id = $resolve_thumbnail_id();
 				if ( ! $thumbnail_id ) {
 					return null;
 				}
@@ -233,8 +245,8 @@ function frl_preload_featured_image() {
 		$mobile_data = frl_cache_remember(
 			'postdata',
 			$mobile_cache_key,
-			function () use ( $post, $mobile_size, $extension ) {
-				$thumbnail_id = get_post_thumbnail_id( $post->ID );
+			function () use ( $post, $mobile_size, $extension, $resolve_thumbnail_id ) {
+				$thumbnail_id = $resolve_thumbnail_id();
 				if ( ! $thumbnail_id ) {
 					return null;
 				}
@@ -311,11 +323,19 @@ function frl_defer_css( string $html, string $handle, string $href, string $medi
 		$script = $script_parts[0];
 		if ( is_string( $script ) ) {
 			if ( str_contains( $href, $script ) ) {
-				return str_replace(
-					"media='all'",
-					"data-plugin='" . FRL_NAME . "' data-parsing='defer-css' media='print' onload='this.media=\"all\"'",
-					$html
+				// Quote-agnostic match on the media="all"/media='all' attribute — WP core
+				// currently emits single quotes, but a literal str_replace("media='all'", ...)
+				// would silently no-op (leaving the stylesheet un-deferred, with no error) if a
+				// theme/plugin filtering style_loader_tag ever normalizes to double quotes.
+				$deferred_html = preg_replace_callback(
+					'/media=([\'"])all\1/',
+					function () {
+						return "data-plugin='" . FRL_NAME . "' data-parsing='defer-css' media='print' onload='this.media=\"all\"'";
+					},
+					$html,
+					1
 				);
+				return $deferred_html ?? $html;
 			}
 		}
 	}

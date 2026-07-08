@@ -95,6 +95,22 @@ function frl_cache_set( string $group, string $key, mixed $value, ?int $ttl = nu
 }
 
 /**
+ * Set multiple cached values in a single group in one batch (fewer round-trips than
+ * calling frl_cache_set() per item — see Frl_Cache_Manager::set_multi()).
+ *
+ * @param string $group Cache group
+ * @param array<string, mixed> $items Map of key => value to store
+ * @param int|null $ttl Optional TTL in seconds
+ * @return bool Success
+ */
+function frl_cache_set_multi( string $group, array $items, ?int $ttl = null ): bool {
+	if ( ! frl_cache_is_loaded() ) {
+		return false;
+	}
+	return Frl_Cache_Manager::set_multi( $group, $items, $ttl );
+}
+
+/**
  * Remember and cache value
  * @param string $group Cache group
  * @param string $key Cache key

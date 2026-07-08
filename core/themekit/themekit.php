@@ -191,7 +191,7 @@ function frl_themekit_frontend_body_classes( $classes ) {
 	return frl_cache_remember(
 		'postdata',
 		$cache_key,
-		function () use ( $classes ) {
+		function () use ( $classes, $current_user ) {
 			$queried_object = get_queried_object();
 			$custom_classes = array();
 
@@ -227,7 +227,8 @@ function frl_themekit_frontend_body_classes( $classes ) {
 				}
 			}
 
-			$current_user = frl_get_current_user();
+			// $current_user resolved once by the caller (also used for the cache key above)
+			// and passed in via use() — avoids a second frl_get_current_user() call here.
 			if ( $current_user->ID > 0 ) {
 				$custom_classes[] = 'uid-' . $current_user->ID;
 				$custom_classes[] = 'role-' . implode( '-', $current_user->roles );
