@@ -50,6 +50,10 @@
         border-radius: 4px;
     }
 
+    #widget-admin-actions .button-container:last-child {
+        flex-basis: 100%;
+    }
+
     #widget-admin-actions .button-container:has( .button-primary) {
         filter: saturate(0) brightness(1.8);
         transition: filter 0.35s ease;

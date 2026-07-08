@@ -138,7 +138,7 @@ function frl_render_clear_cache_buttons() {
 		'clear_cache_all',
 		'clear_cache_all button-secondary secondary-important',
 		'Clear Caches (All)',
-		'Including Heavy Groups: ' . implode( ', ', array_map( 'ucfirst', FRL_CACHE_HEAVY_GROUPS ) ),
+		'Clear all plugin caches including Heavy Groups: ' . implode( ', ', array_map( 'ucfirst', FRL_CACHE_HEAVY_GROUPS ) ),
 		'',
 		''
 	);
@@ -158,7 +158,7 @@ function frl_render_admin_actions_buttons() {
 		'clear_cache_hard',
 		'reset_plugin button-primary',
 		'Clear Caches (Hard)',
-		'Clears all Plugin Caches, Transients, and flushes rewrite rules.',
+		'Clears all Plugin Caches, Plugin Transients, and flushes rewrite rules.',
 		'',
 		''
 	);
