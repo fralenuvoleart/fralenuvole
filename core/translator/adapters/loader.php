@@ -16,5 +16,7 @@ require_once __DIR__ . '/interface.php';
 
 if ( frl_is_polylang_active() ) {
 	require_once __DIR__ . '/polylang.php';
+	require_once __DIR__ . '/polylang-admin-access.php';
 }
+
 // elseif ( frl_is_wpml_active() ) { require_once __DIR__ . '/wpml.php'; }
