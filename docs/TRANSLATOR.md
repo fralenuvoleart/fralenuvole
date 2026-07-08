@@ -18,14 +18,14 @@ The system solves the following problems:
 ### Key Components
 - **`Frl_Translation_Service`**: The central hub. Manages caching, batching, and the translation lifecycle.
 - **`Frl_Translation_Adapter_Interface`**: Defines the contract for translation plugins.
-- **`Frl_Polylang_Adapter`**: The current (and only) implementation. Fallback logic is self-contained. Requires its own companion, `adapters/polylang-admin-access.php` (Polylang-only `admin_menu` patch), at the bottom of its own file — the generic module entry point doesn't need to know it exists.
+- **`Frl_Polylang_Adapter`**: The current (and only) implementation. Fallback logic is self-contained. Requires its own companion, `adapters/polylang-admin-access.php` (Polylang-only `admin_menu` patch), at the bottom of its own file.
 - **`field-translator.php`**: The hook-based layer that intercepts WordPress metadata calls to provide transparent translations.
-- **`functions-translator-helpers.php`**: The public API for developers, including the adapter-detection helpers below.
-- **`translator.php`**: Module entry point — requires the interface, `Frl_Polylang_Adapter`, and the service. Nothing here needs to know which companion files an adapter pulls in.
+- **`functions-translator-helpers.php`**: The public API for developers, including `frl_is_polylang_active()`, `frl_is_wpml_active()`, `frl_get_translation_adapter_class()` — reusable detection, called from multiple places.
+- **`translator.php`**: Module entry point — requires the interface, conditionally requires the active adapter inline (one-time logic, not worth a wrapper function since this is its only call site), then requires the service.
 
 ### Adapter Selection: One Source of Truth
 
-`frl_get_translation_adapter_class()` (`includes/helpers/functions-translator-helpers.php`) returns the FQCN of the adapter for the active plugin, or `null` if none is implemented:
+`frl_get_translation_adapter_class()` returns the FQCN for the active plugin, or `null`:
 
 ```php
 function frl_get_translation_adapter_class(): ?string {
@@ -39,11 +39,11 @@ function frl_get_translation_adapter_class(): ?string {
 }
 ```
 
-Two things derive from this single function, so they can never drift apart:
-- `frl_is_multilingual_plugin_active()` — `true` iff it returns non-null. Gates whether the translator module loads (`fralenuvole.php`) and whether `Frl_Translation_Service` can be instantiated.
-- `Frl_Translation_Service::__construct()` — `$this->adapter = new (frl_get_translation_adapter_class())();`, safe unconditionally because the gate above already guarantees a non-null result.
+- `frl_is_multilingual_plugin_active()` — `true` iff this returns non-null. Gates whether the translator module loads (`fralenuvole.php`) and whether `Frl_Translation_Service` can be instantiated.
+- `Frl_Translation_Service::__construct()` — `$this->adapter = new (frl_get_translation_adapter_class())();`, safe unconditionally because the gate above guarantees a non-null result.
+- `translator.php`'s adapter require is a plain `if ( frl_is_polylang_active() ) { require_once ...; }` inline — this is single-call-site bootstrap logic, so it isn't wrapped in its own helper function; it reuses the same `frl_is_polylang_active()` detection function as everything else.
 
-**Adding WPML support:** write `Frl_Wpml_Adapter implements Frl_Translation_Adapter_Interface`, then change one line — the `return null;` in the WPML branch above to `return 'Frl_Wpml_Adapter';`.
+**Adding WPML support:** write `Frl_Wpml_Adapter` in `adapters/wpml.php`, add the `elseif` branch to `frl_get_translation_adapter_class()`, and add the matching `elseif` to the inline require in `translator.php`.
 
 ### Polylang-Only Admin Patch
 
