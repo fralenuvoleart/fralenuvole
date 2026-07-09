@@ -78,19 +78,29 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
+			'section_title_image_optimization'  => array(
+				'label'       => 'Image Optimization',
+				'description' => 'Image Optimization Settings',
+				'type'        => 'section_title',
+			),
 			'image_preload_featured'            => array(
 				'label'             => 'Preload featured images',
-				'description'       => 'Preload featured images for early download above the fold.',
+				'description'       => 'Master switch for featured image preloading.',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
 			'image_preload_featured_responsive' => array(
 				'label'             => ' Preload Link with Responsive Images',
-				'description'       => 'Preload featured images with responsive srcset.',
+				'description'       => 'Off: single image for all viewports. On: responsive srcset for desktop + fixed-size mobile-hero override for FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES (see config-base.php).',
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
+			),
+			'section_title_debloat'  => array(
+				'label'       => 'Debloat HTML',
+				'description' => 'Clean the HTML source from unnecessary tags',
+				'type'        => 'section_title',
 			),
 			'remove_jquery_mig'                 => array(
 				'label'             => 'Remove jQuery Migrate',
