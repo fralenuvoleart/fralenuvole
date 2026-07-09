@@ -78,6 +78,20 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
+			'image_preload_featured'              => array(
+				'label'             => 'Preload featured images',
+				'description'       => 'Preload featured images for early download above the fold.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'image_preload_featured_responsive'   => array(
+				'label'             => ' Preload Link with Responsive Images',
+				'description'       => 'Preload featured images with responsive srcset.',
+				'type'              => 'checkbox',
+				'default'           => 0,
+				'sanitize_callback' => 'absint',
+			),
 			'remove_jquery_mig'                   => array(
 				'label'             => 'Remove jQuery Migrate',
 				'description'       => 'Remove jQuery Migrate compatibility script',
@@ -106,24 +120,10 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'section_title_image_optimization'    => array(
-				'label'       => 'Image Optimization',
-				'description' => 'Image optimization settings for improved performance',
+			'section_title_image_support'    => array(
+				'label'       => 'Image Support',
+				'description' => 'Backend admin support for Images',
 				'type'        => 'section_title',
-			),
-			'image_preload_featured'              => array(
-				'label'             => 'Preload featured images',
-				'description'       => 'Preload featured images for early download above the fold.',
-				'type'              => 'checkbox',
-				'default'           => 1,
-				'sanitize_callback' => 'absint',
-			),
-			'image_preload_featured_responsive'   => array(
-				'label'             => ' Preload Link with Responsive Images',
-				'description'       => 'Preload featured images with responsive srcset.',
-				'type'              => 'checkbox',
-				'default'           => 0,
-				'sanitize_callback' => 'absint',
 			),
 			'image_filename_sanitize'             => array(
 				'label'             => 'Sanitize Filenames',
