@@ -8,4 +8,3 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-

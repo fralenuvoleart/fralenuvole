@@ -224,9 +224,9 @@ function frl_build_responsive_featured_image_preload( int $thumbnail_id, string 
 }
 
 /**
- * Preload the featured image of a singular post. Desktop: single href, or responsive
- * srcset when image_preload_featured_responsive is on. Mobile hero override (responsive
- * mode only) forces a fixed size to counter the srcset's viewport-based downscaling.
+ * Preload the featured image of a singular post. For FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES,
+ * image_preload_featured_responsive controls desktop srcset vs single href + mobile-hero
+ * override. All other post-types always get the responsive srcset, no mobile override.
  */
 function frl_preload_featured_image() {
 	if ( ! is_singular() || ! frl_get_option( 'image_preload_featured' ) ) {
@@ -238,17 +238,12 @@ function frl_preload_featured_image() {
 		return;
 	}
 
-	$responsive = (bool) frl_get_option( 'image_preload_featured_responsive' );
+	$allowed_types = apply_filters( 'frl_hero_mobile_post_types', FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES );
+	$is_hero_type  = in_array( $post->post_type, $allowed_types, true ) || ( in_array( 'home', $allowed_types, true ) && is_front_page() );
 
-	// Mobile-hero eligibility is cheap (constant/filter + in_array) and only applies in
-	// responsive mode, so it's resolved up front to fold into a single cache lookup below.
-	$has_mobile = false;
-	if ( $responsive ) {
-		$allowed_types = apply_filters( 'frl_hero_mobile_post_types', FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES );
-		if ( in_array( $post->post_type, $allowed_types, true ) || ( in_array( 'home', $allowed_types, true ) && is_front_page() ) ) {
-			$has_mobile = true;
-		}
-	}
+	// Only hero post-types honor the option; all others are always responsive, never mobile-split.
+	$responsive = $is_hero_type ? (bool) frl_get_option( 'image_preload_featured_responsive' ) : true;
+	$has_mobile = $is_hero_type && $responsive;
 
 	$image_size  = frl_get_featured_image_size( $post );
 	$mobile_size = $has_mobile ? (string) apply_filters( 'frl_hero_mobile_image_size', FRL_PRELOAD_IMAGE_MOBILE_SIZE, $post ) : '';
