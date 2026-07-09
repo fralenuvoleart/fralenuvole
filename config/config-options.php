@@ -91,8 +91,8 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'absint',
 			),
 			'image_preload_featured_responsive' => array(
-				'label'             => ' Preload Link with Responsive Images',
-				'description'       => 'Only affects FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES (see config-base.php): off = single image, on = responsive srcset + mobile-hero override. All other post-types are always responsive, with no mobile override, regardless of this setting.',
+				'label'             => 'Preload Link with Responsive Images',
+				'description'       => 'Off = single image, On = responsive srcset + mobile-hero override. All other post-types are always responsive, with no mobile override, regardless of this setting.',
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
