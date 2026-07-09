@@ -249,23 +249,19 @@ class Frl_Cache_Manager {
 
 		$cache_key = self::generate_key( $group, $key );
 
-		// Sanitize value for serialization if needed.
-		// Create a sanitized copy first. Only use it if the original is not
-		// directly serializable, to preserve objects (e.g. WP_User, stdClass)
-		// that wp_cache_set() handles internally.
-		if ( function_exists( 'frl_sanitize_for_serialization' ) ) {
-			$sanitized_value = $value;
-			frl_sanitize_for_serialization( $sanitized_value );
-			try {
-				serialize( $value );
-			} catch ( \Throwable $e ) {
-				$value = $sanitized_value;
-			}
-		} else {
-			// Fallback: check if value is serializable
-			try {
-				serialize( $value );
-			} catch ( \Throwable $e ) {
+		// Sanitize value for serialization only if actually needed. Try the
+		// original value first — the vast majority of cached values (scalars,
+		// plain arrays) serialize fine, so sanitizing eagerly on every call
+		// wastes a full recursive walk for nothing. Sanitizing lazily, only
+		// inside the catch, produces byte-identical output to the previous
+		// eager approach (the sanitized copy was never used unless serialize()
+		// on the original threw), with zero work on the common success path.
+		try {
+			serialize( $value );
+		} catch ( \Throwable $e ) {
+			if ( function_exists( 'frl_sanitize_for_serialization' ) ) {
+				frl_sanitize_for_serialization( $value );
+			} else {
 				// Skip caching unserializable values when sanitizer unavailable
 				return true;
 			}
@@ -316,19 +312,15 @@ class Frl_Cache_Manager {
 
 		$sanitized_items = array();
 		foreach ( $items as $key => $value ) {
-			// Sanitize value for serialization if needed (mirrors set()'s per-value handling).
-			if ( function_exists( 'frl_sanitize_for_serialization' ) ) {
-				$sanitized_value = $value;
-				frl_sanitize_for_serialization( $sanitized_value );
-				try {
-					serialize( $value );
-				} catch ( \Throwable $e ) {
-					$value = $sanitized_value;
-				}
-			} else {
-				try {
-					serialize( $value );
-				} catch ( \Throwable $e ) {
+			// Sanitize value for serialization only if actually needed (mirrors
+			// set()'s lazy per-value handling — see set() for the equivalence
+			// rationale: the sanitized copy was only ever used on the catch path).
+			try {
+				serialize( $value );
+			} catch ( \Throwable $e ) {
+				if ( function_exists( 'frl_sanitize_for_serialization' ) ) {
+					frl_sanitize_for_serialization( $value );
+				} else {
 					// Skip caching unserializable values when sanitizer unavailable.
 					continue;
 				}
