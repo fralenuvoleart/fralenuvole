@@ -37,36 +37,36 @@ const FRL_OPTIONS_RUNTIME = array(
  * Plugin default settings array - organized by section
  */
 const FRL_DEFAULT_FIELDS = array(
-	'seo'        => array(
-		'title'  => 'SEO & Schema Settings',
+	'seo'            => array(
+		'title'  => 'SEO & Schema',
 		'fields' => array(
-			'section_title_performance'           => array(
+			'section_title_performance'         => array(
 				'label'       => 'Performance',
 				'description' => 'Performance settings',
 				'type'        => 'section_title',
 			),
-			'critical_css'                        => array(
+			'critical_css'                      => array(
 				'label'             => 'Preload critical Theme CSS',
 				'description'       => 'Preload critical CSS from "critical.css" file in current theme directory',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'deferred_css'                        => array(
+			'deferred_css'                      => array(
 				'label'             => 'Defer non-critical Theme CSS',
 				'description'       => 'Load non-critical styles from "deferred.css" in the current theme directory as non-render-blocking in the footer',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'defer_css'                           => array(
+			'defer_css'                         => array(
 				'label'             => 'Defer other CSS Styles',
 				'description'       => 'Defer other non-critical CSS Styles by handle',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'defer_css_handles'                   => array(
+			'defer_css_handles'                 => array(
 				'label'             => 'Deferred CSS Styles Handles',
 				'description'       => 'One handle per line, also plugin names can be used. The string is matched partially against the full URL of the style.',
 				'type'              => 'textlist',
@@ -78,72 +78,72 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'image_preload_featured'              => array(
+			'image_preload_featured'            => array(
 				'label'             => 'Preload featured images',
 				'description'       => 'Preload featured images for early download above the fold.',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'image_preload_featured_responsive'   => array(
+			'image_preload_featured_responsive' => array(
 				'label'             => ' Preload Link with Responsive Images',
 				'description'       => 'Preload featured images with responsive srcset.',
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'remove_jquery_mig'                   => array(
+			'remove_jquery_mig'                 => array(
 				'label'             => 'Remove jQuery Migrate',
 				'description'       => 'Remove jQuery Migrate compatibility script',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'disable_rest'                        => array(
+			'disable_rest'                      => array(
 				'label'             => 'Disable REST',
 				'description'       => 'Disable REST API for selected endpoints',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'disable_oembed'                      => array(
+			'disable_oembed'                    => array(
 				'label'             => 'Disable oEmbeds',
 				'description'       => 'Disable oEmbeds support',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'disable_emojis'                      => array(
+			'disable_emojis'                    => array(
 				'label'             => 'Disable Emojis',
 				'description'       => 'Disable emojis sitewide',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'section_title_schema'     => array(
+			'section_title_schema'              => array(
 				'label'       => 'Schema Settings',
 				'description' => 'Sitewide settings for structured data',
 				'type'        => 'section_title',
 			),
-			'schema_organization_name' => array(
+			'schema_organization_name'          => array(
 				'label'       => 'Organization name',
 				'description' => 'Organization name for Schema generation',
 				'type'        => 'text',
 				'default'     => 'PB Services Georgia',
 			),
-			'schema_organization_url'  => array(
+			'schema_organization_url'           => array(
 				'label'       => 'Organization URL',
 				'description' => 'Organization URL for Schema generation',
 				'type'        => 'text',
 				'default'     => 'https://pbservices.ge/',
 			),
-			'schema_founder_name'      => array(
+			'schema_founder_name'               => array(
 				'label'       => 'Founder Name',
 				'description' => 'Founder Name for Schema generation',
 				'type'        => 'text',
 				'default'     => 'Rati (Iese) Abashmadze',
 			),
-			'schema_properties'        => array(
+			'schema_properties'                 => array(
 				'label'             => 'Enable Schema Properties',
 				'description'       => 'Master toggle for Schema properties injection.',
 				'type'              => 'checkbox',
@@ -151,7 +151,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'absint',
 				'restricted'        => true,
 			),
-			'schema_generator'         => array(
+			'schema_generator'                  => array(
 				'label'             => 'Enable Schema Generator',
 				'description'       => 'Master toggle for dynamic schema generator (HowTo, FAQ, etc. from ACF/ACPT data).',
 				'type'              => 'checkbox',
@@ -164,7 +164,7 @@ const FRL_DEFAULT_FIELDS = array(
 	'website'        => array(
 		'title'  => 'Website Settings',
 		'fields' => array(
-			'section_title_image_support'    => array(
+			'section_title_image_support'         => array(
 				'label'       => 'Image Support',
 				'description' => 'Backend admin support for Images',
 				'type'        => 'section_title',
@@ -294,12 +294,12 @@ const FRL_DEFAULT_FIELDS = array(
 	'html'           => array(
 		'title'  => 'HTML and Scripts',
 		'fields' => array(
-			'section_title_header'     => array(
+			'section_title_header' => array(
 				'label'       => 'Header',
 				'description' => 'Add custom HTML and scripts to the header',
 				'type'        => 'section_title',
 			),
-			'header_scripts'           => array(
+			'header_scripts'       => array(
 				'label'             => 'Header Scripts',
 				'description'       => 'Absolute path to scripts to include. One per line.',
 				'type'              => 'textlist',
@@ -307,13 +307,13 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'restricted'        => true,
 			),
-			'header_html'              => array(
+			'header_html'          => array(
 				'label'      => 'Header HTML',
 				'type'       => 'html',
 				'default'    => '',
 				'restricted' => true,
 			),
-			'header_html_php'          => array(
+			'header_html_php'      => array(
 				'label'             => 'Allow PHP in header',
 				'description'       => 'Allow PHP code in the header HTML',
 				'type'              => 'checkbox',
@@ -321,12 +321,12 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'absint',
 				'restricted'        => true,
 			),
-			'section_title_footer'     => array(
+			'section_title_footer' => array(
 				'label'       => 'Footer',
 				'description' => 'Add custom HTML and scripts to the footer',
 				'type'        => 'section_title',
 			),
-			'footer_scripts'           => array(
+			'footer_scripts'       => array(
 				'label'             => 'Footer Scripts',
 				'description'       => 'Absolute path to scripts to include. One per line.',
 				'type'              => 'textlist',
@@ -334,13 +334,13 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'restricted'        => true,
 			),
-			'footer_html'              => array(
+			'footer_html'          => array(
 				'label'      => 'Footer HTML',
 				'type'       => 'html',
 				'default'    => '',
 				'restricted' => true,
 			),
-			'footer_html_php'          => array(
+			'footer_html_php'      => array(
 				'label'             => 'Allow PHP in footer',
 				'description'       => 'Allow PHP code in the footer HTML',
 				'type'              => 'checkbox',
