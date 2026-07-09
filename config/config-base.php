@@ -124,3 +124,6 @@ const FRL_PRELOAD_IMAGE_MOBILE_SIZE = '1536x1536';
 
 // Post types that get the mobile hero preload override. Override via frl_hero_mobile_post_types filter.
 const FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES = array( 'home', 'service' );
+
+// Next-gen format variants to try (in order) for preloaded featured images, before falling back to the original file.
+const FRL_PRELOAD_IMAGE_EXT_CANDIDATES = array( '.avif', '.webp' );

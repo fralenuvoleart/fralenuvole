@@ -99,6 +99,25 @@ function frl_build_featured_image_srcset( int $thumbnail_id, string $extension, 
 }
 
 /**
+ * Resolve the first available next-gen format variant for an attachment's original file, else ''.
+ *
+ * @param int $thumbnail_id Attachment ID.
+ * @return string Extension (e.g. '.avif') or '' if no candidate variant exists.
+ */
+function frl_resolve_featured_image_extension( int $thumbnail_id ): string {
+	$original_path = get_attached_file( $thumbnail_id );
+	if ( ! $original_path ) {
+		return '';
+	}
+	foreach ( FRL_PRELOAD_IMAGE_EXT_CANDIDATES as $candidate ) {
+		if ( file_exists( $original_path . $candidate ) ) {
+			return $candidate;
+		}
+	}
+	return '';
+}
+
+/**
  * Output a preload <link> tag for either responsive (imagesrcset/imagesizes) or single (href) preload.
  *
  * @param array  $preload_data Array with 'srcset'/'sizes' (desktop) or 'href' (mobile).
@@ -184,14 +203,6 @@ function frl_build_single_featured_image_preload( int $thumbnail_id, string $siz
  * @return array{srcset: string, sizes: string}|null
  */
 function frl_build_responsive_featured_image_preload( int $thumbnail_id, string $extension, string $image_size ): ?array {
-	// If extension is set but no variant files exist, fall back to original format
-	if ( ! empty( $extension ) ) {
-		$original_path = get_attached_file( $thumbnail_id );
-		if ( ! $original_path || ! file_exists( $original_path . $extension ) ) {
-			$extension = '';
-		}
-	}
-
 	$upload_dir = wp_upload_dir();
 	$srcset     = frl_build_featured_image_srcset(
 		$thumbnail_id,
@@ -248,20 +259,20 @@ function frl_preload_featured_image() {
 		$preload_data = $preload_cache[ $post->ID ];
 	} else {
 		$image_size = frl_get_featured_image_size( $post );
-		$extension  = (string) frl_get_option( 'image_preload_featured_ext' );
 
 		// Cache key includes the responsive flag so toggling the option never serves a
 		// stale, differently-shaped ('srcset' vs 'href') cached entry.
-		$cache_key = frl_generate_cache_key( 'featured_img', (string) $post->ID, $image_size, (string) $extension, $responsive ? 'responsive' : 'single' );
+		$cache_key = frl_generate_cache_key( 'featured_img', (string) $post->ID, $image_size, $responsive ? 'responsive' : 'single' );
 
 		$preload_data = frl_cache_remember(
 			'postdata',
 			$cache_key,
-			function () use ( $image_size, $extension, $resolve_thumbnail_id, $responsive ) {
+			function () use ( $image_size, $resolve_thumbnail_id, $responsive ) {
 				$thumbnail_id = $resolve_thumbnail_id();
 				if ( ! $thumbnail_id ) {
 					return null;
 				}
+				$extension = frl_resolve_featured_image_extension( $thumbnail_id );
 
 				return $responsive
 					? frl_build_responsive_featured_image_preload( $thumbnail_id, $extension, $image_size )
@@ -292,17 +303,17 @@ function frl_preload_featured_image() {
 	if ( $has_mobile ) {
 		$mobile_size = (string) apply_filters( 'frl_hero_mobile_image_size', FRL_PRELOAD_IMAGE_MOBILE_SIZE, $post );
 
-		$extension        = (string) frl_get_option( 'image_preload_featured_ext' );
-		$mobile_cache_key = frl_generate_cache_key( 'featured_img_mobile', (string) $post->ID, $mobile_size, (string) $extension );
+		$mobile_cache_key = frl_generate_cache_key( 'featured_img_mobile', (string) $post->ID, $mobile_size );
 
 		$mobile_data = frl_cache_remember(
 			'postdata',
 			$mobile_cache_key,
-			function () use ( $mobile_size, $extension, $resolve_thumbnail_id ) {
+			function () use ( $mobile_size, $resolve_thumbnail_id ) {
 				$thumbnail_id = $resolve_thumbnail_id();
 				if ( ! $thumbnail_id ) {
 					return null;
 				}
+				$extension = frl_resolve_featured_image_extension( $thumbnail_id );
 
 				return frl_build_single_featured_image_preload( $thumbnail_id, $mobile_size, $extension );
 			}

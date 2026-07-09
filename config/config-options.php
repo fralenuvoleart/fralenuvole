@@ -125,13 +125,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'image_preload_featured_ext'          => array(
-				'label'             => 'Add extension to preloaded image',
-				'description'       => 'Add a file extension to the preloaded featured image URL if the file exists (e.g. .avif). Leave blank to use the original image URL.',
-				'type'              => 'text',
-				'default'           => '',
-				'sanitize_callback' => 'sanitize_text_field',
-			),
 			'image_filename_sanitize'             => array(
 				'label'             => 'Sanitize Filenames',
 				'description'       => 'Sanitize filename and title of uploaded images to readable format.',

@@ -69,25 +69,17 @@ function frl_clear_post_cache( $post_id ) {
 	// Bump post cache version to auto-invalidate all post-specific shortcode caches
 	update_post_meta( $post_id, '_frl_post_version', time() );
 
-	// Clear featured image cache (all extension + responsive/single variants).
-	$image_size           = frl_get_featured_image_size( $post_id );
-	$extensions           = array( '' ); // Always clear the no-extension variant
-	$configured_extension = frl_get_option( 'image_preload_featured_ext' );
-	if ( ! empty( $configured_extension ) ) {
-		$extensions[] = $configured_extension;
+	// Clear featured image cache (responsive/single variants; extension is auto-detected, not keyed).
+	$image_size = frl_get_featured_image_size( $post_id );
+	foreach ( array( 'responsive', 'single' ) as $variant ) {
+		$cache_key = frl_generate_cache_key( 'featured_img', (string) $post_id, $image_size, $variant );
+		frl_cache_clear( 'postdata', $cache_key );
 	}
 
-	foreach ( $extensions as $ext ) {
-		foreach ( array( 'responsive', 'single' ) as $variant ) {
-			$cache_key = frl_generate_cache_key( 'featured_img', (string) $post_id, $image_size, $ext, $variant );
-			frl_cache_clear( 'postdata', $cache_key );
-		}
-
-		// Clear mobile hero preload cache (fixed size, see FRL_PRELOAD_IMAGE_MOBILE_SIZE).
-		$mobile_size = (string) apply_filters( 'frl_hero_mobile_image_size', FRL_PRELOAD_IMAGE_MOBILE_SIZE, get_post( $post_id ) );
-		$mobile_key  = frl_generate_cache_key( 'featured_img_mobile', (string) $post_id, $mobile_size, $ext );
-		frl_cache_clear( 'postdata', $mobile_key );
-	}
+	// Clear mobile hero preload cache (fixed size, see FRL_PRELOAD_IMAGE_MOBILE_SIZE).
+	$mobile_size = (string) apply_filters( 'frl_hero_mobile_image_size', FRL_PRELOAD_IMAGE_MOBILE_SIZE, get_post( $post_id ) );
+	$mobile_key  = frl_generate_cache_key( 'featured_img_mobile', (string) $post_id, $mobile_size );
+	frl_cache_clear( 'postdata', $mobile_key );
 }
 
 /**
