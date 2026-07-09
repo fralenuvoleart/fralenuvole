@@ -12,6 +12,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+add_filter( 'pll_get_post_types', 'frl_making_wp_navigation_translatable', 10, 2 );
+add_filter( 'block_type_metadata_settings', 'frl_render_block_core_navigation_translation', 10, 2 );
+add_action( 'init', 'frl_nav_menu_custom_urls_init', 20 );
+
 /**
  * Registers the 'wp_navigation' post type as translatable.
  *
@@ -70,6 +74,7 @@ function frl_render_block_core_navigation_translation( $settings, $metadata ) {
 				$cache_key,
 				function () use ( $nav_id, $current_lang ) {
 					// Fetch translated post ID using Polylang
+					/** @disregard P1010 Undefined function — Polylang API */
 					return pll_get_post( $nav_id, $current_lang );
 				}
 			);

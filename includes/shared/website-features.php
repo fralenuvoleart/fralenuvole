@@ -13,6 +13,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+add_action( 'init', 'frl_disable_oembed_discovery', 5, 0 );
+add_action( 'pre_get_posts', 'frl_alter_query', 10, 1 );
+
 /**
  * Disables selected WordPress core features based on plugin options.
  *

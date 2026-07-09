@@ -9,9 +9,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Fralenuvole
  * performance.php - Performance optimization logic and hooks.
  */
+
+add_action( 'wp_head', 'frl_add_critical_css', -999, 0 );
+add_action( 'wp_footer', 'frl_add_deferred_css', 1, 0 );
+add_filter( 'style_loader_tag', 'frl_defer_css', 10, 4 );
+
 add_action( 'wp_head', 'frl_preload_featured_image', 0, 0 );
 add_action( 'wp_default_scripts', 'frl_remove_jquery_migrate', 10, 1 );
-add_filter( 'style_loader_tag', 'frl_defer_css', 10, 4 );
+
 
 /**
  * Injects critical CSS into the document head.
