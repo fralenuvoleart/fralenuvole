@@ -69,17 +69,17 @@ function frl_clear_post_cache( $post_id ) {
 	// Bump post cache version to auto-invalidate all post-specific shortcode caches
 	update_post_meta( $post_id, '_frl_post_version', time() );
 
-	// Clear featured image cache (responsive/single variants; extension is auto-detected, not keyed).
-	$image_size = frl_get_featured_image_size( $post_id );
-	foreach ( array( 'responsive', 'single' ) as $variant ) {
-		$cache_key = frl_generate_cache_key( 'featured_img', (string) $post_id, $image_size, $variant );
-		frl_cache_clear( 'postdata', $cache_key );
-	}
-
-	// Clear mobile hero preload cache (fixed size, see FRL_PRELOAD_IMAGE_MOBILE_SIZE).
+	// Clear featured image cache. Desktop+mobile share one entry per (variant, mobile_size)
+	// combo (see frl_preload_featured_image()) — clear both mobile_size states since
+	// eligibility depends on frontend-only context (is_front_page()) not available here.
+	$image_size  = frl_get_featured_image_size( $post_id );
 	$mobile_size = (string) apply_filters( 'frl_hero_mobile_image_size', FRL_PRELOAD_IMAGE_MOBILE_SIZE, get_post( $post_id ) );
-	$mobile_key  = frl_generate_cache_key( 'featured_img_mobile', (string) $post_id, $mobile_size );
-	frl_cache_clear( 'postdata', $mobile_key );
+	foreach ( array( 'responsive', 'single' ) as $variant ) {
+		foreach ( array( '', $mobile_size ) as $m_size ) {
+			$cache_key = frl_generate_cache_key( 'featured_img', (string) $post_id, $image_size, $variant, $m_size );
+			frl_cache_clear( 'postdata', $cache_key );
+		}
+	}
 }
 
 /**

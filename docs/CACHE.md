@@ -434,7 +434,7 @@ This prevents collisions between post IDs and term IDs that may use the same num
 2. **Permalinks:** `post_{$post_id}` key
 3. **Metafields:** All tracked translated meta keys for the post
 4. **Shortcodes:** Language switcher key (`langswitcher_{type}_post_{$post_id}`)
-5. **Postdata (featured image):** `featured_img_{$post_id}_{$size}_{responsive|single}` (both variants; extension is auto-detected at render time, not keyed) + mobile hero variant (`featured_img_mobile_{$post_id}_{$size}`)
+5. **Postdata (featured image):** `featured_img_{$post_id}_{$size}_{responsive|single}_{$mobile_size}` — one combined entry per (variant, mobile_size) pair holding both desktop and mobile preload data (single object-cache round-trip per page view); extension is auto-detected at render time, not keyed. Both mobile_size states ('' and resolved) are cleared since eligibility depends on frontend-only context.
 
 ---
 

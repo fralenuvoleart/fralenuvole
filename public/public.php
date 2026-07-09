@@ -238,54 +238,11 @@ function frl_preload_featured_image() {
 		return;
 	}
 
-	// Lazily resolved and shared between the desktop/mobile cache-miss closures below so a
-	// request that misses both caches for the same post only calls get_post_thumbnail_id()
-	// once. Declared here (not inside either closure) so it stays unset — and therefore
-	// free — on the common cache-hit path, where neither closure runs at all.
-	$resolved_thumbnail_id = null;
-	$resolve_thumbnail_id  = function () use ( $post, &$resolved_thumbnail_id ) {
-		if ( $resolved_thumbnail_id === null ) {
-			$resolved_thumbnail_id = get_post_thumbnail_id( $post->ID ) ?: 0;
-		}
-		return $resolved_thumbnail_id;
-	};
-
-	// Read once: used for desktop preload and to gate the mobile-hero override below.
 	$responsive = (bool) frl_get_option( 'image_preload_featured_responsive' );
 
-	// Cache processed images within a request
-	static $preload_cache = array();
-	if ( isset( $preload_cache[ $post->ID ] ) ) {
-		$preload_data = $preload_cache[ $post->ID ];
-	} else {
-		$image_size = frl_get_featured_image_size( $post );
-
-		// Cache key includes the responsive flag so toggling the option never serves a
-		// stale, differently-shaped ('srcset' vs 'href') cached entry.
-		$cache_key = frl_generate_cache_key( 'featured_img', (string) $post->ID, $image_size, $responsive ? 'responsive' : 'single' );
-
-		$preload_data = frl_cache_remember(
-			'postdata',
-			$cache_key,
-			function () use ( $image_size, $resolve_thumbnail_id, $responsive ) {
-				$thumbnail_id = $resolve_thumbnail_id();
-				if ( ! $thumbnail_id ) {
-					return null;
-				}
-				$extension = frl_resolve_featured_image_extension( $thumbnail_id );
-
-				return $responsive
-					? frl_build_responsive_featured_image_preload( $thumbnail_id, $extension, $image_size )
-					: frl_build_single_featured_image_preload( $thumbnail_id, $image_size, $extension );
-			}
-		);
-
-		$preload_cache[ $post->ID ] = $preload_data;
-	}
-
-	// Mobile-hero override only applies in responsive mode — no-op otherwise.
+	// Mobile-hero eligibility is cheap (constant/filter + in_array) and only applies in
+	// responsive mode, so it's resolved up front to fold into a single cache lookup below.
 	$has_mobile = false;
-
 	if ( $responsive ) {
 		$allowed_types = apply_filters( 'frl_hero_mobile_post_types', FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES );
 		if ( in_array( $post->post_type, $allowed_types, true ) || ( in_array( 'home', $allowed_types, true ) && is_front_page() ) ) {
@@ -293,35 +250,49 @@ function frl_preload_featured_image() {
 		}
 	}
 
-	$desktop_media = $has_mobile ? '(min-width: 768px)' : '';
+	$image_size  = frl_get_featured_image_size( $post );
+	$mobile_size = $has_mobile ? (string) apply_filters( 'frl_hero_mobile_image_size', FRL_PRELOAD_IMAGE_MOBILE_SIZE, $post ) : '';
 
+	// Desktop + mobile in one cache entry — one object-cache round-trip per page view
+	// instead of two, on every visit (this is the hot path; cache-miss cost below only
+	// happens once per post per cache-invalidation cycle).
+	$cache_key = frl_generate_cache_key( 'featured_img', (string) $post->ID, $image_size, $responsive ? 'responsive' : 'single', $mobile_size );
+
+	$data = frl_cache_remember(
+		'postdata',
+		$cache_key,
+		function () use ( $post, $image_size, $mobile_size, $responsive ) {
+			$thumbnail_id = get_post_thumbnail_id( $post->ID ) ?: 0;
+			if ( ! $thumbnail_id ) {
+				return array(
+					'desktop' => null,
+					'mobile'  => null,
+				);
+			}
+			$extension = frl_resolve_featured_image_extension( $thumbnail_id );
+
+			$desktop = $responsive
+				? frl_build_responsive_featured_image_preload( $thumbnail_id, $extension, $image_size )
+				: frl_build_single_featured_image_preload( $thumbnail_id, $image_size, $extension );
+
+			$mobile = $mobile_size !== '' ? frl_build_single_featured_image_preload( $thumbnail_id, $mobile_size, $extension ) : null;
+
+			return array(
+				'desktop' => $desktop,
+				'mobile'  => $mobile,
+			);
+		}
+	);
+
+	$desktop_media = $has_mobile ? '(min-width: 768px)' : '';
+	$preload_data  = $data['desktop'];
 	if ( $preload_data && ( ! empty( $preload_data['srcset'] ) || ! empty( $preload_data['href'] ) ) ) {
 		frl_output_preload_link( $preload_data, $desktop_media );
 	}
 
-	// Mobile hero preload: forces a fixed size, overriding the responsive srcset's pick.
-	if ( $has_mobile ) {
-		$mobile_size = (string) apply_filters( 'frl_hero_mobile_image_size', FRL_PRELOAD_IMAGE_MOBILE_SIZE, $post );
-
-		$mobile_cache_key = frl_generate_cache_key( 'featured_img_mobile', (string) $post->ID, $mobile_size );
-
-		$mobile_data = frl_cache_remember(
-			'postdata',
-			$mobile_cache_key,
-			function () use ( $mobile_size, $resolve_thumbnail_id ) {
-				$thumbnail_id = $resolve_thumbnail_id();
-				if ( ! $thumbnail_id ) {
-					return null;
-				}
-				$extension = frl_resolve_featured_image_extension( $thumbnail_id );
-
-				return frl_build_single_featured_image_preload( $thumbnail_id, $mobile_size, $extension );
-			}
-		);
-
-		if ( $mobile_data && ! empty( $mobile_data['href'] ) ) {
-			frl_output_preload_link( $mobile_data, '(max-width: 767px)', '-mobile' );
-		}
+	$mobile_data = $data['mobile'];
+	if ( $mobile_data && ! empty( $mobile_data['href'] ) ) {
+		frl_output_preload_link( $mobile_data, '(max-width: 767px)', '-mobile' );
 	}
 }
 
