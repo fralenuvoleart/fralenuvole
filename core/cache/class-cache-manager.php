@@ -249,13 +249,8 @@ class Frl_Cache_Manager {
 
 		$cache_key = self::generate_key( $group, $key );
 
-		// Sanitize value for serialization only if actually needed. Try the
-		// original value first — the vast majority of cached values (scalars,
-		// plain arrays) serialize fine, so sanitizing eagerly on every call
-		// wastes a full recursive walk for nothing. Sanitizing lazily, only
-		// inside the catch, produces byte-identical output to the previous
-		// eager approach (the sanitized copy was never used unless serialize()
-		// on the original threw), with zero work on the common success path.
+		// Sanitize lazily (only on failure) — identical output, no wasted work
+		// on the common case where $value already serializes fine.
 		try {
 			serialize( $value );
 		} catch ( \Throwable $e ) {
@@ -312,9 +307,7 @@ class Frl_Cache_Manager {
 
 		$sanitized_items = array();
 		foreach ( $items as $key => $value ) {
-			// Sanitize value for serialization only if actually needed (mirrors
-			// set()'s lazy per-value handling — see set() for the equivalence
-			// rationale: the sanitized copy was only ever used on the catch path).
+			// Sanitize lazily (only on failure) — mirrors set()'s handling.
 			try {
 				serialize( $value );
 			} catch ( \Throwable $e ) {

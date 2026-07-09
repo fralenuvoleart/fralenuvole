@@ -247,9 +247,11 @@ function frl_modules_module_get_default_config( $module_key ) {
 		$config_data = ( function () use ( $module_config_file_path, $module_key ) {
 			include $module_config_file_path; // Use the validated path
 
-			$var_name = frl_prefix( $module_key . '_default_fields' );
-			if ( frl_is_array_not_empty( $$var_name ) ) {
-				return $$var_name;
+			// isset() avoids an undefined-variable warning if a module omits this var.
+			$var_name    = frl_prefix( $module_key . '_default_fields' );
+			$field_value = isset( $$var_name ) ? $$var_name : array();
+			if ( frl_is_array_not_empty( $field_value ) ) {
+				return $field_value;
 			}
 			return array();
 		} )();
