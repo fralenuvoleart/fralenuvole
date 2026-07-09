@@ -307,8 +307,13 @@ function frl_heartbeat_init(): void {
 	* @return array Modified heartbeat settings.
 	*/
 function frl_heartbeat_settings( array $settings ): array {
+	// Heartbeat pings via admin-ajax.php — settings already correct, pass through.
+	if ( wp_doing_ajax() ) {
+		return $settings;
+	}
+
 	// Frontend: throttle to configured interval.
-	if ( ! is_admin() ) {
+	if ( ! frl_is_admin() ) {
 		$interval = (int) frl_get_option( 'heartbeat_frontend_interval' );
 
 		if ( $interval <= 0 ) {
