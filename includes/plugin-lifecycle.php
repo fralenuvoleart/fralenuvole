@@ -75,7 +75,18 @@ function frl_auto_backup_on_upgrade(): void {
 
 	if ( ! is_dir( $backups_dir ) ) {
 		wp_mkdir_p( $backups_dir );
-		file_put_contents( $backups_dir . '/.htaccess', "Order deny,allow\nDeny from all\n" );
+		// Dual syntax: 'Require all denied' is Apache 2.4+; the IfModule fallback
+		// keeps the directory protected on Apache 2.2 (mod_authz_core absent).
+		file_put_contents(
+			$backups_dir . '/.htaccess',
+			"<IfModule mod_authz_core.c>\n" .
+			"\tRequire all denied\n" .
+			"</IfModule>\n" .
+			"<IfModule !mod_authz_core.c>\n" .
+			"\tOrder deny,allow\n" .
+			"\tDeny from all\n" .
+			"</IfModule>\n"
+		);
 		file_put_contents( $backups_dir . '/index.php', '<?php // Silence is golden.' );
 	}
 
@@ -89,7 +100,9 @@ function frl_auto_backup_on_upgrade(): void {
 
 	$settings = frl_prepare_settings_for_export( frl_get_plugin_options_db() );
 
-	$domain   = sanitize_file_name( parse_url( get_site_url(), PHP_URL_HOST ) );
+	// parse_url() can return null for a malformed URL; fall back to 'unknown'
+	// rather than passing null to sanitize_file_name() (deprecated in PHP 8.1+).
+	$domain   = sanitize_file_name( parse_url( get_site_url(), PHP_URL_HOST ) ?: 'unknown' );
 	$filename = $domain . '-frl-settings-' . gmdate( 'Ymd-His' ) . '.json';
 	$filepath = $backups_dir . '/' . $filename;
 
