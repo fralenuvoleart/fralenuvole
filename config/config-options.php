@@ -37,8 +37,8 @@ const FRL_OPTIONS_RUNTIME = array(
  * Plugin default settings array - organized by section
  */
 const FRL_DEFAULT_FIELDS = array(
-	'website'        => array(
-		'title'  => 'Website Settings',
+	'seo'        => array(
+		'title'  => 'SEO & Schema Settings',
 		'fields' => array(
 			'section_title_performance'           => array(
 				'label'       => 'Performance',
@@ -120,6 +120,50 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
+			'section_title_schema'     => array(
+				'label'       => 'Schema Settings',
+				'description' => 'Sitewide settings for structured data',
+				'type'        => 'section_title',
+			),
+			'schema_organization_name' => array(
+				'label'       => 'Organization name',
+				'description' => 'Organization name for Schema generation',
+				'type'        => 'text',
+				'default'     => 'PB Services Georgia',
+			),
+			'schema_organization_url'  => array(
+				'label'       => 'Organization URL',
+				'description' => 'Organization URL for Schema generation',
+				'type'        => 'text',
+				'default'     => 'https://pbservices.ge/',
+			),
+			'schema_founder_name'      => array(
+				'label'       => 'Founder Name',
+				'description' => 'Founder Name for Schema generation',
+				'type'        => 'text',
+				'default'     => 'Rati (Iese) Abashmadze',
+			),
+			'schema_properties'        => array(
+				'label'             => 'Enable Schema Properties',
+				'description'       => 'Master toggle for Schema properties injection.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+				'restricted'        => true,
+			),
+			'schema_generator'         => array(
+				'label'             => 'Enable Schema Generator',
+				'description'       => 'Master toggle for dynamic schema generator (HowTo, FAQ, etc. from ACF/ACPT data).',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+				'restricted'        => true,
+			),
+		),
+	),
+	'website'        => array(
+		'title'  => 'Website Settings',
+		'fields' => array(
 			'section_title_image_support'    => array(
 				'label'       => 'Image Support',
 				'description' => 'Backend admin support for Images',
@@ -301,45 +345,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'description'       => 'Allow PHP code in the footer HTML',
 				'type'              => 'checkbox',
 				'default'           => 0,
-				'sanitize_callback' => 'absint',
-				'restricted'        => true,
-			),
-			'section_title_schema'     => array(
-				'label'       => 'Schema Settings',
-				'description' => 'Sitewide settings for structured data',
-				'type'        => 'section_title',
-			),
-			'schema_organization_name' => array(
-				'label'       => 'Organization name',
-				'description' => 'Organization name for Schema generation',
-				'type'        => 'text',
-				'default'     => 'PB Services Georgia',
-			),
-			'schema_organization_url'  => array(
-				'label'       => 'Organization URL',
-				'description' => 'Organization URL for Schema generation',
-				'type'        => 'text',
-				'default'     => 'https://pbservices.ge/',
-			),
-			'schema_founder_name'      => array(
-				'label'       => 'Founder Name',
-				'description' => 'Founder Name for Schema generation',
-				'type'        => 'text',
-				'default'     => 'Rati (Iese) Abashmadze',
-			),
-			'schema_properties'        => array(
-				'label'             => 'Enable Schema Properties',
-				'description'       => 'Master toggle for Schema properties injection.',
-				'type'              => 'checkbox',
-				'default'           => 1,
-				'sanitize_callback' => 'absint',
-				'restricted'        => true,
-			),
-			'schema_generator'         => array(
-				'label'             => 'Enable Schema Generator',
-				'description'       => 'Master toggle for dynamic schema generator (HowTo, FAQ, etc. from ACF/ACPT data).',
-				'type'              => 'checkbox',
-				'default'           => 1,
 				'sanitize_callback' => 'absint',
 				'restricted'        => true,
 			),
