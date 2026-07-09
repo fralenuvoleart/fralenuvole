@@ -80,3 +80,30 @@ Administrators (manage_options):
 - Reset Ignored Plugins
 - Clear Website Transients
 - Flush Rewrite Rules
+
+KNOWN LIMITATION (UNCONFIRMED, NOT PATCHED)
+------------------------------------------------
+frl_is_admin() (includes/helpers/functions-access-control.php) requires BOTH
+`WP_ADMIN` (WordPress core constant, set by which wp-admin/*.php file is
+executing) AND `str_contains($_SERVER['REQUEST_URI'], '/wp-admin/')` before
+classifying a request as an admin page load. `WP_ADMIN` alone is already the
+same signal WordPress core's own is_admin() trusts — it does not depend on
+the visible URL at all. ANDing it with a URL substring check can only narrow
+that signal, never widen it, so this could theoretically produce a false
+negative (a real admin-area request misclassified as frontend) on hosting
+setups where the executing file is genuinely in wp-admin/ but the request
+URI the plugin sees doesn't literally contain "/wp-admin/" (e.g. certain
+reverse-proxy/rewrite configurations). Investigated in response to a report
+of possible interaction with the WPS Hide Login plugin — confirmed that WPS
+Hide Login does NOT rename the dashboard URL for an authenticated session
+(only unauthenticated wp-login.php/wp-admin requests are intercepted), so
+that specific plugin is not expected to trigger this path.
+
+Not patched: frl_is_admin() gates 9+ independent call sites (frontend
+component/script loading via frl_is_valid_frontend_page_request(), MU-plugin
+plugin-exclusion frontend/backend detection, subdomain-adapter
+should_transform(), schema generation, cache preload group selection, and
+more) with no automated test suite to catch a regression across all of them.
+No concrete reproduction of this edge case has been observed. Left as-is
+until an actual failure is reproduced — do not speculatively change this
+logic without a confirmed repro case.

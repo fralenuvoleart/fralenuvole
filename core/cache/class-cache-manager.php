@@ -1219,6 +1219,8 @@ class Frl_Cache_Manager {
 	 */
 	private static function reset_options_caches( &$stats ) {
 		// If already reset in this request, skip redundant operations.
+		// __CLASS__ is valid here (method of this class). If switching to
+		// __METHOD__, first confirm no other method reuses __CLASS__ as a guard key.
 		if ( frl_is_already_running( __CLASS__ ) ) {
 			return;
 		}
