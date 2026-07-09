@@ -118,3 +118,9 @@ const FRL_REST_ENDPOINTS = array(
 
 // PHP 8.0+ error code for errors suppressed with the @ operator.
 const FRL_PHP8_SUPPRESSED_ERROR_CODE = 4437;
+
+// Mobile hero preload size — fixed by breakpoint/DPR math, not per-site. Override via frl_hero_mobile_image_size filter.
+const FRL_PRELOAD_IMAGE_MOBILE_SIZE = '1536x1536';
+
+// Post types that get the mobile hero preload override. Override via frl_hero_mobile_post_types filter.
+const FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES = array( 'home', 'service' );

@@ -57,6 +57,11 @@ Token budget: graph is cost-justified only when sessions involve
 - **CRITICAL RULE: Do not re-loop same topic over and over again.** If you already have the context, use it. Excessive file I/O wastes time and frustrates the user.
 - **CRITICAL RULE: If a fix causes a regression, revert immediately and report. Do not design "v2" without explicit user approval.** Let the user decide the next step.
 
+## 🚫 COMMENT/DOCBLOCK VERBOSITY GUARDRAIL (FAILURE RECORD)
+- **Root cause of failure:** Added multi-sentence rationale essays to code comments, docblocks, and option descriptions instead of concise one-liners, bloating every touched file.
+- **CRITICAL RULE: Comments/docblocks/descriptions = 1 short line stating what+why. Never multi-sentence paragraphs.** Detailed rationale belongs in the chat response, not permanently duplicated in the file.
+- **CRITICAL RULE: Match the existing file's comment density.** If surrounding comments are one-liners, new comments must be one-liners too — do not introduce a denser style than what's already there.
+
 ## 🚫 LOOP PREVENTION (ENFORCED LIMITS)
 - **switch_mode LIMIT: 1 per task.** Call `switch_mode` exactly once — at the natural conclusion of planning, after the user has approved the plan. Never call it as a fallback when the user is frustrated, never call it to "keep going," and never call it a second time.
 - **File read LIMIT: max 5 unique files per investigation.** Do not re-read files you've already read in the same session. Before reading a new file, check: "do I already have this information from a previous read?"

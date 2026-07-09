@@ -130,17 +130,13 @@ function frl_output_preload_link( array $preload_data, string $media = '', strin
 }
 
 /**
- * Build non-responsive (single href) featured-image preload data for one attachment size.
- *
- * Cheap by design: one `wp_get_attachment_image_src()` lookup plus an optional per-size
- * extension-variant check — no enumeration of every registered intermediate size. Used for
- * the desktop preload when `image_preload_featured_responsive` is disabled, and always for
- * the mobile hero preload (which targets exactly one configured size regardless of that option).
+ * Build a single-href featured-image preload (no srcset enumeration). Used for desktop
+ * when responsive is off, and always for the mobile hero preload.
  *
  * @param int    $thumbnail_id Attachment ID.
- * @param string $size         WP image size name (e.g. 'full', 'large', a registered custom size).
- * @param string $extension    File extension to prefer (e.g. '.avif'), empty for original format.
- * @return array{href: string}|null Preload data, or null if no image src could be resolved.
+ * @param string $size         WP image size name.
+ * @param string $extension    File extension to prefer, empty for original format.
+ * @return array{href: string}|null
  */
 function frl_build_single_featured_image_preload( int $thumbnail_id, string $size, string $extension ): ?array {
 	$img_src = wp_get_attachment_image_src( $thumbnail_id, $size );
@@ -182,15 +178,10 @@ function frl_build_single_featured_image_preload( int $thumbnail_id, string $siz
 /**
  * Build responsive (imagesrcset/imagesizes) featured-image preload data.
  *
- * More expensive than {@see frl_build_single_featured_image_preload()}: enumerates every
- * registered intermediate size via {@see frl_build_featured_image_srcset()} and checks disk
- * for each when an extension variant is requested. Only invoked when
- * `image_preload_featured_responsive` is enabled.
- *
  * @param int    $thumbnail_id Attachment ID.
- * @param string $extension    File extension to prefer (e.g. '.avif'), empty for original format.
- * @param string $image_size   WP image size name used to resolve the `sizes` attribute.
- * @return array{srcset: string, sizes: string}|null Preload data, or null if no srcset could be built.
+ * @param string $extension    File extension to prefer, empty for original format.
+ * @param string $image_size   WP image size name for the `sizes` attribute.
+ * @return array{srcset: string, sizes: string}|null
  */
 function frl_build_responsive_featured_image_preload( int $thumbnail_id, string $extension, string $image_size ): ?array {
 	// If extension is set but no variant files exist, fall back to original format
@@ -222,14 +213,9 @@ function frl_build_responsive_featured_image_preload( int $thumbnail_id, string 
 }
 
 /**
- * Preload the featured image of a singular post, using an optional file extension (e.g., .avif, .webp).
- *
- * Outputs up to two <link> tags:
- * - Desktop: single href by default, or responsive imagesrcset/imagesizes when
- *   `image_preload_featured_responsive` is enabled (with media="(min-width: 768px)" when
- *   mobile is active). Additive by design — the more expensive responsive srcset computation
- *   only runs when the option is explicitly turned on.
- * - Mobile:  single href targeting a configurable thumbnail size with media="(max-width: 767px)".
+ * Preload the featured image of a singular post. Desktop: single href, or responsive
+ * srcset when image_preload_featured_responsive is on. Mobile hero override (responsive
+ * mode only) forces a fixed size to counter the srcset's viewport-based downscaling.
  */
 function frl_preload_featured_image() {
 	if ( ! is_singular() || ! frl_get_option( 'image_preload_featured' ) ) {
@@ -253,6 +239,9 @@ function frl_preload_featured_image() {
 		return $resolved_thumbnail_id;
 	};
 
+	// Read once: used for desktop preload and to gate the mobile-hero override below.
+	$responsive = (bool) frl_get_option( 'image_preload_featured_responsive' );
+
 	// Cache processed images within a request
 	static $preload_cache = array();
 	if ( isset( $preload_cache[ $post->ID ] ) ) {
@@ -260,7 +249,6 @@ function frl_preload_featured_image() {
 	} else {
 		$image_size = frl_get_featured_image_size( $post );
 		$extension  = (string) frl_get_option( 'image_preload_featured_ext' );
-		$responsive = (bool) frl_get_option( 'image_preload_featured_responsive' );
 
 		// Cache key includes the responsive flag so toggling the option never serves a
 		// stale, differently-shaped ('srcset' vs 'href') cached entry.
@@ -284,19 +272,12 @@ function frl_preload_featured_image() {
 		$preload_cache[ $post->ID ] = $preload_data;
 	}
 
-	static $hero_mobile_cache = null;
-	if ( $hero_mobile_cache === null ) {
-		$hero_mobile_raw   = frl_get_option( 'image_preload_hero_mobile' );
-		$hero_mobile_cache = frl_textlist_to_array( $hero_mobile_raw );
-	}
-	$hero_mobile_list = $hero_mobile_cache;
-	$has_mobile       = false;
+	// Mobile-hero override only applies in responsive mode — no-op otherwise.
+	$has_mobile = false;
 
-	if ( ! empty( $hero_mobile_list ) ) {
-		$allowed_types = array_column( $hero_mobile_list, 0 );
-		if ( in_array( $post->post_type, $allowed_types, true ) ) {
-			$has_mobile = true;
-		} elseif ( in_array( 'home', $allowed_types, true ) && is_front_page() ) {
+	if ( $responsive ) {
+		$allowed_types = apply_filters( 'frl_hero_mobile_post_types', FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES );
+		if ( in_array( $post->post_type, $allowed_types, true ) || ( in_array( 'home', $allowed_types, true ) && is_front_page() ) ) {
 			$has_mobile = true;
 		}
 	}
@@ -307,13 +288,9 @@ function frl_preload_featured_image() {
 		frl_output_preload_link( $preload_data, $desktop_media );
 	}
 
-	// Mobile hero preload: always single href targeting a specific thumbnail size,
-	// regardless of image_preload_featured_responsive (mobile never needs a srcset).
+	// Mobile hero preload: forces a fixed size, overriding the responsive srcset's pick.
 	if ( $has_mobile ) {
-		$mobile_size = (string) frl_get_option( 'image_preload_hero_mobile_size' );
-		if ( empty( $mobile_size ) ) {
-			$mobile_size = 'full';
-		}
+		$mobile_size = (string) apply_filters( 'frl_hero_mobile_image_size', FRL_PRELOAD_IMAGE_MOBILE_SIZE, $post );
 
 		$extension        = (string) frl_get_option( 'image_preload_featured_ext' );
 		$mobile_cache_key = frl_generate_cache_key( 'featured_img_mobile', (string) $post->ID, $mobile_size, (string) $extension );

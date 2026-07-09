@@ -69,12 +69,7 @@ function frl_clear_post_cache( $post_id ) {
 	// Bump post cache version to auto-invalidate all post-specific shortcode caches
 	update_post_meta( $post_id, '_frl_post_version', time() );
 
-	// Clear featured image cache for this post using centralized cache key helper.
-	// The extension is included in the key, so we clear all extension variants too.
-	// The desktop key also includes the image_preload_featured_responsive flag
-	// ('responsive'/'single' — see frl_preload_featured_image()), so both variants
-	// must be cleared regardless of the option's current value: a post save right
-	// after toggling the option must not leave the other variant's entry stale.
+	// Clear featured image cache (all extension + responsive/single variants).
 	$image_size           = frl_get_featured_image_size( $post_id );
 	$extensions           = array( '' ); // Always clear the no-extension variant
 	$configured_extension = frl_get_option( 'image_preload_featured_ext' );
@@ -88,17 +83,10 @@ function frl_clear_post_cache( $post_id ) {
 			frl_cache_clear( 'postdata', $cache_key );
 		}
 
-		// Clear mobile hero preload cache variants for this post
-		$mobile_size = (string) frl_get_option( 'image_preload_hero_mobile_size' );
-		if ( empty( $mobile_size ) ) {
-			$mobile_size = 'full';
-		}
-
-		// Clear configured size and 'full' fallback (deduplicated)
-		foreach ( array_unique( array( 'full', $mobile_size ) ) as $m_size ) {
-			$mobile_key = frl_generate_cache_key( 'featured_img_mobile', (string) $post_id, $m_size, $ext );
-			frl_cache_clear( 'postdata', $mobile_key );
-		}
+		// Clear mobile hero preload cache (fixed size, see FRL_PRELOAD_IMAGE_MOBILE_SIZE).
+		$mobile_size = (string) apply_filters( 'frl_hero_mobile_image_size', FRL_PRELOAD_IMAGE_MOBILE_SIZE, get_post( $post_id ) );
+		$mobile_key  = frl_generate_cache_key( 'featured_img_mobile', (string) $post_id, $mobile_size, $ext );
+		frl_cache_clear( 'postdata', $mobile_key );
 	}
 }
 

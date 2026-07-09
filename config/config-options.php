@@ -132,21 +132,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => '',
 				'sanitize_callback' => 'sanitize_text_field',
 			),
-			'image_preload_hero_mobile'           => array(
-				'label'             => 'Force Hero Image on Mobile',
-				'description'       => 'Adds a separate preload link to force full-size image preload on mobile for the specified post-types. One post-type per line, you can use "home" for the homepage.',
-				'type'              => 'textlist',
-				'default'           => 'home
-				service',
-				'sanitize_callback' => 'sanitize_textarea_field',
-			),
-			'image_preload_hero_mobile_size'      => array(
-				'label'             => 'Size of Preloaded Hero Image on Mobile',
-				'description'       => 'Specify the name of the WP thumbnail that will be preloaded on mobile (e.g. "full", "1536x1536"). Default fallback is "full".',
-				'type'              => 'text',
-				'default'           => 'full',
-				'sanitize_callback' => 'sanitize_text_field',
-			),
 			'image_filename_sanitize'             => array(
 				'label'             => 'Sanitize Filenames',
 				'description'       => 'Sanitize filename and title of uploaded images to readable format.',
