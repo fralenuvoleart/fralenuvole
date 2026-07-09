@@ -521,9 +521,9 @@ All cache clearing during environment enforcement is executed through the **cach
 | State change (options only) | `env_enforce_options` | `frl_cache_clear('options')` → delegates to `clear_options` operation in orchestrator |
 | Force mode | `env_enforce_full` | `frl_cache_clear('all')` + `frl_flush_rewrite_rules()` |
 
-**Targeted clears inside apply methods (removed):**
+**Targeted clears inside apply methods:**
 
-The `apply_plugin_options()` and `apply_modules_options()` methods **no longer** call `frl_cache_clear('options')` directly. All cache clearing is centralized in the change-type classifier. The targeted clears were removed as part of the C1+ patch — they were redundant with the parent classification.
+`apply_plugin_options()` and `apply_modules_options()` do **not** call `frl_cache_clear('options')` directly. All cache clearing is centralized in the change-type classifier described above.
 
 ### 9.3 URL Correction Caching
 

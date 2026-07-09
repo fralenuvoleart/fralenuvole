@@ -48,11 +48,11 @@ function frl_get_translation_adapter_class(): ?string {
 
 ### Polylang-Only Admin Patch
 
-`adapters/polylang-admin-access.php` (formerly `translation-access.php`) hardcodes `PLL()` and Polylang's `mlang_strings` admin page. It's `require_once`d by `adapters/loader.php` alongside `polylang.php`, and self-guards with `frl_is_polylang_active()` internally as defense in depth.
+`adapters/polylang-admin-access.php` hardcodes `PLL()` and Polylang's `mlang_strings` admin page. It's `require_once`d by `adapters/loader.php` alongside `polylang.php`, and self-guards with `frl_is_polylang_active()` internally as defense in depth.
 
 ### Multilingual Function/Capability Checks
 
-Two distinct, non-overlapping checks (deliberately split — an earlier combined version with an optional parameter was ambiguous and removed):
+Two distinct, non-overlapping checks:
 - **`frl_translator_is_enabled()`** — is a working adapter present AND has the admin not disabled the translator? No parameters.
 - **`frl_multilingual_function_exists( string $function_name )`** — given the above is true, does this *specific* Polylang function exist right now? Parameter required. Handles the case where Polylang is loaded but a specific function (e.g. `icl_object_id`, only defined when WPML Compatibility Mode is on) isn't yet/never available.
 
