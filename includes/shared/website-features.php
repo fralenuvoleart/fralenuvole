@@ -30,7 +30,7 @@ function frl_add_critical_css() {
 
 	if ( frl_is_array_not_empty( $css ) ) {
 		printf(
-			'<style id="%s-critical-css" data-lastmod="%s" data-plugin="%s" data-parsing="critical-css">%s</style>',
+			'<style id="%s-critical-css" data-lastmod="%s" data-plugin="%s" data-parsing="critical-css" data-noptimize="1">%s</style>\n',
 			FRL_PREFIX,
 			gmdate( 'Y-m-d-H:i', $css['mtime'] ),
 			FRL_NAME,

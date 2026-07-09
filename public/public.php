@@ -130,7 +130,7 @@ function frl_output_preload_link( array $preload_data, string $media = '', strin
 
 	if ( ! empty( $preload_data['href'] ) ) {
 		printf(
-			'<link id="%s" data-plugin="%s" rel="preload" fetchPriority="high" as="image" href="%s"%s />',
+			'<link id="%s" data-plugin="%s" rel="preload" fetchPriority="high" as="image" href="%s"%s />\n',
 			$link_id,
 			FRL_NAME,
 			esc_url( $preload_data['href'] ),
@@ -138,7 +138,7 @@ function frl_output_preload_link( array $preload_data, string $media = '', strin
 		);
 	} elseif ( ! empty( $preload_data['srcset'] ) ) {
 		printf(
-			'<link id="%s" data-plugin="%s" rel="preload" fetchPriority="high" imagesrcset="%s" imagesizes="%s" as="image"%s />',
+			'<link id="%s" data-plugin="%s" rel="preload" fetchPriority="high" imagesrcset="%s" imagesizes="%s" as="image"%s />\n',
 			$link_id,
 			FRL_NAME,
 			esc_attr( $preload_data['srcset'] ),
