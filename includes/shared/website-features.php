@@ -14,116 +14,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Injects critical CSS into the document head.
- *
- * If enabled, retrieves minified critical CSS and outputs it in a style tag.
- *
- * @hook wp_head
- * @priority -999
- */
-function frl_add_critical_css() {
-	if ( ! frl_get_option( 'critical_css' ) ) {
-		return;
-	}
-
-	$css = frl_get_critical_css_data();
-
-	if ( frl_is_array_not_empty( $css ) ) {
-		printf(
-			'<style id="%s-critical-css" data-lastmod="%s" data-plugin="%s" data-parsing="critical-css" data-noptimize="1">%s</style>
-	',
-			FRL_PREFIX,
-			gmdate( 'Y-m-d-H:i', $css['mtime'] ),
-			FRL_NAME,
-			$css['css']
-		);
-	}
-}
-
-/**
- * Outputs a deferred CSS link in the footer for non-critical styles.
- *
- * Reads 'deferred.css' from the active theme's stylesheet directory,
- * outputs a <link> with media="print" onload pattern to avoid render-blocking.
- *
- * @hook wp_footer
- * @priority 1
- */
-function frl_add_deferred_css() {
-	if ( ! frl_get_option( 'deferred_css' ) ) {
-		return;
-	}
-
-	$css_path = get_stylesheet_directory() . '/deferred.css';
-
-	if ( ! file_exists( $css_path ) ) {
-		return;
-	}
-
-	$assets  = array( 'deferred-css' => $css_path );
-	$version = frl_get_assets_versions( $assets, 'deferred_css', 'versions', false );
-
-	if ( empty( $version ) ) {
-		return;
-	}
-
-	$mtime = $version['deferred-css'];
-	$url   = esc_url( get_stylesheet_directory_uri() . '/deferred.css?ver=' . $mtime );
-
-	echo "<link rel='stylesheet' id='" . FRL_PREFIX . "-deferred-css' href='{$url}' media='print' onload=\"this.media='all'\" data-plugin='" . FRL_NAME . "' data-parsing='deferred-css'>\n";
-
-	echo "<noscript><link rel='stylesheet' href='{$url}'></noscript>\n";
-}
-
-/**
- * Retrieves and caches minified critical CSS data.
- *
- * Reads 'critical.css' from the stylesheet directory, minifies the content,
- * and caches the result using the file's modification time.
- *
- * @return array{css: string, mtime: int}|array{} Array with 'css' and 'mtime', or empty array if unavailable.
- */
-function frl_get_critical_css_data() {
-	$css_path = get_stylesheet_directory() . '/critical.css';
-	$css_file = array( 'critical-css' => $css_path );
-	// Retrieve asset versions for the critical CSS file
-	$css_version = frl_get_assets_versions( $css_file, 'critical_css', 'versions', false );
-	if ( empty( $css_version ) ) {
-		return array();
-	}
-
-	$mtime = $css_version['critical-css'];
-
-	if ( ! $mtime ) {
-		return array();
-	}
-
-	$critical_css = frl_cache_remember(
-		'html',
-		"critical_css_{$mtime}",
-		function () use ( $css_path, $mtime ) {
-			// Single file read operation - more efficient than checking existence first
-			$css_content = file_get_contents( $css_path );
-			if ( $css_content === false || empty( $css_content ) ) {
-				return '';
-			}
-
-			$minified = frl_minify_css( $css_content );
-
-			// Prepare the data to be cached
-			$data = array(
-				'css'   => $minified,
-				'mtime' => $mtime,
-			);
-
-			return $data;
-		}
-	);
-
-	return $critical_css;
-}
-
-/**
  * Disables selected WordPress core features based on plugin options.
  *
  * This is the main entry point for feature disabling, typically called during initialization.
@@ -142,10 +32,23 @@ function frl_disable_wp_core_features() {
 		frl_disable_comments();
 	}
 
+	if ( frl_get_option( 'heartbeat_control' ) ) {
+		frl_heartbeat_init();
+	}
+
 	if ( ! frl_is_logged_in() && ! is_login() ) {
 		wp_dequeue_style( 'dashicons' );
 		wp_deregister_style( 'dashicons' );
 	}
+}
+
+/**
+ * Disables oEmbed discovery to reduce external requests.
+ *
+ * @return void
+ */
+function frl_disable_oembed_discovery(): void {
+	add_filter( 'embed_oembed_discover', '__return_false', 10, 0 );
 }
 
 /**
@@ -349,4 +252,93 @@ function frl_run_disable_comments_batch(): void {
 	);
 
 	update_option( '_frl_disable_comments_completed', '1', false );
+}
+
+/**
+ * Optimize non-main queries and enforce menu_order for specific custom post types.
+ */
+function frl_alter_query( WP_Query $query ): void {
+	if ( ! $query instanceof WP_Query || $query->is_main_query() ) {
+		return;
+	}
+
+	$query->set( 'update_post_meta_cache', false );
+	$query->set( 'update_post_term_cache', false );
+	$query->set( 'no_found_rows', true );
+	$query->set( 'ignore_sticky_posts', true );
+	// Deliberate: secondary queries are scoped to public, published, non-password-protected content by design.
+	$query->set( 'post_status', 'publish' );
+	$query->set( 'has_password', false );
+
+	static $cached_cpts = null;
+	if ( $cached_cpts === null ) {
+		$cached_cpts = frl_textlist_to_array( frl_get_option( 'custom_wp_query' ) );
+	}
+
+	if ( empty( $cached_cpts ) ) {
+		return;
+	}
+
+	// Flatten the array to get just the CPT names (first element of each sub-array)
+	$cpts_list = array_column( $cached_cpts, 0 );
+
+	// Add post type check for any custom post type
+	$post_type = $query->get( 'post_type' );
+
+	if ( $post_type && in_array( $post_type, $cpts_list, true ) ) {
+		$query->set( 'orderby', 'menu_order' );
+		$query->set( 'order', 'ASC' );
+	}
+}
+
+/**
+	* Registers the heartbeat_settings filter when heartbeat control is enabled.
+	*
+	* @return void
+	*/
+function frl_heartbeat_init(): void {
+	add_filter( 'heartbeat_settings', 'frl_heartbeat_settings', 10, 1 );
+}
+
+/**
+	* Throttles or disables the WordPress Heartbeat API per context.
+	*
+	* @param array $settings Heartbeat settings from WordPress core.
+	* @return array Modified heartbeat settings.
+	*/
+function frl_heartbeat_settings( array $settings ): array {
+	// Frontend: throttle to configured interval.
+	if ( ! is_admin() ) {
+		$interval = (int) frl_get_option( 'heartbeat_frontend_interval' );
+
+		if ( $interval <= 0 ) {
+			// Disable: deregister the script on the next wp_enqueue_scripts.
+			add_action( 'wp_enqueue_scripts', 'frl_deregister_heartbeat', 999, 0 );
+			return $settings;
+		}
+
+		$settings['interval'] = max( 15, $interval );
+		return $settings;
+	}
+
+	// Post edit screens: throttle moderately (autosave/locking still works).
+	if ( frl_is_post_edit_screen() ) {
+		$settings['interval'] = max( 15, (int) frl_get_option( 'heartbeat_editor_interval' ) );
+		return $settings;
+	}
+
+	// Dashboard / other admin: throttle to configured interval.
+	$settings['interval'] = max( 15, (int) frl_get_option( 'heartbeat_dashboard_interval' ) );
+	return $settings;
+}
+
+/**
+	* Deregisters the heartbeat script on the frontend.
+	*
+	* Hooked at priority 999 on wp_enqueue_scripts when heartbeat_frontend_interval <= 0.
+	*
+	* @return void
+	*/
+function frl_deregister_heartbeat(): void {
+	wp_deregister_script( 'heartbeat' );
 }
