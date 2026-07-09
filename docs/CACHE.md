@@ -87,7 +87,10 @@ In [`includes/bootstrap.php`](includes/bootstrap.php):
 
 | File | Role |
 |---|---|
-| [`core/cache/class-cache-manager.php`](core/cache/class-cache-manager.php) | Core cache engine: runtime LRU, persistent get/set/delete, provider detection, batch loads, dependency cascading, purge operations, atomic clearing |
+| [`core/cache/class-cache-manager.php`](core/cache/class-cache-manager.php) | Core cache engine: persistent get/set/delete, dependency cascading, purge operations, atomic clearing. Uses three traits (below) for orthogonal concerns extracted for maintainability. |
+| [`core/cache/trait-cache-lru.php`](core/cache/trait-cache-lru.php) | `Frl_Cache_Lru_Trait` — runtime-cache LRU tracking/eviction (`set_runtime()`, `get_runtime()`, `remove_runtime_item()`, `$lru`, `$max_runtime_items`). The hottest read/write path. |
+| [`core/cache/trait-cache-batch.php`](core/cache/trait-cache-batch.php) | `Frl_Cache_Batch_Trait` — bulk DB operations (`batch_preload_transients()`, `execute_with_transaction()`, `safe_batch_delete_transients()`) |
+| [`core/cache/trait-cache-diagnostics.php`](core/cache/trait-cache-diagnostics.php) | `Frl_Cache_Diagnostics_Trait` — object-cache provider detection and config introspection (`get_provider_details()`, `finalize_provider_details()`, `get_cache_config()`) |
 | [`core/cache/class-cache-operations.php`](core/cache/class-cache-operations.php) | Orchestrator: multi-step composite operations with lifecycle hooks |
 | [`core/cache/cache-cleanup.php`](core/cache/cache-cleanup.php) | WordPress event hooks that trigger automatic cache invalidation |
 | [`config/config-cache.php`](config/config-cache.php) | Group definitions, TTLs, dependencies, preload config, browser groups |
@@ -196,19 +199,19 @@ See [§5.5 Dependency Cascading](#55-dependency-cascading).
 
 A per-request in-memory caching layer.
 
-**Implementation:**
-- [`$runtime_cache`](core/cache/class-cache-manager.php:16): `array` — static storage
-- [`$lru['access_order']`](core/cache/class-cache-manager.php:23-25): Associative array tracking access order (most recently used at the tail). O(1) updates via `unset()` + `[]=`.
-- [`$group_keys`](core/cache/class-cache-manager.php:18): Index of cache keys per group for O(1) group-level clearing
-- [`$max_runtime_items`](core/cache/class-cache-manager.php:20): Configurable via `FRL_CACHE_RUNTIME_MAX_ITEMS`
+**Implementation** (LRU eviction and its two owning properties live in [`Frl_Cache_Lru_Trait`](core/cache/trait-cache-lru.php); `$runtime_cache`/`$group_keys` stay on `Frl_Cache_Manager` itself since many non-LRU methods also touch them directly):
+- [`$runtime_cache`](core/cache/class-cache-manager.php): `array` — static storage, declared on `Frl_Cache_Manager`
+- [`$lru['access_order']`](core/cache/trait-cache-lru.php): Associative array tracking access order (most recently used at the tail). O(1) updates via `unset()` + `[]=`. Declared on `Frl_Cache_Lru_Trait`.
+- [`$group_keys`](core/cache/class-cache-manager.php): Index of cache keys per group for O(1) group-level clearing, declared on `Frl_Cache_Manager`
+- [`$max_runtime_items`](core/cache/trait-cache-lru.php): Configurable via `FRL_CACHE_RUNTIME_MAX_ITEMS`, declared on `Frl_Cache_Lru_Trait`
 
 **Eviction:** When the runtime cache exceeds `$max_runtime_items`, the least recently used item (head of `$lru['access_order']`) is evicted.
 
-**Key methods:**
-- [`set_runtime()`](core/cache/class-cache-manager.php:413): Stores value, updates group index and LRU order, prunes if over limit
-- [`get_runtime()`](core/cache/class-cache-manager.php:475): Returns value, moves key to MRU position
-- [`remove_runtime_item()`](core/cache/class-cache-manager.php:448): Removes from storage, LRU tracking, and group index
-- [`purge_group_runtime()`](core/cache/class-cache-manager.php:1309): Clears all runtime keys for a group at once
+**Key methods** (`set_runtime()`/`get_runtime()`/`remove_runtime_item()` live in [`Frl_Cache_Lru_Trait`](core/cache/trait-cache-lru.php); `purge_group_runtime()` stays on `Frl_Cache_Manager`):
+- [`set_runtime()`](core/cache/trait-cache-lru.php): Stores value, updates group index and LRU order, prunes if over limit
+- [`get_runtime()`](core/cache/trait-cache-lru.php): Returns value, moves key to MRU position
+- [`remove_runtime_item()`](core/cache/trait-cache-lru.php): Removes from storage, LRU tracking, and group index
+- [`purge_group_runtime()`](core/cache/class-cache-manager.php): Clears all runtime keys for a group at once
 
 ### 5.2 Persistent Cache (Object Cache / Transients)
 
@@ -229,7 +232,7 @@ The decision is made per-group: groups listed in `FRL_CACHE_PERSISTENT_GROUPS` u
 
 ### 5.3 Provider Detection
 
-[`get_provider_details()`](core/cache/class-cache-manager.php:211) detects the active object cache provider.
+[`get_provider_details()`](core/cache/trait-cache-diagnostics.php) (in `Frl_Cache_Diagnostics_Trait`) detects the active object cache provider.
 
 **Detection methods:**
 

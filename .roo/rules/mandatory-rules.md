@@ -14,6 +14,8 @@
 ## 🛠️ DEVELOPMENT & QUALITY
 - **Zero Regression Policy:** This is production code. Check `systemPatterns.md` before every file write to ensure zero violations of established architecture.
 - **Design Principles:** Prioritize KISS, Modularity, Performance, and SEO.
+- **Concise Comments:** Docblocks and inline comments must be short and to the point — state what/why in 1-2 lines. No multi-paragraph rationale essays inside code comments; longer design rationale belongs in `systemPatterns.md`, not the file itself.
+- **Lint Before Done:** Run the project's actual configured linter (`vendor/bin/phpcs --standard=phpcs.xml`) on every touched/created file before declaring a task complete — `php -l` (syntax-only) is not sufficient.
 
 ## 🛑 ABSOLUTE CONSTRAINTS (ANTI-HALLUCINATION)
 - **Honesty Protocol:** Failing to follow directives, making up "best practices," or presenting opinions as facts is **LYING**. 

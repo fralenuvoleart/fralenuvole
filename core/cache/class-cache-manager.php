@@ -9,20 +9,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/trait-cache-diagnostics.php';
+require_once __DIR__ . '/trait-cache-batch.php';
+require_once __DIR__ . '/trait-cache-lru.php';
+
 class Frl_Cache_Manager {
 
-	/** Cache key prefix. */
-	const PREFIX                          = FRL_CACHE_PREFIX;
-	private static array $runtime_cache   = array();
-	private static array $key_cache       = array();
-	private static array $group_keys      = array(); // Index of keys per group for efficient clearing
-	private static int $max_runtime_items = FRL_CACHE_RUNTIME_MAX_ITEMS;
-	private static array $loaded_groups   = array(); // Tracks which groups have been fully loaded this request
+	use Frl_Cache_Diagnostics_Trait;
+	use Frl_Cache_Batch_Trait;
+	use Frl_Cache_Lru_Trait;
 
-	// Consolidated LRU tracking
-	private static array $lru = array(
-		'access_order' => array(),
-	);
+	/** Cache key prefix. */
+	const PREFIX                        = FRL_CACHE_PREFIX;
+	private static array $runtime_cache = array();
+	private static array $key_cache     = array();
+	private static array $group_keys    = array(); // Index of keys per group for efficient clearing
+	private static array $loaded_groups = array(); // Tracks which groups have been fully loaded this request
 
 	public static array $deferred_writes = array();
 
@@ -113,94 +115,6 @@ class Frl_Cache_Manager {
 	}
 
 	/**
-	 * Batch-load all preload groups from transients in a single DB query.
-	 *
-	 * Replaces N separate wp_options LIKE scans (one per group) with a single
-	 * combined OR-chain query. Results are distributed by group prefix and
-	 * injected into the runtime cache identically to the per-group path in
-	 * get_multi().
-	 *
-	 * @param string[] $groups Cache groups to preload.
-	 * @return void
-	 */
-	private static function batch_preload_transients( array $groups ): void {
-		global $wpdb;
-		frl_flush_db();
-
-		$or_clauses = array();
-		foreach ( $groups as $group ) {
-			$prefix         = '_transient_' . self::PREFIX . $group . '_';
-			$timeout_prefix = '_transient_timeout_' . self::PREFIX . $group . '_';
-			$or_clauses[]   = $wpdb->prepare(
-				'option_name LIKE %s',
-				$wpdb->esc_like( $prefix ) . '%'
-			);
-			$or_clauses[]   = $wpdb->prepare(
-				'option_name LIKE %s',
-				$wpdb->esc_like( $timeout_prefix ) . '%'
-			);
-		}
-
-		$query      = "SELECT option_name, option_value FROM {$wpdb->options} WHERE " . implode( ' OR ', $or_clauses );
-		$db_results = self::safe_db_query( $query, array(), 'batch_preload_transients' );
-
-		// Distribute results by group prefix
-		$by_group = array();
-		foreach ( $db_results as $row ) {
-			foreach ( $groups as $group ) {
-				$prefix         = '_transient_' . self::PREFIX . $group . '_';
-				$timeout_prefix = '_transient_timeout_' . self::PREFIX . $group . '_';
-				if ( str_starts_with( $row->option_name, $prefix ) || str_starts_with( $row->option_name, $timeout_prefix ) ) {
-					$by_group[ $group ][] = $row;
-					break;
-				}
-			}
-		}
-
-		// Process each group: separate values/timeouts, populate runtime cache
-		foreach ( $groups as $group ) {
-			$rows = $by_group[ $group ] ?? array();
-
-			if ( empty( $rows ) ) {
-				self::$loaded_groups[ $group ] = true;
-				continue;
-			}
-
-			$group_prefix       = '_transient_' . self::PREFIX . $group . '_';
-			$timeout_prefix     = '_transient_timeout_' . self::PREFIX . $group . '_';
-			$prefix_len         = strlen( $group_prefix );
-			$timeout_prefix_len = strlen( $timeout_prefix );
-
-			$wp_cache   = array();
-			$transients = array();
-
-			foreach ( $rows as $row ) {
-				$wp_cache[ $row->option_name ] = $row->option_value;
-
-				if ( str_starts_with( $row->option_name, $timeout_prefix ) ) {
-					// timeout row — tracked in wp_cache but not injected into runtime
-					continue;
-				}
-
-				$key                = substr( $row->option_name, $prefix_len );
-				$value              = maybe_unserialize( $row->option_value );
-				$transients[ $key ] = $value;
-
-				// Inject into runtime cache — mirrors get_multi() transient path
-				$cache_key = self::generate_key( $group, $key );
-				self::set_runtime( $cache_key, $value, $group );
-			}
-
-			// Inject into WordPress option cache — mirrors get_multi() transient path
-			if ( ! empty( $wp_cache ) ) {
-				wp_cache_add_multiple( $wp_cache, 'options' );
-			}
-
-			self::$loaded_groups[ $group ] = true;
-		}
-	}
-
-	/**
 	 * Check if caching is bypassed (disable_plugin, disable_cache, nocache/core mode).
 	 *
 	 * @return bool True if caching should be bypassed.
@@ -287,175 +201,6 @@ class Frl_Cache_Manager {
 	}
 
 	/**
-	 * Detect the active object-cache provider (slug, label, functional status).
-	 *
-	 * @return array{slug: string, label: string, is_effectively_functional: bool, backend_class_override: string|null, is_dropin: bool, original_class_name: string|null} Provider details.
-	 */
-	public static function get_provider_details() {
-		if ( self::$cached_provider_details !== null ) {
-			return self::$cached_provider_details;
-		}
-
-		// Use core WP transient to avoid recursion with self::get()
-		// v2: live connectivity test added for Kinsta-style WP_Object_Cache wrappers.
-		$transient_key = self::PREFIX . 'object_cache_provider_details_v2';
-		$cached        = get_transient( $transient_key );
-		if ( $cached !== false && is_array( $cached ) ) {
-			self::$cached_provider_details = $cached;
-			return $cached;
-		}
-
-		global $wp_object_cache;
-		$cache_class_name = ( is_object( $wp_object_cache ) ) ? get_class( $wp_object_cache ) : null;
-
-		$provider_info = array(
-			'slug'                      => 'unknown_dropin',
-			'label'                     => 'Unknown Drop-in',
-			'is_effectively_functional' => false,
-			'backend_class_override'    => null,
-			'is_dropin'                 => false,
-			'original_class_name'       => $cache_class_name,
-		);
-
-		$has_drop_in                = wp_using_ext_object_cache();
-		$provider_info['is_dropin'] = $has_drop_in;
-
-		// Set early to prevent infinite recursion: _is_plugin_globally_active()
-		// → frl_is_thirdparty_plugin_active() → frl_cache_remember() → get()
-		// → is_object_cache_truly_functional() → get_provider_details()
-		self::$cached_provider_details = $provider_info;
-
-		if ( ! $has_drop_in ) {
-			$provider_info['slug']  = 'transients';
-			$provider_info['label'] = 'WordPress Transients';
-			return self::finalize_provider_details( $provider_info, $transient_key );
-		}
-
-		// --- Read object-cache.php content ONCE ---
-		$file_content_for_check = '';
-		if ( defined( 'WP_CONTENT_DIR' ) ) {
-			$object_cache_file_path = WP_CONTENT_DIR . '/object-cache.php';
-			if ( file_exists( $object_cache_file_path ) ) {
-				// Read up to 2KB, which should be plenty for identification.
-				$file_content_for_check = @file_get_contents( $object_cache_file_path, false, null, 0, 2048 );
-			}
-		}
-		$file_content_lower = strtolower( $file_content_for_check ?: '' );
-
-		// Plugin paths
-		$docket_cache_plugin_main_file = 'docket-cache/docket-cache.php';
-		$litespeed_plugin_main_file    = 'litespeed-cache/litespeed-cache.php';
-
-		// Litespeed Cache Detection
-		$is_litespeed_class = $cache_class_name && str_contains( strtolower( $cache_class_name ), 'litespeed' );
-		$is_litespeed_file  = str_contains( $file_content_lower, 'litespeed' );
-
-		if ( $is_litespeed_class || $is_litespeed_file ) {
-			$provider_info['label'] = 'Litespeed Cache';
-			$is_lscwp_plugin_active = self::_is_plugin_globally_active( $litespeed_plugin_main_file );
-
-			if ( defined( 'LSCWP_V' ) && $is_lscwp_plugin_active ) {
-				$provider_info['slug']                      = 'litespeed_active';
-				$provider_info['is_effectively_functional'] = true;
-			} else {
-				$provider_info['slug']                      = 'litespeed_inactive_dropin';
-				$provider_info['is_effectively_functional'] = false;
-			}
-			return self::finalize_provider_details( $provider_info, $transient_key );
-		}
-
-		// Docket Cache Detection
-		$docket_method_found = ( is_object( $wp_object_cache ) && method_exists( $wp_object_cache, 'dc_save' ) ) ||
-			( isset( $wp_object_cache->_object_cache ) && is_object( $wp_object_cache->_object_cache ) && method_exists( $wp_object_cache->_object_cache, 'dc_save' ) );
-		$is_docket_file      = str_contains( $file_content_lower, 'docket cache' );
-
-		if ( $docket_method_found || $is_docket_file ) {
-			$provider_info['label'] = 'Docket Cache';
-			if ( isset( $wp_object_cache->_object_cache ) && is_object( $wp_object_cache->_object_cache ) && $cache_class_name === 'WP_Object_Cache' ) {
-				$provider_info['backend_class_override'] = get_class( $wp_object_cache->_object_cache );
-			}
-
-			$is_docket_plugin_active     = self::_is_plugin_globally_active( $docket_cache_plugin_main_file );
-			$is_docket_disabled_by_const = ( defined( 'DOCKET_CACHE_DISABLED' ) && constant( 'DOCKET_CACHE_DISABLED' ) === true );
-
-			if ( $is_docket_disabled_by_const ) {
-				$provider_info['slug']                      = 'docket_cache_force_disabled';
-				$provider_info['is_effectively_functional'] = false;
-			} elseif ( $is_docket_plugin_active ) {
-				// If methods are missing but plugin is active, it could be a broken state
-				$provider_info['slug']                      = $docket_method_found ? 'docket_cache_active' : 'docket_cache_broken';
-				$provider_info['is_effectively_functional'] = $docket_method_found;
-			} else {
-				// Plugin is not active, so it's an inactive drop-in regardless of methods
-				$provider_info['slug']                      = 'docket_cache_inactive_dropin';
-				$provider_info['is_effectively_functional'] = false;
-			}
-			return self::finalize_provider_details( $provider_info, $transient_key );
-		}
-
-		// Redis Detection
-		if ( $cache_class_name && str_contains( strtolower( $cache_class_name ), 'redis' ) ) {
-			$provider_info['slug']                      = 'redis_active';
-			$provider_info['label']                     = 'Redis';
-			$provider_info['is_effectively_functional'] = true;
-			return self::finalize_provider_details( $provider_info, $transient_key );
-		}
-
-		// Memcached Detection
-		if ( $cache_class_name && str_contains( strtolower( $cache_class_name ), 'memcached' ) ) {
-			$provider_info['slug']                      = 'memcached_active';
-			$provider_info['label']                     = 'Memcached';
-			$provider_info['is_effectively_functional'] = true;
-			return self::finalize_provider_details( $provider_info, $transient_key );
-		}
-
-		// Final Fallbacks for generic or unknown drop-ins
-		// This part runs only if no specific provider was detected above.
-		if ( $cache_class_name === 'WP_Object_Cache' ) {
-			// Kinsta/Cloudways/GridPane: WP_Object_Cache subclass wraps Redis.
-			// Test live connectivity instead of relying on class name detection.
-			if ( function_exists( 'wp_cache_set' ) && wp_cache_set( '_frl_redis_test', 1, 'default', 10 ) ) {
-				wp_cache_delete( '_frl_redis_test', 'default' );
-				$provider_info['slug']                      = 'redis_active';
-				$provider_info['label']                     = 'Redis (WP_Object_Cache)';
-				$provider_info['is_effectively_functional'] = true;
-			} else {
-				$provider_info['slug']  = 'wp_object_cache_dropin';
-				$provider_info['label'] = 'WP Object Cache (Drop-in)';
-			}
-		} elseif ( $cache_class_name ) {
-			$provider_info['slug']  = 'unknown_dropin';
-			$provider_info['label'] = $cache_class_name;
-		} else {
-			$provider_info['slug']  = 'unknown_dropin_no_class';
-			$provider_info['label'] = 'Unknown Drop-in (No Class)';
-		}
-		// is_effectively_functional remains false for these generic/unknown cases.
-		return self::finalize_provider_details( $provider_info, $transient_key );
-	}
-
-	/**
-	 * Store resolved provider details in-memory and persist them to a transient.
-	 *
-	 * Single write path for get_provider_details() so every detection branch
-	 * (transients/Litespeed/Docket/Redis/Memcached/generic-fallback) persists
-	 * identically — a future branch cannot forget the transient write and
-	 * silently lose the week-long cache.
-	 *
-	 * @param array $provider_info Resolved provider details.
-	 * @param string $transient_key Transient key to persist under.
-	 * @return array The same $provider_info, for convenient `return` chaining.
-	 */
-	private static function finalize_provider_details( array $provider_info, string $transient_key ): array {
-		self::$cached_provider_details = $provider_info;
-
-		// Store in transient to avoid recursion with self::set()
-		set_transient( $transient_key, $provider_info, WEEK_IN_SECONDS );
-
-		return self::$cached_provider_details;
-	}
-
-	/**
 	 * Generate a cache key. Adds language prefix for language-specific groups.
 	 *
 	 * @param string $group Cache group name.
@@ -486,85 +231,6 @@ class Frl_Cache_Manager {
 
 		// Standard key generation for other groups
 		return $group . '_' . $key;
-	}
-
-	/**
-	 * Store a value in runtime cache with LRU tracking and group indexing.
-	 *
-	 * @param string $cache_key The generated cache key.
-	 * @param mixed $value The value to store.
-	 * @param string|null $group The cache group (extracted from key if null).
-	 * @return void
-	 */
-	private static function set_runtime( $cache_key, $value, $group = null ) {
-		// Store in runtime cache
-		self::$runtime_cache[ $cache_key ] = $value;
-
-		// Index the key by group for efficient clearing
-		if ( $group === null ) {
-			$parts = explode( '_', $cache_key, 2 );
-			$group = $parts[0] ?? 'default';
-		}
-		self::$group_keys[ $group ][ $cache_key ] = 1;
-
-		// Update access order (O(1) update via associative assignment)
-		// We use associative array to move the key to the end of the array (most recently used)
-		unset( self::$lru['access_order'][ $cache_key ] );
-		self::$lru['access_order'][ $cache_key ] = 1;
-
-		// Prune if over limit (True LRU)
-		if ( count( self::$runtime_cache ) > self::$max_runtime_items ) {
-			reset( self::$lru['access_order'] );
-			$oldest_key = key( self::$lru['access_order'] );
-
-			if ( $oldest_key !== null ) {
-				self::remove_runtime_item( $oldest_key );
-			}
-		}
-	}
-
-	/**
-	 * Remove an item from runtime cache and all its indices.
-	 *
-	 * @param string $cache_key The generated cache key.
-	 * @param string|null $group The cache group (extracted from key if null).
-	 * @return void
-	 */
-	private static function remove_runtime_item( $cache_key, $group = null ) {
-		// Remove from main storage
-		unset( self::$runtime_cache[ $cache_key ] );
-
-		// Remove from LRU tracking
-		unset( self::$lru['access_order'][ $cache_key ] );
-
-		// Remove from group index
-		if ( $group === null ) {
-			$parts = explode( '_', $cache_key, 2 );
-			$group = $parts[0] ?? 'default';
-		}
-		if ( isset( self::$group_keys[ $group ] ) ) {
-			unset( self::$group_keys[ $group ][ $cache_key ] );
-			if ( empty( self::$group_keys[ $group ] ) ) {
-				unset( self::$group_keys[ $group ] );
-			}
-		}
-	}
-
-	/**
-	 * Get an item from runtime cache.
-	 *
-	 * @param string $cache_key Cache key.
-	 * @return mixed|null Cached value or null if not found.
-	 */
-	private static function get_runtime( $cache_key ) {
-		if ( isset( self::$runtime_cache[ $cache_key ] ) ) {
-			// Move to end of access order (O(1) update)
-			unset( self::$lru['access_order'][ $cache_key ] );
-			self::$lru['access_order'][ $cache_key ] = 1;
-
-			return self::$runtime_cache[ $cache_key ];
-		}
-		return null;
 	}
 
 	/**
@@ -668,8 +334,8 @@ class Frl_Cache_Manager {
 				}
 			}
 
-			$cache_key                       = self::generate_key( $group, $key );
-			$sanitized_items[ $cache_key ]    = $value;
+			$cache_key                     = self::generate_key( $group, $key );
+			$sanitized_items[ $cache_key ] = $value;
 
 			// Store in runtime cache individually (cheap, in-memory).
 			self::set_runtime( $cache_key, $value, $group );
@@ -1592,106 +1258,6 @@ class Frl_Cache_Manager {
 	}
 
 	/**
-	 * Execute database operations with transaction support.
-	 *
-	 * @param callable $operations Function containing database operations.
-	 * @param string $operation_name Name for logging purposes.
-	 * @return mixed Result from operations, or false on failure.
-	 */
-	private static function execute_with_transaction( callable $operations, $operation_name = 'cache_transaction' ) {
-		global $wpdb;
-
-		// Check if transactions are supported (mysqli driver — all modern MySQL/MariaDB with InnoDB)
-		$supports_transactions = $wpdb->use_mysqli;
-
-		if ( $supports_transactions ) {
-			$wpdb->query( 'START TRANSACTION' );
-		}
-
-		try {
-			// Execute the operations
-			$result = $operations();
-
-			if ( $supports_transactions ) {
-				if ( $wpdb->last_error ) {
-					throw new Exception( "Database error in {$operation_name}: " . $wpdb->last_error );
-				}
-				$wpdb->query( 'COMMIT' );
-			}
-
-			return $result;
-		} catch ( Exception $e ) {
-			if ( $supports_transactions ) {
-				$wpdb->query( 'ROLLBACK' );
-			}
-
-			frl_log(
-				'FRL Cache Transaction Error in {operation}: {error}',
-				array(
-					'operation' => $operation_name,
-					'error'     => $e->getMessage(),
-				)
-			);
-			return false;
-		}
-	}
-
-	/**
-	 * Safely delete multiple transients in batches with transaction support.
-	 *
-	 * @param array $transient_keys Array of full transient option names.
-	 * @param int $batch_size Number of keys to process per batch.
-	 * @return array{total_keys: int, deleted_count: int, batches_processed: int, errors: int} Stats about deletion.
-	 */
-	private static function safe_batch_delete_transients( array $transient_keys, $batch_size = 100 ) {
-		global $wpdb;
-
-		$stats = array(
-			'total_keys'        => count( $transient_keys ),
-			'deleted_count'     => 0,
-			'batches_processed' => 0,
-			'errors'            => 0,
-		);
-
-		if ( empty( $transient_keys ) ) {
-			return $stats;
-		}
-
-		$batches = array_chunk( $transient_keys, $batch_size );
-
-		foreach ( $batches as $batch ) {
-			$batch_result = self::execute_with_transaction(
-				function () use ( $wpdb, $batch ) {
-					$placeholders = implode( ',', array_fill( 0, count( $batch ), '%s' ) );
-					$query        = $wpdb->prepare(
-						"DELETE FROM $wpdb->options WHERE option_name IN ($placeholders)",
-						$batch
-					);
-
-					$deleted = $wpdb->query( $query );
-
-					if ( $wpdb->last_error ) {
-						throw new Exception( 'Batch delete failed: ' . $wpdb->last_error );
-					}
-
-					return $deleted;
-				},
-				'batch_delete_transients'
-			);
-
-			if ( $batch_result !== false ) {
-				$stats['deleted_count'] += $batch_result;
-				++$stats['batches_processed'];
-			} else {
-				++$stats['errors'];
-				frl_log( 'FRL Cache: Batch delete failed for {count} keys', array( 'count' => count( $batch ) ) );
-			}
-		}
-
-		return $stats;
-	}
-
-	/**
 	 * Atomic cache group clearing with rollback support.
 	 *
 	 * @param string $group Cache group to clear.
@@ -1917,21 +1483,6 @@ class Frl_Cache_Manager {
 			'loaded_groups'     => self::$loaded_groups,
 			'groups_cleared'    => self::$groups_cleared,
 			'max_runtime_items' => self::$max_runtime_items,
-		);
-	}
-
-	/**
-	 * Get cache configuration for display purposes.
-	 *
-	 * @return array{PREFIX: string, TTL: array, persistent_groups: array, cache_dependencies: array, LOCK_TTL: int} Cache configuration.
-	 */
-	public static function get_cache_config() {
-		return array(
-			'PREFIX'             => self::PREFIX,
-			'TTL'                => self::$default_ttls,
-			'persistent_groups'  => self::$persistent_groups,
-			'cache_dependencies' => self::$cache_dependencies,
-			'LOCK_TTL'           => self::LOCK_TTL,
 		);
 	}
 

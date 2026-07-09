@@ -8,7 +8,7 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 
 | Subsystem | Entry Point | Status |
 |---|---|---|
-| Cache Manager | `core/cache/class-cache-manager.php` | 5-backend unified cache (Litespeed, Docket, Redis, Memcached, Transients) with LRU runtime tier, dependency cascading, language-aware keys. See `docs/CACHE.md`. |
+| Cache Manager | `core/cache/class-cache-manager.php` (+ `trait-cache-lru.php`, `trait-cache-batch.php`, `trait-cache-diagnostics.php`) | 5-backend unified cache (Litespeed, Docket, Redis, Memcached, Transients) with LRU runtime tier, dependency cascading, language-aware keys. See `docs/CACHE.md`. |
 | Cache Operations Orchestrator | `core/cache/class-cache-operations.php` | Composite multi-step cache/rewrite operations with lifecycle hooks, defined in `FRL_CACHE_OPERATIONS`. |
 | Environment Manager | `core/environment/` (7 files) | Domain-based auto-configuration: maps HTTP host → environment profile → WP options, plugin options, plugin/module activation state. See `docs/ENVIRONMENT.md`. |
 | Rewriter | `core/rewriter/` | Feature-based URL rewriting system (CPT/taxonomy base translation and removal) with priority-ordered, self-registering features. See `docs/REWRITER.md`. |
