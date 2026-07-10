@@ -1120,7 +1120,7 @@ function frl_shortcode_category_link( $atts, $content = null ) {
 		$cache_key,
 		function () use ( $identifier ) {
 			$term_id = 0;
-			if ( frl_multilingual_function_exists( 'icl_object_id' ) ) {
+			if ( frl_multilingual_function_exists( 'icl_object_id' ) && function_exists( 'icl_object_id' ) ) {
 				$lang = frl_get_language();
 				if ( is_numeric( $identifier ) ) {
 					$term_id = icl_object_id( (int) $identifier, 'category', true, $lang );
