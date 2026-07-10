@@ -21,19 +21,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Minimal timing: log request start and shutdown using raw error_log (no frl_log overhead).
-error_log( 'FRL_TIMING: request_start ' . round( ( $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime( true ) ) * 1000 ) );
-add_action(
-	'shutdown',
-	function () {
-		$is_action = ! empty( $_GET['frl_action'] );
-		$label     = $is_action ? 'action' : 'page';
-		error_log( 'FRL_TIMING: request_shutdown_' . $label . ' ' . round( microtime( true ) * 1000 ) );
-	},
-	0,
-	0
-);
-
 // Upgrade routines trigger only when the first 3 version numbers change: 1.1.1 -> 1.1.2
 const FRL_VERSION = '5.7.4.4';
 

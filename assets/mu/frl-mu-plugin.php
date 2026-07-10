@@ -1,7 +1,5 @@
 <?php
 
-error_log( 'FRL_TIMING: mu_plugin_start ' . round( microtime( true ) * 1000 ) );
-
 /**
  * Fralenuvole - Early Loader (MU Plugin Bootstrap)
  *
