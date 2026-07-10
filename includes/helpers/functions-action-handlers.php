@@ -282,10 +282,7 @@ function frl_handle_action_clear_cache_light() {
  * @return array{success: bool, message_parts: string[], notice_type: string} Result array.
  */
 function frl_handle_action_clear_cache_all() {
-	$t0           = microtime( true );
 	$orchestrated = Frl_Cache_Operations::run( 'clear_all' );
-	$action_ms    = round( ( microtime( true ) - $t0 ) * 1000, 1 );
-	frl_log( 'action_clear_cache_all: total={action_ms}ms', array( 'action_ms' => $action_ms ) );
 
 	if ( ! $orchestrated['success'] ) {
 		return array(

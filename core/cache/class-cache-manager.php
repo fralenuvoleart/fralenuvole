@@ -668,8 +668,6 @@ class Frl_Cache_Manager {
 	 * @return mixed The return value of the callback.
 	 */
 	private static function with_auth_preservation( callable $callback ) {
-		$t0 = microtime( true );
-
 		// Use wp_get_current_user() directly (uncached) to snapshot the authentic
 		// user from WordPress' own session, NOT frl_get_current_user() which pulls
 		// from the plugin's persistent 'admin' cache group. Using the cached user
@@ -681,30 +679,12 @@ class Frl_Cache_Manager {
 		$current_user_id = $current_user->ID;
 		$auth_cookie     = wp_parse_auth_cookie( '', 'logged_in' );
 
-		$snapshot_ms = round( ( microtime( true ) - $t0 ) * 1000, 1 );
-
-		$cb_t0  = microtime( true );
 		$result = $callback();
-		$cb_ms  = round( ( microtime( true ) - $cb_t0 ) * 1000, 1 );
 
-		$auth_ms = 0;
 		if ( $current_user_id && $auth_cookie ) {
-			$auth_t0 = microtime( true );
 			wp_set_auth_cookie( $current_user_id, true );
 			wp_set_current_user( $current_user_id );
-			$auth_ms = round( ( microtime( true ) - $auth_t0 ) * 1000, 1 );
 		}
-
-		$total_ms = round( ( microtime( true ) - $t0 ) * 1000, 1 );
-		frl_log(
-			'with_auth_preservation: snapshot={snapshot_ms}ms callback={cb_ms}ms auth_restore={auth_ms}ms total={total_ms}ms',
-			array(
-				'snapshot_ms' => $snapshot_ms,
-				'cb_ms'       => $cb_ms,
-				'auth_ms'     => $auth_ms,
-				'total_ms'    => $total_ms,
-			)
-		);
 
 		return $result;
 	}
@@ -721,8 +701,6 @@ class Frl_Cache_Manager {
 
 		return self::with_auth_preservation(
 			function () {
-				$purge_t0 = microtime( true );
-
 				// Reset the cleared groups tracker for this batch operation
 				self::$groups_cleared = array();
 
@@ -779,17 +757,6 @@ class Frl_Cache_Manager {
 				// Reset batch-delete flag so subsequent calls (e.g., clear_transients for a specific group)
 				// are not incorrectly skipped.
 				self::$transients_batch_deleted = false;
-
-				$purge_ms = round( ( microtime( true ) - $purge_t0 ) * 1000, 1 );
-				frl_log(
-					'purge_all: total={purge_ms}ms runtime={runtime} persistent={persistent} transients={transients}',
-					array(
-						'purge_ms'   => $purge_ms,
-						'runtime'    => $stats['runtime'],
-						'persistent' => $stats['persistent'],
-						'transients' => $stats['transients'],
-					)
-				);
 
 				frl_is_already_running( __METHOD__, true );
 				return $stats;
@@ -1258,8 +1225,15 @@ class Frl_Cache_Manager {
 			return;
 		}
 
-		// Options is a special case in WordPress
-		wp_cache_delete( 'alloptions', 'options' );
+		// Reset the static cache in frl_get_option only for options group.
+		// Intentionally NOT clearing wp_cache_delete('alloptions', 'options')
+		// because that invalidates WordPress's entire autoloaded-options cache,
+		// forcing wp_load_alloptions() to re-read every option from wp_options
+		// on the very next page load — a site-wide performance hit.
+		// Our plugin's options are cached in the frl_cache_* Redis group (cleared
+		// above by clear_group_with_dependencies), and frl_get_option has its own
+		// static cache reset below. WordPress's alloptions cache belongs to WP
+		// core; clearing it is unnecessary and harmful.
 		++$stats['wordpress'];
 
 		// Reset the static cache in frl_get_option only for options group

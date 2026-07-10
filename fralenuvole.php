@@ -21,30 +21,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Request timing: log total wall-clock time from request start to shutdown.
-// Only for admin requests hitting the plugin's own page — avoids log noise.
-add_action(
-	'shutdown',
-	function () {
-		if ( ! isset( $_SERVER['REQUEST_TIME_FLOAT'] ) ) {
-			return;
-		}
-		$is_plugin_page = ( $_GET['page'] ?? '' ) === 'fralenuvole';
-		$is_action      = ! empty( $_GET['frl_action'] );
-		if ( ! $is_plugin_page ) {
-			return;
-		}
-		$elapsed = round( ( microtime( true ) - $_SERVER['REQUEST_TIME_FLOAT'] ) * 1000 );
-		$label   = $is_action ? 'request_total_action' : 'request_total_page';
-		frl_log(
-			$label . ': {elapsed}ms',
-			array( 'elapsed' => $elapsed )
-		);
-	},
-	0,
-	0
-);
-
 // Upgrade routines trigger only when the first 3 version numbers change: 1.1.1 -> 1.1.2
 const FRL_VERSION = '5.7.4.4';
 

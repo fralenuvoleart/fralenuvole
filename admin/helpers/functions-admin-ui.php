@@ -407,8 +407,6 @@ function frl_get_all_plugin_transients() {
 		function () {
 			global $wpdb;
 
-			$t0 = microtime( true );
-
 			$groups_to_query = array_diff( FRL_CACHE_PERSISTENT_GROUPS, array( 'transients' ) );
 
 			// Single consolidated query replaces 16 individual per-group + base queries.
@@ -434,13 +432,8 @@ function frl_get_all_plugin_transients() {
 				$limit
 			);
 
-			$t1          = microtime( true );
 			$all_results = $wpdb->get_results( $query );
-			$t2          = microtime( true );
-			$query_ms    = round( ( $t2 - $t1 ) * 1000, 1 );
-
 			if ( empty( $all_results ) ) {
-				frl_log( 'get_all_plugin_transients: query={query_ms}ms rows=0', array( 'query_ms' => $query_ms ) );
 				return array();
 			}
 
@@ -458,20 +451,6 @@ function frl_get_all_plugin_transients() {
 				function ( $a, $b ) {
 					return strcmp( $a->option_name, $b->option_name );
 				}
-			);
-
-			$t3        = microtime( true );
-			$php_ms    = round( ( $t3 - $t2 ) * 1000, 1 );
-			$total_ms  = round( ( $t3 - $t0 ) * 1000, 1 );
-			$row_count = count( $all_results );
-			frl_log(
-				'get_all_plugin_transients: query={query_ms}ms php={php_ms}ms total={total_ms}ms rows={row_count}',
-				array(
-					'query_ms'  => $query_ms,
-					'php_ms'    => $php_ms,
-					'total_ms'  => $total_ms,
-					'row_count' => $row_count,
-				)
 			);
 
 			return $all_results;

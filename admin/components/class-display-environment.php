@@ -15,15 +15,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Frl_Environment_Display {
 
-	// Add class-level static cache property
-	private static $class_cached_data       = null;
-	private static $cached_stored_state     = null;
+	/** @var array|null Cached environment data for the class. */
+	private static $class_cached_data = null;
+
+	/** @var array|null Cached environment state from options. */
+	private static $cached_stored_state = null;
+
+	/** @var bool|null Whether plugin transients exist in DB. */
 	private static $cached_transient_exists = null;
+
+	/** @var int|null Cached count of plugin DB options. */
 	private static $cached_db_options_count = null;
 
-	// New static caches for the two remaining queries
-	private static $request_cached_data = null; // Cache for the entire method across all instances in a request
-	// Add a new class variable to store transients data
+	/** @var array|null Per-request cache for environment data. */
+	private static $request_cached_data = null;
+
+	/** @var array|null Cached raw transients from get_all_plugin_transients(). */
 	private static $cached_all_transients = null;
 
 	/**

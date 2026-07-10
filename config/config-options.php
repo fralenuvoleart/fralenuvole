@@ -97,7 +97,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'section_title_debloat'  => array(
+			'section_title_debloat'             => array(
 				'label'       => 'Debloat HTML',
 				'description' => 'Clean the HTML source from unnecessary tags',
 				'type'        => 'section_title',

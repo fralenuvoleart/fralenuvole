@@ -1319,8 +1319,9 @@ class Frl_Tag_Validator {
 		$post_url = isset( $_POST['frl_tag_validator_url'] ) ? $_POST['frl_tag_validator_url'] : '';
 		$get_url  = isset( $_GET['frl_tag_validator_url'] ) ? $_GET['frl_tag_validator_url'] : '';
 
-		// Determine the URL to validate - prioritize POST since that will be our form submission
-		$url_to_validate = ! empty( $post_url ) ? $post_url : ( ! empty( $get_url ) ? $get_url : home_url( '/' ) );
+		// Determine the URL to validate - prioritize POST since that will be our form submission.
+		// No default fallback to home_url('/'): skip expensive cURL on passive dashboard loads.
+		$url_to_validate = ! empty( $post_url ) ? $post_url : ( ! empty( $get_url ) ? $get_url : '' );
 
 		// Fixed set of predefined tags to check
 		$tags_to_check = '#frl-critical-css,#frl-preload-img,#frl-schema';
@@ -1341,26 +1342,22 @@ class Frl_Tag_Validator {
 
 		$output .= '<div id="tag-validator-results-container">';
 
-		// 2. Run validation using the modern validation method.
-		// Wrapped in frl_cache_remember() so the expensive network request
-		// (direct_get_page_content() -> curl_exec()) is deferred into a closure
-		// instead of being evaluated eagerly. Without this, every passive load
-		// of the Dashboard tab (which defaults $url_to_validate to home_url('/'))
-		// would fire a blocking, uncached self-HTTP-request on every page view.
-		// Short TTL keeps explicit "Validate Tags" clicks reasonably fresh while
-		// fully absorbing repeated passive renders.
-		$tag_validator_cache_key = 'tag_validator_' . md5( $url_to_validate . '|' . $tags_to_check );
-		$validation_results      = frl_cache_remember(
-			'adminui',
-			$tag_validator_cache_key,
-			function () use ( $url_to_validate, $tags_to_check ) {
-				return $this->validate_url( $url_to_validate, $tags_to_check );
-			},
-			5 * MINUTE_IN_SECONDS
-		);
-
-		// 3. Render results using tag_validation_results method
-		$output .= $this->render_tag_validation_results( $validation_results, $url_to_validate );
+		// 2. Run validation only when user explicitly provided a URL.
+		// Passive dashboard loads skip the expensive cURL request entirely.
+		if ( ! empty( $url_to_validate ) ) {
+			$tag_validator_cache_key = 'tag_validator_' . md5( $url_to_validate . '|' . $tags_to_check );
+			$validation_results      = frl_cache_remember(
+				'adminui',
+				$tag_validator_cache_key,
+				function () use ( $url_to_validate, $tags_to_check ) {
+					return $this->validate_url( $url_to_validate, $tags_to_check );
+				},
+				5 * MINUTE_IN_SECONDS
+			);
+			$output                 .= $this->render_tag_validation_results( $validation_results, $url_to_validate );
+		} else {
+			$output .= '<p>Enter a URL and click <strong>Validate Tags</strong> to check for the presence of predefined HTML tags.</p>';
+		}
 
 		$output .= '</div>'; // End results container
 
