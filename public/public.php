@@ -20,6 +20,7 @@ add_action( 'wp_loaded', 'frl_public_scripts', 10, 1 );
 
 add_action( 'login_enqueue_scripts', 'frl_login_page_branding', 10, 0 );
 add_filter( 'rest_endpoints', 'frl_disable_rest_endpoints', 10, 1 );
+add_filter( 'robots_txt', 'frl_append_custom_robots', 99, 2 );
 
 /**
  * Enqueue public JavaScript assets for the frontend.
@@ -228,4 +229,24 @@ function frl_get_html_option( string $option_name, ?string $php_enabled_option =
 	);
 
 	return $html_option;
+}
+
+/**
+ * Append custom robots.txt content from plugin options.
+ *
+ * @param string $output    The robots.txt output.
+ * @param bool   $is_public Whether the site is public.
+ * @return string
+ */
+function frl_append_custom_robots( string $output, bool $is_public ): string {
+	if ( ! $is_public || ! frl_get_option( 'enable_custom_robots' ) ) {
+		return $output;
+	}
+
+	$custom = frl_get_option( 'custom_robots_txt' );
+	if ( empty( $custom ) ) {
+		return $output;
+	}
+
+	return $output . "\n# Custom rules (Fralenuvole)\n" . $custom . "\n";
 }
