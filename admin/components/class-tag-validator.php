@@ -34,7 +34,7 @@ class Frl_Tag_Validator {
             <div class="form-row">
                 <label for="tag_validator_url">URL:</label>
                  <div class="form-url">
-                    <input type="url" id="tag_validator_url" name="frl_tag_validator_url" value="' . esc_attr( $url ) . '" placeholder="https://example.com/page" required>
+                    <input type="url" id="tag_validator_url" name="frl_tag_validator_url" value="' . esc_attr( $url ) . '" placeholder="https://example.com/page">
                  </div>
                <button type="button" id="tag-validator-button" class="button button-secondary">Validate Tags</button>
              </div>
@@ -1319,9 +1319,11 @@ class Frl_Tag_Validator {
 		$post_url = isset( $_POST['frl_tag_validator_url'] ) ? $_POST['frl_tag_validator_url'] : '';
 		$get_url  = isset( $_GET['frl_tag_validator_url'] ) ? $_GET['frl_tag_validator_url'] : '';
 
-		// Determine the URL to validate - prioritize POST since that will be our form submission.
-		// No default fallback to home_url('/'): skip expensive cURL on passive dashboard loads.
+		// Determine the URL to validate: only use user-submitted values.
+		// Passive dashboard loads get no default — validation is skipped entirely.
 		$url_to_validate = ! empty( $post_url ) ? $post_url : ( ! empty( $get_url ) ? $get_url : '' );
+		// Input field shows home_url('/') as placeholder default for convenience.
+		$input_url = ! empty( $url_to_validate ) ? $url_to_validate : home_url( '/' );
 
 		// Fixed set of predefined tags to check
 		$tags_to_check = '#frl-critical-css,#frl-preload-img,#frl-schema';
@@ -1329,8 +1331,9 @@ class Frl_Tag_Validator {
 		// Start building the output
 		$output = '';
 
-		// 1. Add the form inputs using UI renderer
-		$form_content = $this->get_form_inputs_html( $url_to_validate );
+		// 1. Add the form inputs using UI renderer.
+		// Input shows home_url('/') by default — user can just click Validate.
+		$form_content = $this->get_form_inputs_html( $input_url );
 		$output      .= frl_ui_render_widget(
 			'tag-validator-form',
 			$form_content,
