@@ -472,6 +472,15 @@ class Frl_Cache_Manager {
 			return $value;
 		}
 
+		// Stampede lock requires a real object-cache backend; skip when absent.
+		if ( ! self::is_object_cache_truly_functional() ) {
+			$value = $callback();
+			if ( $value !== null ) {
+				self::set( $group, $key, $value, $ttl );
+			}
+			return $value;
+		}
+
 		// Locking mechanism to prevent race conditions
 		$lock_key     = self::generate_key( 'lock', $group . $key );
 		$max_attempts = 3;
@@ -732,6 +741,10 @@ class Frl_Cache_Manager {
 				// 3. Flush each cache group using the comprehensive method
 				// This ensures consistent behavior across all clearing operations
 				foreach ( array_keys( self::$default_ttls ) as $group ) {
+					// Skip TTL fallback key — not a real cache group.
+					if ( $group === 'default' ) {
+						continue;
+					}
 					$group_stats = self::clear_group_with_dependencies( $group, null, false );
 
 					// Aggregate statistics

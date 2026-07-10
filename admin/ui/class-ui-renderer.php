@@ -924,7 +924,7 @@ class Frl_UI_Renderer {
 					esc_attr( $rows ),
 					esc_attr( $restricted_class ),
 					$disabled,
-					$value
+					esc_textarea( $value )
 				);
 				break;
 

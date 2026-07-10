@@ -152,7 +152,7 @@ function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): b
 		// PHP 8.0+: @ sets error_reporting() to 0.
 		// PHP < 8.0: @ sets error_reporting() to 4437 (E_ALL minus non-fatal errors).
 		$current_reporting = error_reporting();
-		if ( $current_reporting === 0 || $current_reporting === 4437 ) {
+		if ( $current_reporting === 0 || $current_reporting === FRL_PHP8_SUPPRESSED_ERROR_CODE ) {
 			return true;
 		}
 

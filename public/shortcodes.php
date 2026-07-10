@@ -162,6 +162,7 @@ function frl_shortcode_readtime( $atts ) {
 	// results (prefix/postfix), so the cache key must invalidate when string translations
 	// change, not only when the post itself is saved.
 	$translation_version = frl_get_option( 'translation_version' ) ?: 1;
+	// serialize() inside md5() is cache-key materialization — runs before lookup, not wasted.
 	$cache_key           = "readtime_{$post->ID}_" . md5( serialize( $atts ) ) . '_v' . frl_get_post_cache_version( $post->ID ) . '_tv' . $translation_version;
 
 	return frl_cache_remember(
@@ -717,6 +718,7 @@ function frl_shortcode_meta_rel( $atts ) {
 		return '';
 	}
 
+	// serialize() inside md5() is cache-key materialization — runs before lookup, not wasted.
 	$cache_key = 'meta_rel_' . $target_post_id . '_' . $field . '_' . md5(
 		serialize(
 			array(
@@ -1175,6 +1177,7 @@ function frl_shortcode_breadcrumbs( $atts ) {
 	// invalidate when string translations change, not only when the post is saved.
 	$version             = ( $object_id > 0 ) ? '_v' . frl_get_post_cache_version( $object_id ) : '';
 	$translation_version = frl_get_option( 'translation_version' ) ?: 1;
+	// serialize() inside md5() is cache-key materialization — runs before lookup, not wasted.
 	$cache_key           = 'breadcrumbs_' . $object_id . '_' .
 			md5( serialize( array( $a['separator'], $a['class'], $show_home, $show_current ) ) ) . $version . '_tv' . $translation_version;
 
