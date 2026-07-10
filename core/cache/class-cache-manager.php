@@ -701,6 +701,8 @@ class Frl_Cache_Manager {
 
 		return self::with_auth_preservation(
 			function () {
+				$purge_t0 = microtime( true );
+
 				// Reset the cleared groups tracker for this batch operation
 				self::$groups_cleared = array();
 
@@ -757,6 +759,17 @@ class Frl_Cache_Manager {
 				// Reset batch-delete flag so subsequent calls (e.g., clear_transients for a specific group)
 				// are not incorrectly skipped.
 				self::$transients_batch_deleted = false;
+
+				$purge_ms = round( ( microtime( true ) - $purge_t0 ) * 1000, 1 );
+				frl_log(
+					'purge_all: total={purge_ms}ms runtime={runtime} persistent={persistent} transients={transients}',
+					array(
+						'purge_ms'   => $purge_ms,
+						'runtime'    => $stats['runtime'],
+						'persistent' => $stats['persistent'],
+						'transients' => $stats['transients'],
+					)
+				);
 
 				frl_is_already_running( __METHOD__, true );
 				return $stats;

@@ -195,7 +195,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'label'             => 'Control Heartbeat',
 				'description'       => 'Enable Heartbeat API throttling per context',
 				'type'              => 'checkbox',
-				'default'           => 0,
+				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
 			'heartbeat_frontend_interval'         => array(
