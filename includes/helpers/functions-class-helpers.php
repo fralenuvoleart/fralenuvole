@@ -244,7 +244,19 @@ function frl_cache_add_deferred_write( string $group, string $key, mixed $value 
 }
 
 /**
- * Check if the Environment Manager subsystem should load/run for the current request.
+	* Process and flush deferred cache writes on shutdown.
+	*
+	* @return void
+	*/
+function frl_cache_process_deferred_writes(): void {
+	if ( ! frl_cache_is_loaded() ) {
+		return;
+	}
+	Frl_Cache_Manager::process_deferred_writes();
+}
+
+/**
+	* Check if the Environment Manager subsystem should load/run for the current request.
  * This is the central gatekeeper for EM activation.
  *
  * @return bool True if the environment manager should load, false otherwise.

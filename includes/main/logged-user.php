@@ -9,7 +9,8 @@ if ( frl_is_administrator_action() ) {
 	require_once FRL_DIR_PATH . 'includes/helpers/functions-action-handlers.php';
 
 	// Register the hook only when the function is available
-	add_action( 'init', 'frl_process_plugin_actions', 10, 0 );
+	// Priority 12: after environment enforcement (10), before rewriter (15).
+	add_action( 'init', 'frl_process_plugin_actions', 12, 0 );
 }
 
 add_action( 'wp_loaded', 'frl_load_logged_user_scripts', 10, 0 );

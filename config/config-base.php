@@ -99,7 +99,7 @@ const FRL_PUBLIC_ACTIONS = array(
  *
  * /oembed/1.0 and /wp/v2/oembed are intentionally excluded. The frl_disable_oembed() function already removes oEmbed when disable_oembed is enabled.
  *
- * @see includes/shared/website-features.php:124
+ * @see includes/main/website.php:124
  * @see public/public.php:frl_disable_rest_endpoints()
  */
 const FRL_REST_ENDPOINTS = array(

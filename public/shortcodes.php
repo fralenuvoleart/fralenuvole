@@ -354,7 +354,14 @@ function frl_shortcode_langswitcher( $atts = array() ) {
 function frl_langswitcher_build_list( array $elements ): string {
 	$items = '';
 	foreach ( $elements as $el ) {
-		$native_name = PLL()->model->get_language( $el['slug'] )->name ?? '';
+		$native_name = '';
+		if ( function_exists( 'PLL' ) ) {
+			$pll = PLL();
+			if ( $pll && isset( $pll->model ) ) {
+				$lang        = $pll->model->get_language( $el['slug'] );
+				$native_name = ( $lang && isset( $lang->name ) ) ? $lang->name : '';
+			}
+		}
 
 		$link_atts = sprintf(
 			'lang="%1$s" hreflang="%1$s" href="%2$s"',
@@ -447,7 +454,14 @@ function frl_langswitcher_build_dropdown( array $elements ): string {
 
 	$options = '';
 	foreach ( $elements as $el ) {
-		$native_name = PLL()->model->get_language( $el['slug'] )->name ?? '';
+		$native_name = '';
+		if ( function_exists( 'PLL' ) ) {
+			$pll = PLL();
+			if ( $pll && isset( $pll->model ) ) {
+				$lang        = $pll->model->get_language( $el['slug'] );
+				$native_name = ( $lang && isset( $lang->name ) ) ? $lang->name : '';
+			}
+		}
 
 		$data_lang = wp_json_encode(
 			array(

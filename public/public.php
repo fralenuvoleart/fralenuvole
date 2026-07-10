@@ -12,28 +12,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/performance.php';
 
-add_action( 'wp_head', 'frl_wp_head', 0, 0 );
-add_action( 'wp_footer', 'frl_wp_footer', 10, 0 );
+add_action( 'wp_head', 'frl_add_header_html', 0, 0 );
+add_action( 'wp_head', 'frl_add_header_scripts', 0, 0 );
+add_action( 'wp_footer', 'frl_add_footer_html', 10, 0 );
+add_action( 'wp_footer', 'frl_add_footer_scripts', 10, 0 );
 add_action( 'wp_loaded', 'frl_public_scripts', 10, 1 );
 
 add_action( 'login_enqueue_scripts', 'frl_login_page_branding', 10, 0 );
 add_filter( 'rest_endpoints', 'frl_disable_rest_endpoints', 10, 1 );
-
-/**
- * Inject critical assets and custom HTML into the document head.
- */
-function frl_wp_head() {
-	frl_add_header_html();
-	frl_add_header_scripts();
-}
-
-/**
- * Inject custom HTML and scripts into the document footer.
- */
-function frl_wp_footer() {
-	frl_add_footer_html();
-	frl_add_footer_scripts();
-}
 
 /**
  * Enqueue public JavaScript assets for the frontend.
@@ -160,7 +146,7 @@ function frl_login_headerurl( string $url ): string {
  * handles oEmbed REST route removal through its own toggle (disable_oembed).
  *
  * @see config/config-base.php:FRL_REST_ENDPOINTS
- * @see includes/shared/website-features.php:124
+ * @see includes/main/website.php:124
  */
 function frl_disable_rest_endpoints( array $endpoints ): array {
 	if ( frl_is_logged_in() || ! frl_get_option( 'disable_rest' ) ) {

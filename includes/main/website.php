@@ -13,7 +13,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-add_action( 'init', 'frl_disable_oembed_discovery', 5, 0 );
+// Priority 12: after environment enforcement (10), before rewriter (15).
+add_action( 'init', 'frl_disable_wp_core_features', 12, 0 );
+add_action( 'init', 'frl_add_page_excerpt_support', 12, 0 );
 add_action( 'pre_get_posts', 'frl_alter_query', 10, 1 );
 
 /**
@@ -43,15 +45,6 @@ function frl_disable_wp_core_features() {
 		wp_dequeue_style( 'dashicons' );
 		wp_deregister_style( 'dashicons' );
 	}
-}
-
-/**
- * Disables oEmbed discovery to reduce external requests.
- *
- * @return void
- */
-function frl_disable_oembed_discovery(): void {
-	add_filter( 'embed_oembed_discover', '__return_false', 10, 0 );
 }
 
 /**
@@ -259,6 +252,7 @@ function frl_run_disable_comments_batch(): void {
 
 /**
  * Optimize non-main queries and enforce menu_order for specific custom post types.
+ * Deliberate: secondary queries are scoped to public, published, non-password-protected content by design.
  */
 function frl_alter_query( WP_Query $query ): void {
 	if ( ! $query instanceof WP_Query || $query->is_main_query() ) {
@@ -269,7 +263,6 @@ function frl_alter_query( WP_Query $query ): void {
 	$query->set( 'update_post_term_cache', false );
 	$query->set( 'no_found_rows', true );
 	$query->set( 'ignore_sticky_posts', true );
-	// Deliberate: secondary queries are scoped to public, published, non-password-protected content by design.
 	$query->set( 'post_status', 'publish' );
 	$query->set( 'has_password', false );
 
@@ -349,4 +342,13 @@ function frl_heartbeat_settings( array $settings ): array {
 	*/
 function frl_deregister_heartbeat(): void {
 	wp_deregister_script( 'heartbeat' );
+}
+
+/**
+ * Adds excerpt support to pages.
+ *
+ * @return void
+ */
+function frl_add_page_excerpt_support(): void {
+	add_post_type_support( 'page', 'excerpt' );
 }

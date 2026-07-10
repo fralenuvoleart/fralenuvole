@@ -1507,4 +1507,64 @@ class Frl_Cache_Manager {
 
 		return $stats;
 	}
+
+	/**
+		* Processes and flushes deferred cache writes during the shutdown sequence.
+		*
+		* Merges duplicate writes and handles errors by re-queuing failed items.
+		*
+		* @return void
+		*/
+	public static function process_deferred_writes(): void {
+		frl_flush_db();
+
+		$writes = frl_cache_get_deferred_writes();
+		if ( empty( $writes ) ) {
+			return;
+		}
+
+		// Merge duplicate writes: last write wins
+		$merged = array();
+		foreach ( $writes as $group => $items ) {
+			foreach ( $items as $key => $value ) {
+				$merged[ $group ][ $key ] = $value;
+			}
+		}
+
+		// Process merged writes as one batch per group (via frl_cache_set_multi()) instead of
+		// N individual frl_cache_set() calls — collapses N object-cache round-trips (or N
+		// set_transient() DB writes) per group into a single batched operation.
+		// On failure, the whole group's items are re-queued for the next cycle; re-queuing a
+		// few already-succeeded keys alongside the failed one is harmless since cache writes
+		// are idempotent, and avoids requiring per-key granularity from the batch call.
+		$failed_items = array();
+		foreach ( $merged as $group => $items ) {
+			try {
+				if ( ! frl_cache_set_multi( $group, $items ) ) {
+					$failed_items[ $group ] = $items;
+				}
+			} catch ( Exception $e ) {
+				frl_log(
+					'Error processing deferred write batch for group {group}: {error}',
+					array(
+						'group' => $group,
+						'error' => $e->getMessage(),
+					)
+				);
+				$failed_items[ $group ] = $items;
+			}
+		}
+
+		// Re-queue failed items for the next cycle
+		if ( ! empty( $failed_items ) ) {
+			foreach ( $failed_items as $group => $items ) {
+				foreach ( $items as $key => $value ) {
+					frl_cache_add_deferred_write( $group, $key, $value );
+				}
+			}
+		}
+
+		frl_cache_clear_deferred_writes();
+		frl_flush_db();
+	}
 }
