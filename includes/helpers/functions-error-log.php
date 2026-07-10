@@ -41,26 +41,29 @@ function frl_log( $message, $context = array(), $force_email = true ) {
 
 	$debug_send_email = ! $is_admin_debug && $force_email && frl_get_option( 'error_reporting_email' );
 
-	// Unified throttling for expensive operations (format + email)
+	// Throttle formatting via cache.
 	$message_hash   = md5( serialize( array( $message, $context ) ) );
 	$context_suffix = frl_is_admin() ? 'admin' : 'frontend';
-
-	$cache_key = 'logs_' . $context_suffix . '_' . $message_hash;
+	$cache_key      = 'logs_' . $context_suffix . '_' . $message_hash;
 
 	$formatted_message = frl_cache_remember(
 		'admin',
 		$cache_key,
-		function () use ( $message, $context, $debug_send_email ) {
-			$formatted = frl_format_log_message( $message, $context );
-
-			// Handle email inside unified cache (replaces old email throttling)
-			if ( $debug_send_email ) {
-				frl_email_error_notification( $formatted );
-			}
-
-			return $formatted;
+		function () use ( $message, $context ) {
+			return frl_format_log_message( $message, $context );
 		}
 	);
+
+	// Email throttling: independent of formatting cache to avoid blocking
+	// cache population on slow SMTP connections. Uses a per-request static
+	// hash set to prevent duplicate emails within the same request.
+	if ( $debug_send_email ) {
+		static $emailed_hashes = array();
+		if ( ! isset( $emailed_hashes[ $message_hash ] ) ) {
+			$emailed_hashes[ $message_hash ] = true;
+			frl_email_error_notification( $formatted_message );
+		}
+	}
 
 	// Always log to preserve error frequency information
 	error_log( $formatted_message );
