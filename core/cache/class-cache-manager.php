@@ -668,6 +668,8 @@ class Frl_Cache_Manager {
 	 * @return mixed The return value of the callback.
 	 */
 	private static function with_auth_preservation( callable $callback ) {
+		$t0 = microtime( true );
+
 		// Use wp_get_current_user() directly (uncached) to snapshot the authentic
 		// user from WordPress' own session, NOT frl_get_current_user() which pulls
 		// from the plugin's persistent 'admin' cache group. Using the cached user
@@ -679,12 +681,30 @@ class Frl_Cache_Manager {
 		$current_user_id = $current_user->ID;
 		$auth_cookie     = wp_parse_auth_cookie( '', 'logged_in' );
 
-		$result = $callback();
+		$snapshot_ms = round( ( microtime( true ) - $t0 ) * 1000, 1 );
 
+		$cb_t0  = microtime( true );
+		$result = $callback();
+		$cb_ms  = round( ( microtime( true ) - $cb_t0 ) * 1000, 1 );
+
+		$auth_ms = 0;
 		if ( $current_user_id && $auth_cookie ) {
+			$auth_t0 = microtime( true );
 			wp_set_auth_cookie( $current_user_id, true );
 			wp_set_current_user( $current_user_id );
+			$auth_ms = round( ( microtime( true ) - $auth_t0 ) * 1000, 1 );
 		}
+
+		$total_ms = round( ( microtime( true ) - $t0 ) * 1000, 1 );
+		frl_log(
+			'with_auth_preservation: snapshot={snapshot_ms}ms callback={cb_ms}ms auth_restore={auth_ms}ms total={total_ms}ms',
+			array(
+				'snapshot_ms' => $snapshot_ms,
+				'cb_ms'       => $cb_ms,
+				'auth_ms'     => $auth_ms,
+				'total_ms'    => $total_ms,
+			)
+		);
 
 		return $result;
 	}

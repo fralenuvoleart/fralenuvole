@@ -34,16 +34,26 @@ class Frl_Admin_Dashboard {
 	 * @return string HTML content.
 	 */
 	public function render( $content = '' ) {
+		$t0    = microtime( true );
+		$steps = array();
+
 		// Instantiate the display classes
 		$cache_display = new Frl_Cache_Display();
 		$env_display   = new Frl_Environment_Display();
 
 		// Get the environment data, as it's needed by both sections
-		$env_data = frl_environment_display_get_stats();
+		$t              = microtime( true );
+		$env_data       = frl_environment_display_get_stats();
+		$steps['stats'] = round( ( microtime( true ) - $t ) * 1000 );
 
 		// --- Render sections from display classes ---
-		$env_widget   = $env_display->render_dashboard_widget( $env_data );
-		$cache_widget = $cache_display->render_dashboard_widget( $env_data );
+		$t                 = microtime( true );
+		$env_widget        = $env_display->render_dashboard_widget( $env_data );
+		$steps['env_dash'] = round( ( microtime( true ) - $t ) * 1000 );
+
+		$t                   = microtime( true );
+		$cache_widget        = $cache_display->render_dashboard_widget( $env_data );
+		$steps['cache_dash'] = round( ( microtime( true ) - $t ) * 1000 );
 
 		// Use the flexible layout renderer for a 2-column layout with only the main content
 		$columns = frl_ui_render_flex_layout(
@@ -59,7 +69,8 @@ class Frl_Admin_Dashboard {
 			'Environment & Cache',
 		);
 
-		$widget_content .= frl_ui_render_widget(
+		$t                = microtime( true );
+		$widget_content  .= frl_ui_render_widget(
 			'tag-validator-overview',
 			frl_tag_validator_render(),
 			'',
@@ -67,12 +78,16 @@ class Frl_Admin_Dashboard {
 			0,
 			true
 		);
+		$steps['tag_val'] = round( ( microtime( true ) - $t ) * 1000 );
 
-		$widget_content .= frl_ui_render_widget(
+		$t                 = microtime( true );
+		$widget_content   .= frl_ui_render_widget(
 			'environment-overview',
 			frl_environment_display_render(),
 		);
+		$steps['env_full'] = round( ( microtime( true ) - $t ) * 1000 );
 
+		$t               = microtime( true );
 		$widget_content .= frl_ui_render_widget(
 			'plugins-exclusions-overview',
 			$this->render_plugins_exclusions_widget(),
@@ -81,11 +96,14 @@ class Frl_Admin_Dashboard {
 			0,
 			true
 		);
+		$steps['excl']   = round( ( microtime( true ) - $t ) * 1000 );
 
-		$widget_content .= frl_ui_render_widget(
+		$t                = microtime( true );
+		$widget_content  .= frl_ui_render_widget(
 			'widget-admin-actions',
 			frl_render_clear_cache_buttons() . frl_render_admin_actions_buttons(),
 		);
+		$steps['actions'] = round( ( microtime( true ) - $t ) * 1000 );
 
 		// Add any additional content
 		if ( ! empty( $content ) ) {
@@ -94,6 +112,12 @@ class Frl_Admin_Dashboard {
 				$content,
 			);
 		}
+
+		$steps['total'] = round( ( microtime( true ) - $t0 ) * 1000 );
+		frl_log(
+			'dashboard_render: {steps}',
+			array( 'steps' => wp_json_encode( $steps ) )
+		);
 
 		// Render the final widget
 		return $widget_content;

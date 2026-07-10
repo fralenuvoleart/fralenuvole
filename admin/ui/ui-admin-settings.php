@@ -84,7 +84,13 @@ add_action(
  * @return void
  */
 function frl_dashboard_content_render() {
-	echo frl_admin_dashboard_render();
+	$t0   = microtime( true );
+	$html = frl_admin_dashboard_render();
+	frl_log(
+		'frl_dashboard_content_render: {elapsed}ms',
+		array( 'elapsed' => round( ( microtime( true ) - $t0 ) * 1000 ) )
+	);
+	echo $html;
 }
 
 /**
