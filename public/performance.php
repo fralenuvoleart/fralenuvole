@@ -275,7 +275,8 @@ function frl_output_preload_link( array $preload_data, string $media = '', strin
 
 	if ( ! empty( $preload_data['href'] ) ) {
 		printf(
-			'<link id="%s" data-plugin="%s" rel="preload" fetchPriority="high" as="image" href="%s"%s />\n',
+			'<link id="%s" data-plugin="%s" rel="preload" fetchPriority="high" as="image" href="%s"%s />
+	',
 			$link_id,
 			FRL_NAME,
 			esc_url( $preload_data['href'] ),
