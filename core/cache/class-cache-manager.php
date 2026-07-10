@@ -699,8 +699,10 @@ class Frl_Cache_Manager {
 			return array();
 		}
 
+		error_log( 'FRL_TIMING: purge_all_enter ' . round( microtime( true ) * 1000 ) );
 		return self::with_auth_preservation(
 			function () {
+				error_log( 'FRL_TIMING: purge_all_closure_enter ' . round( microtime( true ) * 1000 ) );
 				// Reset the cleared groups tracker for this batch operation
 				self::$groups_cleared = array();
 
@@ -758,10 +760,12 @@ class Frl_Cache_Manager {
 				// are not incorrectly skipped.
 				self::$transients_batch_deleted = false;
 
+				error_log( 'FRL_TIMING: purge_all_closure_exit ' . round( microtime( true ) * 1000 ) );
 				frl_is_already_running( __METHOD__, true );
 				return $stats;
 			}
 		);
+		error_log( 'FRL_TIMING: purge_all_exit ' . round( microtime( true ) * 1000 ) );
 	}
 
 	/**
