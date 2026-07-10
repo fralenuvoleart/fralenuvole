@@ -421,10 +421,10 @@ function frl_get_all_plugin_transients() {
 
 			$query = $wpdb->prepare(
 				"SELECT option_name, option_value FROM {$wpdb->options}
-             WHERE option_name LIKE %s OR option_name LIKE %s
-                OR option_name LIKE %s OR option_name LIKE %s
-             ORDER BY option_id DESC
-             LIMIT %d",
+			          WHERE option_name LIKE %s OR option_name LIKE %s
+			             OR option_name LIKE %s OR option_name LIKE %s
+			          ORDER BY option_name
+			          LIMIT %d",
 				'_transient_' . $t_pattern,
 				'_transient_timeout_' . $to_pattern,
 				'_site_transient_' . $st_pattern,
