@@ -362,3 +362,30 @@ function frl_get_language_label( string $slug ): string {
 	}
 	return Frl_Translation_Service::get_instance()->get_language_label( $slug );
 }
+
+/**
+ * Get the language of a term.
+ *
+ * @param int $term_id Term ID.
+ * @return string|null Language code or null if not assigned.
+ */
+function frl_get_term_language( int $term_id ): ?string {
+	if ( ! frl_translator_is_enabled() ) {
+		return null;
+	}
+	return Frl_Translation_Service::get_instance()->get_term_language( $term_id );
+}
+
+/**
+ * Get the translated post ID.
+ *
+ * @param int    $post_id  Original post ID.
+ * @param string $language Target language.
+ * @return int|false Translated post ID or false.
+ */
+function frl_get_post_translation( int $post_id, string $language ) {
+	if ( ! frl_translator_is_enabled() ) {
+		return false;
+	}
+	return Frl_Translation_Service::get_instance()->get_post_translation( $post_id, $language );
+}

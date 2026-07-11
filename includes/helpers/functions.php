@@ -912,14 +912,11 @@ function frl_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' )
 				return array();
 			}
 
-			// Filter by current language when a translation plugin is active
-			if ( frl_translator_is_enabled() && function_exists( 'pll_get_term_language' ) ) {
+			// Filter by current language via the translation adapter.
+			if ( frl_translator_is_enabled() ) {
 				$filtered = array();
 				foreach ( $terms as $term ) {
-					/** @disregard P1010 Undefined type */
-					$term_lang_obj = pll_get_term_language( $term->term_id );
-					/** @disregard P1009 Undefined type */
-					$term_lang = ( $term_lang_obj instanceof PLL_Language ) ? $term_lang_obj->slug : '';
+					$term_lang = frl_get_term_language( $term->term_id ) ?: '';
 					if ( $term_lang === $lang || '' === $term_lang ) {
 						$filtered[] = $term;
 					}

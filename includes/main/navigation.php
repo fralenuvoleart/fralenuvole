@@ -73,9 +73,7 @@ function frl_render_block_core_navigation_translation( $settings, $metadata ) {
 				'permalinks',
 				$cache_key,
 				function () use ( $nav_id, $current_lang ) {
-					// Fetch translated post ID using Polylang
-					/** @disregard P1010 Undefined function — Polylang API */
-					return pll_get_post( $nav_id, $current_lang );
+					return frl_get_post_translation( $nav_id, $current_lang );
 				}
 			);
 

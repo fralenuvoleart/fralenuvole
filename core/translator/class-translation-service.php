@@ -756,6 +756,27 @@ final class Frl_Translation_Service {
 	}
 
 	/**
+	 * Get the language of a term via the adapter.
+	 *
+	 * @param int $term_id Term ID.
+	 * @return string|null Language code or null if not assigned.
+	 */
+	public function get_term_language( int $term_id ): ?string {
+		return $this->adapter->get_term_language( $term_id );
+	}
+
+	/**
+	 * Get the translated post ID via the adapter.
+	 *
+	 * @param int    $post_id  Original post ID.
+	 * @param string $language Target language.
+	 * @return int|false Translated post ID or false.
+	 */
+	public function get_post_translation( int $post_id, string $language ) {
+		return $this->adapter->get_post_translation( $post_id, $language );
+	}
+
+	/**
 	 * Get the language label for a given language slug.
 	 *
 	 * @param string $slug Language slug (e.g., 'en', 'ru').
