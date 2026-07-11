@@ -949,7 +949,7 @@ class Frl_Cache_Display {
 
 		// Handle simple arrays that fell through (e.g., [] or ['one_item'])
 		if ( is_array( $value ) ) {
-			return '<code>' . esc_html( json_encode( $value ) ) . '</code>';
+			return '<code>' . esc_html( wp_json_encode( $value ) ) . '</code>';
 		}
 
 		// Default fallback for other scalar types or short strings

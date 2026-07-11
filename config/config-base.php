@@ -116,9 +116,6 @@ const FRL_REST_ENDPOINTS = array(
 	'/wp/v2/comments',
 );
 
-// PHP 8.0+ error code for errors suppressed with the @ operator.
-const FRL_PHP8_SUPPRESSED_ERROR_CODE = 4437;
-
 // Used only when image_preload_featured_responsive is on. Size fixed by breakpoint/DPR math; override via frl_hero_mobile_image_size filter.
 const FRL_PRELOAD_IMAGE_MOBILE_SIZE = '1536x1536';
 

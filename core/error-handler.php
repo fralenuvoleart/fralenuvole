@@ -53,7 +53,7 @@ function frl_errors_set_level(): void {
 		$notice_enabled     = frl_get_option( 'error_reporting_notice' );
 		$warning_enabled    = frl_get_option( 'error_reporting_warning' );
 		$deprecated_enabled = frl_get_option( 'error_reporting_deprecated' );
-	} catch ( Exception $e ) {
+	} catch ( \Throwable $e ) {
 		$notice_enabled     = true;
 		$warning_enabled    = true;
 		$deprecated_enabled = true;
@@ -150,9 +150,8 @@ function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): b
 
 		// Suppress errors silenced by the @ operator.
 		// PHP 8.0+: @ sets error_reporting() to 0.
-		// PHP < 8.0: @ sets error_reporting() to 4437 (E_ALL minus non-fatal errors).
 		$current_reporting = error_reporting();
-		if ( $current_reporting === 0 || $current_reporting === FRL_PHP8_SUPPRESSED_ERROR_CODE ) {
+		if ( $current_reporting === 0 ) {
 			return true;
 		}
 
@@ -186,6 +185,9 @@ function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): b
 			case E_USER_ERROR:
 			case E_ERROR:
 				$label = 'PHP Fatal error: ';
+				break;
+			default:
+				$label = 'PHP Error: ';
 				break;
 		}
 

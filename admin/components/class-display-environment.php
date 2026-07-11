@@ -223,7 +223,7 @@ class Frl_Environment_Display {
 			unset( $config_for_json_display['current_environment'] );
 		}
 
-		$json_part = json_encode( $config_for_json_display, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$json_part = wp_json_encode( $config_for_json_display, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 
 		if ( $json_part === false ) {
 			$error_message = 'Error encoding configuration to JSON: ' . json_last_error_msg();
