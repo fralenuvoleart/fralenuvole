@@ -253,7 +253,7 @@ function frl_append_custom_robots( string $output, bool $is_public ): string {
 		return $output;
 	}
 
-	return $output . "\n# Custom Fralenuvole rules\n" . $custom . "\n";
+	return $output . "\n# Custom Rules\n" . $custom . "\n";
 }
 
 /**
