@@ -2,12 +2,13 @@
 
 ## Current Focus
 
-Wrapped `Frl_Cache_Manager::process_deferred_writes()` in a facade helper `frl_cache_process_deferred_writes()` — restoring the established pattern where all `Frl_Cache_Manager` references go through helpers in `functions-class-helpers.php`.
+Audited 5 reported findings in `Frl_Cache_Manager` and `shortcodes.php` — 2 confirmed real, 3 overstated. Applied targeted fixes with zero regression risk.
 
 ## Changes Made
 
-1. **Added [`frl_cache_process_deferred_writes()`](includes/helpers/functions-class-helpers.php:251)** — facade helper with `frl_cache_is_loaded()` guard, delegates to `Frl_Cache_Manager::process_deferred_writes()`.
-2. **Updated [`includes/main.php:33`](includes/main.php:33)** — hook callable from `array('Frl_Cache_Manager', 'process_deferred_writes')` to `'frl_cache_process_deferred_writes'` — no class name exposed in runtime hooks.
+1. **Fixed latent shape-mismatch bug in [`get_cached_value()`](core/cache/class-cache-manager.php:376)** — removed dead `is_array($key)` → `get_multi()` branch that returned a map when callers expect a scalar. The `$cache_key` parameter is always a string from `generate_key()`, so the single-key `get_transient()` path handles both scalar and array `$key` inputs. Zero existing callers hit this path (facade type-hints `string $key`).
+2. **Expanded stampede-lock skip comment in [`remember()`](core/cache/class-cache-manager.php:468)** — documents why transient-based locking is not viable (TOCTOU race) and why MySQL `GET_LOCK()` is too heavy for 110+ call sites. All callbacks are idempotent reads, so double-execution wastes CPU but cannot corrupt data.
+3. **Added defensive comments** for 3 non-bugs to prevent future misdiagnosis: `purge_all()` `'default'` skip guard, `public $deferred_writes` facade design, and `serialize()` key-materialization pattern (3 occurrences in shortcodes.php).
 
 ## Architecture: `Frl_Cache_Manager` facade pattern
 

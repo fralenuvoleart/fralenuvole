@@ -26,6 +26,10 @@ class Frl_Cache_Manager {
 	private static array $group_keys    = array(); // Index of keys per group for efficient clearing
 	private static array $loaded_groups = array(); // Tracks which groups have been fully loaded this request
 
+	// public by design: the facade helpers in functions-class-helpers.php are the
+	// ONLY external accessors (guarded by frl_cache_is_loaded()). No external code
+	// bypasses the facade. Making this private would require getter/setter methods
+	// that add indirection without gaining safety — the facade IS the guard.
 	public static array $deferred_writes = array();
 
 	/** Groups persisted across requests. */
@@ -373,21 +377,14 @@ class Frl_Cache_Manager {
 			return $data;
 		}
 
-		// Handle batch loading for persistent groups (transient fallback)
+		// Handle batch loading for persistent groups (transient fallback).
+		// $cache_key is always a string (generate_key() hashes array keys), so a
+		// single-key get_transient() works for both scalar and array $key inputs.
 		if ( self::use_transient_fallback( $group ) ) {
-			if ( is_array( $key ) ) {
-				// For array keys, use get_multi directly
-				$result = self::get_multi( $group, $key );
-				if ( ! empty( $result ) ) {
-					return $result;
-				}
-			} else {
-				// For single keys, check transient
-				$data = get_transient( self::PREFIX . $cache_key );
-				if ( $data !== false ) {
-					self::set_runtime( $cache_key, $data, $group );
-					return $data;
-				}
+			$data = get_transient( self::PREFIX . $cache_key );
+			if ( $data !== false ) {
+				self::set_runtime( $cache_key, $data, $group );
+				return $data;
 			}
 		} elseif ( self::is_object_cache_truly_functional() ) {
 			// Object cache for all data when available
@@ -472,7 +469,16 @@ class Frl_Cache_Manager {
 			return $value;
 		}
 
-		// Stampede lock requires a real object-cache backend; skip when absent.
+		// Stampede lock requires a real object-cache backend (Redis/Memcached)
+		// where wp_cache_add() is atomic across processes. On transient-only
+		// sites, wp_cache_add() degrades to per-process in-memory storage — no
+		// cross-process serialization. Transient-based locking (get_transient/
+		// set_transient) is not a safe alternative: TOCTOU race between check
+		// and set. MySQL GET_LOCK() works but ties up a connection per lock
+		// attempt across 110+ call sites. All remember() callbacks are idempotent
+		// reads, so concurrent double-execution during rare race windows wastes
+		// CPU but cannot corrupt data. This is a known, accepted tradeoff for
+		// sites without a persistent object-cache backend.
 		if ( ! self::is_object_cache_truly_functional() ) {
 			$value = $callback();
 			if ( $value !== null ) {
@@ -742,6 +748,9 @@ class Frl_Cache_Manager {
 				// This ensures consistent behavior across all clearing operations
 				foreach ( array_keys( self::$default_ttls ) as $group ) {
 					// Skip TTL fallback key — not a real cache group.
+					// 'default' in FRL_CACHE_TTL is a TTL fallback (see set()
+					// line 269), not a cache group; iterating it would trigger
+					// unrecognized-group warnings in clear_group_with_dependencies().
 					if ( $group === 'default' ) {
 						continue;
 					}
