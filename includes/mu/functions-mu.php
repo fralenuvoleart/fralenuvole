@@ -339,9 +339,8 @@ function frl_get_exclusion_options(): array {
 	$options['active_plugins'] = frl_cache_remember(
 		'options',
 		'mu_plugin_active_plugins',
-		function () {
-			global $wpdb;
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		function () use ( $wpdb ) {
+	           // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$value = $wpdb->get_var(
 				$wpdb->prepare(
 					"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
@@ -406,6 +405,7 @@ function frl_add_exclusion_filter_network_active_plugins( array $excluded ): voi
 	add_filter(
 		'pre_site_option_active_plugins',
 		function ( $pre, $option ) use ( $excluded ) {
+			global $wpdb;
 			static $cache = null;
 
 			if ( $cache !== null ) {
@@ -416,9 +416,8 @@ function frl_add_exclusion_filter_network_active_plugins( array $excluded ): voi
 			$plugins = frl_cache_remember(
 				'options',
 				'mu_plugin_network_active_plugins',
-				function () {
-					global $wpdb;
-                    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				function () use ( $wpdb ) {
+				                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
                     // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedQuery
 					$plugins = $wpdb->get_var(
 						$wpdb->prepare(

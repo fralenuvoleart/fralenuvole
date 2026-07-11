@@ -1149,6 +1149,7 @@ class Frl_Cache_Manager {
 	 * @return int Number of items cleared.
 	 */
 	private static function purge_group_storage( $group ) {
+		global $wpdb;
 		$count = 0;
 
 		if ( self::is_object_cache_truly_functional() ) {
@@ -1304,8 +1305,7 @@ class Frl_Cache_Manager {
 			$stats['transaction_used'] = true;
 
 			$result = self::execute_with_transaction(
-				function () use ( $group, $specific_keys ) {
-					global $wpdb;
+				function () use ( $group, $specific_keys, $wpdb ) {
 
 					if ( $specific_keys !== null ) {
 						// Clear specific keys

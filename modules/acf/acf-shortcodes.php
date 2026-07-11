@@ -48,8 +48,8 @@ function frl_shortcode_acf_calculated( $atts ) {
 		// Build cache key with post scope when source is 'post'
 		if ( $source === 'post' ) {
 			$id_raw    = trim( (string) $a['id'] );
-			$post_id   = ( ctype_digit( $id_raw ) && (int) $id_raw > 0 ) ? (int) $id_raw : (int) ( function_exists( 'frl_get_current_post_id' ) ? frl_get_current_post_id() : get_the_ID() );
-			$cache_key = 'acf_calc_' . sanitize_key( $target ) . '_post_' . $post_id . '_v' . ( function_exists( 'frl_get_post_cache_version' ) ? frl_get_post_cache_version( $post_id ) : 1 );
+			$post_id   = ( ctype_digit( $id_raw ) && (int) $id_raw > 0 ) ? (int) $id_raw : frl_get_current_post_id();
+			$cache_key = 'acf_calc_' . sanitize_key( $target ) . '_post_' . $post_id . '_v' . frl_get_post_cache_version( $post_id );
 		} else {
 			$cache_key = 'acf_calc_' . sanitize_key( $target ) . '_option';
 		}
@@ -58,12 +58,12 @@ function frl_shortcode_acf_calculated( $atts ) {
 			$cache_key,
 			static function () use ( $target, $source, $a ) {
 				$pid = 'option';
-				if ( $source === 'post' ) {
-					$id_raw = trim( (string) $a['id'] );
-					$pid    = ( ctype_digit( $id_raw ) && (int) $id_raw > 0 ) ? (int) $id_raw : (int) ( function_exists( 'frl_get_current_post_id' ) ? frl_get_current_post_id() : get_the_ID() );
-				}
-				$val = get_field( $target, $pid, false );
-				return is_scalar( $val ) ? (string) $val : '';
+					if ( $source === 'post' ) {
+						$id_raw = trim( (string) $a['id'] );
+						$pid    = ( ctype_digit( $id_raw ) && (int) $id_raw > 0 ) ? (int) $id_raw : frl_get_current_post_id();
+					}
+					$val = get_field( $target, $pid, false );
+					return is_scalar( $val ) ? (string) $val : '';
 			}
 		);
 	}
@@ -87,7 +87,7 @@ function frl_shortcode_acf_calculated( $atts ) {
 			if ( $id_raw !== '' && ctype_digit( $id_raw ) ) {
 				$post_id = (int) $id_raw;
 			} else {
-				$post_id = function_exists( 'frl_get_current_post_id' ) ? frl_get_current_post_id() : (int) get_the_ID();
+				$post_id = frl_get_current_post_id();
 			}
 			if ( $post_id <= 0 ) {
 				return '';
@@ -108,7 +108,7 @@ function frl_shortcode_acf_calculated( $atts ) {
 				call_user_func( 'update_field', $target, $rendered, $pid );
 				// Warm shortcode cache for this target (must match key format from fast path)
 				if ( $source === 'post' && $post_id > 0 ) {
-					$warm_cache_key = 'acf_calc_' . sanitize_key( $target ) . '_post_' . $post_id . '_v' . ( function_exists( 'frl_get_post_cache_version' ) ? frl_get_post_cache_version( $post_id ) : 1 );
+					$warm_cache_key = 'acf_calc_' . sanitize_key( $target ) . '_post_' . $post_id . '_v' . frl_get_post_cache_version( $post_id );
 				} else {
 					$warm_cache_key = 'acf_calc_' . sanitize_key( $target ) . '_option';
 				}
@@ -153,8 +153,7 @@ function frl_shortcode_acf_calculated( $atts ) {
 			$post_id = (int) $id_raw;
 		}
 		if ( $post_id <= 0 ) {
-			$post_id = function_exists( 'frl_get_current_post_id' ) ? frl_get_current_post_id() : get_the_ID();
-			$post_id = (int) $post_id;
+			$post_id = frl_get_current_post_id();
 		}
 		if ( $post_id <= 0 ) {
 			return '';
@@ -191,7 +190,7 @@ function frl_shortcode_acf_calculated( $atts ) {
 			call_user_func( 'update_field', $target, $result_str, $pid );
 			// Warm shortcode cache for this target (must match key format from fast path)
 			if ( $source === 'post' && isset( $post_id ) && $post_id > 0 ) {
-				$warm_cache_key = 'acf_calc_' . sanitize_key( $target ) . '_post_' . $post_id . '_v' . ( function_exists( 'frl_get_post_cache_version' ) ? frl_get_post_cache_version( $post_id ) : 1 );
+				$warm_cache_key = 'acf_calc_' . sanitize_key( $target ) . '_post_' . $post_id . '_v' . frl_get_post_cache_version( $post_id );
 			} else {
 				$warm_cache_key = 'acf_calc_' . sanitize_key( $target ) . '_option';
 			}

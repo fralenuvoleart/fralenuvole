@@ -400,12 +400,13 @@ function frl_render_rewrite_multilingual_cpts() {
  * @return array Raw transient data (array of objects from wp_options results) or empty array on failure.
  */
 function frl_get_all_plugin_transients() {
+	global $wpdb;
+
 	// Use frl_cache_remember to cache the combined results of a single query
 	$all_transients = frl_cache_remember(
 		'staticdata',
 		'all_transients',
-		function () {
-			global $wpdb;
+		function () use ( $wpdb ) {
 
 			$groups_to_query = array_diff( FRL_CACHE_PERSISTENT_GROUPS, array( 'transients' ) );
 

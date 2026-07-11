@@ -16,9 +16,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 const FRL_BIBLE_API_BASE_URL = 'https://api.esv.org/v3/passage/audio/';
 const FRL_BIBLE_ENDPOINT     = 'bible-audio';
 
-// Bible API Key
+// Bible API Key — define in wp-config.php per environment:
+// define( 'FRL_BIBLE_API_KEY', 'your-esv-api-key' );
 if ( ! defined( 'FRL_BIBLE_API_KEY' ) ) {
-	define( 'FRL_BIBLE_API_KEY', '675af0ff2f440bd5983ae0a5c05f81b9bb89b2af' );
+	define( 'FRL_BIBLE_API_KEY', '' );
 }
 
 // Default passage for [frl_bible_audio] shortcode
