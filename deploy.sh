@@ -12,11 +12,25 @@ if [ -z "${DEPLOY_SH_REEXECED:-}" ]; then
     exec "$TMP_SELF" "$@"
 fi
 
+# --- Argument parsing ---
+DRY_RUN=false
+AUTO_YES=false
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run) DRY_RUN=true ;;
+        -y|--yes)  AUTO_YES=true ;;
+    esac
+done
+
 PLUGIN_DIR="$HOME/public/wp-content/plugins/fralenuvole"
 BRANCH="main"
 
 echo "---"
-echo "🚀 Deploying fralenuvole plugin from GitHub to PBS Production on Kinsta"
+if $DRY_RUN; then
+    echo "🔍 DRY RUN — no changes will be applied"
+else
+    echo "🚀 Deploying fralenuvole plugin from GitHub to PBS Production on Kinsta"
+fi
 echo "---"
 
 cd "$PLUGIN_DIR"
@@ -29,6 +43,22 @@ git fetch origin "$BRANCH"
 
 echo "Commits about to be applied:"
 git log --oneline HEAD..origin/$BRANCH
+
+if $DRY_RUN; then
+    echo ""
+    echo "🔍 Dry run complete — no changes made."
+    exit 0
+fi
+
+# Confirmation prompt (skip if -y/--yes or non-interactive stdin)
+if ! $AUTO_YES && [ -t 0 ]; then
+    echo ""
+    read -r -p "Proceed with deploy? (y/N) " CONFIRM
+    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+        echo "❌ Deploy cancelled."
+        exit 0
+    fi
+fi
 
 PREV_COMMIT=$(git rev-parse HEAD)
 

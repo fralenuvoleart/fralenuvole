@@ -2,11 +2,13 @@
 
 ## Current Focus
 
-Audited 4 Kinsta error-log findings against current codebase — 3 already patched, 1 unpatched (now fixed).
+Reviewed and hardened [`deploy.sh`](deploy.sh) with `--dry-run` flag and interactive confirmation prompt.
 
 ## Changes Made
 
 1. **Added null guard to [`frl_get_plugin_options_db()`](includes/helpers/functions-options.php:308)** — `$wpdb->get_results()` can return `null` on DB failure; added `if (!is_array($results)) { return array(); }` before the `foreach` to prevent `foreach() argument must be of type array|object, null given` warning.
+2. **Added `--dry-run` flag to [`deploy.sh`](deploy.sh)** — fetches, shows commit preview, exits 0 without touching the working tree.
+3. **Added confirmation prompt to [`deploy.sh`](deploy.sh)** — prompts "Proceed with deploy? (y/N)" after commit preview, before `git reset --hard`. Skipped when `-y`/`--yes` passed or stdin is not a TTY (CI-safe).
 
 ## Prior Tasks (Completed)
 
