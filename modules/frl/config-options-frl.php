@@ -17,12 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 $frl_frl_default_fields = array(
 	// Add a section title to the modules tab
-	'section_title_frl'  => array(
+	'section_title_frl' => array(
 		'label'       => 'FRL Module',
 		'type'        => 'section_title',
 		'description' => 'FRL module settings',
 	),
-	'frl_bible_api_key'   => array(
+	'frl_bible_api_key' => array(
 		'label'             => 'Bible API Key',
 		'description'       => 'Insert your Bible API Key',
 		'type'              => 'text',
