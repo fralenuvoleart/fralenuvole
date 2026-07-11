@@ -41,8 +41,9 @@ fetch_one() {
 }
 
 # Run all three fetches in parallel; each has its own retry budget.
+# access uses 8000 lines (not 3000) to cover a full 24h window (~330 lines/hour).
 fetch_one "error"             1000 1 "$DIR/${TS}_error.json"  &
-fetch_one "access"            3000 1 "$DIR/${TS}_access.json" &
+fetch_one "access"            8000 1 "$DIR/${TS}_access.json" &
 fetch_one "kinsta-cache-perf" 1000 3 "$DIR/${TS}_cache.json"  &
 
 wait

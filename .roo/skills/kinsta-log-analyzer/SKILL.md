@@ -120,10 +120,37 @@ The script filters entries to the requested time window and produces:
 - **📊 Edge Cache Health** — HIT/MISS/BYPASS with verdict and optimization steps (shown as *no cache data*, not a misleading 0%, when `cache.json` is absent/empty)
 
 ### Step 4: Open Report
-The script auto-opens the report in VS Code. Present the key findings to the user.
+The script auto-opens the report in VS Code.
 
-### Step 5: Present Report
-Present a concise summary to the user confirming the report is open and listing the top findings.
+### Step 5: Analyst Commentary (Critical Reasoning)
+**This is LLM reasoning, not automated — every analysis is unique.** After the script generates the base report, you MUST:
+
+1. **Read the generated report** (`read_file` on the `*_report.md`).
+
+2. **Apply critical reasoning to the raw data.** Do NOT just rephrase the report — add insights that require cross-referencing multiple sections and external context. Look for:
+
+   | Lens | Questions to Ask |
+   |---|---|
+   | **Attack patterns** | Are 403/404 URLs showing spam injection? (e.g., Chinese-language gambling/pharma payloads appended to legitimate slugs). Is there an xmlrpc brute-force pattern? |
+   | **Traffic anomalies** | Which hours spike 3–4× above baseline? Is the spike bots or real users? Does it correlate with a known cron schedule? |
+   | **Bot strategy** | Which bot categories have zero business value and should be blocked? Which are essential for SEO in the site's target languages? Is any single bot consuming disproportionate resources? |
+   | **Cache root cause** | The report says "49% HIT" — but WHY? Are UTM-tagged paid-traffic URLs fragmenting the cache? Are AI crawlers churning unique URLs? Is a cookie being set on public pages? |
+   | **Discrepancy cross-check** | If the user provided their own dashboard numbers, what gaps exist and what explains them? (Time-window precision, error log vs access log scope, container-level monitoring vs HTTP-level logging.) |
+   | **404 triage** | Which 404s are worth fixing (old asset paths, missing files users actually need) vs. which are noise (bot probes for `/favicon.png`, `/ads.txt` on a no-ads site)? |
+
+3. **Append an `## 📋 Analyst Commentary & Recommendations` section** to the report using `apply_diff`. Structure it as:
+   - **Overall Assessment** — one-paragraph verdict with severity (🟢 healthy / 🟡 concerns / 🔴 action needed)
+   - **Discrepancy Notes** (if user mentioned dashboard numbers) — explain gaps honestly
+   - **Attack/Security Findings** (if any) — describe the pattern, assess impact, recommend action
+   - **Cache Root Cause Analysis** — go beyond "HIT rate is low" to identify the specific mechanism
+   - **Bot Traffic Strategy** — table showing which categories to keep/block/rate-limit and why
+   - **Traffic Anomalies** — flag spikes with likely explanations
+   - **404/Error Fix Recommendations** — triaged list of what's worth fixing
+
+4. **Be honest about uncertainty.** If the data doesn't answer a question, say so — do not fabricate explanations.
+
+### Step 6: Present Report
+Present a concise summary to the user confirming the report is open and listing the top findings, including the new commentary section.
 
 ---
 
@@ -134,7 +161,7 @@ Present a concise summary to the user confirming the report is open and listing 
 | `NETWORK_ERROR` on cache-perf | Transient Kinsta API issue | Retry up to 3x with 3s sleep between |
 | Tool name not found (e.g. `kinstasiteslist`) | Roo Code strips dots from tool names | Use stdio JSON-RPC via `execute_command` |
 | `Validation error: Invalid enum value` | Used `error.log` instead of `error` | Use bare names: `error`, `access`, `kinsta-cache-perf` |
-| Cross-file analysis empty | Error and access logs don't overlap in time | Use `"lines":3000` for the access log for better overlap |
+| Cross-file analysis empty | Error and access logs don't overlap in time | Use `"lines":8000` for the access log for full 24h coverage |
 | Report file not found | Wrong timestamp used | Check `$DIR` for the generated `*_report.md` |
 
 ---
