@@ -22,6 +22,11 @@ add_action( 'login_enqueue_scripts', 'frl_login_page_branding', 10, 0 );
 add_filter( 'rest_endpoints', 'frl_disable_rest_endpoints', 10, 1 );
 add_filter( 'robots_txt', 'frl_append_custom_robots', 99, 2 );
 
+// The SEO Framework bypasses WordPress's `robots_txt` filter and uses its own
+// `the_seo_framework_robots_txt_sections` filter. Register a handler for it so
+// custom robots.txt content works when TSF is active.
+add_filter( 'the_seo_framework_robots_txt_sections', 'frl_append_custom_robots_tsf', 99, 2 );
+
 /**
  * Enqueue public JavaScript assets for the frontend.
  */
@@ -249,4 +254,29 @@ function frl_append_custom_robots( string $output, bool $is_public ): string {
 	}
 
 	return $output . "\n# Custom rules (Fralenuvole)\n" . $custom . "\n";
+}
+
+/**
+	* Append custom robots.txt content via The SEO Framework's filter.
+	*
+	* TSF bypasses WordPress's `robots_txt` filter — this handler injects the
+	* same custom rules into TSF's section-based output instead.
+	*
+	* @param array  $robots_sections TSF robots.txt sections.
+	* @param string $site_path       Site path prefix.
+	* @return array
+	*/
+function frl_append_custom_robots_tsf( array $robots_sections, string $site_path ): array {
+	if ( ! frl_get_option( 'enable_custom_robots' ) ) {
+		return $robots_sections;
+	}
+
+	$custom = frl_get_option( 'custom_robots_txt' );
+	if ( empty( $custom ) ) {
+		return $robots_sections;
+	}
+
+	$robots_sections['frl_custom'] = '# Custom rules (Fralenuvole)' . "\n" . $custom;
+
+	return $robots_sections;
 }
