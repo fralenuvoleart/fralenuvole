@@ -12,7 +12,7 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 | Cache Operations Orchestrator | `core/cache/class-cache-operations.php` | Composite multi-step cache/rewrite operations with lifecycle hooks, defined in `FRL_CACHE_OPERATIONS`. |
 | Environment Manager | `core/environment/` (7 files) | Domain-based auto-configuration: maps HTTP host → environment profile → WP options, plugin options, plugin/module activation state. See `docs/ENVIRONMENT.md`. |
 | Rewriter | `core/rewriter/` | Feature-based URL rewriting system (CPT/taxonomy base translation and removal) with priority-ordered, self-registering features. See `docs/REWRITER.md`. |
-| Translator | `core/translator/` | Adapter-pattern translation service (Polylang implemented; WPML-ready via `Frl_Translation_Adapter_Interface`). Block token translation (`{{text}}`, `##slug##`), field translation, deferred string registration. See `docs/TRANSLATOR.md`. |
+| Translator | `core/translator/` | Adapter-pattern translation service (Polylang implemented; WPML-ready via `Frl_Translation_Adapter_Interface`). Block token translation (`{{text}}`, `##slug##`), field translation, deferred string registration, language label resolution (`get_language_label()` on adapter, `frl_get_language_label()` helper). See `docs/TRANSLATOR.md`. |
 | ThemeKit | `core/themekit/themekit.php` | Theme-independent body classes, base styles, block pattern/provider-style removal, font-display optimization. See `docs/THEMEKIT.md`. |
 | Error Handler | `core/error-handler.php` | Custom `set_error_handler()`/`set_exception_handler()` with suppression rules, `doing_it_wrong` interception, `@`-suppression detection (PHP 7 and 8+ compatible). |
 

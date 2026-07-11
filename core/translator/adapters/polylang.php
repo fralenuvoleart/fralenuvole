@@ -160,6 +160,18 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface {
 		return true;
 	}
 
+	public function get_language_label( string $slug ): string {
+		if ( ! function_exists( 'PLL' ) ) {
+			return '';
+		}
+		$pll = PLL();
+		if ( ! $pll || ! isset( $pll->model ) ) {
+			return '';
+		}
+		$lang = $pll->model->get_language( $slug );
+		return ( $lang && isset( $lang->name ) ) ? $lang->name : '';
+	}
+
 	public function get_home_url( string $language ): string {
 		if ( function_exists( 'pll_home_url' ) ) {
 			return pll_home_url( $language );

@@ -756,6 +756,16 @@ final class Frl_Translation_Service {
 	}
 
 	/**
+	 * Get the language label for a given language slug.
+	 *
+	 * @param string $slug Language slug (e.g., 'en', 'ru').
+	 * @return string Label (e.g., 'English', 'Русский'), or empty string if not found.
+	 */
+	public function get_language_label( string $slug ): string {
+		return $this->adapter->get_language_label( $slug );
+	}
+
+	/**
 	 * Get the global translation version.
 	 *
 	 * @return int

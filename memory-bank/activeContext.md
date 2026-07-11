@@ -2,17 +2,13 @@
 
 ## Current Focus
 
-Audited 5 reported findings in `Frl_Cache_Manager` and `shortcodes.php` — 2 confirmed real, 3 overstated. Applied targeted fixes with zero regression risk.
+Verified 6 reported code-quality findings — 2 confirmed real and fixed, 4 overstated or accurately low-severity.
 
 ## Changes Made
 
-1. **Fixed latent shape-mismatch bug in [`get_cached_value()`](core/cache/class-cache-manager.php:376)** — removed dead `is_array($key)` → `get_multi()` branch that returned a map when callers expect a scalar. The `$cache_key` parameter is always a string from `generate_key()`, so the single-key `get_transient()` path handles both scalar and array `$key` inputs. Zero existing callers hit this path (facade type-hints `string $key`).
-2. **Expanded stampede-lock skip comment in [`remember()`](core/cache/class-cache-manager.php:468)** — documents why transient-based locking is not viable (TOCTOU race) and why MySQL `GET_LOCK()` is too heavy for 110+ call sites. All callbacks are idempotent reads, so double-execution wastes CPU but cannot corrupt data.
-3. **Added defensive comments** for 3 non-bugs to prevent future misdiagnosis: `purge_all()` `'default'` skip guard, `public $deferred_writes` facade design, and `serialize()` key-materialization pattern (3 occurrences in shortcodes.php).
-
-## Architecture: `Frl_Cache_Manager` facade pattern
-
-`includes/helpers/functions-class-helpers.php` is the **only runtime file** that references `Frl_Cache_Manager`. All external access goes through `frl_cache_*()` helpers. This is now complete — zero class-name references in hook registrations anywhere.
+1. **Added `get_language_label()` to translation adapter chain** — new method on [`Frl_Translation_Adapter_Interface`](core/translator/adapters/interface.php), implemented in [`Frl_Polylang_Adapter`](core/translator/adapters/polylang.php) (uses `PLL()->model->get_language()`), exposed via [`Frl_Translation_Service::get_language_label()`](core/translator/class-translation-service.php), with a procedural helper [`frl_get_language_label()`](includes/helpers/functions-translator-helpers.php) that follows the same service/fallback pattern as `frl_get_home_url()`.
+2. **Deduplicated PLL language label lookup in shortcodes** — [`frl_langswitcher_build_list()`](public/shortcodes.php) and [`frl_langswitcher_build_dropdown()`](public/shortcodes.php) both now call `frl_get_language_label($el['slug'])` instead of duplicating a 6-line `PLL()->model->get_language()` block.
+3. **Deduplicated permalink resolution in [`frl_shortcode_permalink()`](public/shortcodes.php)** — introduced `$post_id = null` before the conditional chain, set it in numeric-ID and default branches, then a single unified block handles permalink/cache/anchor logic for both paths. ~14 lines removed, identical behavior.
 
 ## Prior Tasks (Completed)
 
@@ -20,3 +16,4 @@ Audited 5 reported findings in `Frl_Cache_Manager` and `shortcodes.php` — 2 co
 - **`frl_add_page_excerpt_support`** moved to `includes/main/website.php`
 - **Heartbeat review**: Our implementation correct, reference has 4 bugs
 - **Intelephense stub** created at `.dev/stubs/_intelephense-globals.php`
+- Cache Manager shape-mismatch fix, stampede-lock comment expansion, defensive comments for non-bugs

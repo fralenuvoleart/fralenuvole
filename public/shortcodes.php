@@ -360,14 +360,7 @@ function frl_shortcode_langswitcher( $atts = array() ) {
 function frl_langswitcher_build_list( array $elements ): string {
 	$items = '';
 	foreach ( $elements as $el ) {
-		$native_name = '';
-		if ( function_exists( 'PLL' ) ) {
-			$pll = PLL();
-			if ( $pll && isset( $pll->model ) ) {
-				$lang        = $pll->model->get_language( $el['slug'] );
-				$native_name = ( $lang && isset( $lang->name ) ) ? $lang->name : '';
-			}
-		}
+		$native_name = frl_get_language_label( $el['slug'] );
 
 		$link_atts = sprintf(
 			'lang="%1$s" hreflang="%1$s" href="%2$s"',
@@ -460,14 +453,7 @@ function frl_langswitcher_build_dropdown( array $elements ): string {
 
 	$options = '';
 	foreach ( $elements as $el ) {
-		$native_name = '';
-		if ( function_exists( 'PLL' ) ) {
-			$pll = PLL();
-			if ( $pll && isset( $pll->model ) ) {
-				$lang        = $pll->model->get_language( $el['slug'] );
-				$native_name = ( $lang && isset( $lang->name ) ) ? $lang->name : '';
-			}
-		}
+		$native_name = frl_get_language_label( $el['slug'] );
 
 		$data_lang = wp_json_encode(
 			array(
@@ -919,38 +905,24 @@ function frl_shortcode_permalink( $atts, $content = null ) {
 	// Numeric IDs must be checked BEFORE the generic non-empty check below, since
 	// ctype_digit(...) is a strict subset of !empty($a['id']) — checking the generic
 	// case first would make this numeric-ID branch permanently unreachable.
-	$raw = '';
+	$raw     = '';
+	$post_id = null;
 	if ( ! empty( $content ) ) {
 		$raw = trim( wp_strip_all_tags( $content ) );
 	} elseif ( ! empty( $a['id'] ) && ctype_digit( (string) $a['id'] ) ) {
 		$post_id = (int) $a['id'];
-		if ( $post_id <= 0 ) {
-			return '#';
-		}
-		$slug           = (string) get_post_field( 'post_name', $post_id );
-		$key_slug       = $slug !== '' ? $slug : ( 'post-' . $post_id );
-		$curr_cache_key = 'permalink_' . sanitize_key( $key_slug ) . '_v' . frl_get_post_cache_version( $post_id );
-		$permalink      = frl_cache_remember(
-			'shortcodes',
-			$curr_cache_key,
-			function () use ( $post_id ) {
-				$url = get_permalink( $post_id );
-				return $url ? $url : '#';
-			}
-		);
-		if ( ! empty( $a['anchor'] ) && ! str_contains( $permalink, '#' ) ) {
-			$permalink .= '#' . sanitize_title( (string) $a['anchor'] );
-		}
-		return esc_url( $permalink );
 	} elseif ( ! empty( $a['id'] ) ) {
 		$raw = trim( (string) $a['id'] );
 	} else {
 		// Default: current post permalink
 		$post_id = frl_get_current_post_id();
+	}
+
+	// Unified post-ID permalink resolution for both numeric-ID and default branches.
+	if ( $post_id !== null ) {
 		if ( $post_id <= 0 ) {
 			return '#';
 		}
-		// Unify cache key naming with slug-based lookups: use slug when available
 		$slug           = (string) get_post_field( 'post_name', $post_id );
 		$key_slug       = $slug !== '' ? $slug : ( 'post-' . $post_id );
 		$curr_cache_key = 'permalink_' . sanitize_key( $key_slug ) . '_v' . frl_get_post_cache_version( $post_id );

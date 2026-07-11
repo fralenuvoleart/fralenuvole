@@ -123,6 +123,14 @@ interface Frl_Translation_Adapter_Interface {
 	public function get_home_url( string $language ): string;
 
 	/**
+	 * Get the language label for a given language slug.
+	 *
+	 * @param string $slug Language slug (e.g., 'en', 'ru').
+	 * @return string Label (e.g., 'English', 'Русский'), or empty string if not found.
+	 */
+	public function get_language_label( string $slug ): string;
+
+	/**
 	 * Flush the translation plugin's internal language cache.
 	 *
 	 * Note: When `frl_flush_rewrite_rules()` is called after `set_default_language()`,

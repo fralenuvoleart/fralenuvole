@@ -349,3 +349,16 @@ function frl_get_home_url( ?string $language = null ): string {
 	}
 	return Frl_Translation_Service::get_instance()->get_home_url( $language );
 }
+
+/**
+ * Get the language label for a given language slug.
+ *
+ * @param string $slug Language slug (e.g., 'en', 'ru').
+ * @return string Label (e.g., 'English', 'Русский'), or empty string if not found.
+ */
+function frl_get_language_label( string $slug ): string {
+	if ( ! frl_translator_is_enabled() ) {
+		return '';
+	}
+	return Frl_Translation_Service::get_instance()->get_language_label( $slug );
+}
