@@ -408,21 +408,14 @@ function frl_admin_bar_remove_menu( $data ) {
 /**
  * Get the number of non-Info, non-ignored entries in the debug log.
  *
- * Wraps frl_count_debug_log_entries(), capped to the last 100KB since this
- * runs on every admin-bar render. Cached under 'debug_log_count_fast' --
- * separate from the Log Manager's 'debug_log_count_full' key.
+ * Capped to the last 100KB since this runs on every admin-bar render.
+ * Delegates to frl_get_debug_log_count_cached() for filemtime()-based
+ * invalidation.
  *
  * @return int Total count of non-ignored, non-Info log entries (last 100KB).
  */
 function frl_get_debug_log_count() {
-	$count = frl_get_transient( 'debug_log_count_fast' );
-
-	if ( $count === false ) {
-		$count = frl_count_debug_log_entries( 100 * 1024 );
-		frl_set_transient( 'debug_log_count_fast', $count, 5 * MINUTE_IN_SECONDS );
-	}
-
-	return (int) $count;
+	return frl_get_debug_log_count_cached( 'debug_log_count_fast', 100 * 1024 );
 }
 
 /**

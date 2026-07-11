@@ -529,25 +529,14 @@ class Frl_Log_Manager {
 	/**
 	 * Get count of log entries, excluding Info-type and FRL_LOG_COUNT_IGNORE matches.
 	 *
-	 * Wraps frl_count_debug_log_entries() (full-file scan). Cached under
-	 * 'debug_log_count_full' -- separate from the admin bar's
-	 * 'debug_log_count_fast' key.
+	 * Full-file scan. Delegates to frl_get_debug_log_count_cached() for
+	 * filemtime()-based invalidation.
 	 *
 	 * @param bool $force_recount Whether to force a recount even if the transient exists.
 	 * @return int Number of non-ignored, non-Info log entries.
 	 */
 	public function get_log_entry_count( $force_recount = false ) {
-		$count = false;
-		if ( ! $force_recount ) {
-			$count = frl_get_transient( 'debug_log_count_full' );
-		}
-
-		if ( $count === false ) {
-			$count = frl_count_debug_log_entries( 0 );
-			frl_set_transient( 'debug_log_count_full', $count, 5 * MINUTE_IN_SECONDS );
-		}
-
-		return (int) $count;
+		return frl_get_debug_log_count_cached( 'debug_log_count_full', 0, $force_recount );
 	}
 
 	/**

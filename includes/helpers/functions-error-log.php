@@ -652,3 +652,43 @@ function frl_count_debug_log_entries( $max_bytes = 0 ) {
 
 	return $count;
 }
+
+/**
+	* Get cached debug log entry count with filemtime()-based invalidation.
+	*
+	* Wraps frl_count_debug_log_entries() with a transient cache that re-scans
+	* only when debug.log's modification time changes, avoiding blind TTL-based
+	* re-scans. Used by frl_get_debug_log_count() (admin bar, 100KB cap) and
+	* Frl_Log_Manager::get_log_entry_count() (Log Manager, full scan).
+	*
+	* @param string $transient_key Transient key for this count variant.
+	* @param int    $max_bytes     Bytes to read from end of file (0 = full scan).
+	* @param bool   $force_recount If true, skip mtime check and always re-scan.
+	* @return int Count of non-ignored, non-Info log entries.
+	*/
+function frl_get_debug_log_count_cached( string $transient_key, int $max_bytes = 0, bool $force_recount = false ): int {
+	$log_file = WP_CONTENT_DIR . '/debug.log';
+
+	if ( ! $force_recount ) {
+		$cached = frl_get_transient( $transient_key );
+		if ( is_array( $cached ) && isset( $cached['count'], $cached['mtime'] ) ) {
+			$current_mtime = @filemtime( $log_file );
+			if ( $current_mtime !== false && $current_mtime === $cached['mtime'] ) {
+				return (int) $cached['count'];
+			}
+		}
+	}
+
+	$count = frl_count_debug_log_entries( $max_bytes );
+	$mtime = @filemtime( $log_file );
+	frl_set_transient(
+		$transient_key,
+		array(
+			'count' => $count,
+			'mtime' => $mtime,
+		),
+		HOUR_IN_SECONDS
+	);
+
+	return $count;
+}
