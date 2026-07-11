@@ -305,6 +305,9 @@ function frl_get_plugin_options_db( $reset = false ) {
 	);
 
 	$options = array();
+	if ( ! is_array( $results ) ) {
+		return array();
+	}
 	foreach ( $results as $row ) {
 		// More efficient key extraction
 		$key       = substr( $row->option_name, $prefix_length );

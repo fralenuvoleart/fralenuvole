@@ -1,32 +1,15 @@
 {
 	"mcpServers": {
-		"cloudways": {
+		"kinsta": {
 			"command": "npx",
 			"args": [
-				"--yes",
-				"mcp-remote@latest",
-				"https://mcp.cloudways.com/mcp/",
-				"--header",
-				"X-CW-Email: francesco.csto@gmail.com",
-				"--header",
-				"X-CW-Api-Key: mblIZAjXSZdjk3EVawajQ2MBZV2FZM",
-				"--header",
-				"X-Mcp-Host: vs-code"
+				"-y",
+				"kinsta-mcp"
 			],
-			"alwaysAllow": [
-				"server_list",
-				"server_get",
-				"app_list",
-				"app_get",
-				"service_status",
-				"addon_list",
-				"server_settings_get",
-				"server_disk_cleanup_settings_get",
-				"monitoring_server_summary",
-				"analytics_app_php",
-				"analytics_app_cron"
-			],
-			"disabled": true
+			"env": {
+				"KINSTA_API_KEY": "a5599e8851f4fd69a1920c488c06bb2d1f0417d0031a7c80b08e515e1f6b0c72",
+				"KINSTA_COMPANY_ID": "d4e8f1f8-36a6-418b-bd8c-9735d4659ef3"
+			}
 		},
 		"context7": {
 			"command": "npx",
