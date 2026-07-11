@@ -184,11 +184,11 @@ a:hover>.wp-post-image>img,
     display: none;
 }
 
-.frl-higlight-left:before {
+.frl-highlight-left:before {
     left: 0 !important;
 }
 
-.frl-higlight-left:after {
+.frl-highlight-left:after {
     left: 2em !important;
 }
 
