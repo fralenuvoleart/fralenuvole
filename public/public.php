@@ -244,7 +244,7 @@ function frl_get_html_option( string $option_name, ?string $php_enabled_option =
  * @return string
  */
 function frl_append_custom_robots( string $output, bool $is_public ): string {
-	if ( ! $is_public || ! frl_get_option( 'enable_custom_robots' ) ) {
+	if ( ! frl_get_option( 'enable_custom_robots' ) ) {
 		return $output;
 	}
 
