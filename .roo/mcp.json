@@ -11,7 +11,8 @@
 				"KINSTA_COMPANY_ID": "d4e8f1f8-36a6-418b-bd8c-9735d4659ef3"
 			},
 			"alwaysAllow": [
-				"kinsta.sites.list"
+				"kinsta.sites.list",
+				"kinsta.environments.list"
 			]
 		},
 		"context7": {
@@ -58,7 +59,8 @@
 				"delete_entities",
 				"delete_relations",
 				"create_entities",
-				"create_relations"
+				"create_relations",
+				"search_nodes"
 			]
 		}
 	}
