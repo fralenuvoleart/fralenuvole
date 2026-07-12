@@ -71,12 +71,19 @@ Look at the access log for:
 
 ### Mitigation Tiers (ordered by reliability, not effort)
 
-1. **This plugin's own MU-level User-Agent throttle** (most reliable for AI/answer-engine bots
-   without stable published IP ranges): [`config/config-mu.php`](../../../../config/config-mu.php)
-   `FRL_MU_THROTTLE_USER_AGENT` + [`frl_maybe_throttle_user_agent()`](../../../../includes/mu/functions-mu.php).
-   Returns HTTP 429 before WordPress loads, keyed by real client IP, works regardless of whether
-   the bot honors robots.txt. Currently throttles only `ChatGPT-User` at 10 req/60s per IP — add
-   other high-volume, non-compliant bots to this array rather than relying on robots.txt alone.
+**Report-writing note:** only Tiers 2–4 below are things the report's reader can act on directly
+from MyKinsta or a support ticket. An application-level UA throttle (internal-reference-only —
+see `bot-taxonomy.md`'s "Internal-Reference-Only" section) may already exist in the hosted app's
+own code; use that fact only to judge severity ("already mitigated" vs. "needs escalation"),
+never cite it by file/constant/function name in the generated report — see Step 6.5 of `SKILL.md`.
+
+1. **Application-level User-Agent throttle** (most reliable for AI/answer-engine bots without
+   stable published IP ranges, if the hosted app has one): returns HTTP 429 before WordPress loads,
+   keyed by real client IP, works regardless of whether the bot honors robots.txt. This is a
+   code-level mechanism the report's reader (an infrastructure manager) cannot adjust from MyKinsta
+   — treat its presence/absence as input to your severity judgment only, and phrase any resulting
+   report recommendation generically ("flag this for whoever maintains the site's code"), never by
+   naming the mechanism.
 
 2. **Kinsta IP Deny** (MyKinsta → Tools → Denied IPs): guaranteed at the nginx layer, but only
    works if the bot's operator publishes stable IP ranges (OpenAI does, for GPTBot/ChatGPT-User/
@@ -87,12 +94,13 @@ Look at the access log for:
    will have any effect — do not pair it with `Crawl-delay` for bots that don't support it.
 
 4. **Kinsta support ticket for `limit_req` nginx zones, or Cloudflare WAF** (if Cloudflare sits in
-   front of Kinsta): use when Tiers 1–3 don't apply — e.g. non-WordPress traffic, or blocking needed
-   before the MU-plugin loads.
+   front of Kinsta): use when Tiers 1–3 don't apply or aren't actionable by the reader — e.g.
+   non-WordPress traffic, or an application-level throttle not being something they can adjust
+   themselves. This is usually the correct *visible* escalation to put in the report.
 
 5. **WordPress-level blocking** (Wordfence, BBQ Block Bad Queries, `.htaccess` `Deny from`): lowest
-   priority — redundant with Tier 1 for UA-based throttling on this codebase, since the MU-plugin
-   mechanism already runs earlier in the request lifecycle and doesn't depend on WordPress loading.
+   priority — redundant with Tier 1 for UA-based throttling if an application-level mechanism
+   already runs earlier in the request lifecycle.
 
 ### Legitimate Bot Balance — Apply the Same Criteria to Every Bot
 

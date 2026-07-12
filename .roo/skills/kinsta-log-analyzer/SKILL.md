@@ -271,12 +271,19 @@ approximation. After the script generates the base report, you MUST:
    relocating to Georgia, not bulk scraping" vs. "ClaudeBot: 164 of 183 requests (90%) from a
    single IP, all to `/robots.txt` — this is a burst, not normal crawling behavior").
 
-5. **Check this codebase's own bot-throttle mechanism before recommending an external one.** Read
-   [`config/config-mu.php`](../../../config/config-mu.php)'s `FRL_MU_THROTTLE_USER_AGENT` array.
-   If a high-volume, low-compliance bot in the report isn't already in that list, recommend adding
-   it by name and cite the exact constant/file — this is a stronger, project-specific
-   recommendation than generic robots.txt advice, because it works regardless of the bot's
-   cooperation. See [`bot-taxonomy.md`](references/bot-taxonomy.md#this-plugins-built-in-bot-throttle).
+5. **INTERNAL-ONLY reasoning check — never surfaced in the report.** This step informs your own
+   confidence/severity judgment; its output must NEVER appear in the report as a file path,
+   constant name, function name, or the phrase "this codebase"/"this plugin" — that is a hard
+   violation of "Report Audience & Purpose" at the top of this file, which the reader (an
+   infrastructure manager, not a developer of the hosted app) cannot act on anyway. Privately check
+   whether a high-volume, low-compliance bot already has *some* application-level mitigation in
+   place (see [`bot-taxonomy.md`](references/bot-taxonomy.md#internal-reference-only-not-for-report-text)
+   — marked internal-reference-only for exactly this reason) — use this only to decide whether a
+   finding is "already mitigated, no further action" vs. "needs escalation." If escalation is
+   warranted, the *visible* recommendation must be phrased as one of: (a) a MyKinsta-panel action
+   (Denied IPs, Edge Caching exclusions, etc.), (b) a Kinsta support ticket for a WAF/`limit_req`
+   rule, or (c) an honest, generic "this would require an application-level fix outside MyKinsta —
+   flag it for whoever maintains the site's code" — never naming the specific mechanism.
 
 6. **Look up the current Kinsta Knowledge Base for any 🔴/🟡 finding** using `tavily-search` scoped
    to `kinsta.com` (e.g. `site:kinsta.com/knowledgebase edge caching bypass query strings`). Cite
@@ -284,8 +291,9 @@ approximation. After the script generates the base report, you MUST:
    recommendations from "generic hosting advice" to "what Kinsta support would actually tell you,"
    sourced from Kinsta's own current documentation rather than assumed from memory. If no relevant
    article is found, say so rather than fabricating a citation. **This is the "How" — never a
-   boilerplate tip.** Live documentation, this codebase's own mechanisms (Step 6.5), or an honest
-   "no documented fix found" are the only three acceptable answers to "how do I fix this."
+   boilerplate tip.** A live Kinsta KB citation, a MyKinsta-panel action, or an honest "no
+   documented Kinsta-side fix — flag for your developer" (phrased generically, never naming this
+   codebase) are the only three acceptable answers to "how do I fix this."
 
 7. **Structure every finding around four questions internally — What / Why / Who / How** — this is
    the analytical spine you use to REASON through each finding, but it is not what the reader sees.
@@ -297,7 +305,7 @@ approximation. After the script generates the base report, you MUST:
    | What? | **Incident** | The flagged finding, stated with its exact evidence (numbers, URLs, IPs). |
    | Why? | **Analysis** | Why it's suspicious or anomalous — cross-referencing bot-taxonomy.md/site-context.md/probe results as applicable. Ordinary/expected activity gets "why this is NOT an anomaly" instead. |
    | Who? | **Actor** | The actor (bot name, IP, or "unknown") PLUS an explicit classification tier — see Step 6.8's tier scale — never just prose judgment. |
-   | How? | **Actions** | The concrete action, sourced from live Kinsta KB documentation (Step 6.6), this codebase's own mechanism (Step 6.5), or **bold "No action required" with a ✅** — never a canned tip disconnected from this finding's actual evidence. |
+   | How? | **Actions** | The concrete action, sourced from live Kinsta KB documentation (Step 6.6), a MyKinsta-panel step, or **bold "No action required" with a ✅** — never a canned tip disconnected from this finding's actual evidence, and never a file path/constant/function name from the hosted app's own code (see Step 6.5's internal-only rule). |
 
    Cross-cutting lenses to apply this framework to: attack patterns (spam injection, xmlrpc
    probing), traffic anomalies (hour spikes — state the multiplier, convert to local time per Step
@@ -441,7 +449,7 @@ per Step 7).
 | [`scripts/export_pdf.sh`](scripts/export_pdf.sh) | Converts the final Markdown report to PDF via `md-to-pdf`/`npx`, driven by the system's existing Chromium (no Puppeteer download, no pandoc) | **Execute** in Step 7, after Step 6 is fully written |
 | [`scripts/report.css`](scripts/report.css) | Print stylesheet applied by `export_pdf.sh` — larger body text, `table-layout: fixed` + word-wrap so wide tables don't overflow/truncate in the PDF | Used automatically by `export_pdf.sh`; edit directly if PDF styling needs further tweaks |
 | [`references/site-context.md`](references/site-context.md) | Admin/business-owner timezones, each site's confirmed primary market, and the fixed "Known Probe URLs" list per site — a living cache, update it when the user confirms new context | **Read** in Steps 1 & 2; **update** via `apply_diff` when new context is learned |
-| [`references/bot-taxonomy.md`](references/bot-taxonomy.md) | Accurate, unbiased per-bot reference: real nature (crawler vs. on-demand agent), robots.txt/Crawl-Delay compliance matrix, mitigation tiers, this plugin's own MU-level throttle, and the ASN-vs-reverse-DNS distinction | **Read in full** in Step 6 before writing any bot-related recommendation |
+| [`references/bot-taxonomy.md`](references/bot-taxonomy.md) | Accurate, unbiased per-bot reference: real nature (crawler vs. on-demand agent), robots.txt/Crawl-Delay compliance matrix, mitigation tiers, an **internal-reference-only** note on the hosted app's own throttle (never to be named in the report — see Step 6.5), and the ASN-vs-reverse-DNS distinction | **Read in full** in Step 6 before writing any bot-related recommendation |
 | [`references/operational-playbook.md`](references/operational-playbook.md) | Expert server guidance for each anomaly type (cache, errors, response time, traffic spikes, SSL) | **Read** when the report flags an issue needing deeper action |
 
 ## Configuration
