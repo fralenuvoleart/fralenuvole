@@ -2,6 +2,8 @@
 
 ## Current Focus
 
+Fixed a policy violation in [`.roo/skills/kinsta-log-analyzer/SKILL.md`](.roo/skills/kinsta-log-analyzer/SKILL.md): Step 6.5 explicitly instructed citing this plugin's own `config/config-mu.php`/`FRL_MU_THROTTLE_USER_AGENT` by name in generated Kinsta log reports, directly contradicting the skill's own "Report Audience & Purpose" rule (reports must never reference the hosted app's codebase — reader manages Kinsta infra, not this repo). Rewrote Step 6.5, and the corresponding sections in `references/bot-taxonomy.md` ("Internal-Reference-Only: Not for Report Text") and `references/operational-playbook.md` (Mitigation Tiers), so the internal throttle-check is used only to calibrate severity judgment, never surfaced by file/constant/function name in report text. Also retroactively scrubbed the already-generated `report_pbservices.ge_live_202607120645.md`/`.pdf` of all such references and re-exported the PDF.
+
 Reviewed and hardened [`deploy.sh`](deploy.sh) with `--dry-run` flag and interactive confirmation prompt.
 
 ## Changes Made
