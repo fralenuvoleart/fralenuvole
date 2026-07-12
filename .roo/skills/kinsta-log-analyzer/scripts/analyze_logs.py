@@ -25,27 +25,147 @@ def flag_emoji(cc):
 GEOIP_ENABLED = True  # toggled by --no-geoip in main()
 _GEOIP_CACHE = {}
 
+# Sentinel distinguishing "we never looked this up" (disabled/skipped) from "we looked it up
+# and ipinfo.io genuinely returned nothing" (empty string). Conflating these two states is a
+# real bug: showing "unknown"/"no PTR record" when geo-IP was simply turned off looks exactly
+# like a broken lookup, and there is no way for the reader to tell the difference without this.
+GEOIP_DISABLED = "\x00DISABLED\x00"
+
+# Tracks every lookup this run so the report can show one clear banner instead of dozens of
+# per-row "unknown" cells when geo-IP is off or ipinfo.io is failing/rate-limiting broadly.
+_LOOKUP_STATS = {"attempted": 0, "empty": 0}
+
 def ip_country(ip):
     """Geo-IP lookup via ipinfo.io. NETWORK CALL — not deterministic, cached per-run.
-    Returns (country_code, flag) or ('?', '') when disabled/unavailable."""
-    if not GEOIP_ENABLED: return "?", ""
+    Returns (country_code, flag). country_code is GEOIP_DISABLED when --no-geoip was passed,
+    '?' when looked up but ipinfo.io returned nothing/failed, or the real 2-letter code."""
+    if not GEOIP_ENABLED: return GEOIP_DISABLED, ""
     if ip in _GEOIP_CACHE: return _GEOIP_CACHE[ip]
+    _LOOKUP_STATS["attempted"] += 1
     try:
         r = subprocess.run(["curl", "-s", "--connect-timeout", "2", "--max-time", "3",
                            f"https://ipinfo.io/{ip}/country"], capture_output=True, text=True)
         cc = r.stdout.strip()[:2] if r.stdout.strip() else "?"
+        if cc == "?": _LOOKUP_STATS["empty"] += 1
         result = (cc, flag_emoji(cc))
     except Exception:
+        _LOOKUP_STATS["empty"] += 1
         result = ("?", "")
     _GEOIP_CACHE[ip] = result
     return result
 
+_ORG_CACHE = {}
+_HOSTING_HINTS = re.compile(
+    r"amazon|aws|google|microsoft|azure|digitalocean|linode|vultr|ovh|hetzner|"
+    r"kinsta|cloudflare|hosting|datacenter|data center|colo|leaseweb|contabo|"
+    r"m247|choopa|psychz|hivelocity|akamai|fastly|oracle cloud",
+    re.IGNORECASE,
+)
+
+def ip_org(ip):
+    """ASN/organization lookup via ipinfo.io. NETWORK CALL — not deterministic, cached per-run.
+    Returns (org_string, is_likely_hosting). org_string is GEOIP_DISABLED when --no-geoip was
+    passed, '' when looked up but ipinfo.io returned nothing, or the real org string.
+    Purpose: a country flag alone cannot distinguish a real residential visitor from a
+    datacenter/proxy/CDN IP that merely geolocates to that country — this tells the analyst
+    which case applies so the report doesn't misrepresent infrastructure traffic as visitors."""
+    if not GEOIP_ENABLED: return GEOIP_DISABLED, False
+    if ip in ("::1", "127.0.0.1"): return "localhost", False
+    if ip in _ORG_CACHE: return _ORG_CACHE[ip]
+    _LOOKUP_STATS["attempted"] += 1
+    try:
+        r = subprocess.run(["curl", "-s", "--connect-timeout", "2", "--max-time", "3",
+                           f"https://ipinfo.io/{ip}/org"], capture_output=True, text=True)
+        org = r.stdout.strip()
+        if not org: _LOOKUP_STATS["empty"] += 1
+        is_hosting = bool(_HOSTING_HINTS.search(org)) if org else False
+        result = (org, is_hosting)
+    except Exception:
+        _LOOKUP_STATS["empty"] += 1
+        result = ("", False)
+    _ORG_CACHE[ip] = result
+    return result
+
+_HOSTNAME_CACHE = {}
+# Reverse-DNS patterns that specifically indicate "a third party's customer VM rented from
+# this cloud vendor," NOT the vendor's own first-party crawler/bot infrastructure. This is a
+# materially different fact than "org = Google LLC" / "org = Amazon.com, Inc." alone — an ASN
+# match only tells you who owns the IP block, not whether the traffic is Google's own Googlebot
+# vs. some unrelated customer's scraper running on a rented GCP/EC2 instance. Only includes
+# patterns stable and well-documented for over a decade; deliberately does not attempt to
+# classify every cloud provider — an unmatched hostname just gets displayed as-is for the
+# analyst to judge, rather than guessing.
+_CLOUD_CUSTOMER_VM_HINTS = re.compile(
+    r"googleusercontent\.com$|compute\.amazonaws\.com$|\.amazonaws\.com$",
+    re.IGNORECASE,
+)
+
+def ip_hostname(ip):
+    """Reverse-DNS (PTR) lookup via ipinfo.io. NETWORK CALL — not deterministic, cached per-run.
+    Returns (hostname, is_customer_vm). hostname is GEOIP_DISABLED when --no-geoip was passed,
+    '' when looked up but there's genuinely no PTR record, or the real hostname.
+    Purpose: distinguishes a cloud vendor's OWN service (e.g. Googlebot, PTR under googlebot.com)
+    from an unrelated third party's customer VM merely rented from that same vendor (e.g. PTR
+    under googleusercontent.com) — the ASN/org alone cannot make this distinction, and conflating
+    them mislabels "some GCP customer's scraper" as "Google's own crawler."""
+    if not GEOIP_ENABLED: return GEOIP_DISABLED, False
+    if ip in ("::1", "127.0.0.1"): return "", False
+    if ip in _HOSTNAME_CACHE: return _HOSTNAME_CACHE[ip]
+    _LOOKUP_STATS["attempted"] += 1
+    try:
+        r = subprocess.run(["curl", "-s", "--connect-timeout", "2", "--max-time", "3",
+                           f"https://ipinfo.io/{ip}/hostname"], capture_output=True, text=True)
+        hostname = r.stdout.strip()
+        if not hostname: _LOOKUP_STATS["empty"] += 1
+        is_customer_vm = bool(_CLOUD_CUSTOMER_VM_HINTS.search(hostname)) if hostname else False
+        result = (hostname, is_customer_vm)
+    except Exception:
+        result = ("", False)
+    _HOSTNAME_CACHE[ip] = result
+    return result
+
 def ip_safety(ip, count):
-    """Classify IP by observed request behavior — NOT by country of origin."""
-    if ip in ("::1", "127.0.0.1"): return "localhost — do not block"
-    if re.match(r"^10\.|^172\.(1[6-9]|2\d|3[01])\.|^192\.168\.", ip): return "private — do not block"
-    if count >= 5: return "⚠️ repeated scanning behavior — review and consider blocking"
-    return "ℹ️ low volume — monitor before blocking"
+    """Classify IP by observed request behavior — NOT by country of origin.
+    Returns (icon, text) so the report can render them as separate table columns
+    instead of an icon glued to the front of a sentence."""
+    if ip in ("::1", "127.0.0.1"): return "⚪", "localhost — do not block"
+    if re.match(r"^10\.|^172\.(1[6-9]|2\d|3[01])\.|^192\.168\.", ip): return "⚪", "private — do not block"
+    if count >= 5: return "⚠️", "repeated scanning behavior — review and consider blocking"
+    return "ℹ️", "low volume — monitor before blocking"
+
+def geo_display(value, empty_label="unknown"):
+    """Render a geo-IP lookup result consistently everywhere it's shown in the report.
+    Distinguishes three real states instead of collapsing them into one confusing 'unknown':
+    (1) lookup disabled (--no-geoip) → '*geo-IP disabled*', (2) looked up but genuinely empty
+    → empty_label, (3) a real value → the value itself. Showing 'unknown' for state (1) looks
+    exactly like a broken script to a reader who doesn't know --no-geoip was passed."""
+    if value == GEOIP_DISABLED: return "*geo-IP disabled*"
+    if not value: return f"*{empty_label}*"
+    return value
+
+# ASN/org substrings for residential/mobile ISPs where an IP is very likely to be dynamically
+# reassigned or shared behind CGNAT — blocking it risks catching a future unrelated, legitimate
+# visitor. This is the opposite end of the spectrum from _HOSTING_HINTS: a hosting/VPS/datacenter
+# ASN is normally SAFE to block outright (that IP won't be reassigned to a random home user next
+# week); a residential/mobile ASN is NOT safe to block permanently without a strong pattern match.
+_RESIDENTIAL_ISP_HINTS = re.compile(
+    r"telecom|telekom|broadband|cable|fiber|fibre|mobile|wireless|cellular|"
+    r"communications|\bisp\b|internet service|dsl|ppp|dynamic",
+    re.IGNORECASE,
+)
+
+def blocking_risk(org, is_hosting):
+    """Plain-language verdict on whether blocking this IP outright is safe, based on its ASN
+    type — not a guess, a direct read of the org string already fetched via ip_org(). Returns
+    a short string for direct inclusion in the report; never leaves this unstated when an IP is
+    being recommended for blocking."""
+    if org == GEOIP_DISABLED: return "unknown — re-run without --no-geoip to check"
+    if not org: return "unknown — ASN lookup returned nothing for this IP"
+    if is_hosting:
+        return "safe — dedicated hosting/VPS IP, not shared with other users"
+    if _RESIDENTIAL_ISP_HINTS.search(org):
+        return "⚠️ caution — residential/mobile ISP IP, may be dynamically reassigned to a different (legitimate) user later"
+    return "uncertain — ASN doesn't clearly indicate hosting or residential; verify manually before blocking"
 
 def parse_apache_ts(ts_str):
     try: return datetime.strptime(ts_str, "%d/%b/%Y:%H:%M:%S %z")
@@ -126,6 +246,13 @@ def extract_php_signature(line):
     return severity, msg.strip(), relpath(file_path), lineno
 
 # Heuristic bot categorization (by published User-Agent) — verify before blocking.
+# Category assignment reflects each bot's actual documented nature and compliance history
+# (see references/bot-taxonomy.md), not the operator's country of origin. Notably:
+# - Amazonbot is grouped with AI/answer-engine bots (Alexa/product-answer indexing), NOT with
+#   "aggressive/scanner" bots — it is documented to honor robots.txt Disallow.
+# - The "Regional / Compliance-Unverified" bucket is reserved for bots with either documented
+#   non-compliance (Bytespider) or inconsistently-reported compliance (PetalBot) — the label
+#   describes the objective compliance signal, not the bot's country of origin.
 BOT_CATEGORIES = {
     "GPTBot": "🤖 AI Assistant / Answer Engine",
     "ChatGPT-User": "🤖 AI Assistant / Answer Engine",
@@ -133,8 +260,8 @@ BOT_CATEGORIES = {
     "PerplexityBot": "🤖 AI Assistant / Answer Engine",
     "Google-Extended": "🤖 AI Assistant / Answer Engine",
     "ClaudeBot": "🤖 AI Assistant / Answer Engine",
-    "Bytespider": "🤖 AI Assistant / Answer Engine",
     "Anthropic-ai": "🤖 AI Assistant / Answer Engine",
+    "Amazonbot": "🤖 AI Assistant / Answer Engine",
     "Googlebot": "🔍 Search Engine Crawler",
     "Bingbot": "🔍 Search Engine Crawler",
     "YandexBot": "🔍 Search Engine Crawler",
@@ -149,8 +276,14 @@ BOT_CATEGORIES = {
     "Discordbot": "📱 Social Media Bot",
     "LinkedInBot": "📱 Social Media Bot",
     "Applebot": "📱 Social Media Bot",
-    "PetalBot": "⚠️ Aggressive / Scanner Bot",
-    "Amazonbot": "⚠️ Aggressive / Scanner Bot",
+    "PetalBot": "🌍 Regional / Compliance-Unverified",
+    "Bytespider": "🌍 Regional / Compliance-Unverified",
+    # This skill's own live-probe traffic (scripts/probe_urls.py) — self-identified via a
+    # distinctive User-Agent so a future run recognizes its own historical noise instead of
+    # either silently blending into "unknown visitor" counts or, worse, getting flagged as a
+    # burst anomaly (one IP hitting many pages in a short window looks exactly like the
+    # Concentrated Traffic Spikes & Bursts pattern this script otherwise looks for).
+    "Kinsta-Log-Analyzer-Probe": "🔧 Internal Tooling (Self)",
 }
 
 # ═══════════════════════════════════════════════════════════════════
@@ -257,7 +390,7 @@ def analyze_error_log(logs):
             "kind": "generic", "label": "403 Forbidden — directory probing",
             "count": sum(scanner_paths.values()),
             "first_ts": "see Directory Scanner Activity section below", "last_ts_str": "", "last_ago": "",
-            "what": "Bot tried to list a WordPress directory. Kinsta blocked it correctly. See the Bot section for IPs to block.",
+            "what": "Bot tried to list a WordPress directory.\n\n✅ Kinsta blocked it correctly — no action needed. See the Bot section below if you want to deny these specific IPs.",
         })
 
     return findings, ts_range, ip_counter, error_entries, scanner_paths, scanner_ips
@@ -286,7 +419,16 @@ def analyze_access_log(logs):
     stc = Counter(e["status"] for e in entries)
     fivexx = [e for e in entries if e["status"].startswith("5")]
     slow = [e for e in entries if e["rt"] > 2.0]
+    # Severity needs more than a raw ">2s" count — 18 pages at 2.1s is a very different
+    # situation from 18 pages at 8s. Split so the Health Summary can react to the worst
+    # case, not just the count crossing the 2s line.
+    severely_slow = [e for e in entries if e["rt"] > 5.0]
     avg_rt = sum(response_times)/len(response_times) if response_times else 0
+    min_rt = min(response_times) if response_times else 0
+    max_rt = max(response_times) if response_times else 0
+    slowest_pages = sorted(
+        [e for e in entries if e["rt"] > 0.001], key=lambda e: -e["rt"]
+    )[:8]
 
     # Drill-down: which URLs/IPs are behind each 4xx/5xx status code
     status_urls = defaultdict(Counter)
@@ -311,19 +453,43 @@ def analyze_access_log(logs):
         ("GPTBot", r"GPTBot"), ("ClaudeBot", r"ClaudeBot"),
         ("PerplexityBot", r"PerplexityBot"), ("Google-Extended", r"Google-Extended"),
         ("Bytespider", r"Bytespider"), ("Anthropic-ai", r"anthropic-ai"),
+        ("Kinsta-Log-Analyzer-Probe", r"Kinsta-Log-Analyzer-Probe"),
     ]
     bot_data = {}
     for name, pat in bot_patterns:
         ts_list = []
+        urls = Counter()
+        ip_counts = Counter()
         for line in lines:
             if re.search(pat, line, re.IGNORECASE):
-                m2 = re.match(r'\S+ \S+ \[([^\]]+)\]', line)
+                m2 = re.match(r'\S+ (\S+) \[([^\]]+)\] [A-Z]+ "([^"]*)"', line)
                 if m2:
-                    bt = parse_apache_ts(m2.group(1))
+                    ip_str, ts_str, url_str = m2.groups()
+                    bt = parse_apache_ts(ts_str)
                     if bt: ts_list.append(bt)
+                    urls[norm(url_str)] += 1
+                    ip_counts[ip_str] += 1
         if ts_list:
             ts_sorted = sorted(ts_list)
-            bot_data[name] = {"count": len(ts_list), "first": ts_sorted[0], "last": ts_sorted[-1]}
+            total_hits = len(ts_list)
+            top_urls = urls.most_common(5)
+            # Concentration: what share of this bot's traffic hit its single most-requested
+            # URL? High concentration (few URLs, most hits on one) suggests targeted/repeated
+            # interest in specific content; low concentration (many distinct URLs, no
+            # dominant one) suggests bulk/exploratory crawling regardless of what the UA claims.
+            top_share = (top_urls[0][1] / total_hits * 100) if top_urls else 0
+            distinct_urls = len(urls)
+            # Same concentration signal, but per-IP: one IP responsible for a disproportionate
+            # share of this bot's traffic is a "burst" worth flagging separately from the
+            # aggregate bot volume — see the Concentrated Traffic Spikes & Bursts section.
+            top_ip, top_ip_count = ip_counts.most_common(1)[0]
+            ip_top_share = (top_ip_count / total_hits * 100) if total_hits else 0
+            bot_data[name] = {
+                "count": total_hits, "first": ts_sorted[0], "last": ts_sorted[-1],
+                "top_urls": top_urls, "distinct_urls": distinct_urls,
+                "top_share": top_share, "distinct_ips": len(ip_counts),
+                "top_ip": top_ip, "top_ip_count": top_ip_count, "ip_top_share": ip_top_share,
+            }
 
     # Hourly
     hourly = Counter()
@@ -342,7 +508,9 @@ def analyze_access_log(logs):
     access_ts = [e["ts"] for e in entries if e["ts"]]
 
     return {"total": len(lines), "statuses": stc, "avg_rt": avg_rt,
-            "slow": slow, "bot_data": bot_data, "fivexx": fivexx,
+            "slow": slow, "severely_slow": severely_slow, "min_rt": min_rt, "max_rt": max_rt,
+            "slowest_pages": slowest_pages,
+            "bot_data": bot_data, "fivexx": fivexx,
             "entries": entries, "hourly": dict(sorted(hourly.items())),
             "query_params": query_params, "status_urls": status_urls,
             "status_ips": status_ips,
@@ -359,7 +527,10 @@ def analyze_cache_log(logs):
     for m in re.finditer(r"\[([^\]]+)\] (HIT|MISS|BYPASS) KINSTAWP(?:_MOBILE)? (\S+) ([A-Z]+) \"([^\"]+)\"", logs):
         ts = parse_apache_ts(m.group(1))
         entries.append({"ts": ts, "status": m.group(2), "ip": m.group(3), "url": norm(m.group(5))})
-    return {"HIT": hits, "MISS": misses, "BYPASS": bypasses, "total": total, "entries": entries}
+    cache_ts = [e["ts"] for e in entries if e["ts"]]
+    return {"HIT": hits, "MISS": misses, "BYPASS": bypasses, "total": total, "entries": entries,
+            "first_ts": min(cache_ts) if cache_ts else None,
+            "last_ts": max(cache_ts) if cache_ts else None}
 
 # ═══════════════════════════════════════════════════════════════════
 # CROSS-ANALYSIS
@@ -415,20 +586,24 @@ def cross_analyze(access_entries, cache_entries, error_entries, ip_counter, scan
 # ═══════════════════════════════════════════════════════════════════
 
 def generate_report(site_name, error_findings, error_meta, access_data,
-                    cache_data, cross_results, scanner_paths, hours, data_errors=None):
+                    cache_data, cross_results, scanner_paths, hours, data_errors=None,
+                    env_name="live"):
     data_errors = data_errors or {}
     now = datetime.now(timezone.utc)
     L = []
 
     period = f"Last {hours} hours" if hours else "All available data"
-    L.append(f"# {site_name} — Kinsta Health Report")
+    # Escape the dot so Markdown "linkify" renderers (VS Code preview, some GFM configs)
+    # don't autolink the bare domain and render the title in link-blue.
+    title_site_name = site_name.replace(".", "\\.")
+    L.append(f"# Kinsta Health Report - {title_site_name} ({env_name})")
     L.append("")
-    L.append(f"**{now.strftime('%d %B %Y, %H:%M UTC')}** · {period}")
+    L.append(f"**{now.strftime('%d %B %Y, %H:%M UTC')}** · Approx. {period}")
+    L.append("")
     if error_meta:
-        L.append(f"{error_meta['total_lines']} error lines · "
-                 f"{access_data['total'] if access_data else 0} requests · "
-                 f"{cache_data['total'] if cache_data else 0} cache entries · "
-                 f"{error_meta['timerange']}")
+        L.append(f"**{access_data['total'] if access_data else 0}** requests · "
+                 f"**{cache_data['total'] if cache_data else 0}** cache entries · "
+                 f"**{error_meta['total_lines']}** error lines")
     L.append("")
 
     # Surface actual fetch/parse failures instead of silently showing "unavailable"
@@ -438,18 +613,56 @@ def generate_report(site_name, error_findings, error_meta, access_data,
             L.append(f"> - `{source}` log: {reason}")
         L.append("")
 
-    # Disclose the time-window mismatch between error log (can span days) and access
-    # log (usually hours) — otherwise a "0" 5xx/4xx count looks wrong when it's really
-    # just outside the access log's shorter retained window.
+    # Lean 3-line time-period disclosure — the three source logs are fetched
+    # independently (line-based Kinsta API, no shared time filter), so their actual
+    # coverage rarely lines up exactly. Every row uses the identical format
+    # "log name: start → end UTC (duration)" so the three are visually comparable at a
+    # glance, and each is flagged if its actual span falls short of the requested
+    # --hours window — the Kinsta API is line-based, not time-based, so "24 hours
+    # requested" frequently doesn't mean "24 hours actually returned."
     acc_first = access_data.get("first_ts") if access_data else None
     acc_last = access_data.get("last_ts") if access_data else None
-    if error_meta and acc_first and acc_last:
-        L.append(f"> ℹ️ **Time windows differ**: access log covers "
-                 f"`{acc_first.strftime('%Y-%m-%d %H:%M')} → {acc_last.strftime('%Y-%m-%d %H:%M')} UTC` "
-                 f"({acc_last - acc_first}); error log covers `{error_meta['timerange']}`. "
-                 f"Status-code counts below only reflect the access log's window — "
-                 f"errors outside it won't show up as matching status codes.")
+    cache_first = cache_data.get("first_ts") if cache_data else None
+    cache_last = cache_data.get("last_ts") if cache_data else None
+    err_first_dt = err_last_dt = None
+    if error_meta and error_meta.get("timerange") and " → " in error_meta["timerange"]:
+        try:
+            a, b = error_meta["timerange"].split(" → ")
+            err_first_dt = parse_error_ts(a.strip())
+            err_last_dt = parse_error_ts(b.strip())
+        except Exception:
+            pass
+
+    def _period_row(n, label, first, last):
+        # Kept concise on purpose: every log window is nearly always shorter than the
+        # requested --hours (the Kinsta API is line-based, not time-based, so this is the
+        # normal case, not an anomaly) — flagging it on every single row added noise without
+        # signal. The actual duration is bolded so it's still easy to compare across the 3 rows.
+        # Duration is rendered as "H:MM hours" (total hours:minutes, seconds dropped) rather
+        # than timedelta's default "H:MM:SS" — seconds add no value for a report read at a
+        # glance and only invite false precision.
+        if not (first and last):
+            return f"{n}. **{label}:** not available this run"
+        span = last - first
+        total_min = int(span.total_seconds() // 60)
+        hh, mm = divmod(total_min, 60)
+        span_str = f"{hh}:{mm:02d} hours"
+        return (f"{n}. **{label}:** `{first.strftime('%Y-%m-%d %H:%M')} → "
+                f"{last.strftime('%Y-%m-%d %H:%M')} UTC` **({span_str})**")
+
+    if error_meta or acc_first:
+        L.append("## Time Period")
         L.append("")
+        L.append(_period_row(1, "Access log", acc_first, acc_last))
+        L.append(_period_row(2, "Error log", err_first_dt, err_last_dt))
+        L.append(_period_row(3, "Cache-perf log", cache_first, cache_last))
+        L.append("")
+
+    # Remember where to insert the geo-IP status banner — computed only after every
+    # ip_country()/ip_org()/ip_hostname() call below has run, but displayed here at the
+    # top so the reader sees it before any IP-attribution table, not buried after dozens
+    # of confusing "unknown" cells.
+    geoip_banner_index = len(L)
 
     # ══════════════════════════════════════════════════════════════
     # HEALTH SUMMARY
@@ -464,6 +677,7 @@ def generate_report(site_name, error_findings, error_meta, access_data,
     bypass_pct = cache_data["BYPASS"]/cache_data["total"]*100 if cache_data else None
     avg_rt = access_data["avg_rt"] if access_data else 0
     slow_count = len(access_data["slow"]) if access_data else 0
+    severely_slow_count = len(access_data.get("severely_slow", [])) if access_data else 0
 
     L.append("| Metric | Value | Severity |")
     L.append("|---|---|---|")
@@ -475,7 +689,10 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         health, hicon = "Minor warnings", "🟡"
     else:
         health, hicon = "Operating normally", "✅"
-    L.append(f"| Status | {hicon} **{health}** | |")
+    # Same column shape as every row below it (Value | Severity) — the Status row
+    # previously put its icon inline with the value and left Severity blank, which
+    # broke the pattern the reader had just learned from this exact table.
+    L.append(f"| Status | **{health}** | {hicon} |")
     # Distinguish "no cache data" from an actual 0% HIT rate — conflating the two
     # previously showed a false 🔴 whenever cache.json was missing/empty.
     if hit_pct is not None:
@@ -488,8 +705,18 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         L.append("| Cache BYPASS rate | *no cache data* | — |")
     L.append(f"| Avg response time | **{avg_rt:.3f}s** | "
              f"{'✅' if avg_rt < 0.5 else ('🟡' if avg_rt < 1.0 else '🔴')} |")
-    L.append(f"| Slow pages (>2s) | **{slow_count}** | "
-             f"{'✅' if slow_count == 0 else ('🟡' if slow_count < 5 else '🔴')} |")
+    # Severity now reacts to HOW slow, not just how many pages crossed the 2s line —
+    # 18 pages at 2.1s is a mild 🟡, not the same 🔴 as even a couple of pages past 5s.
+    if severely_slow_count > 0:
+        slow_icon = "🔴"
+    elif slow_count >= 5:
+        slow_icon = "🟡"
+    elif slow_count > 0:
+        slow_icon = "🟡"
+    else:
+        slow_icon = "✅"
+    slow_detail = f" ({severely_slow_count} of which >5s)" if severely_slow_count else ""
+    L.append(f"| Slow pages (>2s) | **{slow_count}**{slow_detail} | {slow_icon} |")
     L.append(f"| Server errors (5xx) | **{fivexx_count}** | "
              f"{'✅' if fivexx_count == 0 else '🔴'} |")
     L.append(f"| Error types | {critical_count} critical, {medium_count} warnings | "
@@ -501,7 +728,7 @@ def generate_report(site_name, error_findings, error_meta, access_data,
     # client IPs, requests) instead of only a canned generic "fix" tip.
     # ══════════════════════════════════════════════════════════════
     for sev_key, title in [("critical", "## 🔴 Issues Found"), ("medium", "## 🟡 Warnings"),
-                            ("low", "## 🟢 Informational")]:
+                            ("low", "## 🟢 Low-Priority Notes (No Action Needed)")]:
         findings = error_findings.get(sev_key, [])
         if not findings: continue
         L.append(title)
@@ -558,7 +785,14 @@ def generate_report(site_name, error_findings, error_meta, access_data,
                 if f.get("last_ts_str"):
                     L.append(f"| Last seen | {f['last_ts_str']} ({f['last_ago']}) |")
                 L.append("")
-                L.append(f"**{f['what']}**")
+                # CommonMark doesn't allow ** to span a blank line — if 'what' contains a
+                # paragraph break (e.g. a finding statement followed by a ✅ resolution note),
+                # only bold the first paragraph; render any subsequent ones as plain text.
+                what_parts = f['what'].split("\n\n")
+                L.append(f"**{what_parts[0]}**")
+                for extra in what_parts[1:]:
+                    L.append("")
+                    L.append(extra)
                 L.append("")
                 L.append("---")
                 L.append("")
@@ -615,17 +849,39 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         L.append("")
         qp = access_data.get("query_params", Counter()) if access_data else Counter()
         top_params = qp.most_common(3)
-        L.append("| # | Action |")
-        L.append("|---|---|")
+        # Only surface a tip when it's actually relevant to THIS run's data — a static
+        # 4-item checklist regardless of findings is boilerplate, not analysis. Each row
+        # below only appears when its own trigger condition is true for this specific site.
+        tips = []
         if top_params:
             param_list = ", ".join(f"`?{p}=`" for p, _ in top_params)
-            L.append(f"| 1 | **Query strings found in your traffic**: {param_list}. "
-                     f"MyKinsta → Edge Caching → add these to force-cached query strings. |")
+            tips.append(f"**Query strings found in your traffic**: {param_list}. "
+                        f"MyKinsta → Edge Caching → add these to force-cached query strings.")
+        if bypass_pct is not None and bypass_pct > 10:
+            tips.append(f"**BYPASS rate is {bypass_pct:.0f}%** (target <10%) — check for a "
+                        f"`Set-Cookie` header on public pages (WooCommerce cart, wpForo, comment "
+                        f"cookies, or a bot-management cookie). See Analyst Commentary for the "
+                        f"live-probe-confirmed cause, if available.")
+        if hit_pct is not None and hit_pct < 70:
+            tips.append(f"**HIT rate is {hit_pct:.0f}%** (target >70%) — after any deploy or cache "
+                        f"clear, pre-warm the edge cache by crawling the sitemap "
+                        f"(`wget --mirror` or a cache-warmer plugin) rather than waiting for "
+                        f"organic traffic to slowly repopulate it.")
+        if bypass_pct is not None and bypass_pct > 5:
+            tips.append("**If a CDN sits in front of Kinsta** (e.g. Cloudflare), verify it isn't "
+                        "the layer bypassing cache — check its cache-status header on a few pages.")
+        if tips:
+            L.append("| # | Action |")
+            L.append("|---|---|")
+            for i, tip in enumerate(tips, 1):
+                L.append(f"| {i} | {tip} |")
+            L.append("")
+            L.append("*These are generic starting points triggered by this run's numbers, not a "
+                     "confirmed diagnosis — see the Analyst Commentary section for the specific, "
+                     "evidence-based root cause for this site.*")
         else:
-            L.append("| 1 | **Check for query strings** — `?page=`, `?utm_source=` prevent caching. MyKinsta → Edge Caching → add safe params. |")
-        L.append("| 2 | **Eliminate cookies on public pages** — any `Set-Cookie` header (WooCommerce, wpForo, comments) disables cache. |")
-        L.append("| 3 | **Pre-warm after deploys** — crawl your sitemap with `wget --mirror` or a cache warmer plugin. |")
-        L.append("| 4 | **Check Cloudflare** — verify Kinsta edge cache is primary layer, not bypassed by Cloudflare settings. |")
+            L.append("No specific trigger conditions matched this run's cache data — HIT/BYPASS "
+                     "rates don't point to any of the common causes checked above.")
         L.append("")
     else:
         reason = data_errors.get("cache")
@@ -642,8 +898,6 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         bots = access_data["bot_data"]
         total_bot = sum(b["count"] for b in bots.values())
         total_req = access_data["total"]
-        L.append(f"**{total_bot}** of **{total_req}** requests (**{total_bot/total_req*100:.0f}%**) from known bots.")
-        L.append("")
         L.append("*Categorization is a heuristic based on published User-Agent strings — verify before blocking.*")
         L.append("")
 
@@ -654,30 +908,168 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         for cat in sorted(by_cat, key=lambda c: -sum(b["count"] for _, b in by_cat[c])):
             items = sorted(by_cat[cat], key=lambda x: -x[1]["count"])
             cat_total = sum(b["count"] for _, b in items)
-            L.append(f"### {cat} ({cat_total} requests)")
+            cat_pct = cat_total / total_req * 100 if total_req else 0
+            # Total + % of ALL traffic now lives in the header itself (first line the reader
+            # sees for this category), replacing both the old top-of-section summary sentence
+            # and the old bottom-of-table "Total" row — one number, stated once, up front.
+            L.append(f"### {cat} — {cat_total} requests ({cat_pct:.0f}% of all traffic)")
             L.append("")
-            L.append("| Bot | Requests | Active window |")
-            L.append("|---|---|---|")
+            L.append("| Bot | Requests | Active window | Distinct IPs | URL pattern |")
+            L.append("|---|---|---|---|---|")
             for name, b in items:
                 window = f"{b['first'].strftime('%H:%M')}–{b['last'].strftime('%H:%M')} UTC"
-                L.append(f"| {name} | **{b['count']}** | {window} |")
+                # Concentration signal: high top_share + low distinct_urls = repeated hits on
+                # specific content (targeted interest); low top_share + high distinct_urls =
+                # distributed/exploratory crawling. See references/bot-taxonomy.md before
+                # interpreting this for ChatGPT-User specifically — it changes the verdict.
+                top_share = b.get("top_share", 0)
+                distinct = b.get("distinct_urls", 0)
+                if distinct <= 1:
+                    pattern = "single URL only"
+                elif top_share >= 50:
+                    # >=50% on one URL out of several is an anomaly worth flagging visually,
+                    # not just a neutral data point — pair the label with a warning icon.
+                    pattern = f"⚠️ concentrated: {top_share:.0f}% on 1 URL ({distinct} distinct)"
+                elif distinct <= 5:
+                    pattern = f"narrow: {distinct} distinct URLs"
+                else:
+                    pattern = f"distributed: {distinct} distinct URLs"
+                L.append(f"| {name} | **{b['count']}** | {window} | {b.get('distinct_ips', '?')} | {pattern} |")
             L.append("")
+            # Show the actual top URLs for the single highest-volume bot in this category so
+            # the analyst can cite real evidence instead of guessing at "pattern or scattered".
+            top_bot_name, top_bot = max(items, key=lambda x: x[1]["count"])
+            if top_bot.get("top_urls"):
+                L.append(f"<details><summary>Top URLs requested by <code>{top_bot_name}</code> (highest-volume bot in this category)</summary>")
+                L.append("")
+                L.append("| URL | Hits |")
+                L.append("|---|---|")
+                for u, c in top_bot["top_urls"]:
+                    L.append(f"| `{u}` | {c} |")
+                L.append("")
+                L.append("</details>")
+                L.append("")
 
         if cross_results.get("scanner_ips"):
             L.append("### Scanner IPs — Block List")
             L.append("")
-            L.append("| IP | Requests | Country | Safety |")
-            L.append("|---|---|---|---|")
+            L.append("| IP | Requests | Country | ASN / Provider | Reverse DNS | ⚠️ | Safe to block? |")
+            L.append("|---|---|---|---|---|---|---|")
             for ip, cnt in cross_results["scanner_ips"][:5]:
                 cc, flag = ip_country(ip)
-                safe = ip_safety(ip, cnt)
-                country_display = f"{flag} {cc}" if flag else (cc if cc != "?" else "unknown")
-                L.append(f"| `{ip}/32` | {cnt} | {country_display} | {safe} |")
+                org, is_hosting = ip_org(ip)
+                hostname, is_customer_vm = ip_hostname(ip)
+                safety_icon, safety_text = ip_safety(ip, cnt)
+                if cc == GEOIP_DISABLED:
+                    country_display = "*geo-IP disabled*"
+                elif cc and cc != "?":
+                    country_display = f"{flag} {cc}" if flag else cc
+                else:
+                    country_display = "*unknown*"
+                org_display = geo_display(org, "unknown")
+                raw_hostname = geo_display(hostname, "no PTR record")
+                host_display = raw_hostname if raw_hostname.startswith("*") else f"`{raw_hostname}`"
+                combined_icon = "⚠️" if (is_hosting or is_customer_vm) else safety_icon
+                # This is the answer to "is blocking this specific IP safe" — a direct read of
+                # its ASN type (hosting/VPS = safe; residential/mobile = risk of catching a
+                # future legitimate visitor once the IP is reassigned), never left unstated.
+                risk = blocking_risk(org, is_hosting)
+                L.append(f"| `{ip}/32` | **{cnt}** | {country_display} | {org_display} | {host_display} | {combined_icon} | {risk} |")
             L.append("")
-            L.append("*Add these to MyKinsta → Tools → Denied IPs. `/32` blocks only that single IP.*")
+            L.append("**How to block:** MyKinsta → Tools → Denied IPs → add the IP with the "
+                     "`/32` suffix shown above. `/32` means *exactly this one IP address, and "
+                     "no other* — it will NOT block anyone else, even other visitors from the "
+                     "same provider or country. To block a wider range instead (e.g. an entire "
+                     "hosting block), you would replace `/32` with a smaller number "
+                     "(`/24` blocks the 256 IPs sharing this one's first three number-groups) — "
+                     "only do this if the \"Safe to block?\" column above says it's a dedicated "
+                     "hosting/VPS range, never for a residential/mobile ISP range.")
             L.append("")
     else:
         L.append("No bot data.")
+        L.append("")
+
+    # ══════════════════════════════════════════════════════════════
+    # CONCENTRATED TRAFFIC SPIKES & BURSTS — a single IP responsible for a
+    # disproportionate share of one bot's traffic, or a scanner IP hammering one
+    # set of paths. Consolidates "who" (offender) and "what" (target) that would
+    # otherwise be scattered across the Bot and Scanner tables above.
+    # ══════════════════════════════════════════════════════════════
+    def _host_suffix(ip):
+        """Short reverse-DNS annotation for a Bursts-table source — flags the specific
+        'cloud vendor's ASN but NOT their own crawler' case that a bare IP/UA doesn't reveal."""
+        hostname, is_customer_vm = ip_hostname(ip)
+        if not hostname: return ""
+        return f" — PTR: `{hostname}`" + (" ⚠️ cloud customer VM" if is_customer_vm else "")
+
+    # One-line plain-language identity for bot names that aren't self-explanatory — "Offender"
+    # is the wrong word for a low-value-but-legitimate crawler like Dataprovider; stating
+    # plainly who/what it is (not "our" traffic, not necessarily malicious) belongs right in
+    # this table, not requiring a cross-reference to bot-taxonomy.md to understand.
+    _BOT_IDENTITY = {
+        "Dataprovider": "Dataprovider.com — third-party commercial web-data crawler, not malicious, zero SEO value to this site",
+        "MJ12bot": "Majestic SEO's backlink-index crawler — third-party SEO tool, not malicious",
+        "SemrushBot": "Semrush's SEO-audit crawler — third-party SEO tool, not malicious",
+        "AhrefsBot": "Ahrefs' SEO-audit crawler — third-party SEO tool, not malicious",
+        "Bytespider": "ByteDance's (TikTok's parent) crawler — see bot-taxonomy.md for compliance history",
+        "PetalBot": "Huawei's Petal Search crawler — see bot-taxonomy.md for relevance assessment",
+    }
+    def _bot_label(name):
+        return _BOT_IDENTITY.get(name, name)
+
+    burst_rows = []
+    if access_data and access_data.get("bot_data"):
+        for name, b in access_data["bot_data"].items():
+            share = b.get("ip_top_share", 0)
+            # A single IP responsible for >=40% of a bot's total traffic (and that
+            # bot has enough volume to matter) is a burst worth calling out — most
+            # legitimate bot traffic is spread across many source IPs (see
+            # bot-taxonomy.md), so a concentrated single-IP share is the anomaly.
+            if share >= 40 and b.get("count", 0) >= 10:
+                top_url = b["top_urls"][0][0] if b.get("top_urls") else "(multiple URLs)"
+                burst_rows.append({
+                    "source": f"`{b['top_ip']}` — {_bot_label(name)}{_host_suffix(b['top_ip'])}",
+                    "target": top_url,
+                    "detail": f"{b['top_ip_count']} of {b['count']} requests ({share:.0f}%)",
+                })
+    for ip, cnt in cross_results.get("scanner_ips", []):
+        burst_rows.append({
+            "source": f"`{ip}` — directory scanner{_host_suffix(ip)}",
+            "target": "multiple `/wp-admin/`, `/wp-includes/` paths",
+            "detail": f"{cnt} probe attempts",
+        })
+
+    # Non-bot-classified burst check: a single IP dominating the SLOW-requests list, even
+    # when its User-Agent didn't match any known bot pattern above. This is exactly the
+    # case that would otherwise stay invisible — an unclassified IP hitting many pages with
+    # no other signal except "everything it touches is slow."
+    if access_data and access_data.get("slow"):
+        slow_ip_counts = Counter(e["ip"] for e in access_data["slow"])
+        if slow_ip_counts:
+            top_slow_ip, top_slow_count = slow_ip_counts.most_common(1)[0]
+            total_slow = len(access_data["slow"])
+            slow_share = top_slow_count / total_slow * 100 if total_slow else 0
+            if slow_share >= 50 and top_slow_count >= 3:
+                slow_urls = [e["url"] for e in access_data["slow"] if e["ip"] == top_slow_ip]
+                burst_rows.append({
+                    "source": f"`{top_slow_ip}` — unclassified, no matching bot UA pattern{_host_suffix(top_slow_ip)}",
+                    "target": f"{len(set(slow_urls))} distinct pages, e.g. `{slow_urls[0]}`",
+                    "detail": f"{top_slow_count} of {total_slow} slow (>2s) requests ({slow_share:.0f}%)",
+                })
+
+    if burst_rows:
+        L.append("## Concentrated Traffic Spikes & Bursts")
+        L.append("")
+        L.append("| Source | Target | Detail |")
+        L.append("|---|---|---|")
+        for r in burst_rows:
+            L.append(f"| {r['source']} | {r['target']} | {r['detail']} |")
+        L.append("")
+    else:
+        L.append("## Concentrated Traffic Spikes & Bursts")
+        L.append("")
+        L.append("No single-IP burst detected — traffic within each bot/category is "
+                 "spread across multiple source IPs, not dominated by one.")
         L.append("")
 
     # ══════════════════════════════════════════════════════════════
@@ -686,16 +1078,58 @@ def generate_report(site_name, error_findings, error_meta, access_data,
     if cross_results.get("top_ips"):
         L.append("## Top Visitor IPs")
         L.append("")
-        L.append("| IP | Requests | Country |")
-        L.append("|---|---|---|")
+        L.append("| IP | Requests | Country | ASN / Provider | Reverse DNS | ⚠️ |")
+        L.append("|---|---|---|---|---|---|")
+        any_hosting = False
+        any_customer_vm = False
         for ip, cnt in cross_results["top_ips"]:
             if ip in ("::1", "127.0.0.1"):
-                country_display = "localhost"
+                # This is the server talking to itself — WP-Cron, health checks, internal
+                # loopback API calls — not an external visitor of any kind. Spelled out
+                # explicitly so it's never mistaken for a real visitor with a generic label.
+                country_display = "—"
+                org_display = "🖥️ this server itself (internal/cron, not a visitor)"
+                host_display = ""
+                flag_cell = ""
             else:
                 cc, flag = ip_country(ip)
-                country_display = f"{flag} {cc}" if flag else (cc if cc != "?" else "unknown")
-            L.append(f"| **{ip}** | {cnt} | {country_display} |")
+                if cc == GEOIP_DISABLED:
+                    country_display = "*geo-IP disabled*"
+                elif cc and cc != "?":
+                    country_display = f"{flag} {cc}" if flag else cc
+                else:
+                    country_display = "*unknown*"
+                org, is_hosting = ip_org(ip)
+                org_display = geo_display(org, "unknown")
+                hostname, is_customer_vm = ip_hostname(ip)
+                raw_hostname = geo_display(hostname, "no PTR record")
+                host_display = raw_hostname if raw_hostname.startswith("*") else f"`{raw_hostname}`"
+                # Icon lives in its own column now — the ASN/Provider column stays plain
+                # text, so it's not competing for attention with the warning glyph. A
+                # cloud-customer-VM hostname (e.g. googleusercontent.com) is flagged the
+                # same way as a generic hosting ASN match — both mean "not a residential
+                # visitor," and the Reverse DNS column shows which specific case applies.
+                flag_cell = "⚠️" if (is_hosting or is_customer_vm) else ""
+                if is_hosting: any_hosting = True
+                if is_customer_vm: any_customer_vm = True
+            # IP plain text, request count bold — the count is the number worth scanning down
+            # this column for, not the IP string itself.
+            L.append(f"| `{ip}` | **{cnt}** | {country_display} | {org_display} | {host_display} | {flag_cell} |")
         L.append("")
+        if any_hosting or any_customer_vm:
+            # Broken into short bullets (not one dense paragraph) so the reader can scan the
+            # three distinct points instead of parsing a single run-on sentence.
+            L.append("> ⚠️ **At least one top IP is infrastructure, not a residential visitor**")
+            L.append(">")
+            L.append("> - The country tag shows where that server/proxy is located — not where a "
+                      "human visitor actually is.")
+            L.append("> - An ASN like *\"Google LLC\"* alone does **not** confirm it's Google's own "
+                      "crawler.")
+            L.append("> - Check the **Reverse DNS** column: a vendor's own bot domain (e.g. "
+                      "`bot.semrush.com`) confirms genuine bot traffic; a "
+                      "`*usercontent.com`/`*.amazonaws.com`-style hostname means it's a "
+                      "**customer's rented VM**, not the vendor itself.")
+            L.append("")
         L.append("")
 
     # ══════════════════════════════════════════════════════════════
@@ -709,14 +1143,33 @@ def generate_report(site_name, error_findings, error_meta, access_data,
 
         L.append("### Status Codes")
         L.append("")
+        # Group totals first (2xx/3xx/4xx/5xx) so the reader sees the shape of traffic
+        # health at a glance, then the individual codes as an indented sub-dimension —
+        # rather than 8+ ungrouped rows with no sense of which bucket dominates.
+        groups = {"2xx": [], "3xx": [], "4xx": [], "5xx": []}
+        for code, cnt in sorted(stc.items()):
+            if cnt and code and code[0] in "2345":
+                groups[f"{code[0]}xx"].append((code, cnt))
+        L.append("| Group | Total | Share |")
+        L.append("|---|---|---|")
+        for g in ["2xx", "3xx", "4xx", "5xx"]:
+            g_total = sum(c for _, c in groups[g])
+            if g_total == 0: continue
+            pct = g_total/total*100
+            bar = bar_chart(pct, 100, 15)
+            L.append(f"| **{g}** | **{g_total}** | `{bar}` **{pct:.0f}%** |")
+        L.append("")
+        L.append("<details><summary>Individual status codes</summary>")
+        L.append("")
         L.append("| Code | Count | Share |")
         L.append("|---|---|---|")
-        for code in ["200", "301", "302", "304", "400", "403", "404", "405", "500", "502", "503"]:
-            cnt = stc.get(code, 0)
-            if cnt:
+        for g in ["2xx", "3xx", "4xx", "5xx"]:
+            for code, cnt in groups[g]:
                 pct = cnt/total*100
                 bar = bar_chart(pct, 100, 15)
                 L.append(f"| {code} | {cnt} | `{bar}` **{pct:.0f}%** |")
+        L.append("")
+        L.append("</details>")
         L.append("")
 
         # Drill-down: exactly which URLs/IPs are behind each 4xx/5xx code, instead
@@ -742,12 +1195,30 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         L.append("### Requests per Hour (UTC)")
         L.append("")
         if access_data.get("hourly"):
-            max_h = max(access_data["hourly"].values()) if access_data["hourly"] else 1
-            L.append("| Hour | Requests | Distribution |")
-            L.append("|---|---|---|")
-            for hour, cnt in access_data["hourly"].items():
-                bar = bar_chart(cnt, max_h, 20)
-                L.append(f"| {hour} | {cnt} | `{bar}` |")
+            hourly = access_data["hourly"]
+            max_h = max(hourly.values()) if hourly else 1
+            # A real Markdown table (24 hour-columns + 1 bar-glyph row) REPLACES the old
+            # 24-row vertical table AND the earlier attempt at a manually-aligned two-line
+            # sparkline. The sparkline approach kept misrendering because block-height glyphs
+            # (▁▂▃▄▅▆▇█) are not guaranteed to be exactly 1-character-wide in every font/
+            # renderer, so a second line of "00 01 02..." labels drifted out of alignment with
+            # it. A genuine table has no such problem — the renderer owns column alignment,
+            # not our character-width guess — so this is the robust, renderer-agnostic fix.
+            SPARK = "▁▂▃▄▅▆▇█"
+            hour_keys = [f"{h:02d}:00" for h in range(24)]
+            L.append("| " + " | ".join(f"{h:02d}" for h in range(24)) + " |")
+            L.append("|" + "---|" * 24)
+            bar_row = []
+            for key in hour_keys:
+                cnt = hourly.get(key, 0)
+                idx = 0 if cnt == 0 else min(7, max(0, round(cnt / max_h * 7)))
+                bar_row.append(SPARK[idx])
+            L.append("| " + " | ".join(bar_row) + " |")
+            L.append("")
+            peak_hour, peak_cnt = max(hourly.items(), key=lambda x: x[1])
+            low_hour, low_cnt = min(hourly.items(), key=lambda x: x[1])
+            L.append(f"**Busiest:** `{peak_hour}` UTC ({peak_cnt} requests) · "
+                     f"**Quietest:** `{low_hour}` UTC ({low_cnt} requests)")
         L.append("")
 
         L.append("### Performance")
@@ -755,9 +1226,37 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         L.append(f"| Metric | Value |")
         L.append(f"|---|---|")
         L.append(f"| Average response time | **{access_data['avg_rt']:.3f}s** |")
+        L.append(f"| Fastest response | **{access_data.get('min_rt', 0):.3f}s** |")
+        L.append(f"| Slowest response | **{access_data.get('max_rt', 0):.3f}s** |")
         L.append(f"| Slow pages (>2s) | **{len(access_data['slow'])}** |")
         L.append(f"| Server errors (5xx) | **{len(access_data['fivexx'])}** |")
         L.append("")
+        if access_data.get("slowest_pages"):
+            L.append("**Slowest individual requests observed:**")
+            L.append("")
+            L.append("| URL | Response Time | IP | Status | Reverse DNS |")
+            L.append("|---|---|---|---|---|")
+            slow_ip_set = set()
+            for e in access_data["slowest_pages"][:8]:
+                # Reverse-DNS here specifically, not just ASN/org — "org = Google LLC" does not
+                # tell you whether this is Google's own crawler or an unrelated third party's
+                # customer VM merely rented from Google Cloud. A hostname ending in
+                # googleusercontent.com/compute.amazonaws.com is the actual tell; ASN alone is not.
+                hostname, is_customer_vm = ip_hostname(e["ip"])
+                if hostname:
+                    host_display = f"`{hostname}`" + (" ⚠️ cloud customer VM, not the vendor's own service" if is_customer_vm else "")
+                else:
+                    host_display = "*no PTR record*"
+                slow_ip_set.add(e["ip"])
+                L.append(f"| `{e['url']}` | {e['rt']:.3f}s | `{e['ip']}` | {e['status']} | {host_display} |")
+            L.append("")
+            if len(slow_ip_set) == 1 and len(access_data["slowest_pages"][:8]) >= 3:
+                only_ip = next(iter(slow_ip_set))
+                L.append(f"> ⚠️ **All of the above come from a single IP (`{only_ip}`)** — this is one "
+                         f"source systematically hitting multiple pages, not several unrelated slow "
+                         f"visitor experiences. Check its reverse-DNS/org above before assuming it's "
+                         f"a real visitor or the site's own performance problem.")
+                L.append("")
     else:
         reason = data_errors.get("access")
         L.append(f"Access log unavailable{f': {reason}' if reason else ''}.")
@@ -780,8 +1279,26 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         if trimmed:
             L.append(f"| *({trimmed} paths with 1 attempt trimmed)* | |")
         L.append("")
-        L.append("*Normal background noise — Kinsta blocks directory listing by default.*")
+        L.append("✅ *Normal background noise — Kinsta blocks directory listing by default. No action needed.*")
         L.append("")
+
+    # Insert the geo-IP status banner now that every lookup this run has actually happened —
+    # one clear notice instead of the reader having to infer "why does everything say unknown"
+    # from dozens of individual table cells scattered across the report.
+    banner = []
+    if not GEOIP_ENABLED:
+        banner = ["> ℹ️ **Geo-IP/ASN/reverse-DNS lookups were disabled** (`--no-geoip` was passed) "
+                  "— every Country/ASN/Reverse DNS cell below reads *geo-IP disabled*, not "
+                  "\"unknown\" or a broken lookup. Re-run without `--no-geoip` for that data.", ""]
+    elif _LOOKUP_STATS["attempted"] >= 5 and _LOOKUP_STATS["empty"] / _LOOKUP_STATS["attempted"] > 0.5:
+        pct = _LOOKUP_STATS["empty"] / _LOOKUP_STATS["attempted"] * 100
+        banner = [f"> ⚠️ **Geo-IP lookups returned nothing for {pct:.0f}% of the "
+                  f"{_LOOKUP_STATS['attempted']} IPs checked this run** — this looks like an "
+                  f"`ipinfo.io` outage, rate limit, or network issue, not that these IPs "
+                  f"genuinely have no data. Re-run later before trusting a high \"unknown\" "
+                  f"count as a real finding.", ""]
+    if banner:
+        L[geoip_banner_index:geoip_banner_index] = banner
 
     return "\n".join(L)
 
@@ -803,6 +1320,9 @@ def main():
     GEOIP_ENABLED = not args.no_geoip
 
     site_name = os.path.basename(os.path.dirname(os.path.dirname(args.error_file)))
+    # Environment (e.g. "live", "staging") is the immediate parent dir of the raw log files —
+    # {site_name}/{env_name}/{ts}_error.json — used for the title and the flat reports/ filename.
+    env_name = os.path.basename(os.path.dirname(args.error_file))
 
     data_errors = {}
     err_logs, err_err = extract_logs(args.error_file)
@@ -837,11 +1357,20 @@ def main():
                                   ip_counter if err_filtered else Counter(), scanner_ips)
 
     report = generate_report(site_name, error_findings, error_meta, access_data,
-                             cache_data, cross_results, scanner_paths, args.hours, data_errors)
+                             cache_data, cross_results, scanner_paths, args.hours, data_errors,
+                             env_name=env_name)
 
-    report_dir = os.path.dirname(args.error_file)
-    ts = "_".join(os.path.basename(args.error_file).split("_")[:2])
-    report_path = os.path.join(report_dir, f"{ts}_report.md")
+    # Reports live in a single flat ~/Downloads/kinsta-logs/reports/ folder (not nested per
+    # site/env like the raw logs) — the filename itself encodes site/env/timestamp so reports
+    # stay unique and easy to browse chronologically without digging into subfolders.
+    report_dir = os.path.expanduser("~/Downloads/kinsta-logs/reports")
+    os.makedirs(report_dir, exist_ok=True)
+    ts_raw = "_".join(os.path.basename(args.error_file).split("_")[:2])
+    try:
+        ts_compact = datetime.strptime(ts_raw, "%Y-%m-%d_%H%M%S").strftime("%Y%m%d%H%M")
+    except ValueError:
+        ts_compact = ts_raw.replace("-", "").replace("_", "")[:12]
+    report_path = os.path.join(report_dir, f"report_{site_name}_{env_name}_{ts_compact}.md")
     with open(report_path, "w") as f: f.write(report)
 
     print(report)

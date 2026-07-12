@@ -44,43 +44,63 @@ The origin server is slow. Common causes:
 
 ## Bot Traffic Management
 
-### Aggressive Crawlers
+**Before choosing a mitigation, read [`bot-taxonomy.md`](bot-taxonomy.md)** — it tells you which
+bots are autonomous crawlers vs. real-time user-triggered agents, which ones have a documented
+compliance mechanism, and which mitigation tier will actually have an effect for that specific bot.
+Do not skip straight to blocking based on raw request count alone.
 
-**Identify the threat**: Look at the access log for:
+### ⚠️ Crawl-Delay does not work on most AI/answer-engine bots
+
+`Crawl-delay` is a non-standard robots.txt extension. Only Bingbot, YandexBot, AhrefsBot,
+SemrushBot, and MJ12bot have documented support for it. **GPTBot, ChatGPT-User, OAI-SearchBot,
+ClaudeBot, PerplexityBot, Bytespider, Amazonbot, Applebot, and Googlebot do not** — Googlebot
+explicitly says to use Search Console instead, and the AI-crawler operators' own robots.txt docs
+only mention `Disallow`/`Allow`. Recommending `Crawl-delay:` for any of these bots is very likely a
+silent no-op. See [`bot-taxonomy.md`](bot-taxonomy.md#the-crawl-delay-correction-read-first) for
+the full compliance matrix before writing this recommendation into any report.
+
+### Identify the Threat
+
+Look at the access log for:
 - Single IP hitting many URLs rapidly (look for same IP in top list with >20 req)
 - User agents like `Go-http-client`, `python-requests`, or empty UAs
 - Requests to nonexistent paths (scanner behavior)
+- **Check the ASN/Provider column** (added to the Top Visitor IPs / Scanner IPs tables) — a
+  "hosting/proxy" tag means the country flag next to it does not represent a real visitor's
+  location; it's infrastructure. Don't build a mitigation plan around a misread geo-IP tag.
 
-**Mitigation options** (ordered by effort):
+### Mitigation Tiers (ordered by reliability, not effort)
 
-1. **robots.txt** (fastest, but only honors polite bots):
-   ```
-   User-agent: PetalBot
-   Disallow: /
-   User-agent: Amazonbot
-   Crawl-delay: 10
-   ```
+1. **This plugin's own MU-level User-Agent throttle** (most reliable for AI/answer-engine bots
+   without stable published IP ranges): [`config/config-mu.php`](../../../../config/config-mu.php)
+   `FRL_MU_THROTTLE_USER_AGENT` + [`frl_maybe_throttle_user_agent()`](../../../../includes/mu/functions-mu.php).
+   Returns HTTP 429 before WordPress loads, keyed by real client IP, works regardless of whether
+   the bot honors robots.txt. Currently throttles only `ChatGPT-User` at 10 req/60s per IP — add
+   other high-volume, non-compliant bots to this array rather than relying on robots.txt alone.
 
-2. **Kinsta IP Deny** (MyKinsta → Tools → Denied IPs):
-   - Add abusive IPs or CIDR ranges.
-   - These get blocked at nginx level before hitting WordPress.
-   - Use for targeted blocking of known bad actors.
+2. **Kinsta IP Deny** (MyKinsta → Tools → Denied IPs): guaranteed at the nginx layer, but only
+   works if the bot's operator publishes stable IP ranges (OpenAI does, for GPTBot/ChatGPT-User/
+   OAI-SearchBot; ByteDance does not for Bytespider, making this tier unusable against it).
 
-3. **Rate limiting via Kinsta**:
-   - Contact Kinsta support to configure `limit_req` zones for specific paths.
-   - Example: limit `/wp-login.php` to 5 req/min per IP.
+3. **robots.txt `Disallow`** (best-effort only): works only for bots documented AND observed to
+   comply. See the compliance matrix in [`bot-taxonomy.md`](bot-taxonomy.md) before assuming this
+   will have any effect — do not pair it with `Crawl-delay` for bots that don't support it.
 
-4. **Cloudflare WAF** (if using Cloudflare in front of Kinsta):
-   - Create custom WAF rules: block by ASN, country, or UA pattern.
-   - Rate limiting rules with configurable thresholds.
+4. **Kinsta support ticket for `limit_req` nginx zones, or Cloudflare WAF** (if Cloudflare sits in
+   front of Kinsta): use when Tiers 1–3 don't apply — e.g. non-WordPress traffic, or blocking needed
+   before the MU-plugin loads.
 
-5. **WordPress-level blocking**:
-   - Plugin like Wordfence or BBQ Block Bad Queries.
-   - .htaccess rules: `Deny from` for specific IPs.
+5. **WordPress-level blocking** (Wordfence, BBQ Block Bad Queries, `.htaccess` `Deny from`): lowest
+   priority — redundant with Tier 1 for UA-based throttling on this codebase, since the MU-plugin
+   mechanism already runs earlier in the request lifecycle and doesn't depend on WordPress loading.
 
-### Legitimate Bot Balance
+### Legitimate Bot Balance — Apply the Same Criteria to Every Bot
 
-Good bots (Googlebot, Bingbot) need access for SEO. Don't block them — let Kinsta edge cache handle their cached page requests efficiently.
+Don't default to "keep Western bots, block others." Apply the same three questions from
+[`bot-taxonomy.md`](bot-taxonomy.md) to every bot: what does it actually do, does it comply with
+any stated mechanism, and does it feed a product whose users overlap this site's actual audience.
+Googlebot/Bingbot pass on all three for virtually any site and should always be kept; regional or
+AI-answer-engine bots need the specific per-bot assessment in that reference, not a blanket rule.
 
 ---
 
