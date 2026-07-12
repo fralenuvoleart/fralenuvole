@@ -57,7 +57,28 @@ The Kinsta API (`kinsta.logs.get`) is **line-based, not time-based**:
 - 1000 error lines ≈ 1–3 days; 1000 access lines ≈ 3–5 hours (access is much denser)
 - To get better access/error log overlap, use **`"lines":3000`** for the access log (~12–15 hours coverage)
 - The Kinsta API has **no offset/pagination** — just pass a higher `lines` value directly
+- **The API hard-caps `lines` at 20,000** — a request above that fails with `VALIDATION_ERROR:
+  Number must be less than or equal to 20000`. This is the true ceiling on how far back any single
+  fetch can reach, regardless of the site's traffic volume.
 - The `file_name` parameter accepts bare names (`error`) — do NOT append `.log` suffix
+- **Kinsta rotates `access.log` roughly daily** (confirmed: rotated filenames follow
+  `access.log-YYYY-MM-DD-<unix-timestamp>`) — but `kinsta.logs.get` transparently spans rotation
+  boundaries when `lines` exceeds the current unrotated file's size, so a normal fetch does not
+  need manual rotation-file handling.
+- **`access.log` is origin-server traffic only — confirmed (do not re-derive this each run): it does
+  not include requests Cloudflare's edge cache served without ever reaching Kinsta's origin server**
+  (300+ global PoPs — see Kinsta's own [Edge Caching docs](https://kinsta.com/docs/wordpress-hosting/caching/edge-caching)).
+  **This was verified against a site's actual downloaded rotated log files** — re-fetching at the
+  20,000-line ceiling and manually reconstructing the same 24h window from raw files both agreed
+  with the original fetch to within 6 requests, ruling out sampling/truncation as the cause of any
+  gap. **Do not default to a "the dashboard's date range must be longer than 24h" explanation
+  without the user confirming their dashboard's window** — a same-order-of-magnitude coincidence in
+  a multi-day total is not evidence of anything; always ask/confirm the dashboard's actual reported
+  window before proposing a time-window mismatch, and prefer the origin-vs-edge-cache explanation as
+  the primary hypothesis when the dashboard figure is confirmed to be a genuine 24h count (one HTML
+  request can carry dozens of edge-cached sub-resource requests MyKinsta's Analytics counts but
+  `access.log` never sees). State this origin-vs-edge scope distinction explicitly in the report's
+  Traffic Overview section whenever the user cites a higher dashboard number for the same window.
 
 ---
 
@@ -271,19 +292,17 @@ approximation. After the script generates the base report, you MUST:
    relocating to Georgia, not bulk scraping" vs. "ClaudeBot: 164 of 183 requests (90%) from a
    single IP, all to `/robots.txt` — this is a burst, not normal crawling behavior").
 
-5. **INTERNAL-ONLY reasoning check — never surfaced in the report.** This step informs your own
-   confidence/severity judgment; its output must NEVER appear in the report as a file path,
-   constant name, function name, or the phrase "this codebase"/"this plugin" — that is a hard
-   violation of "Report Audience & Purpose" at the top of this file, which the reader (an
-   infrastructure manager, not a developer of the hosted app) cannot act on anyway. Privately check
-   whether a high-volume, low-compliance bot already has *some* application-level mitigation in
-   place (see [`bot-taxonomy.md`](references/bot-taxonomy.md#internal-reference-only-not-for-report-text)
-   — marked internal-reference-only for exactly this reason) — use this only to decide whether a
-   finding is "already mitigated, no further action" vs. "needs escalation." If escalation is
-   warranted, the *visible* recommendation must be phrased as one of: (a) a MyKinsta-panel action
-   (Denied IPs, Edge Caching exclusions, etc.), (b) a Kinsta support ticket for a WAF/`limit_req`
-   rule, or (c) an honest, generic "this would require an application-level fix outside MyKinsta —
-   flag it for whoever maintains the site's code" — never naming the specific mechanism.
+5. **Do not read, search, or open ANY file in the hosted plugin/theme codebase for this step, or
+   at any other point in this skill.** This skill's own Scope (top of this file) already says it
+   "does NOT diagnose PHP code bugs, WordPress plugin conflicts, or database queries" — that
+   includes not reading the code "just to check," even privately. Bot-mitigation recommendations
+   are decided **exclusively** from: (a) a MyKinsta-panel action (Denied IPs, Edge Caching
+   exclusions, etc.), (b) a Kinsta support ticket for a WAF/`limit_req` rule, or (c) an honest,
+   generic "no Kinsta-panel or documented fix exists for this pattern — flag it for whoever
+   maintains the site's code" when neither (a) nor (b) applies. Never open `config/`, `includes/`,
+   or any other plugin source path to check for an existing mitigation — the report's severity
+   judgment is based only on the log data itself (e.g. request/IP concentration), never on
+   anything read from the site's own code.
 
 6. **Look up the current Kinsta Knowledge Base for any 🔴/🟡 finding** using `tavily-search` scoped
    to `kinsta.com` (e.g. `site:kinsta.com/knowledgebase edge caching bypass query strings`). Cite
@@ -305,7 +324,7 @@ approximation. After the script generates the base report, you MUST:
    | What? | **Incident** | The flagged finding, stated with its exact evidence (numbers, URLs, IPs). |
    | Why? | **Analysis** | Why it's suspicious or anomalous — cross-referencing bot-taxonomy.md/site-context.md/probe results as applicable. Ordinary/expected activity gets "why this is NOT an anomaly" instead. |
    | Who? | **Actor** | The actor (bot name, IP, or "unknown") PLUS an explicit classification tier — see Step 6.8's tier scale — never just prose judgment. |
-   | How? | **Actions** | The concrete action, sourced from live Kinsta KB documentation (Step 6.6), a MyKinsta-panel step, or **bold "No action required" with a ✅** — never a canned tip disconnected from this finding's actual evidence, and never a file path/constant/function name from the hosted app's own code (see Step 6.5's internal-only rule). |
+   | How? | **Actions** | The concrete action, sourced from live Kinsta KB documentation (Step 6.6), a MyKinsta-panel step, or **bold "No action required" with a ✅** — never a canned tip disconnected from this finding's actual evidence, and never anything derived from reading the hosted app's own source code (Step 6.5 forbids opening it at all). |
 
    Cross-cutting lenses to apply this framework to: attack patterns (spam injection, xmlrpc
    probing), traffic anomalies (hour spikes — state the multiplier, convert to local time per Step
@@ -320,6 +339,31 @@ approximation. After the script generates the base report, you MUST:
    guaranteed to render on separate lines across every renderer; runs of `**Label:** text` lines
    without blank lines between them visually collapse into one paragraph in several renderers,
    which was the primary readability complaint against earlier versions of this skill's output.
+
+   **Tone calibration — avoid both extremes, every time.** This has been a repeated failure mode
+   in both directions and must be checked explicitly before finalizing any Overall Assessment,
+   At a Glance status line, or card verdict:
+   - **Too alarmist:** dressing up routine housekeeping (a stale cache entry, a low-value crawler,
+     a missing trailing slash) in emergency language, or a severity icon one tier higher than the
+     evidence supports (see the icon table below — 🔴 is reserved, not a default).
+   - **Too dismissive:** the opposite failure, and equally wrong — waving away a real, measurable,
+     currently-below-target metric (e.g. a cache HIT rate sitting at 24–46% against a >70% target)
+     with casual language like "minor housekeeping, nothing urgent" or "nothing to see here." A
+     below-target metric with a concrete, evidence-backed fix is a genuine 🟡 finding worth an
+     accurate, specific description — not a shrug.
+   - **The correct register:** state the actual measured severity in plain, professional, objective
+     terms, exactly as supported by the evidence — no more, no less. "Cache HIT rate is 24%, well
+     below the >70% target, driven by two identified causes — fixable, but currently costing real
+     performance" is calibrated. "Nothing urgent" is not, when a metric is sitting at a third of
+     target.
+   - **Avoid cheerleading-style status openers even when a real caveat follows** — e.g. "Overall
+     status: healthy and secure, with one issue worth fixing" still reads as dismissive by leading
+     with reassurance before the finding. Prefer a neutral, factual lead: **"No active security
+     incidents; [metric] is below target and requires attention"** — state what was and wasn't
+     found, in that order, without an adjective doing the reader's judgment for them.
+   - Re-read every summary line against this test before finalizing: *would someone who only reads
+     this one sentence come away with an accurate impression of how serious this actually is — not
+     more dramatic, not more reassuring?*
 
    **Severity icon vocabulary — do not mix these two axes up:**
    | Icon | Reserved for |
@@ -349,7 +393,7 @@ approximation. After the script generates the base report, you MUST:
    - **Discrepancy Notes** (if user mentioned dashboard numbers) — explain gaps honestly
    - **Attack/Security Findings** (if any) — Incident/Analysis/Actor/Actions card format, one card per distinct pattern
    - **Cache Root Cause Analysis** — go beyond "HIT rate is low" to identify the specific mechanism, evidence-cited, informed by both probe passes' live header data (Steps 2 & 4)
-   - **Bot Traffic Strategy** — table (bot | verdict | evidence | citation to bot-taxonomy.md) showing which to keep/throttle/block and why, **plus a Totals row** (sum of requests, % of all bot traffic) — never a keep/block verdict decided by country of origin alone
+   - **Bot Traffic Strategy** — table (bot | verdict | evidence) showing which to keep/throttle/block and why, **plus a Totals row** (sum of requests, % of all bot traffic) — never a keep/block verdict decided by country of origin alone. `bot-taxonomy.md` informs your reasoning (Step 6.2) but is never cited as a column in the report — it's an internal skill reference file the reader has no access to, exactly like the hosted app's source code (Step 6.5). The "Evidence" column must stand on its own in plain language (the actual numbers/behavior), not point anywhere the reader can't open.
    - **Concentrated Traffic Spikes & Bursts** — Incident/Analysis/Actor/Actions card format for anything flagged in the report's own Bursts section (Step 3's script output); use 🔧, not 🔴, unless the pattern is an active attack, not just nuisance polling — name the actor IP/bot and the specific target URL(s) explicitly
    - **Traffic Anomalies** — Incident/Analysis/Actor/Actions card format, one card per spike/pattern, with admin/owner local-time conversion
    - **404/Error Fix Recommendations** — triaged list of what's worth fixing, with counts; use 🔧 (High/Medium priority) / ℹ️ (Low priority) — never 🔴/🟡, since these are housekeeping items, not health emergencies
@@ -369,6 +413,24 @@ approximation. After the script generates the base report, you MUST:
    - One-line overall status with severity icon
    - **Anomalies found in this period** — bullet list, one line per distinct finding, severity icon per line, plain-language (no jargon a manager wouldn't know)
    - **Priority actions this period** — numbered list, ordered by urgency, each action concrete enough to hand to whoever's fixing it (cite the specific file/setting per Step 6.5/6.6, not "check the cache settings")
+
+9a. **Always bracket the "Time Period" section with a short, plain-language MyKinsta-vs-report
+    scope warning — mandatory on every run, not just when a discrepancy comes up.** The
+    business-owner reader will almost certainly have seen a MyKinsta dashboard total at some point,
+    and this report's request count is always the smaller, origin-only figure (see the "How Logs
+    Are Retrieved" origin-vs-edge-cache note near the top of this file) — silence on this point is
+    what causes confusion, not the gap itself. **Keep both notes short — 1–2 sentences each, max
+    ~30 words apiece; this is a pointer, not an explanation** (the full technical version already
+    lives in "Traffic Overview" — do not duplicate it here). Insert via the same `execute_command`
+    mechanism as Step 9, in the same pass:
+    - **Immediately BEFORE** `## Time Period`, one line in this register (adapt the wording, keep
+      the length, keep it neutral/factual — not defensive-sounding phrasing like "before you
+      compare..."): *"⚠️ Scope note: this report counts only requests that reached the server —
+      not traffic Cloudflare's edge cache served directly. MyKinsta's own 24h total will be higher;
+      that's expected."*
+    - **Immediately AFTER** the Time Period list, before `## 📌 At a Glance`, one line: *"ℹ️ The
+      window above is accurate for server-side activity only, not total site traffic — see 'Traffic
+      Overview' below for details."*
 
 10. **Final review pass — SILENT, no visible report section.** After At a Glance is written (not
     before — it must review the complete document, including that section), re-read the ENTIRE
@@ -449,7 +511,7 @@ per Step 7).
 | [`scripts/export_pdf.sh`](scripts/export_pdf.sh) | Converts the final Markdown report to PDF via `md-to-pdf`/`npx`, driven by the system's existing Chromium (no Puppeteer download, no pandoc) | **Execute** in Step 7, after Step 6 is fully written |
 | [`scripts/report.css`](scripts/report.css) | Print stylesheet applied by `export_pdf.sh` — larger body text, `table-layout: fixed` + word-wrap so wide tables don't overflow/truncate in the PDF | Used automatically by `export_pdf.sh`; edit directly if PDF styling needs further tweaks |
 | [`references/site-context.md`](references/site-context.md) | Admin/business-owner timezones, each site's confirmed primary market, and the fixed "Known Probe URLs" list per site — a living cache, update it when the user confirms new context | **Read** in Steps 1 & 2; **update** via `apply_diff` when new context is learned |
-| [`references/bot-taxonomy.md`](references/bot-taxonomy.md) | Accurate, unbiased per-bot reference: real nature (crawler vs. on-demand agent), robots.txt/Crawl-Delay compliance matrix, mitigation tiers, an **internal-reference-only** note on the hosted app's own throttle (never to be named in the report — see Step 6.5), and the ASN-vs-reverse-DNS distinction | **Read in full** in Step 6 before writing any bot-related recommendation |
+| [`references/bot-taxonomy.md`](references/bot-taxonomy.md) | Accurate, unbiased per-bot reference: real nature (crawler vs. on-demand agent), robots.txt/Crawl-Delay compliance matrix, Kinsta/WordPress-generic mitigation tiers (no hosted-app code involved — see Step 6.5), and the ASN-vs-reverse-DNS distinction | **Read in full** in Step 6 before writing any bot-related recommendation |
 | [`references/operational-playbook.md`](references/operational-playbook.md) | Expert server guidance for each anomaly type (cache, errors, response time, traffic spikes, SSL) | **Read** when the report flags an issue needing deeper action |
 
 ## Configuration
