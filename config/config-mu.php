@@ -21,7 +21,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @var string[]
  */
 const FRL_MU_THROTTLE_USER_AGENT = array(
-	'ChatGPT-User',
+	// Empty = throttle disabled.
+	// 'ChatGPT-User',
 );
 
 /**
