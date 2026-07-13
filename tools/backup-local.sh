@@ -22,7 +22,7 @@ else
 fi
 
 # 2. TIMESTAMP FORMAT (YYYYMMDDHHMM)
-TIMESTAMP=$(date +%Y%m%d%H%M)
+TIMESTAMP=$(date +%Y%m%d-%H%M)
 
 # 3. ZIP NAME FORMAT (fralenuvole-VERSION-TIMESTAMP.zip)
 ZIP_NAME="fralenuvole-${PLUGIN_VERSION}-${TIMESTAMP}.zip"
