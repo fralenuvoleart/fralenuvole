@@ -41,23 +41,29 @@ fetch() {
 # pages. Any discovered <loc> ending in .xml is treated as a nested sitemap
 # and queued for its own fetch/extract pass; everything else is a real page
 # URL to warm. A visited-set + depth cap prevent infinite loops on a
-# malformed/self-referencing index.
-declare -A seen_sitemaps
+# malformed/self-referencing index. Uses only bash 3.x constructs (no
+# associative arrays, no array slicing) for maximum portability.
+seen_sitemaps=()
 page_urls=()
 # Two parallel arrays (not a single "url:depth" encoded string) because
 # sitemap URLs already contain ":" (the "https://" scheme), which would
 # collide with a ":" delimiter and truncate the URL when split back apart.
 queue=("$SITEMAP_URL")
 queue_depth=(0)
+queue_pos=0
 
-while ((${#queue[@]} > 0)); do
-    sm_url="${queue[0]}"
-    depth="${queue_depth[0]}"
-    queue=("${queue[@]:1}")
-    queue_depth=("${queue_depth[@]:1}")
+while ((queue_pos < ${#queue[@]})); do
+    sm_url="${queue[queue_pos]}"
+    depth="${queue_depth[queue_pos]}"
+    ((queue_pos++))
 
-    [[ -n "${seen_sitemaps[$sm_url]:-}" ]] && continue
-    seen_sitemaps["$sm_url"]=1
+    # Linear-scan dedup — sitemap count is tiny (depth-limited to 3).
+    _seen=0
+    for _s in "${seen_sitemaps[@]}"; do
+        [[ "$_s" == "$sm_url" ]] && { _seen=1; break; }
+    done
+    [[ $_seen -eq 1 ]] && continue
+    seen_sitemaps+=("$sm_url")
 
     body=$(fetch "$sm_url")
     if [[ -z "$body" ]]; then
