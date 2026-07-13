@@ -2,7 +2,7 @@
 
 # --- CONFIGURATION ---
 WORKSPACE_DIR="/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/fralenuvole/"
-BACKUP_DIR="/mnt/backup/BACKUP/WEB-BACKUP/FRALENUVOLE"
+BACKUP_DIR="/mnt/backup/BACKUP/WEB-BACKUP/FRL-BACKUP"
 MAIN_PLUGIN_FILE="$WORKSPACE_DIR/fralenuvole.php"
 
 # Local-only guard: WORKSPACE_DIR is a hardcoded absolute path specific to
@@ -33,7 +33,6 @@ EXCLUDE_LIST=(
     "composer*"
     "plans"
     "phpcs.xml"
-    "tools"
     "logs"
     "*.md"
 )
