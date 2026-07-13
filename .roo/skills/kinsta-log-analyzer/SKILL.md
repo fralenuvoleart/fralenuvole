@@ -79,6 +79,14 @@ The Kinsta API (`kinsta.logs.get`) is **line-based, not time-based**:
   request can carry dozens of edge-cached sub-resource requests MyKinsta's Analytics counts but
   `access.log` never sees). State this origin-vs-edge scope distinction explicitly in the report's
   Traffic Overview section whenever the user cites a higher dashboard number for the same window.
+- **`kinsta-cache-perf` log data is pulled from Cloudflare logs for the site.** ~85% of all requests
+  are served by Cloudflare's Edge cache and never reach Nginx. Only ~15% pass through Cloudflare to
+  Nginx — broken down as dynamic (~13.5%), miss (~1%), and bypass (~0.5%). Nginx handles page
+  caching for these remaining 15%, and the `kinsta-cache-perf` log's HIT/MISS/BYPASS data represents
+  the cache status for this subset only — not total site traffic. When interpreting cache HIT rates
+  from this log, remember: a 60% HIT rate here means 60% of 15% = ~9% of total traffic got an
+  Nginx page-cache HIT, on top of the ~85% already served by Cloudflare's edge cache (combined
+  ~94% of all requests served from cache).
 
 ---
 
@@ -194,7 +202,7 @@ The script filters entries to the requested time window and produces:
 - **🤖 Bot categorization** — bot traffic split into AI Assistant/Answer Engine, Search Engine, SEO/Marketing, Social Media, and Regional/Compliance-Unverified buckets (heuristic by User-Agent), **each bot annotated with a URL-concentration pattern** (`⚠️ concentrated: NN% on 1 URL` vs. `distributed: N distinct URLs`) plus distinct-IP count and a category Totals row, and the highest-volume bot per category gets its actual top-5 URLs listed in a collapsible block — this is the evidence Step 6 must cite, not something to infer from the count alone
 - **🔗 Cross-Log Correlations** — Cache↔access matches, most cache-MISSed URLs, error↔access pairs
 - **📈 Traffic at a Glance** — Status codes, response times, bot traffic, top IPs with **both geo-IP country and ASN/hosting-provider org** (unless `--no-geoip`) — a "hosting/proxy" flag means the country tag is infrastructure location, not a visitor's location; the report explicitly warns about this rather than letting it be misread
-- **📊 Edge Cache Health** — HIT/MISS/BYPASS with verdict and optimization steps (shown as *no cache data*, not a misleading 0%, when `cache.json` is absent/empty)
+- **📊 Nginx Page Cache Health** — HIT/MISS/BYPASS for requests that reached Nginx (~15% of total traffic; see "How Logs Are Retrieved" above), with verdict and optimization steps (shown as *no cache data*, not a misleading 0%, when `cache.json` is absent/empty)
 
 ### Step 4: Targeted URL Probe (Dynamic, Post-Analysis)
 
@@ -425,9 +433,9 @@ approximation. After the script generates the base report, you MUST:
     mechanism as Step 9, in the same pass:
     - **Immediately BEFORE** `## Time Period`, one line in this register (adapt the wording, keep
       the length, keep it neutral/factual — not defensive-sounding phrasing like "before you
-      compare..."): *"⚠️ Scope note: this report counts only requests that reached the server —
-      not traffic Cloudflare's edge cache served directly. MyKinsta's own 24h total will be higher;
-      that's expected."*
+      compare..."): *"⚠️ Scope note: this report counts only the ~15% of requests that reached the
+      server — ~85% were served by Cloudflare's edge cache directly and never appear here.
+      MyKinsta's own 24h total will be higher; that's expected."*
     - **Immediately AFTER** the Time Period list, before `## 📌 At a Glance`, one line: *"ℹ️ The
       window above is accurate for server-side activity only, not total site traffic — see 'Traffic
       Overview' below for details."*

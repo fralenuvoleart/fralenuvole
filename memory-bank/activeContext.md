@@ -2,7 +2,14 @@
 
 ## Current Focus
 
-Fixed two rounds of the same class of policy violation in [`.roo/skills/kinsta-log-analyzer/SKILL.md`](.roo/skills/kinsta-log-analyzer/SKILL.md): (1) old Step 6.5 explicitly instructed reading this plugin's `config/config-mu.php`/`FRL_MU_THROTTLE_USER_AGENT` and citing it by name in generated Kinsta log reports — contradicting the skill's own "Report Audience & Purpose"/Scope rules (no hosted-app source code involvement, ever). Fixed by removing the codebase-reading instruction entirely (not just its output) — Step 6.5 now forbids opening any plugin/theme file at all. (2) The Bot Traffic Strategy table template had a "Citation" column pointing to `bot-taxonomy.md#...` (an internal skill reference file, equally inaccessible to the report's reader) — removed that column from the template and from the already-generated report; `bot-taxonomy.md`/`site-context.md` now only inform reasoning, never appear as report citations. Also updated `references/bot-taxonomy.md` (Mitigation Tiers now 4 Kinsta/robots.txt-only tiers, no hosted-app-code tier) and `references/operational-playbook.md` similarly. Retroactively scrubbed and re-exported `report_pbservices.ge_live_202607120645.md`/`.pdf` twice.
+Added Cloudflare/Nginx caching chain clarification to [`.roo/skills/kinsta-log-analyzer/SKILL.md`](.roo/skills/kinsta-log-analyzer/SKILL.md): new bullet in "How Logs Are Retrieved" documents the `kinsta-cache-perf` log scope — data pulled from Cloudflare logs, ~85% of requests served by Cloudflare Edge cache (never reach Nginx), ~15% pass through (dynamic ~13.5%, miss ~1%, bypass ~0.5%), Nginx handles page caching for the 15% subset. Fixed misleading "Edge Cache Health" label → "Nginx Page Cache Health" in Step 3 output description. Updated Step 9a scope note to include ~85%/15% figures.
+
+## Changes Made
+
+1. **Kinsta Log Analyzer SKILL.md — Cloudflare/Edge caching chain documentation:**
+   - Added new bullet in "How Logs Are Retrieved" explaining `kinsta-cache-perf` log scope and the Cloudflare→Nginx caching chain with specific percentages (~85% Edge, ~15% Nginx: dynamic ~13.5%, miss ~1%, bypass ~0.5%).
+   - Renamed "📊 Edge Cache Health" → "📊 Nginx Page Cache Health" with clarification that data covers only the ~15% subset reaching Nginx.
+   - Updated Step 9a scope note to include ~85%/15% figures.
 
 Reviewed and hardened [`deploy.sh`](tools/deploy-remote.sh) with `--dry-run` flag and interactive confirmation prompt.
 
