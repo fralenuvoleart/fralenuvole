@@ -8,8 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$(dirname "$SCRIPT_DIR")/logs"
 mkdir -p "$LOG_DIR"
 
-SITEMAP_URL="https://pbservices.ge/sitemap.xml"
-USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+SITEMAP_URL="https://pbservices.ge/sitemap-index.xml"
+USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 FRL-Warmup/1.0"
 DELAY=3
 TIMEOUT=10
 MAX_SITEMAP_DEPTH=3   # safety cap against a malformed/self-referencing sitemap index
