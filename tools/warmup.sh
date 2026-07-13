@@ -2,6 +2,7 @@
 # Resolve the directory this script lives in (not the caller's cwd), so logs
 # always resolve to the same place regardless of where it's invoked from.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+set -euo pipefail
 
 # Logs live in a dedicated plugin-root logs/ dir (sibling of tools/), kept
 # separate from the script code itself. Created on demand if missing.
@@ -10,6 +11,9 @@ mkdir -p "$LOG_DIR"
 
 SITEMAP_URL="https://pbservices.ge/sitemap-index.xml"
 USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 FRL-Warmup/1.0"
+# 3 s — safety-first for Kinsta (firewall + CDN edge cache + bot detection).
+# 500 pages × 3 s ≈ 25 min at 20 req/min, well within human browsing patterns.
+# Below 2 s risks bot-detection blocks; above 4 s yields no extra safety.
 DELAY=3
 TIMEOUT=10
 MAX_SITEMAP_DEPTH=3   # safety cap against a malformed/self-referencing sitemap index
