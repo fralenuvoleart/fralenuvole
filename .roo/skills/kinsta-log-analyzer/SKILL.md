@@ -93,13 +93,21 @@ The Kinsta API (`kinsta.logs.get`) is **line-based, not time-based**:
 ## Workflow
 
 ### Step 1: Discover Sites & Environments
+
+> ⚠️ **CRITICAL: NEVER use `mcp--kinsta--*` tool functions.** Roo Code strips dots from the tool names (e.g. `mcp--kinsta--kinstasiteslist` → `kinstasiteslist`), which causes a "Tool does not exist" error every time. **Always use `execute_command` with JSON-RPC via stdio instead** — pipe the JSON-RPC request into `npx -y kinsta-mcp@1.0.3`. This applies to EVERY Kinsta API call in this skill (Steps 1, 2, 3, and any ad-hoc lookups). The `scripts/fetch_logs.sh` script already does this internally; the only manual `execute_command` you need is the site/environment discovery call below.
+
 1. Read `.roo/mcp.json` for `KINSTA_API_KEY` and `KINSTA_COMPANY_ID`.
-2. **If the user specified a site name**, use it directly (match by `name` or `display_name`).
-3. **If no site specified**:
+2. Discover sites via JSON-RPC (`execute_command`, not `mcp--kinsta--*`):
+
+   ```bash
+   echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"kinsta.sites.list","arguments":{"include_environments":true}}}' | KINSTA_API_KEY="..." KINSTA_COMPANY_ID="..." npx -y kinsta-mcp@1.0.3 2>/dev/null
+   ```
+3. **If the user specified a site name**, extract the site ID and live environment ID from the JSON output.
+4. **If no site specified**:
    - Check conversation history for a previously analyzed site — reuse it.
    - If ≤3 sites exist in the account, list them inline (no `ask_followup` — just say "Analyzing pbservices.ge (only site found)" or "Which: pbservices.ge, pbproperty.ge, or pbnova.com?").
    - Only use `ask_followup_question` if >3 sites.
-4. Call `kinsta.environments.list` with `site_id`. Default to **live** environment.
+5. Default to the **live** environment. Read [`references/site-context.md`](references/site-context.md) — required context for interpreting traffic-hour patterns and geo-IP results. If the site has an `unknown — ask` entry, ask once via `ask_followup_question`, then persist the answer via `apply_diff`.
 5. **Read [`references/site-context.md`](references/site-context.md)** — it records the admin's
    and business owner's timezones and each site's confirmed primary visitor market. This is
    required context for interpreting traffic-hour patterns and geo-IP results correctly in Step 6;
@@ -183,26 +191,18 @@ browsable in one place without digging through per-site subfolders. The raw `_er
 
 **Privacy note**: by default, `ip_country()` sends each unique visitor IP to `ipinfo.io` over the network to resolve a country code — this is the only non-deterministic, network-dependent part of the script (results are cached per-run to avoid duplicate lookups). Pass `--no-geoip` to keep the analysis fully local and deterministic; the report will show "unknown" instead of a country.
 
-**⚠️ If you are iterating on the script itself (debugging/testing a change to `analyze_logs.py`),
-run it against scratch-copied log files in `/tmp/`, never against the real `$DIR` log files whose
-resulting `$REPORT_PATH` the user is actively reviewing.** The script always regenerates its entire
-report file from scratch on every run — any Analyst Commentary manually appended in Step 6 is NOT
-part of that generation and gets silently destroyed by a later test run that resolves to the same
-`reports/` filename (same site/env/timestamp). This has happened before during this skill's own
-development. Copy the log JSON files to a scratch directory first and run against those; only run
-against the real `$DIR` log files as the deliberate final step, immediately followed by
-re-appending Step 6's commentary in the same batch of work — never leave the live report in a
-regenerated-but-uncommented state between messages.
+**⚠️ The script always regenerates the entire report skeleton from scratch on every run.** LLM-filled
+marker content is NOT part of the script's generation — it gets silently destroyed by a re-run.
+Never re-run the script against real `$DIR` log files whose report is the active one. If testing
+script changes, copy log JSON files to `/tmp/` first.
 
-The script filters entries to the requested time window and produces:
-- **⚠️ Time-window disclosure** — flags when the error log's timerange doesn't overlap the access log's (shorter) window, so a "0" status-code count isn't mistaken for "no errors happened"
-- **🔴 Critical / 🟡 Warnings / 🟢 Informational** — each PHP Fatal/Parse/Warning/Notice/Deprecated is grouped by its actual (file, line) signature with the **real extracted message**, occurrence count, first/last seen, and any client IP(s)/request(s) recorded on that log line — not a generic canned tip
-- **🟢 Other PHP/stderr messages** — anything that didn't match a known PHP severity still shows up with actual sample text (never silently dropped)
-- **🔎 Status-code drill-down** — for every 4xx/5xx code present, the top URLs and distinct IP count behind it
-- **🤖 Bot categorization** — bot traffic split into AI Assistant/Answer Engine, Search Engine, SEO/Marketing, Social Media, and Regional/Compliance-Unverified buckets (heuristic by User-Agent), **each bot annotated with a URL-concentration pattern** (`⚠️ concentrated: NN% on 1 URL` vs. `distributed: N distinct URLs`) plus distinct-IP count and a category Totals row, and the highest-volume bot per category gets its actual top-5 URLs listed in a collapsible block — this is the evidence Step 6 must cite, not something to infer from the count alone
-- **🔗 Cross-Log Correlations** — Cache↔access matches, most cache-MISSed URLs, error↔access pairs
-- **📈 Traffic at a Glance** — Status codes, response times, bot traffic, top IPs with **both geo-IP country and ASN/hosting-provider org** (unless `--no-geoip`) — a "hosting/proxy" flag means the country tag is infrastructure location, not a visitor's location; the report explicitly warns about this rather than letting it be misread
-- **📊 Nginx Page Cache Health** — HIT/MISS/BYPASS for requests that reached Nginx (~15% of total traffic; see "How Logs Are Retrieved" above), with verdict and optimization steps (shown as *no cache data*, not a misleading 0%, when `cache.json` is absent/empty)
+The script produces a **two-part report skeleton** with `<!-- LLM: -->` markers where analyst content belongs. See [`references/report-structure.md`](references/report-structure.md) for the authoritative section contract. The skeleton includes:
+
+- **Part 1 (Executive Brief):** headings and `<!-- LLM: -->` markers for Overall Assessment, Discrepancy Notes, Cache Root Cause, Attack/Security, Bot Strategy, Burst Cards, Traffic Anomalies, 404 Fixes, and At a Glance. LLM orders Part 1 sections by severity tier.
+- **Part 2 (Technical Appendix):** auto-generated data tables — Cache Performance (HIT/MISS/BYPASS, top-MISSed URLs, HIT-vs-MISS response time), Bot & Crawler Traffic (per-category tables without verdict column), Top Visitor IPs, Traffic Overview (Status Codes, Requests per Hour, Performance), and Slowest Pages. Plus `<!-- LLM: -->` markers for Probe Cross-Match and KB References.
+- **Validation pass:** when run with `--validate <report_path>`, the script checks that all markers are filled, no permanently suppressed sections appear, and card formats comply.
+
+**Permanently suppressed** (script never emits): Health Summary, Low-Priority Notes, How to Improve Cache HIT Rate, Scanner IPs — Block List, Errors by Status Code Drill-Down, Concentrated Traffic Spikes & Bursts auto-gen table, Directory Scanner Activity.
 
 ### Step 4: Targeted URL Probe (Dynamic, Post-Analysis)
 
@@ -236,16 +236,17 @@ the log window, and Step 6 must state that distinction explicitly whenever it ci
      does it suggest the site has gotten faster/slower since the log window closed?
 
 ### Step 5: Open Report
-The script auto-opens the report in VS Code.
+The script auto-opens the report skeleton in VS Code. It contains `<!-- LLM: -->` markers that you
+will fill in Step 6.
 
-### Step 6: Analyst Commentary (Critical Reasoning)
+### Step 6: Analyst Commentary & Report Assembly (Critical Reasoning)
 
 **This is LLM reasoning, not automated — every analysis is unique.** This is also the step users
 judge the skill's expertise on — mediocre, generic advice here (e.g. "add Crawl-Delay for AI bots,"
 "block Chinese bots because they're Chinese") is a failure of this step, not an acceptable
-approximation. After the script generates the base report, you MUST:
+approximation. The script has generated a two-part skeleton with `<!-- LLM: -->` markers. You MUST:
 
-1. **Read the generated report** (`read_file` on the `*_report.md`) and both probe JSON files —
+1. **Read the generated skeleton** (`read_file` on the `*_report.md`) and both probe JSON files —
    `_probe_baseline.json` from Step 2 and `_probe_targeted.json` from Step 4.
 
 2. **Read [`references/bot-taxonomy.md`](references/bot-taxonomy.md) in full before writing any
@@ -339,8 +340,29 @@ approximation. After the script generates the base report, you MUST:
    6.3), bot strategy (per bot-taxonomy.md), cache root cause (cite top-missed URLs/query
    params/probe header evidence), 404/error triage, and IP/geo sanity (hosting/proxy flags).
 
-8. **Append an `## 📋 Analyst Commentary & Recommendations` section** to the report using
-   `apply_diff`. Use a **finding-card format** for the Traffic Anomalies, Attack/Security Findings,
+8. **Fill the `<!-- LLM: -->` markers in the script-generated skeleton.** The `analyze_logs.py`
+   script now emits a two-part report skeleton with `<!-- LLM: -->` markers where analyst-written
+   content belongs. **Do NOT append commentary — fill the markers.** The script owns structure;
+   you own content and narrative.
+
+   **Workflow:**
+   1. Read the ENTIRE skeleton — all auto-gen data tables, all `<!-- LLM: -->` markers, all section headings — before writing anything.
+   2. Identify the dominant narrative: what ONE finding defines this run? (Cache failure? Bot surge? Security incident?)
+   3. Order Part 1 sections by severity: 🔴 > 🟡 > 🔧 > ✅. Within same tier, order by impact magnitude. The script puts markers in a default order; you MUST reorder Part 1 sections so the most important finding leads.
+   4. Fill each `<!-- LLM: -->` marker with content. Use `apply_diff` to replace `<!-- LLM:MARKER_NAME -->` with the actual section content.
+   5. After filling all markers, inject a **Verdict** column into every auto-generated bot table in Part 2. **Use `sed` for this — do NOT use `apply_diff`.** The `apply_diff` approach for Part 2 tables is unreliable because line numbers shift significantly after Part 1 commentary is filled in. The `sed` one-liner is deterministic and always works:
+
+      ```bash
+      sed -i 's/| Bytespider | \(.*\) | ⏳ \*pending\* |/| Bytespider | \1 | 🔧 Block |/' "$REPORT_PATH"
+      sed -i 's/| Kinsta-Log-Analyzer-Probe | \(.*\) | ⏳ \*pending\* |/| Kinsta-Log-Analyzer-Probe | \1 | ✅ Self |/' "$REPORT_PATH"
+      sed -i 's/| ⏳ \*pending\* |/| ✅ Keep |/g' "$REPORT_PATH"
+      ```
+
+      Run these three commands in order (Bytespider and Kinsta-Log-Analyzer-Probe first, then the catch-all fallback). If the Bot Strategy table assigned any other non-`Keep` verdict, add additional targeted `sed` lines for those bots before the catch-all. Verify with `grep -c '⏳' "$REPORT_PATH"` — result must be `0`.
+
+   **Section format rules:**
+
+   Use a **finding-card format** for the Traffic Anomalies, Attack/Security Findings,
    and Concentrated Bursts subsections specifically — freeform prose paragraphs are not acceptable
    there. **Each of Incident/Analysis/Actor/Actions MUST be its own bullet list item** (not
    consecutive bold-label lines in one paragraph) — list items are the only Markdown construct
@@ -369,9 +391,16 @@ approximation. After the script generates the base report, you MUST:
      with reassurance before the finding. Prefer a neutral, factual lead: **"No active security
      incidents; [metric] is below target and requires attention"** — state what was and wasn't
      found, in that order, without an adjective doing the reader's judgment for them.
+   - **Never use evaluative/judgment-laden labels — state measured severity, not a verdict on
+     merit.** Words like "worst"/"best"/"terrible"/"great" attach a value judgment the underlying
+     data doesn't actually support (severity icons are threshold-derived facts; "worst" implies a
+     ranked comparison the report never actually computed). Use objective, measured language
+     instead: "highest-severity finding" not "the worst finding"; "the metric furthest below
+     target" not "the worst metric." This applies everywhere a finding is singled out — At a
+     Glance headlines, card titles, and the Convergent Pressure Points summary alike.
    - Re-read every summary line against this test before finalizing: *would someone who only reads
      this one sentence come away with an accurate impression of how serious this actually is — not
-     more dramatic, not more reassuring?*
+     more dramatic, not more reassuring, and not a value judgment dressed up as a measurement?*
 
    **Severity icon vocabulary — do not mix these two axes up:**
    | Icon | Reserved for |
@@ -396,75 +425,146 @@ approximation. After the script generates the base report, you MUST:
    - **Actions:** [concrete action per Step 6.6, or **bold "No action required"** with a ✅]
    ```
 
-   Full section structure:
-   - **Overall Assessment** — severity-icon verdict line + a 5-row summary table (Security / Stability / Cache / Bot traffic / Slow pages), each row with its own status icon and one-line detail. Never a dense prose paragraph — this is the first section a manager reads and must be scannable in under 5 seconds. Template:
+   **Conciseness & Consistency Directives (mandatory, self-auditable — apply before finalizing
+   any report).** These generalize five recurring review findings into permanent rules, not a
+   one-off fix — check every future report against all five, every run:
 
-     ```
-     🟡 **Verdict:** [one-line summary]
+   1. **The headline's overall icon is a human-judgment call, answering ONE question: is there
+      a genuine emergency, or just minor flags, or is everything clean?** Not a formula, not a
+      mechanical max()/sum() over the component table — a judgment about the actual underlying
+      facts:
+      - 🔴 **Overall** = at least one component represents a genuine, active emergency exactly
+        as the icon vocabulary above defines 🔴 (site down, active security breach, data at
+        risk) — not merely "a metric missed its numeric target."
+      - 🟡 **Overall** = no genuine emergency exists anywhere, but one or more components have
+        a real flag (🟡/🔧) worth attention.
+      - ✅ **Overall** = every component is clean, no flags at all.
+      **This means a component's own icon must itself be correctly classified first** — the
+      root cause of an earlier, repeated mistake here was assigning 🔴 to a cache HIT-rate
+      miss (a performance/config target-miss, capped at 🟡 per the icon vocabulary — never 🔴,
+      no matter how far below target the number is) and then mechanically propagating that
+      wrong 🔴 upward. Fix the component's classification first; the overall judgment call
+      above only works when every input into it is already correct.
+   2. **Collapse any table where >70% of rows share the identical verdict/value into a summary
+      line + itemized outliers only.** Applies to the Bot Traffic Strategy table and any
+      similarly-shaped per-item table: if 10+ items all resolve to `✅ Keep`/`no action`, write
+      one line — `"✅ Keep (N bots, no action needed — see Part 2 for the full list)"` — and
+      itemize ONLY the rows with a non-default verdict (Block/Monitor/Throttle/etc.). Never print
+      a long column of repeated identical icons; repetition without variation is noise, not
+      evidence.
+   3. **Explain a mechanism once; every subsequent reference cites it by name, never re-explains
+      it.** When a root cause (e.g. a specific cookie, a specific redirect chain) is described in
+      full in one card, every other card that's affected by the same mechanism must reference it
+      by a short name (`"the `__cf_bm` cache-block described above"`) — not restate the
+      mechanism's how/why again. If you catch yourself writing the same 2+ sentence explanation
+      in a second card, delete it and cite instead.
+   4. **Every Part 1 `###` subsection carries a status marker in its first line — no exceptions,
+      including prose-only subsections like Discrepancy Notes.** A subsection with no finding
+      still needs a marker: `"— (no discrepancy this run)"` or a leading ✅/ℹ️. Never let one
+      subsection break the visual pattern the reader has learned from its siblings.
+   5. **Wide tables (5+ columns) get a plain-language one-line takeaway directly above them,
+      before rendering the table.** Any table with 5 or more columns (e.g. the per-category bot
+      tables with the Verdict column) must be preceded by one sentence stating the actual
+      conclusion (`"14 of 15 bots need no action; only Bytespider should be blocked — see
+      table for detail."`) so a skimming reader gets the answer without parsing the grid.
 
-     | Area | Status | Detail |
-     |---|---|---|
-     | **Security** | ✅/🟡/🔴 | [one line] |
-     | **Stability** | ✅/🟡/🔴 | [one line] |
-     | **Cache** | ✅/🟡/🔴 | [one line] |
-     | **Bot traffic** | ✅/🟡/🔴 | [one line] |
-     | **Slow pages** | ✅/🟡/🔴 | [one line] |
+   **Full section structure — see [`references/report-structure.md`](references/report-structure.md) for the authoritative contract.** The summary below is a quick reference; the contract file defines exact formats, conditional display rules, and the marker inventory.
+
+   The report has two parts with a hard visual divider:
+
+   ```
+   # PART 1: EXECUTIVE BRIEF
+   ```
+   (a real `# ` heading, not decorative dashes — a fixed-width Unicode-line divider wraps
+   unpredictably across different viewport/page widths in VS Code, browser preview, and PDF;
+   a heading just wraps its words like any other heading, and gets dedicated CSS styling — see
+   `report.css`'s `h1:not(:first-of-type)` rule)
+   
+   **Part 1 sections** (LLM orders by severity: 🔴 > 🟡 > 🔧 > ✅; within same tier by impact magnitude):
+
+   - **Overall Assessment** (`<!-- LLM:OVERALL_ASSESSMENT -->`) — severity-icon verdict line + 5-row summary table (Security / Stability / Cache / Bot traffic / Slow pages). Never a dense prose paragraph.
+   - **🎯 Convergent Pressure Points** — script-authored, deterministic (NOT an LLM marker). A set-intersection across the report's own notable-URL lists (top cache-MISSed pages, burst targets, top 403/404 error URLs); a URL in 2+ lists is named as the single highest-priority fix target with combined evidence cited. Excludes `Kinsta-Log-Analyzer-Probe` traffic (self-generated, not a real finding). Always present — states the overlap or states plainly that none was found. Positioned right after Overall Assessment, before every individual finding card, since its purpose is to reprioritize what follows before the reader reaches it.
+   - **Discrepancy Notes** (`<!-- LLM:DISCREPANCY_NOTES -->`) — explain gaps between MyKinsta dashboard totals and origin-only counts. Per Conciseness Directive 4, lead with a status marker even when prose-only: `"— No dashboard totals were cited this run."` or `"ℹ️ [gap explanation]"` — never a bare paragraph with no leading icon/dash marker.
+   - **Attack/Security Findings** (`<!-- LLM:ATTACK_SECURITY -->`) — Incident/Analysis/Actor/Actions card format, one card per distinct pattern. If none: single `#### ✅ No security incidents` card.
+   - **Cache Root Cause Analysis** (`<!-- LLM:CACHE_ROOT_CAUSE -->`) — sub-headed cards (`#### 🔴 Primary Root Cause`, `#### 🟡 Secondary Contributor`). Evidence-cited from both probe passes. If cache is healthy: `✅ Cache HIT rate at or above target.`
+   - **Bot Traffic Strategy** (`<!-- LLM:BOT_STRATEGY -->`) — table (bot | requests | % | verdict | evidence) with Totals row. Per Conciseness Directive 2, if >70% of bots resolve to the same verdict, collapse them into one summary row (`"✅ Keep (N bots, no action — see Part 2 for the full list)"`) and itemize only the outliers (Block/Monitor/Throttle). **Note:** Directive 2 applies to THIS Part 1 table only — the auto-generated per-category bot tables in Part 2 are the full evidence appendix and must list every bot individually; do not collapse those. After writing the Part 1 table, inject a **Verdict** column into every auto-generated bot table in Part 2 using the exact verdict from this Strategy table (`✅ Keep` / `🔧 Block` / `👀 Monitor` / `🔧 Throttle`).
+   - **Concentrated Traffic Spikes & Bursts** (`<!-- LLM:BURST_CARDS -->`) — Incident/Analysis/Actor/Actions card format. Use 🔧 unless active attack. Name actor IP/bot and target URL(s) explicitly. If none: `✅ No concentrated bursts.`
+   - **Traffic Anomalies** (`<!-- LLM:TRAFFIC_ANOMALIES -->`) — card format, one per spike/pattern, with admin/owner local-time conversion per `site-context.md`. If none: `✅ Traffic within normal diurnal variation.`
+   - **404/Error Fix Recommendations** (`<!-- LLM:ERROR_FIXES -->`) — card format for ALL items regardless of priority. Template:
      ```
-   - **Discrepancy Notes** (if user mentioned dashboard numbers) — explain gaps honestly
-   - **Attack/Security Findings** (if any) — Incident/Analysis/Actor/Actions card format, one card per distinct pattern
-   - **Cache Root Cause Analysis** — go beyond "HIT rate is low" to identify the specific mechanism, evidence-cited, informed by both probe passes' live header data (Steps 2 & 4)
-   - **Bot Traffic Strategy** — table (bot | verdict | evidence) showing which to keep/throttle/block and why, **plus a Totals row** (sum of requests, % of all bot traffic) — never a keep/block verdict decided by country of origin alone. `bot-taxonomy.md` informs your reasoning (Step 6.2) but is never cited as a column in the report — it's an internal skill reference file the reader has no access to, exactly like the hosted app's source code (Step 6.5). The "Evidence" column must stand on its own in plain language (the actual numbers/behavior), not point anywhere the reader can't open.
-   - **Concentrated Traffic Spikes & Bursts** — Incident/Analysis/Actor/Actions card format for anything flagged in the report's own Bursts section (Step 3's script output); use 🔧, not 🔴, unless the pattern is an active attack, not just nuisance polling — name the actor IP/bot and the specific target URL(s) explicitly
-   - **Traffic Anomalies** — Incident/Analysis/Actor/Actions card format, one card per spike/pattern, with admin/owner local-time conversion
-   - **404/Error Fix Recommendations** — triaged list of what's worth fixing, with counts; use 🔧 (High/Medium priority) / ℹ️ (Low priority) — never 🔴/🟡, since these are housekeeping items, not health emergencies
-   - **Live Probe Cross-Match** — bullet list of what both probe passes (Steps 2 & 4) confirmed or contradicted from the log-derived analysis
-   - **Kinsta KB References** — bullet list of every KB article looked up in Step 6.6, with URL and one-line summary of its relevant guidance
+     #### 🔧|ℹ️ [Priority] — [Short title]
+     - **URL(s):** [path(s) and hit count]
+     - **Analysis:** [why this 404 exists and whether it matters]
+     - **Action:** [concrete fix, or **No action required** ✅ with reason]
+     ```
+     Low-priority items MAY group into a single `#### ℹ️ Low Priority — Miscellaneous` card with one bullet per item. Never bare bullets without a heading. If none: `✅ No actionable 404s.`
+
+   ```
+   # PART 2: TECHNICAL APPENDIX
+   ```
+
+   **Part 2 sections** (script-generated, fixed order — LLM does NOT reorder):
+
+   - `## 📊 Cache Performance` — HIT/MISS/BYPASS table, top-MISSed URLs, HIT-vs-MISS response time. "How to Improve" is permanently suppressed.
+   - `## 📊 Bot & Crawler Traffic` — per-category tables with a script-emitted **Verdict** column (placeholder `⏳ *pending*`). After writing the Bot Strategy table, overwrite every placeholder with that table's exact verdict. "Scanner IPs — Block List" is permanently suppressed.
+   - `## 📊 Top Visitor IPs` — table with geo/ASN/PTR + infrastructure warning.
+   - `## Concentrated Traffic Spikes & Bursts` (raw table) — **kept, not suppressed.** This is the evidence source for Part 1's Burst cards; cite it directly, don't duplicate its numbers without attribution.
+   - `## Traffic Overview` — Status Codes, `### Errors by Status Code — Drill-Down` (**kept, not suppressed** — evidence source for Part 1's 404/Error Fix cards), Requests per Hour, Performance (avg/slowest, nested — not a separate section).
+   - `## 🔬 Live Probe Cross-Match` (`<!-- LLM:PROBE_CROSS_MATCH -->`) — bullet list of probe findings vs. log-derived analysis.
+   - `## 📚 Kinsta KB References` (`<!-- LLM:KB_REFERENCES -->`) — bullet list with URL and one-line guidance summary.
+
+   **Permanently suppressed sections** (script never emits; if they appear, delete them): `## Health Summary`, the "low" tier of `## 🟢 Low-Priority Notes` (critical/medium tiers — real PHP errors — are NOT suppressed), `### How to Improve Cache HIT Rate`, `### Scanner IPs — Block List`, `## Directory Scanner Activity`. See [`references/report-structure.md`](references/report-structure.md) for the full rationale, including which sections were deliberately KEPT because Part 1 cards depend on them as evidence.
+
+   **Validate before proceeding:** run `python3 .roo/skills/kinsta-log-analyzer/scripts/analyze_logs.py --validate "$REPORT_PATH"` after filling all markers (see Step 10) — do not skip this even if the report "looks done."
+
+8a. **Correlation & Synthesis Pass.** After all markers are filled, re-read the ENTIRE assembled
+    report — every Part 1 card, every Part 2 data table — and perform a holistic correlation pass.
+    This is NOT a mechanical consistency check (matching numbers). This is where you find the
+    connections between seemingly separate findings and weave them into one coherent narrative.
+
+    For each section, ask: *"Does another section's data or analysis change how this one should
+    read?"* Examples of correlations to surface:
+
+    - A cache root cause (`__cf_bm` cookie) cascades into multiple metrics: the BYPASS rate, the
+      elevated MISS count, the slow pages from a known crawler (who also hits cache MISS every
+      time), the Polylang redirects (which also always MISS). State the cascade explicitly.
+    - A heavy crawler IP flagged in Burst cards is the same IP dominating the Slowest Pages table
+      in Part 2 — connect them with a cross-reference.
+    - Bot traffic that looked suspicious in raw numbers becomes clearly legitimate when you
+      cross-reference the top URLs (cost-of-living blog posts = real users, not scrapers).
+
+    After this pass, update any section that needs revision based on correlations discovered.
+    Common updates:
+
+    - **Overall Assessment table:** refine the Cache/Bot traffic/Slow pages rows if correlation
+      revealed connections the initial verdict missed.
+    - **Cache Root Cause:** add a "Cascade effects" bullet listing which other metrics this root
+      cause explains.
+    - **Burst cards:** add cross-reference footnotes like "⚠️ This IP also appears in Slowest
+      Pages (Part 2) — 75% of slow requests are from this one actor."
+    - **At a Glance:** update anomaly descriptions and action priority if correlation changed the
+      severity picture.
 
 9. **Write and place the `## 📌 At a Glance` section — written LAST, placed near the TOP.** This is
-   the management-facing summary answering exactly two questions: *did any anomalies occur in this
-   period, and what important actions do we need to take?* It must be written after everything
-   above (it summarizes findings you haven't derived yet until now), but it belongs near the very
-   TOP of the document — immediately **after** the "Time Period" section (so the reader sees the
-   report's actual data coverage before the interpretive summary) and before "Health Summary" — not
-   appended at the bottom with everything else. Since `apply_diff` in this mode can only touch
-   files under `.roo/skills*` and the report lives elsewhere, use `execute_command` (e.g. a short
-   Python or `sed` insertion) to insert it at that specific position — a plain append would bury it
-   at the bottom where a management reader would never scroll to find it. Structure:
+   the management-facing summary. Write it AFTER the Correlation & Synthesis Pass (it summarizes
+   the fully correlated findings). The script-generated skeleton already has the `📌 At a Glance`
+   heading in Part 1 with a `<!-- LLM:AT_A_GLANCE -->` marker. Fill that marker. Structure:
    - One-line overall status with severity icon
    - **Anomalies found in this period** — bullet list, one line per distinct finding, severity icon per line, plain-language (no jargon a manager wouldn't know)
-   - **Priority actions this period** — numbered list, ordered by urgency, each action concrete enough to hand to whoever's fixing it (cite the specific file/setting per Step 6.5/6.6, not "check the cache settings")
+   - **Priority actions this period** — numbered list, ordered by urgency, each action concrete enough to hand to whoever's fixing it
 
-9a. **Always bracket the "Time Period" section with a short, plain-language MyKinsta-vs-report
-    scope warning — mandatory on every run, not just when a discrepancy comes up.** The
-    business-owner reader will almost certainly have seen a MyKinsta dashboard total at some point,
-    and this report's request count is always the smaller, origin-only figure (see the "How Logs
-    Are Retrieved" origin-vs-edge-cache note near the top of this file) — silence on this point is
-    what causes confusion, not the gap itself. **Keep both notes short — 1–2 sentences each, max
-    ~30 words apiece; this is a pointer, not an explanation** (the full technical version already
-    lives in "Traffic Overview" — do not duplicate it here). Insert via the same `execute_command`
-    mechanism as Step 9, in the same pass:
-    - **Immediately BEFORE** `## Time Period`, one line in this register (adapt the wording, keep
-      the length, keep it neutral/factual — not defensive-sounding phrasing like "before you
-      compare..."): *"⚠️ Scope note: this report counts only the ~15% of requests that reached the
-      server — ~85% were served by Cloudflare's edge cache directly and never appear here.
-      MyKinsta's own 24h total will be higher; that's expected."*
-    - **Immediately AFTER** the Time Period list, before `## 📌 At a Glance`, one line: *"ℹ️ The
-      window above is accurate for server-side activity only, not total site traffic — see 'Traffic
-      Overview' below for details."*
+9a. **Scope note.** The script-generated skeleton already includes the scope warning before
+    `## Time Period` and the clarification note after it. Verify they are present; if missing,
+    insert them per `report-structure.md`.
 
-10. **Final review pass — SILENT, no visible report section.** After At a Glance is written (not
-    before — it must review the complete document, including that section), re-read the ENTIRE
-    assembled report once, with the target audience (Step "Report Audience & Purpose" at the top of
-    this file) in mind. Check specifically for: (a) every number quoted in At a Glance matches the
-    detailed section it summarizes — no drift between the summary and the evidence; (b) no redundant
-    restatement of the same finding in two different sections with different framing; (c) narrative
-    tone throughout — a manager should be able to read this without translating jargon. **This step
-    produces zero visible output when the report already passes** — do not add a "Final Review
-    Note," "QA Note," or any section narrating that a review happened; that's process commentary
-    about your own work, not analysis the reader needs, and reads as if it were left in by mistake.
-    If you find an actual inconsistency, silently fix it in place via `apply_diff`/`execute_command`
-    (edit the wrong section directly) — the existence of a fix is invisible; only the corrected
-    report is visible. Do not defer any fix found here to Step 7.
+10. **Script validation pass.** After all content is written, run the script's validation:
+    ```bash
+    python3 .roo/skills/kinsta-log-analyzer/scripts/analyze_logs.py --validate "$REPORT_PATH"
+    ```
+    This checks: (a) no unfilled `<!-- LLM: -->` markers remain, (b) no permanently suppressed
+    section headings appear, (c) Part 1/Part 2 dividers are present, (d) card format compliance.
+    If validation fails, fix the reported issues and re-run. Do NOT proceed to PDF export until
+    validation passes with exit code 0.
 
 11. **Be honest about uncertainty.** If the data doesn't answer a question, or a Kinsta KB search
     found nothing relevant, say so — do not fabricate explanations or citations.
@@ -511,7 +611,8 @@ per Step 7).
 | Symptom | Cause | Fix |
 |---|---|---|
 | `NETWORK_ERROR` on cache-perf | Transient Kinsta API issue | Retry up to 3x with 3s sleep between |
-| Tool name not found (e.g. `kinstasiteslist`) | Roo Code strips dots from tool names | Use stdio JSON-RPC via `execute_command` |
+| Tool name not found (e.g. `kinstasiteslist`) | Roo Code strips dots from tool names — confirmed upstream bug (GitHub RooCodeInc/Roo-Code #6514). The `mcp--kinsta--kinsta.sites.list` function name gets flattened to `kinstasiteslist`, which doesn't exist on the server. | **Never use `mcp--kinsta--*` functions.** Always use `execute_command` with JSON-RPC piped into `npx -y kinsta-mcp@1.0.3`. See Step 1's ⚠️ banner for the exact command template. The `scripts/fetch_logs.sh` script already does this internally for log fetching. |
+| `⏳ *pending*` still in Part 2 bot tables after report assembly | `apply_diff` on Part 2 tables failed due to line number shifts after Part 1 commentary was filled in | Use the `sed` one-liner from Step 6.8 (item 5) instead — it's deterministic and doesn't depend on line numbers |
 | `Validation error: Invalid enum value` | Used `error.log` instead of `error` | Use bare names: `error`, `access`, `kinsta-cache-perf` |
 | Cross-file analysis empty | Error and access logs don't overlap in time | Use `"lines":8000` for the access log for full 24h coverage |
 | Report file not found | Looked in `$DIR` instead of the reports folder | Reports live in `~/Downloads/kinsta-logs/reports/`, named `report_{site_name}_{env_name}_{YYYYMMDDHHMM}.md` — check `analyze_logs.py`'s printed `📄` line for the exact path |

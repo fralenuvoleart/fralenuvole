@@ -13,9 +13,13 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone, timedelta
 
 def bar_chart(value, max_val=100, width=15, fill="█", empty="░"):
+    """Returns an inline-HTML-wrapped bar (blue, monospace) — raw HTML passthrough is
+    supported by the Markdown renderer used for both the on-screen report and the PDF
+    export, so this renders as a colored bar rather than default (black) body text."""
     pct = min(value / max(max_val, 1), 1.0)
     n = int(pct * width)
-    return fill * n + empty * (width - n)
+    bar_text = fill * n + empty * (width - n)
+    return f'<span style="color:#2563eb; font-family: monospace;">{bar_text}</span>'
 
 def flag_emoji(cc):
     """Derive a flag emoji from any 2-letter ISO country code (no hardcoded table)."""
@@ -389,7 +393,7 @@ def analyze_error_log(logs):
         findings["low"].append({
             "kind": "generic", "label": "403 Forbidden — directory probing",
             "count": sum(scanner_paths.values()),
-            "first_ts": "see Directory Scanner Activity section below", "last_ts_str": "", "last_ago": "",
+            "first_ts": "n/a", "last_ts_str": "", "last_ago": "",
             "what": "Bot tried to list a WordPress directory.\n\n✅ Kinsta blocked it correctly — no action needed. See the Bot section below if you want to deny these specific IPs.",
         })
 
@@ -598,12 +602,19 @@ def generate_report(site_name, error_findings, error_meta, access_data,
     title_site_name = site_name.replace(".", "\\.")
     L.append(f"# Kinsta Health Report - {title_site_name} ({env_name})")
     L.append("")
-    L.append(f"**{now.strftime('%d %B %Y, %H:%M UTC')}** · Approx. {period}")
-    L.append("")
+    # Both metadata lines merged into ONE paragraph using an explicit <br> tag — NOT the
+    # trailing-double-space Markdown "hard break" convention, which this renderer does not
+    # honor (confirmed: it collapsed both lines onto one with just a space between them).
+    # <br> is raw HTML passthrough, the same mechanism already confirmed working for the
+    # bar_chart() colored spans, so it reliably forces a line break within one paragraph —
+    # avoiding the blank-line paragraph-break gap (each <p> carries its own bottom margin)
+    # while still visually separating the date/period line from the counts line.
+    subtitle = f"**{now.strftime('%d %B %Y, %H:%M UTC')}** · Approx. {period}"
     if error_meta:
-        L.append(f"**{access_data['total'] if access_data else 0}** requests · "
-                 f"**{cache_data['total'] if cache_data else 0}** cache entries · "
-                 f"**{error_meta['total_lines']}** error lines")
+        subtitle += (f"<br>**{access_data['total'] if access_data else 0}** requests · "
+                     f"**{cache_data['total'] if cache_data else 0}** cache entries · "
+                     f"**{error_meta['total_lines']}** error lines")
+    L.append(subtitle)
     L.append("")
 
     # Surface actual fetch/parse failures instead of silently showing "unavailable"
@@ -665,11 +676,11 @@ def generate_report(site_name, error_findings, error_meta, access_data,
     geoip_banner_index = len(L)
 
     # ══════════════════════════════════════════════════════════════
-    # HEALTH SUMMARY
+    # HEALTH METRICS (computed here, rendered in Part 1's Overall Assessment
+    # marker by the LLM — see references/report-structure.md). No heading/table
+    # is emitted directly; "## Health Summary" is a permanently suppressed
+    # section per the report structure contract.
     # ══════════════════════════════════════════════════════════════
-    L.append("## Health Summary")
-    L.append("")
-
     critical_count = len(error_findings.get("critical", []))
     medium_count = len(error_findings.get("medium", []))
     fivexx_count = len(access_data["fivexx"]) if access_data else 0
@@ -679,56 +690,217 @@ def generate_report(site_name, error_findings, error_meta, access_data,
     slow_count = len(access_data["slow"]) if access_data else 0
     severely_slow_count = len(access_data.get("severely_slow", [])) if access_data else 0
 
-    L.append("| Metric | Value | Severity |")
-    L.append("|---|---|---|")
-    if critical_count or fivexx_count:
-        health, hicon = "Action required", "🔴"
-    elif hit_pct is not None and hit_pct < 50:
-        health, hicon = "Cache needs optimization", "🟡"
-    elif medium_count:
-        health, hicon = "Minor warnings", "🟡"
+    # ══════════════════════════════════════════════════════════════
+    # BURST DETECTION — computed here (early) rather than at its Part-2 rendering
+    # location, because the Convergent Pressure Points check below (Part 1, right
+    # after Overall Assessment) needs burst_rows/burst_target_urls before Part 1 is
+    # written. Rendering into "## Concentrated Traffic Spikes & Bursts" still happens
+    # later, in its original Part 2 position, reusing this same computed burst_rows.
+    # ══════════════════════════════════════════════════════════════
+    def _host_suffix(ip):
+        """Short reverse-DNS annotation for a Bursts-table source — flags the specific
+        'cloud vendor's ASN but NOT their own crawler' case that a bare IP/UA doesn't reveal."""
+        hostname, is_customer_vm = ip_hostname(ip)
+        if not hostname: return ""
+        return f" — PTR: `{hostname}`" + (" ⚠️ cloud customer VM" if is_customer_vm else "")
+
+    # One-line plain-language identity for bot names that aren't self-explanatory — "Offender"
+    # is the wrong word for a low-value-but-legitimate crawler like Dataprovider; stating
+    # plainly who/what it is (not "our" traffic, not necessarily malicious) belongs right in
+    # this table, not requiring a cross-reference to bot-taxonomy.md to understand.
+    _BOT_IDENTITY = {
+        "Dataprovider": "Dataprovider.com — third-party commercial web-data crawler, not malicious, zero SEO value to this site",
+        "MJ12bot": "Majestic SEO's backlink-index crawler — third-party SEO tool, not malicious",
+        "SemrushBot": "Semrush's SEO-audit crawler — third-party SEO tool, not malicious",
+        "AhrefsBot": "Ahrefs' SEO-audit crawler — third-party SEO tool, not malicious",
+        "Bytespider": "ByteDance's (TikTok's parent) crawler — see bot-taxonomy.md for compliance history",
+        "PetalBot": "Huawei's Petal Search crawler — see bot-taxonomy.md for relevance assessment",
+    }
+    def _bot_label(name):
+        return _BOT_IDENTITY.get(name, name)
+
+    burst_rows = []
+    # Clean, single-URL burst targets only (bot-IP-concentration bursts) — tracked
+    # separately from burst_rows because scanner-IP and slow-IP bursts describe
+    # MULTIPLE paths in prose ("multiple `/wp-admin/`..."), not one clean URL, and
+    # mixing those into the URL-equality check below would compare text, not URLs.
+    burst_target_urls = []
+    if access_data and access_data.get("bot_data"):
+        for name, b in access_data["bot_data"].items():
+            share = b.get("ip_top_share", 0)
+            # A single IP responsible for >=40% of a bot's total traffic (and that
+            # bot has enough volume to matter) is a burst worth calling out — most
+            # legitimate bot traffic is spread across many source IPs (see
+            # bot-taxonomy.md), so a concentrated single-IP share is the anomaly.
+            if share >= 40 and b.get("count", 0) >= 10:
+                top_url = b["top_urls"][0][0] if b.get("top_urls") else "(multiple URLs)"
+                burst_rows.append({
+                    "source": f"`{b['top_ip']}` — {_bot_label(name)}{_host_suffix(b['top_ip'])}",
+                    "target": top_url,
+                    "detail": f"{b['top_ip_count']} of {b['count']} requests ({share:.0f}%)",
+                })
+                # Exclude this skill's own diagnostic probe traffic from the convergence
+                # check's evidence — it's self-generated noise (probe_urls.py hitting a
+                # fixed baseline URL list), not a real site-traffic finding. Citing "100%
+                # of our own probe's requests hit X" as a prioritization reason would be
+                # nonsensical in the finished report.
+                if b.get("top_urls") and name != "Kinsta-Log-Analyzer-Probe":
+                    burst_target_urls.append((top_url, share, f"{share:.0f}% of {name}'s traffic via one IP"))
+    for ip, cnt in cross_results.get("scanner_ips", []):
+        burst_rows.append({
+            "source": f"`{ip}` — directory scanner{_host_suffix(ip)}",
+            "target": "multiple `/wp-admin/`, `/wp-includes/` paths",
+            "detail": f"{cnt} probe attempts",
+        })
+    # Non-bot-classified burst check: a single IP dominating the SLOW-requests list, even
+    # when its User-Agent didn't match any known bot pattern above. This is exactly the
+    # case that would otherwise stay invisible — an unclassified IP hitting many pages with
+    # no other signal except "everything it touches is slow."
+    if access_data and access_data.get("slow"):
+        slow_ip_counts = Counter(e["ip"] for e in access_data["slow"])
+        if slow_ip_counts:
+            top_slow_ip, top_slow_count = slow_ip_counts.most_common(1)[0]
+            total_slow = len(access_data["slow"])
+            slow_share = top_slow_count / total_slow * 100 if total_slow else 0
+            if slow_share >= 50 and top_slow_count >= 3:
+                slow_urls = [e["url"] for e in access_data["slow"] if e["ip"] == top_slow_ip]
+                burst_rows.append({
+                    "source": f"`{top_slow_ip}` — unclassified, no matching bot UA pattern{_host_suffix(top_slow_ip)}",
+                    "target": f"{len(set(slow_urls))} distinct pages, e.g. `{slow_urls[0]}`",
+                    "detail": f"{top_slow_count} of {total_slow} slow (>2s) requests ({slow_share:.0f}%)",
+                })
+
+    # ══════════════════════════════════════════════════════════════
+    # CONVERGENT PRESSURE POINTS — a deterministic set-intersection across the
+    # report's own "notable URL" lists (top cache-MISSed pages, burst targets, top
+    # 403/404 error URLs). A URL appearing in 2+ lists is a genuine convergence of
+    # independent problems on one page — a stronger, more specific fix target than
+    # any single list states alone. Intentionally mechanical (not left to the LLM
+    # to notice by eye) so it's checked every run, not only when the analyst happens
+    # to manually cross-reference three separate tables.
+    # ══════════════════════════════════════════════════════════════
+    missed_urls = {m["url"]: m["count"] for m in cross_results.get("top_missed_urls", [])}
+    # Multiple bots can target the same URL — keep the highest-share entry per URL
+    # rather than a plain dict() built from the tuple list, which would silently
+    # keep whichever entry happens to iterate last (an ordering artifact, not a
+    # meaningful choice).
+    burst_urls = {}
+    _burst_share_seen = {}
+    for url, share_val, reason in burst_target_urls:
+        if url not in _burst_share_seen or share_val > _burst_share_seen[url]:
+            _burst_share_seen[url] = share_val
+            burst_urls[url] = reason
+    error_urls = {}
+    status_urls_map = access_data.get("status_urls") if access_data else None
+    if status_urls_map:
+        for code in (403, 404):
+            for url, cnt in status_urls_map.get(code, Counter()).most_common(5):
+                error_urls[url] = f"{cnt}x {code}"
+
+    url_hits = defaultdict(list)
+    for list_name, url_map in (("cache-miss", missed_urls), ("burst", burst_urls), ("error", error_urls)):
+        for url in url_map:
+            url_hits[url].append(list_name)
+
+    convergent = {u: lists for u, lists in url_hits.items() if len(lists) >= 2}
+    convergent_lines = []
+    if convergent:
+        # Only the strongest convergence is named explicitly — concise, not a dump
+        # of every overlapping URL — with a one-line note if more exist.
+        top_conv_url = max(convergent, key=lambda u: len(convergent[u]))
+        lists_hit = convergent[top_conv_url]
+        evidence_parts = []
+        if "cache-miss" in lists_hit:
+            evidence_parts.append(f"{missed_urls[top_conv_url]} cache MISSes")
+        if "burst" in lists_hit:
+            evidence_parts.append(burst_urls[top_conv_url])
+        if "error" in lists_hit:
+            evidence_parts.append(error_urls[top_conv_url])
+        convergent_lines.append(
+            f"`{top_conv_url}` appears in {len(lists_hit)} of the report's notable-URL lists — "
+            f"{', '.join(evidence_parts)}. Fixing this one page addresses multiple findings at "
+            f"once — prioritize it ahead of the broader recommendations below."
+        )
+        remaining = len(convergent) - 1
+        if remaining:
+            convergent_lines.append(
+                f"({remaining} other URL{'s' if remaining > 1 else ''} also show minor overlap — "
+                f"see Part 2 tables for detail.)"
+            )
     else:
-        health, hicon = "Operating normally", "✅"
-    # Same column shape as every row below it (Value | Severity) — the Status row
-    # previously put its icon inline with the value and left Severity blank, which
-    # broke the pattern the reader had just learned from this exact table.
-    L.append(f"| Status | **{health}** | {hicon} |")
-    # Distinguish "no cache data" from an actual 0% HIT rate — conflating the two
-    # previously showed a false 🔴 whenever cache.json was missing/empty.
-    if hit_pct is not None:
-        L.append(f"| Cache HIT rate | **{hit_pct:.0f}%** (target >70%) | "
-                 f"{'✅' if hit_pct >= 70 else ('🟡' if hit_pct >= 50 else '🔴')} |")
-        L.append(f"| Cache BYPASS rate | **{bypass_pct:.0f}%** | "
-                 f"{'✅' if bypass_pct <= 10 else '🟡'} |")
-    else:
-        L.append("| Cache HIT rate | *no cache data* | — |")
-        L.append("| Cache BYPASS rate | *no cache data* | — |")
-    L.append(f"| Avg response time | **{avg_rt:.3f}s** | "
-             f"{'✅' if avg_rt < 0.5 else ('🟡' if avg_rt < 1.0 else '🔴')} |")
-    # Severity now reacts to HOW slow, not just how many pages crossed the 2s line —
-    # 18 pages at 2.1s is a mild 🟡, not the same 🔴 as even a couple of pages past 5s.
-    if severely_slow_count > 0:
-        slow_icon = "🔴"
-    elif slow_count >= 5:
-        slow_icon = "🟡"
-    elif slow_count > 0:
-        slow_icon = "🟡"
-    else:
-        slow_icon = "✅"
-    slow_detail = f" ({severely_slow_count} of which >5s)" if severely_slow_count else ""
-    L.append(f"| Slow pages (>2s) | **{slow_count}**{slow_detail} | {slow_icon} |")
-    L.append(f"| Server errors (5xx) | **{fivexx_count}** | "
-             f"{'✅' if fivexx_count == 0 else '🔴'} |")
-    L.append(f"| Error types | {critical_count} critical, {medium_count} warnings | "
-             f"{'✅' if critical_count == 0 else '🔴'} |")
+        convergent_lines.append(
+            "No overlap found across the cache-miss, burst, and error-URL lists this run — the "
+            "findings below are independent issues, not one root cause in disguise."
+        )
+
+    # ══════════════════════════════════════════════════════════════
+    # PART 1: EXECUTIVE BRIEF — script emits headings + <!-- LLM: --> markers only.
+    # LLM fills every marker per Step 6 of SKILL.md and references/report-structure.md.
+    # LLM re-orders these sections by severity before finalizing (script order is a
+    # neutral default, not a mandate).
+    # ══════════════════════════════════════════════════════════════
+    # A real "# " heading (not a fixed-width Unicode-line divider) — a run of decorative
+    # ━ characters wraps unpredictably across VS Code/browser/PDF viewport widths; a heading
+    # just wraps its words, and h1:not(:first-of-type) in report.css gives it distinct styling.
+    L.append("# PART 1: EXECUTIVE BRIEF")
+    L.append("")
+    L.append("## 📌 At a Glance")
+    L.append("")
+    L.append("<!-- LLM:AT_A_GLANCE -->")
+    L.append("")
+    L.append("## 📋 Analyst Commentary & Recommendations")
+    L.append("")
+    L.append("### Overall Assessment")
+    L.append("")
+    L.append("<!-- LLM:OVERALL_ASSESSMENT -->")
+    L.append("")
+    # Script-authored (not an LLM marker) — this finding is a deterministic set
+    # intersection computed above, not analyst judgment, so it doesn't need LLM
+    # authorship. Always present, either naming a convergence or stating there
+    # is none — never silently omitted.
+    L.append("### 🎯 Convergent Pressure Points")
+    L.append("")
+    for _line in convergent_lines:
+        L.append(_line)
+        L.append("")
+    L.append("### Discrepancy Notes")
+    L.append("")
+    L.append("<!-- LLM:DISCREPANCY_NOTES -->")
+    L.append("")
+    L.append("### Attack/Security Findings")
+    L.append("")
+    L.append("<!-- LLM:ATTACK_SECURITY -->")
+    L.append("")
+    L.append("### Cache Root Cause Analysis")
+    L.append("")
+    L.append("<!-- LLM:CACHE_ROOT_CAUSE -->")
+    L.append("")
+    L.append("### Bot Traffic Strategy")
+    L.append("")
+    L.append("<!-- LLM:BOT_STRATEGY -->")
+    L.append("")
+    L.append("### Concentrated Traffic Spikes & Bursts")
+    L.append("")
+    L.append("<!-- LLM:BURST_CARDS -->")
+    L.append("")
+    L.append("### Traffic Anomalies")
+    L.append("")
+    L.append("<!-- LLM:TRAFFIC_ANOMALIES -->")
+    L.append("")
+    L.append("### 404/Error Fix Recommendations")
+    L.append("")
+    L.append("<!-- LLM:ERROR_FIXES -->")
+    L.append("")
+    L.append("# PART 2: TECHNICAL APPENDIX")
     L.append("")
 
     # ══════════════════════════════════════════════════════════════
     # ISSUES — each finding now carries real extracted data (message, file:line,
     # client IPs, requests) instead of only a canned generic "fix" tip.
+    # "low" tier (🟢 Low-Priority Notes) is permanently suppressed — Attack/Security
+    # Findings in Part 1 covers this ground with a default "no incidents" card.
     # ══════════════════════════════════════════════════════════════
-    for sev_key, title in [("critical", "## 🔴 Issues Found"), ("medium", "## 🟡 Warnings"),
-                            ("low", "## 🟢 Low-Priority Notes (No Action Needed)")]:
+    for sev_key, title in [("critical", "## 🔴 Issues Found"), ("medium", "## 🟡 Warnings")]:
         findings = error_findings.get(sev_key, [])
         if not findings: continue
         L.append(title)
@@ -810,12 +982,15 @@ def generate_report(site_name, error_findings, error_meta, access_data,
             cnt = cache_data[s]
             pct = cnt/total*100
             bar = bar_chart(pct, 100, 15)
-            L.append(f"| {s} | {cnt} | `{bar}` **{pct:.0f}%** |")
+            L.append(f"| {s} | {cnt} | {bar} **{pct:.0f}%** |")
         L.append("")
 
+        # Capped at 🟡, never 🔴 — a cache HIT-rate shortfall is a performance/config
+        # target-miss, not the active-emergency (site down/breach/data-at-risk) that 🔴
+        # is reserved for per SKILL.md's severity icon vocabulary.
         if hit_pct >= 70: v = "✅ Most visitors get instant cached pages."
         elif hit_pct >= 50: v = "🟡 Nearly half of visitors wait for the origin server."
-        else: v = "🔴 More than half of requests miss cache."
+        else: v = "🟡 More than half of requests miss cache."
         L.append(f"**Assessment**: {v} Target is >70% HIT.")
         L.append("")
 
@@ -845,44 +1020,6 @@ def generate_report(site_name, error_findings, error_meta, access_data,
                 L.append(f"| **Difference** | Similar speed — cache has neutral impact | |")
             L.append("")
 
-        L.append("### How to Improve Cache HIT Rate")
-        L.append("")
-        qp = access_data.get("query_params", Counter()) if access_data else Counter()
-        top_params = qp.most_common(3)
-        # Only surface a tip when it's actually relevant to THIS run's data — a static
-        # 4-item checklist regardless of findings is boilerplate, not analysis. Each row
-        # below only appears when its own trigger condition is true for this specific site.
-        tips = []
-        if top_params:
-            param_list = ", ".join(f"`?{p}=`" for p, _ in top_params)
-            tips.append(f"**Query strings found in your traffic**: {param_list}. "
-                        f"MyKinsta → Edge Caching → add these to force-cached query strings.")
-        if bypass_pct is not None and bypass_pct > 10:
-            tips.append(f"**BYPASS rate is {bypass_pct:.0f}%** (target <10%) — check for a "
-                        f"`Set-Cookie` header on public pages (WooCommerce cart, wpForo, comment "
-                        f"cookies, or a bot-management cookie). See Analyst Commentary for the "
-                        f"live-probe-confirmed cause, if available.")
-        if hit_pct is not None and hit_pct < 70:
-            tips.append(f"**HIT rate is {hit_pct:.0f}%** (target >70%) — after any deploy or cache "
-                        f"clear, pre-warm the edge cache by crawling the sitemap "
-                        f"(`wget --mirror` or a cache-warmer plugin) rather than waiting for "
-                        f"organic traffic to slowly repopulate it.")
-        if bypass_pct is not None and bypass_pct > 5:
-            tips.append("**If a CDN sits in front of Kinsta** (e.g. Cloudflare), verify it isn't "
-                        "the layer bypassing cache — check its cache-status header on a few pages.")
-        if tips:
-            L.append("| # | Action |")
-            L.append("|---|---|")
-            for i, tip in enumerate(tips, 1):
-                L.append(f"| {i} | {tip} |")
-            L.append("")
-            L.append("*These are generic starting points triggered by this run's numbers, not a "
-                     "confirmed diagnosis — see the Analyst Commentary section for the specific, "
-                     "evidence-based root cause for this site.*")
-        else:
-            L.append("No specific trigger conditions matched this run's cache data — HIT/BYPASS "
-                     "rates don't point to any of the common causes checked above.")
-        L.append("")
     else:
         reason = data_errors.get("cache")
         L.append(f"Cache data unavailable{f': {reason}' if reason else ' (no cache_file provided or empty response)'}.")
@@ -914,8 +1051,13 @@ def generate_report(site_name, error_findings, error_meta, access_data,
             # and the old bottom-of-table "Total" row — one number, stated once, up front.
             L.append(f"### {cat} — {cat_total} requests ({cat_pct:.0f}% of all traffic)")
             L.append("")
-            L.append("| Bot | Requests | Active window | Distinct IPs | URL pattern |")
-            L.append("|---|---|---|---|---|")
+            # "Verdict" column is a structural placeholder — LLM MUST overwrite each
+            # "⏳ pending" cell with the exact verdict from the Bot Traffic Strategy
+            # table (Part 1) once that table is written. This guarantees the column
+            # always exists (script-owned structure) even though its content is
+            # LLM-owned (see references/report-structure.md).
+            L.append("| Bot | Requests | Active window | Distinct IPs | URL pattern | Verdict |")
+            L.append("|---|---|---|---|---|---|")
             for name, b in items:
                 window = f"{b['first'].strftime('%H:%M')}–{b['last'].strftime('%H:%M')} UTC"
                 # Concentration signal: high top_share + low distinct_urls = repeated hits on
@@ -934,7 +1076,7 @@ def generate_report(site_name, error_findings, error_meta, access_data,
                     pattern = f"narrow: {distinct} distinct URLs"
                 else:
                     pattern = f"distributed: {distinct} distinct URLs"
-                L.append(f"| {name} | **{b['count']}** | {window} | {b.get('distinct_ips', '?')} | {pattern} |")
+                L.append(f"| {name} | **{b['count']}** | {window} | {b.get('distinct_ips', '?')} | {pattern} | ⏳ *pending* |")
             L.append("")
             # Show the actual top URLs for the single highest-volume bot in this category so
             # the analyst can cite real evidence instead of guessing at "pattern or scattered".
@@ -950,113 +1092,17 @@ def generate_report(site_name, error_findings, error_meta, access_data,
                 L.append("</details>")
                 L.append("")
 
-        if cross_results.get("scanner_ips"):
-            L.append("### Scanner IPs — Block List")
-            L.append("")
-            L.append("| IP | Requests | Country | ASN / Provider | Reverse DNS | ⚠️ | Safe to block? |")
-            L.append("|---|---|---|---|---|---|---|")
-            for ip, cnt in cross_results["scanner_ips"][:5]:
-                cc, flag = ip_country(ip)
-                org, is_hosting = ip_org(ip)
-                hostname, is_customer_vm = ip_hostname(ip)
-                safety_icon, safety_text = ip_safety(ip, cnt)
-                if cc == GEOIP_DISABLED:
-                    country_display = "*geo-IP disabled*"
-                elif cc and cc != "?":
-                    country_display = f"{flag} {cc}" if flag else cc
-                else:
-                    country_display = "*unknown*"
-                org_display = geo_display(org, "unknown")
-                raw_hostname = geo_display(hostname, "no PTR record")
-                host_display = raw_hostname if raw_hostname.startswith("*") else f"`{raw_hostname}`"
-                combined_icon = "⚠️" if (is_hosting or is_customer_vm) else safety_icon
-                # This is the answer to "is blocking this specific IP safe" — a direct read of
-                # its ASN type (hosting/VPS = safe; residential/mobile = risk of catching a
-                # future legitimate visitor once the IP is reassigned), never left unstated.
-                risk = blocking_risk(org, is_hosting)
-                L.append(f"| `{ip}/32` | **{cnt}** | {country_display} | {org_display} | {host_display} | {combined_icon} | {risk} |")
-            L.append("")
-            L.append("**How to block:** MyKinsta → Tools → Denied IPs → add the IP with the "
-                     "`/32` suffix shown above. `/32` means *exactly this one IP address, and "
-                     "no other* — it will NOT block anyone else, even other visitors from the "
-                     "same provider or country. To block a wider range instead (e.g. an entire "
-                     "hosting block), you would replace `/32` with a smaller number "
-                     "(`/24` blocks the 256 IPs sharing this one's first three number-groups) — "
-                     "only do this if the \"Safe to block?\" column above says it's a dedicated "
-                     "hosting/VPS range, never for a residential/mobile ISP range.")
-            L.append("")
     else:
         L.append("No bot data.")
         L.append("")
+    # "### Scanner IPs — Block List" is permanently suppressed — Part 1's Burst Cards
+    # (<!-- LLM:BURST_CARDS -->) supersede this with evidence-cited, per-actor cards.
 
     # ══════════════════════════════════════════════════════════════
-    # CONCENTRATED TRAFFIC SPIKES & BURSTS — a single IP responsible for a
-    # disproportionate share of one bot's traffic, or a scanner IP hammering one
-    # set of paths. Consolidates "who" (offender) and "what" (target) that would
-    # otherwise be scattered across the Bot and Scanner tables above.
+    # CONCENTRATED TRAFFIC SPIKES & BURSTS — rendering only. burst_rows was
+    # computed earlier (before Part 1) so the Convergent Pressure Points check
+    # could use it; this section just renders that already-computed list.
     # ══════════════════════════════════════════════════════════════
-    def _host_suffix(ip):
-        """Short reverse-DNS annotation for a Bursts-table source — flags the specific
-        'cloud vendor's ASN but NOT their own crawler' case that a bare IP/UA doesn't reveal."""
-        hostname, is_customer_vm = ip_hostname(ip)
-        if not hostname: return ""
-        return f" — PTR: `{hostname}`" + (" ⚠️ cloud customer VM" if is_customer_vm else "")
-
-    # One-line plain-language identity for bot names that aren't self-explanatory — "Offender"
-    # is the wrong word for a low-value-but-legitimate crawler like Dataprovider; stating
-    # plainly who/what it is (not "our" traffic, not necessarily malicious) belongs right in
-    # this table, not requiring a cross-reference to bot-taxonomy.md to understand.
-    _BOT_IDENTITY = {
-        "Dataprovider": "Dataprovider.com — third-party commercial web-data crawler, not malicious, zero SEO value to this site",
-        "MJ12bot": "Majestic SEO's backlink-index crawler — third-party SEO tool, not malicious",
-        "SemrushBot": "Semrush's SEO-audit crawler — third-party SEO tool, not malicious",
-        "AhrefsBot": "Ahrefs' SEO-audit crawler — third-party SEO tool, not malicious",
-        "Bytespider": "ByteDance's (TikTok's parent) crawler — see bot-taxonomy.md for compliance history",
-        "PetalBot": "Huawei's Petal Search crawler — see bot-taxonomy.md for relevance assessment",
-    }
-    def _bot_label(name):
-        return _BOT_IDENTITY.get(name, name)
-
-    burst_rows = []
-    if access_data and access_data.get("bot_data"):
-        for name, b in access_data["bot_data"].items():
-            share = b.get("ip_top_share", 0)
-            # A single IP responsible for >=40% of a bot's total traffic (and that
-            # bot has enough volume to matter) is a burst worth calling out — most
-            # legitimate bot traffic is spread across many source IPs (see
-            # bot-taxonomy.md), so a concentrated single-IP share is the anomaly.
-            if share >= 40 and b.get("count", 0) >= 10:
-                top_url = b["top_urls"][0][0] if b.get("top_urls") else "(multiple URLs)"
-                burst_rows.append({
-                    "source": f"`{b['top_ip']}` — {_bot_label(name)}{_host_suffix(b['top_ip'])}",
-                    "target": top_url,
-                    "detail": f"{b['top_ip_count']} of {b['count']} requests ({share:.0f}%)",
-                })
-    for ip, cnt in cross_results.get("scanner_ips", []):
-        burst_rows.append({
-            "source": f"`{ip}` — directory scanner{_host_suffix(ip)}",
-            "target": "multiple `/wp-admin/`, `/wp-includes/` paths",
-            "detail": f"{cnt} probe attempts",
-        })
-
-    # Non-bot-classified burst check: a single IP dominating the SLOW-requests list, even
-    # when its User-Agent didn't match any known bot pattern above. This is exactly the
-    # case that would otherwise stay invisible — an unclassified IP hitting many pages with
-    # no other signal except "everything it touches is slow."
-    if access_data and access_data.get("slow"):
-        slow_ip_counts = Counter(e["ip"] for e in access_data["slow"])
-        if slow_ip_counts:
-            top_slow_ip, top_slow_count = slow_ip_counts.most_common(1)[0]
-            total_slow = len(access_data["slow"])
-            slow_share = top_slow_count / total_slow * 100 if total_slow else 0
-            if slow_share >= 50 and top_slow_count >= 3:
-                slow_urls = [e["url"] for e in access_data["slow"] if e["ip"] == top_slow_ip]
-                burst_rows.append({
-                    "source": f"`{top_slow_ip}` — unclassified, no matching bot UA pattern{_host_suffix(top_slow_ip)}",
-                    "target": f"{len(set(slow_urls))} distinct pages, e.g. `{slow_urls[0]}`",
-                    "detail": f"{top_slow_count} of {total_slow} slow (>2s) requests ({slow_share:.0f}%)",
-                })
-
     if burst_rows:
         L.append("## Concentrated Traffic Spikes & Bursts")
         L.append("")
@@ -1157,7 +1203,7 @@ def generate_report(site_name, error_findings, error_meta, access_data,
             if g_total == 0: continue
             pct = g_total/total*100
             bar = bar_chart(pct, 100, 15)
-            L.append(f"| **{g}** | **{g_total}** | `{bar}` **{pct:.0f}%** |")
+            L.append(f"| **{g}** | **{g_total}** | {bar} **{pct:.0f}%** |")
         L.append("")
         L.append("<details><summary>Individual status codes</summary>")
         L.append("")
@@ -1167,7 +1213,7 @@ def generate_report(site_name, error_findings, error_meta, access_data,
             for code, cnt in groups[g]:
                 pct = cnt/total*100
                 bar = bar_chart(pct, 100, 15)
-                L.append(f"| {code} | {cnt} | `{bar}` **{pct:.0f}%** |")
+                L.append(f"| {code} | {cnt} | {bar} **{pct:.0f}%** |")
         L.append("")
         L.append("</details>")
         L.append("")
@@ -1197,23 +1243,21 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         if access_data.get("hourly"):
             hourly = access_data["hourly"]
             max_h = max(hourly.values()) if hourly else 1
-            # A real Markdown table (24 hour-columns + 1 bar-glyph row) REPLACES the old
-            # 24-row vertical table AND the earlier attempt at a manually-aligned two-line
-            # sparkline. The sparkline approach kept misrendering because block-height glyphs
-            # (▁▂▃▄▅▆▇█) are not guaranteed to be exactly 1-character-wide in every font/
-            # renderer, so a second line of "00 01 02..." labels drifted out of alignment with
-            # it. A genuine table has no such problem — the renderer owns column alignment,
-            # not our character-width guess — so this is the robust, renderer-agnostic fix.
-            SPARK = "▁▂▃▄▅▆▇█"
+            # Real proportional bars (bar_chart(), the same █/░ helper used for Cache
+            # Performance/Status Codes elsewhere in this report) REPLACE the previous
+            # Unicode block-height sparkline (▁▂▃▄▅▆▇█). That approach was unreadable in
+            # practice: at normal table font sizes, the height differences between adjacent
+            # glyphs (e.g. ▄ vs ▅) are only 1-2 pixels and visually indistinguishable, so a
+            # 127-request hour and a 460-request hour could render as near-identical bars.
+            # A vertical table with an actual length-proportional bar AND the exact count
+            # alongside it removes any ambiguity — the reader never has to eyeball a glyph.
             hour_keys = [f"{h:02d}:00" for h in range(24)]
-            L.append("| " + " | ".join(f"{h:02d}" for h in range(24)) + " |")
-            L.append("|" + "---|" * 24)
-            bar_row = []
+            L.append("| Hour (UTC) | Requests | |")
+            L.append("|---|---|---|")
             for key in hour_keys:
                 cnt = hourly.get(key, 0)
-                idx = 0 if cnt == 0 else min(7, max(0, round(cnt / max_h * 7)))
-                bar_row.append(SPARK[idx])
-            L.append("| " + " | ".join(bar_row) + " |")
+                bar = bar_chart(cnt, max_h, 20)
+                L.append(f"| `{key}` | {cnt} | {bar} |")
             L.append("")
             peak_hour, peak_cnt = max(hourly.items(), key=lambda x: x[1])
             low_hour, low_cnt = min(hourly.items(), key=lambda x: x[1])
@@ -1262,25 +1306,9 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         L.append(f"Access log unavailable{f': {reason}' if reason else ''}.")
         L.append("")
 
-    # ══════════════════════════════════════════════════════════════
-    # SCANNER DETAILS
-    # ══════════════════════════════════════════════════════════════
-    if scanner_paths:
-        significant = [(p, c) for p, c in scanner_paths.most_common() if c >= 2]
-        trimmed = len(scanner_paths) - len(significant)
-        L.append("## Directory Scanner Activity")
-        L.append("")
-        L.append(f"Paths probed by bots (Kinsta correctly returned 403 to all):")
-        L.append("")
-        L.append("| Path | Attempts |")
-        L.append("|---|---|")
-        for path, cnt in significant[:10]:
-            L.append(f"| `{path}` | {cnt} |")
-        if trimmed:
-            L.append(f"| *({trimmed} paths with 1 attempt trimmed)* | |")
-        L.append("")
-        L.append("✅ *Normal background noise — Kinsta blocks directory listing by default. No action needed.*")
-        L.append("")
+    # "## Directory Scanner Activity" is permanently suppressed (pure noise — a single
+    # "no action needed" line per report-structure.md). scanner_paths remains available
+    # in-memory if a future section needs it, but nothing is rendered here.
 
     # Insert the geo-IP status banner now that every lookup this run has actually happened —
     # one clear notice instead of the reader having to infer "why does everything say unknown"
@@ -1300,13 +1328,99 @@ def generate_report(site_name, error_findings, error_meta, access_data,
     if banner:
         L[geoip_banner_index:geoip_banner_index] = banner
 
+    # ══════════════════════════════════════════════════════════════
+    # PART 2 (continued): LLM-filled reference sections
+    # ══════════════════════════════════════════════════════════════
+    L.append("## 🔬 Live Probe Cross-Match")
+    L.append("")
+    L.append("<!-- LLM:PROBE_CROSS_MATCH -->")
+    L.append("")
+    L.append("## 📚 Kinsta KB References")
+    L.append("")
+    L.append("<!-- LLM:KB_REFERENCES -->")
+    L.append("")
+
     return "\n".join(L)
+
+# ═══════════════════════════════════════════════════════════════════
+# VALIDATION — checks a finished report against the structure contract in
+# references/report-structure.md. Run via: analyze_logs.py --validate <report.md>
+# ═══════════════════════════════════════════════════════════════════
+
+REQUIRED_MARKERS = [
+    "<!-- LLM:AT_A_GLANCE -->", "<!-- LLM:OVERALL_ASSESSMENT -->",
+    "<!-- LLM:DISCREPANCY_NOTES -->", "<!-- LLM:ATTACK_SECURITY -->",
+    "<!-- LLM:CACHE_ROOT_CAUSE -->", "<!-- LLM:BOT_STRATEGY -->",
+    "<!-- LLM:BURST_CARDS -->", "<!-- LLM:TRAFFIC_ANOMALIES -->",
+    "<!-- LLM:ERROR_FIXES -->", "<!-- LLM:PROBE_CROSS_MATCH -->",
+    "<!-- LLM:KB_REFERENCES -->",
+]
+
+FORBIDDEN_SECTIONS = [
+    "## Health Summary", "## 🟢 Low-Priority Notes", "### How to Improve Cache HIT Rate",
+    "### Scanner IPs — Block List", "## Directory Scanner Activity",
+]
+
+CARD_SECTIONS_REQUIRING_INCIDENT_BULLET = [
+    "### Attack/Security Findings", "### Concentrated Traffic Spikes & Bursts",
+    "### Traffic Anomalies",
+]
+
+def validate_report(path):
+    """Returns (ok: bool, problems: list[str])."""
+    with open(path) as f:
+        text = f.read()
+    problems = []
+
+    unfilled = [m for m in REQUIRED_MARKERS if m in text]
+    if unfilled:
+        problems.append(f"Unfilled markers remain: {', '.join(unfilled)}")
+
+    for section in FORBIDDEN_SECTIONS:
+        if section in text:
+            problems.append(f"Forbidden section present: '{section}'")
+
+    if "PART 1: EXECUTIVE BRIEF" not in text:
+        problems.append("Missing 'PART 1: EXECUTIVE BRIEF' divider")
+    if "PART 2: TECHNICAL APPENDIX" not in text:
+        problems.append("Missing 'PART 2: TECHNICAL APPENDIX' divider")
+
+    # Card format check: for each card-bearing subsection, if it has any "####" card,
+    # at least one "- **Incident:**" (or "- **URL(s):**" for 404 cards) bullet must
+    # follow before the next "####"/"###"/"##" heading.
+    for section_heading in CARD_SECTIONS_REQUIRING_INCIDENT_BULLET:
+        idx = text.find(section_heading)
+        if idx == -1:
+            continue
+        next_h2_or_h3 = len(text)
+        for marker in ("\n## ", "\n### "):
+            pos = text.find(marker, idx + len(section_heading))
+            if pos != -1:
+                next_h2_or_h3 = min(next_h2_or_h3, pos)
+        block = text[idx:next_h2_or_h3]
+        if "#### " in block and "- **Incident:**" not in block and "not observed" not in block.lower():
+            problems.append(f"'{section_heading}' has a card (####) with no '- **Incident:**' bullet")
+
+    return (len(problems) == 0, problems)
 
 # ═══════════════════════════════════════════════════════════════════
 # MAIN
 # ═══════════════════════════════════════════════════════════════════
 
 def main():
+    # --validate is a separate mode (report_path only) checked before the normal
+    # argparse setup below, which requires error_file/access_file as positionals.
+    if len(sys.argv) >= 3 and sys.argv[1] == "--validate":
+        ok, problems = validate_report(sys.argv[2])
+        if ok:
+            print("✅ Validation passed — no unfilled markers, no forbidden sections, card format OK.")
+            sys.exit(0)
+        else:
+            print("❌ Validation failed:")
+            for p in problems:
+                print(f"  - {p}")
+            sys.exit(1)
+
     parser = argparse.ArgumentParser()
     parser.add_argument("error_file")
     parser.add_argument("access_file")
