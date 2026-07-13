@@ -397,7 +397,19 @@ approximation. After the script generates the base report, you MUST:
    ```
 
    Full section structure:
-   - **Overall Assessment** — one-paragraph verdict with severity (✅ healthy / 🟡 concerns / 🔴 action needed)
+   - **Overall Assessment** — severity-icon verdict line + a 5-row summary table (Security / Stability / Cache / Bot traffic / Slow pages), each row with its own status icon and one-line detail. Never a dense prose paragraph — this is the first section a manager reads and must be scannable in under 5 seconds. Template:
+
+     ```
+     🟡 **Verdict:** [one-line summary]
+
+     | Area | Status | Detail |
+     |---|---|---|
+     | **Security** | ✅/🟡/🔴 | [one line] |
+     | **Stability** | ✅/🟡/🔴 | [one line] |
+     | **Cache** | ✅/🟡/🔴 | [one line] |
+     | **Bot traffic** | ✅/🟡/🔴 | [one line] |
+     | **Slow pages** | ✅/🟡/🔴 | [one line] |
+     ```
    - **Discrepancy Notes** (if user mentioned dashboard numbers) — explain gaps honestly
    - **Attack/Security Findings** (if any) — Incident/Analysis/Actor/Actions card format, one card per distinct pattern
    - **Cache Root Cause Analysis** — go beyond "HIT rate is low" to identify the specific mechanism, evidence-cited, informed by both probe passes' live header data (Steps 2 & 4)
