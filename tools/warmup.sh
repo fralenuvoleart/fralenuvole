@@ -55,7 +55,7 @@ queue_pos=0
 while ((queue_pos < ${#queue[@]})); do
     sm_url="${queue[queue_pos]}"
     depth="${queue_depth[queue_pos]}"
-    ((queue_pos++))
+    ((queue_pos++)) || true
 
     # Linear-scan dedup — sitemap count is tiny (depth-limited to 3).
     _seen=0
@@ -102,10 +102,10 @@ for url in "${page_urls[@]}"; do
 
     if [[ "$status" =~ ^[23][0-9]{2}$ ]]; then
         echo "✓ $status -> $url" | tee -a "$LOG_FILE"
-        ((success++))
+        ((success++)) || true
     else
         echo "✗ $status -> $url" | tee -a "$LOG_FILE"
-        ((failed++))
+        ((failed++)) || true
     fi
 
     sleep "$DELAY"
