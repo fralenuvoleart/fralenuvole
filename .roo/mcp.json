@@ -64,23 +64,16 @@
 			]
 		},
 		"mysql": {
-			"command": "npx",
+			"command": "bash",
 			"args": [
-				"-y",
-				"@benborla29/mcp-server-mysql"
+				".roo/scripts/mysql-mcp-tunnel.sh"
 			],
-			"env": {
-				"MYSQL_HOST": "localhost",
-				"MYSQL_PORT": "3306",
-				"MYSQL_USER": "pbservicesge",
-				"MYSQL_PASS": "IvEkI6TawYYcuWJ",
-				"MYSQL_DB": "pbservicesge"
-			},
 			"alwaysAllow": [
 				"list_databases",
 				"list_tables",
 				"describe_table",
-				"execute_sql"
+				"execute_sql",
+				"mysql_query"
 			]
 		}
 	}
