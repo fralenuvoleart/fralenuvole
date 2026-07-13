@@ -25,6 +25,14 @@ done
 PLUGIN_DIR="$HOME/public/wp-content/plugins/fralenuvole"
 BRANCH="main"
 
+# Remote-only guard: PLUGIN_DIR only resolves correctly when $HOME is the
+# Kinsta server's home directory. Fail loudly instead of erroring deep into
+# git commands (or silently no-op'ing) if run from the wrong machine.
+if [[ ! -d "$PLUGIN_DIR" ]]; then
+    echo "❌ Error: $PLUGIN_DIR not found. deploy-remote.sh must run via SSH on the Kinsta server, not locally." >&2
+    exit 1
+fi
+
 echo "---"
 if $DRY_RUN; then
     echo "🔍 DRY RUN — no changes will be applied"

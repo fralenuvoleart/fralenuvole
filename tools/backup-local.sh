@@ -5,6 +5,14 @@ WORKSPACE_DIR="/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/fralenu
 BACKUP_DIR="/mnt/backup/BACKUP/WEB-BACKUP/FRALENUVOLE"
 MAIN_PLUGIN_FILE="$WORKSPACE_DIR/fralenuvole.php"
 
+# Local-only guard: WORKSPACE_DIR is a hardcoded absolute path specific to
+# this local backup-mirror machine. It doesn't exist on the Kinsta server —
+# fail loudly instead of zipping the wrong (or no) directory.
+if [[ ! -d "$WORKSPACE_DIR" ]]; then
+    echo "❌ Error: $WORKSPACE_DIR not found. backup-local.sh must run on the local backup-mirror machine, not on Kinsta." >&2
+    exit 1
+fi
+
 # 1. DYNAMICALLY EXTRACT PLUGIN VERSION
 # Reads the 'Version: X.X.X' line from fralenuvole.php
 if [ -f "$MAIN_PLUGIN_FILE" ]; then
@@ -25,7 +33,8 @@ EXCLUDE_LIST=(
     "composer*"
     "plans"
     "phpcs.xml"
-    "*.sh"
+    "tools"
+    "logs"
     "*.md"
 )
 
