@@ -313,7 +313,7 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
      initially left unattributed, when its actual PTR record (`*.googleusercontent.com`) shows it's
      an unrelated third party's customer VM. Conversely, a PTR under the bot's own domain (e.g.
      `bot.semrush.com`, `dataproviderbot.com`) is positive confirmation the traffic is genuinely who
-     it claims to be. See [`bot-taxonomy.md`](references/bot-taxonomy.md#asn-is-not-enough--always-check-reverse-dns-too)
+     it claims to be. See [`bot-taxonomy.md`] (references/bot-taxonomy.md#asn-is-not-enough)
      for the known-pattern table before writing any "who is this IP" conclusion.
    - If the confirmed primary market is known (e.g. Georgia for pbservices.ge) and RU/ZH-language
      traffic appears, do not flag it as suspicious by default — that language segment may be the
