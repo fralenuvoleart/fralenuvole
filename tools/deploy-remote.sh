@@ -52,6 +52,10 @@ git fetch origin "$BRANCH"
 echo "Commits about to be applied:"
 git log --oneline HEAD..origin/$BRANCH
 
+echo ""
+echo "Files changed:"
+git diff --stat HEAD..origin/$BRANCH
+
 if $DRY_RUN; then
     echo ""
     echo "🔍 Dry run complete — no changes made."
