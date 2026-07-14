@@ -692,7 +692,7 @@ def generate_report(site_name, error_findings, error_meta, access_data,
 
     # ══════════════════════════════════════════════════════════════
     # BURST DETECTION — computed here (early) rather than at its Part-2 rendering
-    # location, because the Convergent Pressure Points check below (Part 1, right
+    # location, because the Convergent Cross-Signals check below (Part 1, right
     # after Overall Assessment) needs burst_rows/burst_target_urls before Part 1 is
     # written. Rendering into "## Concentrated Traffic Spikes & Bursts" still happens
     # later, in its original Part 2 position, reusing this same computed burst_rows.
@@ -858,15 +858,11 @@ def generate_report(site_name, error_findings, error_meta, access_data,
     # intersection computed above, not analyst judgment, so it doesn't need LLM
     # authorship. Always present, either naming a convergence or stating there
     # is none — never silently omitted.
-    L.append("### 🎯 Convergent Pressure Points")
+    L.append("### 🎯 Convergent Cross-Signals")
     L.append("")
     for _line in convergent_lines:
         L.append(_line)
         L.append("")
-    L.append("### Discrepancy Notes")
-    L.append("")
-    L.append("<!-- LLM:DISCREPANCY_NOTES -->")
-    L.append("")
     L.append("### Attack/Security Findings")
     L.append("")
     L.append("<!-- LLM:ATTACK_SECURITY -->")
@@ -887,12 +883,64 @@ def generate_report(site_name, error_findings, error_meta, access_data,
     L.append("")
     L.append("<!-- LLM:TRAFFIC_ANOMALIES -->")
     L.append("")
-    L.append("### 404/Error Fix Recommendations")
+    L.append("### 404 Errors Recommendations")
     L.append("")
     L.append("<!-- LLM:ERROR_FIXES -->")
     L.append("")
     L.append("# PART 2: TECHNICAL APPENDIX")
     L.append("")
+
+    # ══════════════════════════════════════════════════════════════
+    # PERFORMANCE — top-level section, first in Part 2
+    # ══════════════════════════════════════════════════════════════
+    if access_data:
+        L.append("## Performance")
+        L.append("")
+        L.append(f"| Metric | Value |")
+        L.append(f"|---|---|")
+        L.append(f"| Average response time | **{access_data['avg_rt']:.3f}s** |")
+        L.append(f"| Fastest response | **{access_data.get('min_rt', 0):.3f}s** |")
+        L.append(f"| Slowest response | **{access_data.get('max_rt', 0):.3f}s** |")
+        L.append(f"| Slow pages (>2s) | **{len(access_data['slow'])}** |")
+        L.append(f"| Server errors (5xx) | **{len(access_data['fivexx'])}** |")
+        L.append("")
+        if access_data.get("slowest_pages"):
+            L.append("**Slowest individual requests observed:**")
+            L.append("")
+            L.append("| URL | Response Time | IP | Country | Status | Reverse DNS |")
+            L.append("|---|---|---|---|---|---|")
+            slow_ip_set = set()
+            for e in access_data["slowest_pages"][:8]:
+                # Reverse-DNS here specifically, not just ASN/org — "org = Google LLC" does not
+                # tell you whether this is Google's own crawler or an unrelated third party's
+                # customer VM merely rented from Google Cloud. A hostname ending in
+                # googleusercontent.com/compute.amazonaws.com is the actual tell; ASN alone is not.
+                hostname, is_customer_vm = ip_hostname(e["ip"])
+                if hostname:
+                    host_display = f"`{hostname}`" + (" ⚠️ cloud customer VM, not the vendor's own service" if is_customer_vm else "")
+                else:
+                    host_display = "*no PTR record*"
+                cc, flag = ip_country(e["ip"])
+                if cc == GEOIP_DISABLED:
+                    country_display = "*geo-IP disabled*"
+                elif cc and cc != "?":
+                    country_display = f"{flag} {cc}" if flag else cc
+                else:
+                    country_display = "*unknown*"
+                slow_ip_set.add(e["ip"])
+                L.append(f"| `{e['url']}` | {e['rt']:.3f}s | `{e['ip']}` | {country_display} | {e['status']} | {host_display} |")
+            L.append("")
+            if len(slow_ip_set) == 1 and len(access_data["slowest_pages"][:8]) >= 3:
+                only_ip = next(iter(slow_ip_set))
+                L.append(f"> ⚠️ **All of the above come from a single IP (`{only_ip}`)** — this is one "
+                         f"source systematically hitting multiple pages, not several unrelated slow "
+                         f"visitor experiences. Check its reverse-DNS/org above before assuming it's "
+                         f"a real visitor or the site's own performance problem.")
+                L.append("")
+    else:
+        reason = data_errors.get("access")
+        L.append(f"Performance data unavailable{f': {reason}' if reason else ''}.")
+        L.append("")
 
     # ══════════════════════════════════════════════════════════════
     # ISSUES — each finding now carries real extracted data (message, file:line,
@@ -988,10 +1036,9 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         # Capped at 🟡, never 🔴 — a cache HIT-rate shortfall is a performance/config
         # target-miss, not the active-emergency (site down/breach/data-at-risk) that 🔴
         # is reserved for per SKILL.md's severity icon vocabulary.
-        if hit_pct >= 70: v = "✅ Most visitors get instant cached pages."
-        elif hit_pct >= 50: v = "🟡 Nearly half of visitors wait for the origin server."
+        if hit_pct >= 50: v = "✅ Most visitors get instant cached pages."
         else: v = "🟡 More than half of requests miss cache."
-        L.append(f"**Assessment**: {v} Target is >70% HIT.")
+        L.append(f"**Assessment**: {v} Target is >50% HIT.")
         L.append("")
 
         if cross_results.get("top_missed_urls"):
@@ -1076,7 +1123,8 @@ def generate_report(site_name, error_findings, error_meta, access_data,
                     pattern = f"narrow: {distinct} distinct URLs"
                 else:
                     pattern = f"distributed: {distinct} distinct URLs"
-                L.append(f"| {name} | **{b['count']}** | {window} | {b.get('distinct_ips', '?')} | {pattern} | ⏳ *pending* |")
+                bot_pct = b['count'] / total_req * 100 if total_req else 0
+                L.append(f"| {name} | **{b['count']}** ({bot_pct:.0f}%) | {window} | {b.get('distinct_ips', '?')} | {pattern} | ⏳ *pending* |")
             L.append("")
             # Show the actual top URLs for the single highest-volume bot in this category so
             # the analyst can cite real evidence instead of guessing at "pattern or scattered".
@@ -1100,16 +1148,29 @@ def generate_report(site_name, error_findings, error_meta, access_data,
 
     # ══════════════════════════════════════════════════════════════
     # CONCENTRATED TRAFFIC SPIKES & BURSTS — rendering only. burst_rows was
-    # computed earlier (before Part 1) so the Convergent Pressure Points check
+    # computed earlier (before Part 1) so the Convergent Cross-Signals check
     # could use it; this section just renders that already-computed list.
     # ══════════════════════════════════════════════════════════════
     if burst_rows:
         L.append("## Concentrated Traffic Spikes & Bursts")
         L.append("")
-        L.append("| Source | Target | Detail |")
-        L.append("|---|---|---|")
+        L.append("| Source | Country | Target | Detail |")
+        L.append("|---|---|---|---|")
         for r in burst_rows:
-            L.append(f"| {r['source']} | {r['target']} | {r['detail']} |")
+            # Extract IP from source string for geo lookup — source format: "`IP` — description"
+            ip_match = re.match(r"`([^`]+)`", r['source'])
+            if ip_match:
+                burst_ip = ip_match.group(1)
+                cc, flag = ip_country(burst_ip)
+                if cc == GEOIP_DISABLED:
+                    country_display = "*—*"
+                elif cc and cc != "?":
+                    country_display = f"{flag} {cc}" if flag else cc
+                else:
+                    country_display = "*—*"
+            else:
+                country_display = "*—*"
+            L.append(f"| {r['source']} | {country_display} | {r['target']} | {r['detail']} |")
         L.append("")
     else:
         L.append("## Concentrated Traffic Spikes & Bursts")
@@ -1265,42 +1326,6 @@ def generate_report(site_name, error_findings, error_meta, access_data,
                      f"**Quietest:** `{low_hour}` UTC ({low_cnt} requests)")
         L.append("")
 
-        L.append("### Performance")
-        L.append("")
-        L.append(f"| Metric | Value |")
-        L.append(f"|---|---|")
-        L.append(f"| Average response time | **{access_data['avg_rt']:.3f}s** |")
-        L.append(f"| Fastest response | **{access_data.get('min_rt', 0):.3f}s** |")
-        L.append(f"| Slowest response | **{access_data.get('max_rt', 0):.3f}s** |")
-        L.append(f"| Slow pages (>2s) | **{len(access_data['slow'])}** |")
-        L.append(f"| Server errors (5xx) | **{len(access_data['fivexx'])}** |")
-        L.append("")
-        if access_data.get("slowest_pages"):
-            L.append("**Slowest individual requests observed:**")
-            L.append("")
-            L.append("| URL | Response Time | IP | Status | Reverse DNS |")
-            L.append("|---|---|---|---|---|")
-            slow_ip_set = set()
-            for e in access_data["slowest_pages"][:8]:
-                # Reverse-DNS here specifically, not just ASN/org — "org = Google LLC" does not
-                # tell you whether this is Google's own crawler or an unrelated third party's
-                # customer VM merely rented from Google Cloud. A hostname ending in
-                # googleusercontent.com/compute.amazonaws.com is the actual tell; ASN alone is not.
-                hostname, is_customer_vm = ip_hostname(e["ip"])
-                if hostname:
-                    host_display = f"`{hostname}`" + (" ⚠️ cloud customer VM, not the vendor's own service" if is_customer_vm else "")
-                else:
-                    host_display = "*no PTR record*"
-                slow_ip_set.add(e["ip"])
-                L.append(f"| `{e['url']}` | {e['rt']:.3f}s | `{e['ip']}` | {e['status']} | {host_display} |")
-            L.append("")
-            if len(slow_ip_set) == 1 and len(access_data["slowest_pages"][:8]) >= 3:
-                only_ip = next(iter(slow_ip_set))
-                L.append(f"> ⚠️ **All of the above come from a single IP (`{only_ip}`)** — this is one "
-                         f"source systematically hitting multiple pages, not several unrelated slow "
-                         f"visitor experiences. Check its reverse-DNS/org above before assuming it's "
-                         f"a real visitor or the site's own performance problem.")
-                L.append("")
     else:
         reason = data_errors.get("access")
         L.append(f"Access log unavailable{f': {reason}' if reason else ''}.")
@@ -1349,7 +1374,7 @@ def generate_report(site_name, error_findings, error_meta, access_data,
 
 REQUIRED_MARKERS = [
     "<!-- LLM:AT_A_GLANCE -->", "<!-- LLM:OVERALL_ASSESSMENT -->",
-    "<!-- LLM:DISCREPANCY_NOTES -->", "<!-- LLM:ATTACK_SECURITY -->",
+    "<!-- LLM:ATTACK_SECURITY -->",
     "<!-- LLM:CACHE_ROOT_CAUSE -->", "<!-- LLM:BOT_STRATEGY -->",
     "<!-- LLM:BURST_CARDS -->", "<!-- LLM:TRAFFIC_ANOMALIES -->",
     "<!-- LLM:ERROR_FIXES -->", "<!-- LLM:PROBE_CROSS_MATCH -->",
@@ -1386,7 +1411,7 @@ def validate_report(path):
         problems.append("Missing 'PART 2: TECHNICAL APPENDIX' divider")
 
     # Card format check: for each card-bearing subsection, if it has any "####" card,
-    # at least one "- **Incident:**" (or "- **URL(s):**" for 404 cards) bullet must
+    # at least one "- **Event:**" bullet must
     # follow before the next "####"/"###"/"##" heading.
     for section_heading in CARD_SECTIONS_REQUIRING_INCIDENT_BULLET:
         idx = text.find(section_heading)
@@ -1398,8 +1423,8 @@ def validate_report(path):
             if pos != -1:
                 next_h2_or_h3 = min(next_h2_or_h3, pos)
         block = text[idx:next_h2_or_h3]
-        if "#### " in block and "- **Incident:**" not in block and "not observed" not in block.lower():
-            problems.append(f"'{section_heading}' has a card (####) with no '- **Incident:**' bullet")
+        if "#### " in block and "- **Event:**" not in block and "- **URL(s):**" not in block and "not observed" not in block.lower():
+            problems.append(f"'{section_heading}' has a card (####) with no '- **Event:**' or '- **URL(s):**' bullet")
 
     return (len(problems) == 0, problems)
 

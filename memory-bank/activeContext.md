@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-Added Cloudflare/Nginx caching chain clarification to [`.roo/skills/kinsta-log-analyzer/SKILL.md`](.roo/skills/kinsta-log-analyzer/SKILL.md): new bullet in "How Logs Are Retrieved" documents the `kinsta-cache-perf` log scope — data pulled from Cloudflare logs, ~85% of requests served by Cloudflare Edge cache (never reach Nginx), ~15% pass through (dynamic ~13.5%, miss ~1%, bypass ~0.5%), Nginx handles page caching for the 15% subset. Fixed misleading "Edge Cache Health" label → "Nginx Page Cache Health" in Step 3 output description. Updated Step 9a scope note to include ~85%/15% figures.
+Kinsta Log Analyzer Skill enhancement: extracted platform tribal knowledge and action history from Kinsta support transcripts, created two new reference files ([`kinsta-tribal-knowledge.md`](.roo/skills/kinsta-log-analyzer/references/kinsta-tribal-knowledge.md), [`kinsta-history.md`](.roo/skills/kinsta-log-analyzer/references/kinsta-history.md)), added Steps 6.6b/6.6c to SKILL.md workflow, and applied label/template refinements (Incident→Event, Actor→Source, Actions bullet-list format, 404/Error card format, Status column width, IP country/flag in Slowest Pages + Bursts tables).
 
 ## Changes Made
 

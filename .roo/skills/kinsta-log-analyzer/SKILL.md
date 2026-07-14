@@ -198,7 +198,7 @@ script changes, copy log JSON files to `/tmp/` first.
 
 The script produces a **two-part report skeleton** with `<!-- LLM: -->` markers where analyst content belongs. See [`references/report-structure.md`](references/report-structure.md) for the authoritative section contract. The skeleton includes:
 
-- **Part 1 (Executive Brief):** headings and `<!-- LLM: -->` markers for Overall Assessment, Discrepancy Notes, Cache Root Cause, Attack/Security, Bot Strategy, Burst Cards, Traffic Anomalies, 404 Fixes, and At a Glance. LLM orders Part 1 sections by severity tier.
+- **Part 1 (Executive Brief):** headings and `<!-- LLM: -->` markers for Overall Assessment, Cache Root Cause, Attack/Security, Bot Strategy, Burst Cards, Traffic Anomalies, 404 Fixes, and At a Glance. LLM orders Part 1 sections by severity tier.
 - **Part 2 (Technical Appendix):** auto-generated data tables — Cache Performance (HIT/MISS/BYPASS, top-MISSed URLs, HIT-vs-MISS response time), Bot & Crawler Traffic (per-category tables without verdict column), Top Visitor IPs, Traffic Overview (Status Codes, Requests per Hour, Performance), and Slowest Pages. Plus `<!-- LLM: -->` markers for Probe Cross-Match and KB References.
 - **Validation pass:** when run with `--validate <report_path>`, the script checks that all markers are filled, no permanently suppressed sections appear, and card formats comply.
 
@@ -323,17 +323,45 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
    documented Kinsta-side fix — flag for your developer" (phrased generically, never naming this
    codebase) are the only three acceptable answers to "how do I fix this."
 
+6b. **Consult [`references/kinsta-tribal-knowledge.md`](references/kinsta-tribal-knowledge.md) for
+    platform behaviors relevant to the finding.** Not all actionable facts are in the public KB —
+    support transcripts have confirmed default behaviors (xmlrpc blocked, wp-login 6 req/min),
+    Nginx capability boundaries (no POST body inspection, no URL-decoding), cache-clearing side
+    effects (Clear All purges Redis), and Bot Protection mechanisms (CF ML scoring 1-99) that
+    directly inform accurate "Actions" recommendations. When a finding involves Nginx rule
+    suggestions, rate limiting, cache operations, or bot protection configuration, check this
+    reference for platform constraints and defaults before writing the recommendation.
+
+6c. **Consult [`references/kinsta-history.md`](references/kinsta-history.md) to avoid
+    re-recommending past actions.** For each finding, check whether a past action already
+    addresses it. If a match is found, acknowledge it in the Actions line: cite the past action,
+    its date, and whether log evidence confirms it's still effective or suggests it needs
+    re-verification. If no past action matches, proceed to form a new recommendation normally.
+
+6d. **Always append the Kinsta Live Support Chat entry at the end of KB References.**
+    After filling the `<!-- LLM:KB_REFERENCES -->` marker with KB article links, ALWAYS append
+    as the final bullet:
+
+    ```
+    - **Kinsta Live Support Chat** — The report integrates additional insider knowledge and history
+      of past actions, from the Kinsta Support Chat History.
+    ```
+
+    This applies even when no KB articles were cited — the Live Support Chat entry is always
+    present. See [`references/report-structure.md`](references/report-structure.md) §
+    `## 📚 Kinsta KB References` for the contract.
+
 7. **Structure every finding around four questions internally — What / Why / Who / How** — this is
    the analytical spine you use to REASON through each finding, but it is not what the reader sees.
-   The **visible labels in the report are always Incident / Analysis / Actor / Actions** (Step 6.8
+   The **visible labels in the report are always Event / Analysis / Source / Actions** (Step 6.8
    spells out the exact template) — "What/Why/Who/How" is your private checklist, never printed:
 
    | Internal question | Visible label | Answers |
    |---|---|---|
-   | What? | **Incident** | The flagged finding, stated with its exact evidence (numbers, URLs, IPs). |
+   | What? | **Event** | The flagged finding, stated with its exact evidence (numbers, URLs, IPs). |
    | Why? | **Analysis** | Why it's suspicious or anomalous — cross-referencing bot-taxonomy.md/site-context.md/probe results as applicable. Ordinary/expected activity gets "why this is NOT an anomaly" instead. |
-   | Who? | **Actor** | The actor (bot name, IP, or "unknown") PLUS an explicit classification tier — see Step 6.8's tier scale — never just prose judgment. |
-   | How? | **Actions** | The concrete action, sourced from live Kinsta KB documentation (Step 6.6), a MyKinsta-panel step, or **bold "No action required" with a ✅** — never a canned tip disconnected from this finding's actual evidence, and never anything derived from reading the hosted app's own source code (Step 6.5 forbids opening it at all). |
+   | Who? | **Source** | The source (bot name, IP, or "unknown") PLUS an explicit classification tier — see Step 6.8's tier scale — never just prose judgment. |
+   | How? | **Actions** | The concrete action, sourced from live Kinsta KB documentation (Step 6.6/6.6b/6.6c), a MyKinsta-panel step, or **bold "No action required ✅"** on its own line (description on new indented line) — never a canned tip disconnected from this finding's actual evidence, and never anything derived from reading the hosted app's own source code (Step 6.5 forbids opening it at all). |
 
    Cross-cutting lenses to apply this framework to: attack patterns (spam injection, xmlrpc
    probing), traffic anomalies (hour spikes — state the multiplier, convert to local time per Step
@@ -364,7 +392,7 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
 
    Use a **finding-card format** for the Traffic Anomalies, Attack/Security Findings,
    and Concentrated Bursts subsections specifically — freeform prose paragraphs are not acceptable
-   there. **Each of Incident/Analysis/Actor/Actions MUST be its own bullet list item** (not
+   there. **Each of Event/Analysis/Source/Actions MUST be its own bullet list item** (not
    consecutive bold-label lines in one paragraph) — list items are the only Markdown construct
    guaranteed to render on separate lines across every renderer; runs of `**Label:** text` lines
    without blank lines between them visually collapse into one paragraph in several renderers,
@@ -377,13 +405,13 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
      a missing trailing slash) in emergency language, or a severity icon one tier higher than the
      evidence supports (see the icon table below — 🔴 is reserved, not a default).
    - **Too dismissive:** the opposite failure, and equally wrong — waving away a real, measurable,
-     currently-below-target metric (e.g. a cache HIT rate sitting at 24–46% against a >70% target)
+     currently-below-target metric (e.g. a cache HIT rate sitting at 24–46% against a >50% target)
      with casual language like "minor housekeeping, nothing urgent" or "nothing to see here." A
      below-target metric with a concrete, evidence-backed fix is a genuine 🟡 finding worth an
      accurate, specific description — not a shrug.
    - **The correct register:** state the actual measured severity in plain, professional, objective
      terms, exactly as supported by the evidence — no more, no less. "Cache HIT rate is 24%, well
-     below the >70% target, driven by two identified causes — fixable, but currently costing real
+     below the >50% target, driven by two identified causes — fixable, but currently costing real
      performance" is calibrated. "Nothing urgent" is not, when a metric is sitting at a third of
      target.
    - **Avoid cheerleading-style status openers even when a real caveat follows** — e.g. "Overall
@@ -397,7 +425,7 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
      ranked comparison the report never actually computed). Use objective, measured language
      instead: "highest-severity finding" not "the worst finding"; "the metric furthest below
      target" not "the worst metric." This applies everywhere a finding is singled out — At a
-     Glance headlines, card titles, and the Convergent Pressure Points summary alike.
+     Glance headlines, card titles, and the Convergent Cross-Signals summary alike.
    - Re-read every summary line against this test before finalizing: *would someone who only reads
      this one sentence come away with an accurate impression of how serious this actually is — not
      more dramatic, not more reassuring, and not a value judgment dressed up as a measurement?*
@@ -410,7 +438,7 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
    | ✅ / 🟢 | Healthy, or handled correctly already — no action needed. |
    | 🔧 | A worthwhile housekeeping/maintenance action — NOT a health/security severity. Use this (never 🔴/🟡) for "add this bot to the throttle list," "flush this stale cache directory," "block this low-value crawler." |
 
-   **Actor classification tier** (required in every card's Actor line): `Safe` / `Benign` /
+   **Source classification tier** (required in every card's Source line): `Safe` / `Benign` /
    `Suspicious` / `Malicious` — a single word from this exact scale, stated plainly, not implied by
    the card's icon alone (the icon is about urgency, the tier is about intent — they are different
    axes and both must be stated).
@@ -419,10 +447,12 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
 
    ```markdown
    #### 🔴|🟡|🔧|✅ [Short title]
-   - **Incident:** [exact evidence — numbers/URLs/IPs from the report, or "not observed in this window"]
+   - **Event:** [exact evidence — numbers/URLs/IPs from the report, or "not observed in this window"]
    - **Analysis:** [interpretation — is this suspicious, and why/why not]
-   - **Actor:** [who/what + classification tier: Safe/Benign/Suspicious/Malicious + targeted URL(s)]
-   - **Actions:** [concrete action per Step 6.6, or **bold "No action required"** with a ✅]
+   - **Source:** [who/what + classification tier: Safe/Benign/Suspicious/Malicious + targeted URL(s)]
+   - **Actions:** [concrete action per Steps 6.6/6.6b, or:
+       - **No action required** ✅
+         [description/explanation on new indented line]]
    ```
 
    **Conciseness & Consistency Directives (mandatory, self-auditable — apply before finalizing
@@ -458,15 +488,21 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
       by a short name (`"the `__cf_bm` cache-block described above"`) — not restate the
       mechanism's how/why again. If you catch yourself writing the same 2+ sentence explanation
       in a second card, delete it and cite instead.
-   4. **Every Part 1 `###` subsection carries a status marker in its first line — no exceptions,
-      including prose-only subsections like Discrepancy Notes.** A subsection with no finding
-      still needs a marker: `"— (no discrepancy this run)"` or a leading ✅/ℹ️. Never let one
+   4. **Every Part 1 `###` subsection carries a status marker in its first line — no exceptions.**
+      A subsection with no finding still needs a marker: a leading ✅/ℹ️. Never let one
       subsection break the visual pattern the reader has learned from its siblings.
    5. **Wide tables (5+ columns) get a plain-language one-line takeaway directly above them,
       before rendering the table.** Any table with 5 or more columns (e.g. the per-category bot
       tables with the Verdict column) must be preceded by one sentence stating the actual
       conclusion (`"14 of 15 bots need no action; only Bytespider should be blocked — see
       table for detail."`) so a skimming reader gets the answer without parsing the grid.
+   6. **Never use `~` (tilde) for approximation in report content.** Some Markdown renderers
+      (including the one used by `md-to-pdf` for PDF export) interpret `~` as a strikethrough
+      delimiter, causing text between two tildes to render with a line through it. Use `≈` or
+      "approximately" instead. Example: write `≈85%` or "approximately 85%", never `~85%`.
+      This applies to the At a Glance Scope note and any other LLM-written
+      content — check every occurrence of `~` before finalizing.
+
 
    **Full section structure — see [`references/report-structure.md`](references/report-structure.md) for the authoritative contract.** The summary below is a quick reference; the contract file defines exact formats, conditional display rules, and the marker inventory.
 
@@ -482,20 +518,23 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
    
    **Part 1 sections** (LLM orders by severity: 🔴 > 🟡 > 🔧 > ✅; within same tier by impact magnitude):
 
-   - **Overall Assessment** (`<!-- LLM:OVERALL_ASSESSMENT -->`) — severity-icon verdict line + 5-row summary table (Security / Stability / Cache / Bot traffic / Slow pages). Never a dense prose paragraph.
-   - **🎯 Convergent Pressure Points** — script-authored, deterministic (NOT an LLM marker). A set-intersection across the report's own notable-URL lists (top cache-MISSed pages, burst targets, top 403/404 error URLs); a URL in 2+ lists is named as the single highest-priority fix target with combined evidence cited. Excludes `Kinsta-Log-Analyzer-Probe` traffic (self-generated, not a real finding). Always present — states the overlap or states plainly that none was found. Positioned right after Overall Assessment, before every individual finding card, since its purpose is to reprioritize what follows before the reader reaches it.
-   - **Discrepancy Notes** (`<!-- LLM:DISCREPANCY_NOTES -->`) — explain gaps between MyKinsta dashboard totals and origin-only counts. Per Conciseness Directive 4, lead with a status marker even when prose-only: `"— No dashboard totals were cited this run."` or `"ℹ️ [gap explanation]"` — never a bare paragraph with no leading icon/dash marker.
-   - **Attack/Security Findings** (`<!-- LLM:ATTACK_SECURITY -->`) — Incident/Analysis/Actor/Actions card format, one card per distinct pattern. If none: single `#### ✅ No security incidents` card.
+   - **Overall Assessment** (`<!-- LLM:OVERALL_ASSESSMENT -->`) — severity-icon verdict line + 5-row summary table (Security / Stability / Cache / Bot traffic / Slow pages) with a slightly wider Status&nbsp;&nbsp; column. Never a dense prose paragraph.
+   - **🎯 Convergent Cross-Signals** — script-authored, deterministic (NOT an LLM marker). A set-intersection across the report's own notable-URL lists (top cache-MISSed pages, burst targets, top 403/404 error URLs); a URL in 2+ lists is named as the single highest-priority fix target with combined evidence cited. Excludes `Kinsta-Log-Analyzer-Probe` traffic (self-generated, not a real finding). Always present — states the overlap or states plainly that none was found. Positioned right after Overall Assessment, before every individual finding card, since its purpose is to reprioritize what follows before the reader reaches it.
+   - **Attack/Security Findings** (`<!-- LLM:ATTACK_SECURITY -->`) — Event/Analysis/Source/Actions card format, one card per distinct pattern. If none: single `#### ✅ No security incidents` card.
    - **Cache Root Cause Analysis** (`<!-- LLM:CACHE_ROOT_CAUSE -->`) — sub-headed cards (`#### 🔴 Primary Root Cause`, `#### 🟡 Secondary Contributor`). Evidence-cited from both probe passes. If cache is healthy: `✅ Cache HIT rate at or above target.`
    - **Bot Traffic Strategy** (`<!-- LLM:BOT_STRATEGY -->`) — table (bot | requests | % | verdict | evidence) with Totals row. Per Conciseness Directive 2, if >70% of bots resolve to the same verdict, collapse them into one summary row (`"✅ Keep (N bots, no action — see Part 2 for the full list)"`) and itemize only the outliers (Block/Monitor/Throttle). **Note:** Directive 2 applies to THIS Part 1 table only — the auto-generated per-category bot tables in Part 2 are the full evidence appendix and must list every bot individually; do not collapse those. After writing the Part 1 table, inject a **Verdict** column into every auto-generated bot table in Part 2 using the exact verdict from this Strategy table (`✅ Keep` / `🔧 Block` / `👀 Monitor` / `🔧 Throttle`).
-   - **Concentrated Traffic Spikes & Bursts** (`<!-- LLM:BURST_CARDS -->`) — Incident/Analysis/Actor/Actions card format. Use 🔧 unless active attack. Name actor IP/bot and target URL(s) explicitly. If none: `✅ No concentrated bursts.`
+   - **Concentrated Traffic Spikes & Bursts** (`<!-- LLM:BURST_CARDS -->`) — Event/Analysis/Source/Actions card format. Use 🔧 unless active attack. Name source IP/bot and target URL(s) explicitly. If none: `✅ No concentrated bursts.`
    - **Traffic Anomalies** (`<!-- LLM:TRAFFIC_ANOMALIES -->`) — card format, one per spike/pattern, with admin/owner local-time conversion per `site-context.md`. If none: `✅ Traffic within normal diurnal variation.`
    - **404/Error Fix Recommendations** (`<!-- LLM:ERROR_FIXES -->`) — card format for ALL items regardless of priority. Template:
      ```
      #### 🔧|ℹ️ [Priority] — [Short title]
+     - **Event:** [brief description of the 404/error — what URL, what status code, how many hits]
      - **URL(s):** [path(s) and hit count]
      - **Analysis:** [why this 404 exists and whether it matters]
-     - **Action:** [concrete fix, or **No action required** ✅ with reason]
+     - **Source:** [IP(s) or bot causing the errors, if identifiable; otherwise "unknown"]
+     - **Actions:** [concrete fix, or:
+         - **No action required** ✅
+           [reason on new indented line]]
      ```
      Low-priority items MAY group into a single `#### ℹ️ Low Priority — Miscellaneous` card with one bullet per item. Never bare bullets without a heading. If none: `✅ No actionable 404s.`
 
@@ -505,11 +544,12 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
 
    **Part 2 sections** (script-generated, fixed order — LLM does NOT reorder):
 
+   - `## Performance` — metrics table (avg/min/max response time, slow pages count, 5xx count) and slowest individual requests table. **First section in Part 2.**
    - `## 📊 Cache Performance` — HIT/MISS/BYPASS table, top-MISSed URLs, HIT-vs-MISS response time. "How to Improve" is permanently suppressed.
    - `## 📊 Bot & Crawler Traffic` — per-category tables with a script-emitted **Verdict** column (placeholder `⏳ *pending*`). After writing the Bot Strategy table, overwrite every placeholder with that table's exact verdict. "Scanner IPs — Block List" is permanently suppressed.
    - `## 📊 Top Visitor IPs` — table with geo/ASN/PTR + infrastructure warning.
    - `## Concentrated Traffic Spikes & Bursts` (raw table) — **kept, not suppressed.** This is the evidence source for Part 1's Burst cards; cite it directly, don't duplicate its numbers without attribution.
-   - `## Traffic Overview` — Status Codes, `### Errors by Status Code — Drill-Down` (**kept, not suppressed** — evidence source for Part 1's 404/Error Fix cards), Requests per Hour, Performance (avg/slowest, nested — not a separate section).
+   - `## Traffic Overview` — Status Codes, `### Errors by Status Code — Drill-Down` (**kept, not suppressed** — evidence source for Part 1's 404/Error Fix cards), Requests per Hour.
    - `## 🔬 Live Probe Cross-Match` (`<!-- LLM:PROBE_CROSS_MATCH -->`) — bullet list of probe findings vs. log-derived analysis.
    - `## 📚 Kinsta KB References` (`<!-- LLM:KB_REFERENCES -->`) — bullet list with URL and one-line guidance summary.
 
@@ -545,6 +585,13 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
     - **At a Glance:** update anomaly descriptions and action priority if correlation changed the
       severity picture.
 
+    After correlation is complete, apply the two-audience test before finalizing:
+    - **Business Owner:** can they grasp the site's current status from At a Glance alone
+      (one-line verdict + anomaly bullets + priority actions) without reading Part 2?
+    - **Site Admin:** can they act immediately from the priority actions list — each action
+      concrete, specific, and ordered by urgency?
+    If either answer is no, revise At a Glance or the affected cards before proceeding.
+
 9. **Write and place the `## 📌 At a Glance` section — written LAST, placed near the TOP.** This is
    the management-facing summary. Write it AFTER the Correlation & Synthesis Pass (it summarizes
    the fully correlated findings). The script-generated skeleton already has the `📌 At a Glance`
@@ -553,9 +600,19 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
    - **Anomalies found in this period** — bullet list, one line per distinct finding, severity icon per line, plain-language (no jargon a manager wouldn't know)
    - **Priority actions this period** — numbered list, ordered by urgency, each action concrete enough to hand to whoever's fixing it
 
-9a. **Scope note.** The script-generated skeleton already includes the scope warning before
-    `## Time Period` and the clarification note after it. Verify they are present; if missing,
-    insert them per `report-structure.md`.
+9a. **Scope note.** Append the following boilerplate block immediately after the Priority
+    Actions numbered list (before the `>` blockquote that starts with "Scope:"). The origin-vs-
+    edge-cache distinction belongs here.
+    
+    ```
+    > **Scope:** This report analyzes origin-server traffic from `access.log`, `error.log`, and
+    > `kinsta-cache-perf.log`. It does NOT include requests served entirely from Cloudflare's
+    > edge cache (≈85% of total traffic) — MyKinsta Analytics will report higher totals that
+    > include all edge-cached sub-resource requests invisible to these logs.
+    ```
+    
+    Use `≈` (not `~`) for the percentage to avoid strikethrough rendering (see Directive 6).
+    Verify this block is present; if missing, insert it.
 
 10. **Script validation pass.** After all content is written, run the script's validation:
     ```bash
@@ -634,6 +691,8 @@ per Step 7).
 | [`references/site-context.md`](references/site-context.md) | Admin/business-owner timezones, each site's confirmed primary market, and the fixed "Known Probe URLs" list per site — a living cache, update it when the user confirms new context | **Read** in Steps 1 & 2; **update** via `apply_diff` when new context is learned |
 | [`references/bot-taxonomy.md`](references/bot-taxonomy.md) | Accurate, unbiased per-bot reference: real nature (crawler vs. on-demand agent), robots.txt/Crawl-Delay compliance matrix, Kinsta/WordPress-generic mitigation tiers (no hosted-app code involved — see Step 6.5), and the ASN-vs-reverse-DNS distinction | **Read in full** in Step 6 before writing any bot-related recommendation |
 | [`references/operational-playbook.md`](references/operational-playbook.md) | Expert server guidance for each anomaly type (cache, errors, response time, traffic spikes, SSL) | **Read** when the report flags an issue needing deeper action |
+| [`references/kinsta-tribal-knowledge.md`](references/kinsta-tribal-knowledge.md) | Platform behaviors confirmed by Kinsta support (Nginx capabilities/limitations, cache architecture, Bot Protection mechanisms, default behaviors) — facts not in the public KB | **Read** in Step 6.6b when forming Nginx/rate-limit/cache/bot action recommendations |
+| [`references/kinsta-history.md`](references/kinsta-history.md) | Chronological log of actions already taken via Kinsta support per site — prevents re-recommending past actions | **Read** in Step 6.6c before finalizing any action recommendation; **update** via `apply_diff` when new actions are taken |
 
 ## Configuration
 Reads credentials from `.roo/mcp.json` → `mcpServers.kinsta.env`. Kinsta Knowledge Base lookups

@@ -4,6 +4,17 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 
 ---
 
+## Kinsta Log Analyzer Skill
+
+| Feature | Status |
+|---|---|
+| `references/kinsta-tribal-knowledge.md` | Platform behaviors from Kinsta support transcripts (Nginx capabilities, cache architecture, Bot Protection, defaults) — consulted in Step 6.6b |
+| `references/kinsta-history.md` | Past Kinsta support actions per site (Nginx rules, cron changes) — consulted in Step 6.6c to avoid re-recommending |
+| Label rename: `Incident`→`Event`, `Actor`→`Source` | Applied across SKILL.md, report-structure.md, analyze_logs.py validation |
+| Actions bullet-list format | "No action required ✅" on own bold line, description indented |
+| 404/Error template fix | Now uses Event/URL(s)/Analysis/Source/Actions card format |
+| IP country/flag in Slowest Pages + Bursts tables | `analyze_logs.py` now includes Country column in both tables |
+
 ## Core Subsystems (always loaded)
 
 | Subsystem | Entry Point | Status |
