@@ -17,6 +17,9 @@ description: Fetch Kinsta server logs (error, access, cache-perf) via the Kinsta
 - Code debugging (this skill analyzes website traffic and operational health, not source code)
 - If `.roo/mcp.json` has no `kinsta` server configured
 
+## ⚠️ Memory-Bank Isolation
+This skill is a **standalone Kinsta operations tool** — it does NOT belong to the fralenuvole plugin codebase. It MUST NOT read from or write to `memory-bank/` files (activeContext.md, progress.md, systemPatterns.md, productContext.md). Those files document the plugin only. The skill's own state belongs in its `references/` directory. Any findings, reports, or changes related to this skill MUST stay within `.roo/skills/kinsta-log-analyzer/` and `~/Downloads/kinsta-logs/`.
+
 ## Scope
 This skill is about **website operations & traffic analysis**. It answers questions like:
 - "How healthy is my site's cache?"

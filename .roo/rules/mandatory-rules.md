@@ -4,6 +4,7 @@
 - **Context Synchronization:** You MUST read the `/memory-bank` directory before every task. Use it as the primary source of truth over your general training data.
 - **Auto-Update Protocol:** Update `activeContext.md` and `progress.md` after every significant change without being prompted.
 - **Deep Scan Initialization:** If no `memory-bank/` exists, you must offer to initialize it by scanning `docs/` and the codebase to preserve legacy architectural decisions.
+- **Memory-Bank Scope:** `memory-bank/` documents the **fralenuvole plugin ONLY**. Skills (kinsta-log-analyzer, etc.), shell tools (deploy, warmup), and external operations MUST NOT write to memory-bank. Their state belongs in their own skill-specific directories (`.roo/skills/<name>/references/`), tool headers, or external logs.
 
 ## 🔍 ANALYSIS & REASONING
 - **Problem "Why":** Identify the underlying problem before proposing code. Do not rely solely on comments or assumptions.

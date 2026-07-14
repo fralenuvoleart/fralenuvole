@@ -12,7 +12,8 @@
 			},
 			"alwaysAllow": [
 				"kinsta.sites.list",
-				"kinsta.environments.list"
+				"kinsta.environments.list",
+				"kinsta.environments.ssh.config"
 			]
 		},
 		"context7": {
