@@ -743,9 +743,19 @@ When the user confirms, send the PDF using
 # Send the newest PDF in ~/Downloads/kinsta-logs/reports/
 python3 .roo/skills/kinsta-log-analyzer/scripts/send_report_email.py
 
-# Or send a specific PDF
-python3 .roo/skills/kinsta-log-analyzer/scripts/send_report_email.py "$REPORT_PATH"
+# Or send a specific PDF.
+# IMPORTANT: pass the .pdf path, not the .md path. `$REPORT_PATH` from earlier
+# steps points to the Markdown report — substituting the extension is the
+# safest way to avoid attaching the wrong file:
+python3 .roo/skills/kinsta-log-analyzer/scripts/send_report_email.py "${REPORT_PATH%.md}.pdf"
 ```
+
+**Hard rule:** the script does NOT validate that the path you pass is a `.pdf`
+— it attaches whatever file you give it as `application/octet-stream` and the
+filename of the attachment matches the input. If you pass the `.md` path, the
+email will contain the Markdown source, not the PDF. Always derive the path
+from the Markdown report (e.g. `${REPORT_PATH%.md}.pdf`) or look it up via
+`ls -t ~/Downloads/kinsta-logs/reports/*.pdf | head -1` before sending.
 
 The script sends only the PDF attachment to all addresses in `to_emails`. If `to_emails` is not
 provided, it falls back to a single `to_email`. The default subject is
