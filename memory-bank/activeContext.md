@@ -2,6 +2,10 @@
 
 ## Current Focus
 
+Kinsta log analysis performed for pbservices.ge (live) — 24h report generated via the `kinsta-log-analyzer` skill: `~/Downloads/kinsta-logs/reports/report_pbservicesge_live_202607140703.md` (+ PDF). Key findings: cache HIT rate 39% (below >50% target, explained by post-midnight-UTC purge cold-start + 4-language structure, confirmed by live probe re-check); no active security incidents (existing xmlrpc/URI-keyword blocks confirmed working); Bytespider/ClaudeBot flagged for monitoring only; misspelled Russian URL slug (`individualnyj-predprinimatel` vs. live `individualnyj-predprinematel`) causing repeat 404s; stale `/wp-content/litespeed/js/*.js` 404s from a past optimizer-plugin switch. No plugin code was touched (log-analysis skill is Kinsta-ops-only, does not read/modify this codebase).
+
+## Prior Focus
+
 Kinsta Log Analyzer Skill enhancement: extracted platform tribal knowledge and action history from Kinsta support transcripts, created two new reference files ([`kinsta-tribal-knowledge.md`](.roo/skills/kinsta-log-analyzer/references/kinsta-tribal-knowledge.md), [`kinsta-history.md`](.roo/skills/kinsta-log-analyzer/references/kinsta-history.md)), added Steps 6.6b/6.6c to SKILL.md workflow, and applied label/template refinements (Incident→Event, Actor→Source, Actions bullet-list format, 404/Error card format, Status column width, IP country/flag in Slowest Pages + Bursts tables).
 
 ## Changes Made
