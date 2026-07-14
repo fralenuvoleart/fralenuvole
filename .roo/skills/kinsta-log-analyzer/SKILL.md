@@ -136,13 +136,32 @@ after analysis finishes. Only the *dynamic* URLs (chosen from findings) wait for
 
 2. **At the same time** (a separate tool call, not sequentially blocking on step 1), **execute**
    [`scripts/probe_urls.py`](scripts/probe_urls.py) against the fixed sample URL list from
-   [`references/site-context.md`](references/site-context.md) → "Known Probe URLs" for this site:
+   [`references/site-context.md`](references/site-context.md) → "Known Probe URLs" for this site.
 
+   > 🚫 **CRITICAL — URLs MUST be extracted mechanically from `site-context.md`, NEVER retyped.**
+   > Transliterated URLs (Russian→Latin, Arabic→Latin, Chinese→Pinyin) are impossible to spell
+   > correctly from memory. Retyping a URL in the probe command WILL introduce a spelling error
+   > that makes the probe hit the wrong page, producing false 404 findings. Use the grep/sed
+   > extraction below — it reads the URLs directly from the source file without human re-typing.
+   
+   **Step 2a — Extract URLs mechanically from site-context.md:**
+   ```bash
+   SITE_CONTEXT=".roo/skills/kinsta-log-analyzer/references/site-context.md"
+   # Extract the probe URL block for this site (between "### SITENAME" and the next "###" or "##")
+   PROBE_URLS=$(sed -n '/### pbservices\.ge/,/^### \|^## /p' "$SITE_CONTEXT" | grep '^https://' | tr '\n' ' ')
+   echo "Probe URLs: $PROBE_URLS"  # verify before running
+   ```
+
+   **Step 2b — Execute the probe using the extracted URLs:**
    ```bash
    python3 .roo/skills/kinsta-log-analyzer/scripts/probe_urls.py \
      --output "$DIR/${TS}_probe_baseline.json" \
-     https://site.example/robots.txt https://site.example/ ...
+     $PROBE_URLS
    ```
+   
+   > The `$PROBE_URLS` variable contains the exact URLs from `site-context.md`, space-separated,
+   > extracted by `sed`/`grep` with zero human re-typing. The `echo` line lets you verify the
+   > extracted URLs before the probe runs.
 
 **Fetch strategy** (implemented by the script, run in parallel):
 
@@ -211,17 +230,30 @@ the URLs that Step 3's analysis actually flagged, since those can't be known bef
 (unlike Step 2's fixed baseline probe). Both probe passes are real-time snapshots of right now, not
 the log window, and Step 6 must state that distinction explicitly whenever it cites either one.
 
-1. **Build the dynamic URL list from the report you just generated**: the top cache-MISSed URL,
-   the slowest page, and the top 404/403 URL (skip any 404 URL that is itself an obvious
-   spam-injection payload — probing it live adds nothing).
-2. **Run it**:
+> 🚫 **Same mechanical-extraction rule as Step 2 applies here — URLs come from the report file,
+> not from memory.** Use `grep`/`sed` on `$REPORT_PATH` to extract URLs, then pass the extracted
+> values to the probe command. Never type a URL that you read from the report.
+
+1. **Extract target URLs mechanically from `$REPORT_PATH`** — do NOT retype them:
+   ```bash
+   # Extract from the report's data tables (NOT from memory):
+   MISS_URL=$(grep -A1 'Pages Most Frequently Missing Cache' "$REPORT_PATH" | grep '^|' | head -1 | sed 's/.*`\([^`]*\)`.*/\1/')
+   # Slowest public page (skip /wp-admin/ entries — they require auth):
+   SLOW_URL=$(grep 'Slowest individual requests' "$REPORT_PATH" -A10 | grep '^|' | grep -v 'wp-admin' | head -1 | sed 's/.*`\([^`]*\)`.*/\1/')
+   # Top 404 URL (skip obvious spam-injection payloads):
+   ERR_URL=$(grep -A10 '404.*requests from' "$REPORT_PATH" | grep '^|' | head -1 | sed 's/.*`\([^`]*\)`.*/\1/')
+   echo "Target URLs: MISS=$MISS_URL  SLOW=$SLOW_URL  ERR=$ERR_URL"
+   ```
+
+2. **Build the probe command using the extracted variables** — never type URLs inline:
    ```bash
    python3 .roo/skills/kinsta-log-analyzer/scripts/probe_urls.py \
      --output "$DIR/${TS}_probe_targeted.json" \
-     https://site.example/top-missed-url-from-report \
-     https://site.example/slowest-page-from-report \
-     https://site.example/top-404-from-report
+     "https://SITE_DOMAIN${MISS_URL}" \
+     "https://SITE_DOMAIN${SLOW_URL}" \
+     "https://SITE_DOMAIN${ERR_URL}"
    ```
+   Replace `SITE_DOMAIN` with the actual site domain (e.g. `pbservices.ge`).
 3. **Read both probe JSON files** (`_probe_baseline.json` from Step 2 and `_probe_targeted.json`
    from this step) and cross-match against the log-derived report:
    - Does the live `http_code` match what the log window showed for that URL? A mismatch (e.g.
@@ -291,6 +323,14 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
      about checking one's own site obsessively — in the finding's Interpretation, not as a
      separate section. If no such evidence exists, do not add a joke; fabricating one to be funny
      violates the no-fabrication rule and is worse than no joke at all.
+   - **🚫 NEVER include known admin IPs in any error, performance, burst, or security finding.**
+     Check `site-context.md` → "Known admin IPs" column before writing ANY card or commentary
+     that names a specific IP. If an IP matches a known admin IP, it is the site administrator
+     doing their job — exclude it from slow-page findings, burst cards, scanner lists, and error
+     drill-down commentary. The script-generated tables (Slowest Requests, Top Visitor IPs,
+     Bursts) are auto-generated evidence and may still show the IP — that's acceptable as raw
+     data, but the LLM-authored commentary MUST NOT treat it as a finding. In the Overall
+     Assessment and At a Glance, attribute admin-IP activity as "admin use" without naming the IP.
 
 4. **Consult the per-bot URL-concentration data and the Concentrated Traffic Spikes & Bursts
    section already in the report** — do not guess whether a bot's traffic is "targeted" or
@@ -502,6 +542,15 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
       "approximately" instead. Example: write `≈85%` or "approximately 85%", never `~85%`.
       This applies to the At a Glance Scope note and any other LLM-written
       content — check every occurrence of `~` before finalizing.
+   7. **NEVER retype or transliterate URLs — always copy-paste them exactly from the source.**
+      URLs contain non-English characters transliterated into ASCII (e.g. Russian words written
+      in Latin script like `individualnyj-predprinematel`). When you retype a URL from memory
+      or sight, you WILL introduce spelling errors (missing letters, swapped vowels) that are
+      invisible to spell-check because the words are transliterations, not real English words.
+      This rule applies everywhere URLs appear: probe commands, report commentary, card
+      findings, KB references. **Copy from the probe JSON output, the report's own data tables,
+      or `site-context.md` — never retype.** Before finalizing the report, grep for any URL
+      you wrote and diff it against the source it came from.
 
 
    **Full section structure — see [`references/report-structure.md`](references/report-structure.md) for the authoritative contract.** The summary below is a quick reference; the contract file defines exact formats, conditional display rules, and the marker inventory.
@@ -620,8 +669,22 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
     ```
     This checks: (a) no unfilled `<!-- LLM: -->` markers remain, (b) no permanently suppressed
     section headings appear, (c) Part 1/Part 2 dividers are present, (d) card format compliance.
-    If validation fails, fix the reported issues and re-run. Do NOT proceed to PDF export until
-    validation passes with exit code 0.
+    If validation fails, fix the reported issues and re-run.
+
+10a. **URL spelling verification (MANDATORY — do not skip).** Run [`scripts/verify_urls.py`](scripts/verify_urls.py)
+    to mechanically diff every URL in the LLM-authored commentary against the source files:
+    ```bash
+    python3 .roo/skills/kinsta-log-analyzer/scripts/verify_urls.py \
+      "$REPORT_PATH" \
+      "$DIR/${TS}_probe_baseline.json" \
+      "$DIR/${TS}_probe_targeted.json" \
+      ".roo/skills/kinsta-log-analyzer/references/site-context.md"
+    ```
+    This catches transliteration errors (e.g. `prinimatel` vs `prinematel`) that are invisible to
+    spell-check because the words are Russian written in Latin script. If any URL in the commentary
+    doesn't exist in the source files, the script reports the mismatch with a "Did you mean?" hint.
+    **Fix all reported mismatches before proceeding.** Do NOT proceed to PDF export until both
+    `--validate` AND `verify_urls.py` pass with exit code 0.
 
 11. **Be honest about uncertainty.** If the data doesn't answer a question, or a Kinsta KB search
     found nothing relevant, say so — do not fabricate explanations or citations.
@@ -676,6 +739,7 @@ per Step 7).
 | Analyst Commentary vanished after a later run | `analyze_logs.py` regenerates the entire report from scratch every run — a manually-appended commentary is not part of that generation and gets silently overwritten | Never re-run the script against real `$DIR` log files whose report is the one being reviewed; use scratch-copied log files (Step 3's warning). If it already happened, re-run Step 3 cleanly, then redo Steps 6.8–6.10 in the same batch of work |
 | Report shows "unknown"/"no PTR record" everywhere | `--no-geoip` was passed, or `ipinfo.io` is failing/rate-limiting broadly | Check the top-of-report banner — it states which case applies. Re-run without `--no-geoip`, or wait and retry if ipinfo.io is down |
 | PDF export fails/skipped | Chromium not found at `/usr/bin/chromium`, or `npx`/network unavailable | Set `CHROMIUM_BIN` to the correct path and re-run [`scripts/export_pdf.sh`](scripts/export_pdf.sh); the Markdown report is still valid on its own regardless |
+| `verify_urls.py` reports URL mismatch | A URL in the LLM-authored commentary was retyped from memory instead of copy-pasted from a source file — transliterated non-English words (e.g. Russian in Latin script) have no semantic meaning to the LLM, so a retyped URL will almost always have a spelling error | Copy the correct URL from the "Did you mean?" hint in the error output, replace the misspelled one in the report via `sed`, then re-run `verify_urls.py`. Also re-run `--validate` and re-export PDF |
 
 ---
 
@@ -686,6 +750,7 @@ per Step 7).
 | [`scripts/fetch_logs.sh`](scripts/fetch_logs.sh) | Parallel log fetch with per-log retry, pinned `kinsta-mcp` version | **Execute** in Step 2 |
 | [`scripts/analyze_logs.py`](scripts/analyze_logs.py) | Log analysis + cross-file correlation, including per-bot URL/IP-concentration ("bursts"), ASN/hosting-provider/reverse-DNS detection, and grouped status codes (local parsing is deterministic; geo-IP/ASN/PTR lookups are not — see `--no-geoip`). **Always regenerates the full report from scratch**, and writes it to `~/Downloads/kinsta-logs/reports/` (not `$DIR`) — see Step 3's scratch-testing warning and the Troubleshooting entry above | **Execute** in Step 3 |
 | [`scripts/probe_urls.py`](scripts/probe_urls.py) | Live HTTP probe (status/timing/headers) — a real-time snapshot, not historical. Run twice: baseline (fixed URLs, Step 2) and targeted (dynamic URLs from findings, Step 4) | **Execute** in Steps 2 & 4 |
+| [`scripts/verify_urls.py`](scripts/verify_urls.py) | Post-generation mechanical URL verification — diffs every URL in LLM-authored commentary against source files (probe JSON, site-context.md, report data tables). Catches transliteration errors that are invisible to spell-check | **Execute** in Step 6.10a — mandatory, do not skip |
 | [`scripts/export_pdf.sh`](scripts/export_pdf.sh) | Converts the final Markdown report to PDF via `md-to-pdf`/`npx`, driven by the system's existing Chromium (no Puppeteer download, no pandoc) | **Execute** in Step 7, after Step 6 is fully written |
 | [`scripts/report.css`](scripts/report.css) | Print stylesheet applied by `export_pdf.sh` — larger body text, `table-layout: fixed` + word-wrap so wide tables don't overflow/truncate in the PDF | Used automatically by `export_pdf.sh`; edit directly if PDF styling needs further tweaks |
 | [`references/site-context.md`](references/site-context.md) | Admin/business-owner timezones, each site's confirmed primary market, and the fixed "Known Probe URLs" list per site — a living cache, update it when the user confirms new context | **Read** in Steps 1 & 2; **update** via `apply_diff` when new context is learned |
