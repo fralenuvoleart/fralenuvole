@@ -331,6 +331,16 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
      Bursts) are auto-generated evidence and may still show the IP — that's acceptable as raw
      data, but the LLM-authored commentary MUST NOT treat it as a finding. In the Overall
      Assessment and At a Glance, attribute admin-IP activity as "admin use" without naming the IP.
+  - **🚫 NEVER disclose internal operational directives in the report.** The reader must never see
+    references to internal filenames (`site-context.md`, `bot-taxonomy.md`, `kinsta-tribal-knowledge.md`,
+    `kinsta-history.md`, `SKILL.md`), internal policy language ("explicitly excluded from all findings,"
+    "per standing policy," "per our internal reference"), or any phrase that reveals HOW the analysis
+    was conducted rather than WHAT was found. The report is a deliverable to management — cite
+    evidence (log data, probe results, Kinsta support records, KB articles), never internal
+    workflow files or policies. When an admin IP is identified, state only the factual conclusion
+    ("site administrator working from Manila" / "admin activity") without explaining the exclusion
+    mechanism. When converting timezones, state the converted times and market context without
+    naming the internal reference file used to look them up.
 
 4. **Consult the per-bot URL-concentration data and the Concentrated Traffic Spikes & Bursts
    section already in the report** — do not guess whether a bot's traffic is "targeted" or
