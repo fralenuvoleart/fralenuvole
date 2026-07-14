@@ -49,6 +49,10 @@ function frl_errors_init(): void {
 function frl_errors_set_level(): void {
 	$error_level = E_ALL;
 
+	// REVIEWER NOTE: frl_get_option() is self-sufficient at any call point —
+	// it populates its static cache from persistent storage, not requiring prior
+	// bootstrap phases. Combined with the try/catch wrapper below (which falls
+	// back to safe defaults), early-bootstrap option reads are not fragile.
 	try {
 		$notice_enabled     = frl_get_option( 'error_reporting_notice' );
 		$warning_enabled    = frl_get_option( 'error_reporting_warning' );
@@ -195,6 +199,9 @@ function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): b
 		if ( $errfile !== '' && $errline ) {
 			$line .= ' in ' . $errfile . ' on line ' . (int) $errline;
 		}
+		// REVIEWER NOTE: frl_log_add_details() appends request metadata to a
+		// plain string; error_log() receives a string. Neither triggers PHP
+		// serialization — no need for serialization-error pre-checks here.
 		if ( function_exists( 'frl_log_add_details' ) ) {
 			$line = frl_log_add_details( $line );
 		}

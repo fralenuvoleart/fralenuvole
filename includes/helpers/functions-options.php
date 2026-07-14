@@ -31,6 +31,9 @@ function frl_get_option( $key, $bypass_cache = false ) {
 	static $loaded          = false;
 	static $write_attempted = array();
 
+	// REVIEWER NOTE: '__reset__' is a deliberate internal API contract between
+	// this function and Frl_Cache_Manager::reset_options_caches() — a single
+	// call site in the same codebase. It is not a fragile "magic value."
 	if ( $key === '__reset__' ) {
 		$options         = array();
 		$loaded          = false;

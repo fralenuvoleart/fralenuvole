@@ -694,11 +694,14 @@ class Frl_Cache_Manager {
 		$current_user_id = $current_user->ID;
 		$auth_cookie     = wp_parse_auth_cookie( '', 'logged_in' );
 
-		$result = $callback();
-
-		if ( $current_user_id && $auth_cookie ) {
-			wp_set_auth_cookie( $current_user_id, true );
-			wp_set_current_user( $current_user_id );
+		try {
+			$result = $callback();
+		} finally {
+			// Guarantee auth restoration even if the callback throws.
+			if ( $current_user_id && $auth_cookie ) {
+				wp_set_auth_cookie( $current_user_id, true );
+				wp_set_current_user( $current_user_id );
+			}
 		}
 
 		return $result;
@@ -780,8 +783,9 @@ class Frl_Cache_Manager {
 				// are not incorrectly skipped.
 				self::$transients_batch_deleted = false;
 
-				frl_is_already_running( __METHOD__, true );
 				return $stats;
+			} finally {
+			frl_is_already_running( __METHOD__, true );
 			}
 		);
 	}
@@ -1282,85 +1286,99 @@ class Frl_Cache_Manager {
 	 * @return array{group: string, runtime_cleared: int, persistent_cleared: int, transaction_used: bool, success: bool} Operation statistics.
 	 */
 	public static function atomic_clear_group( $group, ?array $specific_keys = null ) {
-		$stats = array(
-			'group'              => $group,
-			'runtime_cleared'    => 0,
-			'persistent_cleared' => 0,
-			'transaction_used'   => false,
-			'success'            => false,
-		);
-
-		// For object cache, use existing methods (no transaction needed)
-		if ( self::is_object_cache_truly_functional() ) {
-			$cg_result                   = self::clear_group_with_dependencies( $group, null, false );
-			$stats['runtime_cleared']    = $cg_result['runtime'] ?? 0;
-			$stats['persistent_cleared'] = $cg_result['persistent'] ?? 0;
-			$stats['success']            = true;
-			$stats['group']              = $group;
-			return $stats;
+		if ( frl_is_already_running( __METHOD__ ) ) {
+			return array(
+				'group'              => $group,
+				'runtime_cleared'    => 0,
+				'persistent_cleared' => 0,
+				'transaction_used'   => false,
+				'success'            => false,
+			);
 		}
 
-		// For transients, use transaction-based clearing
-		if ( isset( self::$persistent_groups_map[ $group ] ) ) {
-			$stats['transaction_used'] = true;
-
-			$result = self::execute_with_transaction(
-				function () use ( $group, $specific_keys, $wpdb ) {
-
-					if ( $specific_keys !== null ) {
-						// Clear specific keys
-						$transient_keys = array();
-						$timeout_keys   = array();
-
-						foreach ( $specific_keys as $key ) {
-							$cache_key        = self::generate_key( $group, $key );
-							$transient_keys[] = '_transient_' . self::PREFIX . $cache_key;
-							$timeout_keys[]   = '_transient_timeout_' . self::PREFIX . $cache_key;
-						}
-
-						$all_keys = array_merge( $transient_keys, $timeout_keys );
-						return self::safe_batch_delete_transients( $all_keys );
-					} else {
-						// Clear entire group
-						$prefix         = '_transient_' . self::PREFIX . $group . '_';
-						$timeout_prefix = '_transient_timeout_' . self::PREFIX . $group . '_';
-
-						// Get all keys for this group
-						$query = $wpdb->prepare(
-							"SELECT option_name FROM $wpdb->options
-                         WHERE option_name LIKE %s OR option_name LIKE %s",
-							$wpdb->esc_like( $prefix ) . '%',
-							$wpdb->esc_like( $timeout_prefix ) . '%'
-						);
-
-						frl_flush_db(); // Ensure clean database state
-						$keys_to_delete = $wpdb->get_col( $query );
-
-						if ( ! empty( $keys_to_delete ) ) {
-							return self::safe_batch_delete_transients( $keys_to_delete );
-						}
-
-						return array( 'deleted_count' => 0 );
-					}
-				},
-				'atomic_clear_group_' . $group
+		try {
+			$stats = array(
+				'group'              => $group,
+				'runtime_cleared'    => 0,
+				'persistent_cleared' => 0,
+				'transaction_used'   => false,
+				'success'            => false,
 			);
 
-			if ( $result !== false ) {
-				$stats['persistent_cleared'] = $result['deleted_count'] ?? 0;
+			// For object cache, use existing methods (no transaction needed)
+			if ( self::is_object_cache_truly_functional() ) {
+				$cg_result                   = self::clear_group_with_dependencies( $group, null, false );
+				$stats['runtime_cleared']    = $cg_result['runtime'] ?? 0;
+				$stats['persistent_cleared'] = $cg_result['persistent'] ?? 0;
 				$stats['success']            = true;
+				$stats['group']              = $group;
+				return $stats;
 			}
+
+			// For transients, use transaction-based clearing
+			if ( isset( self::$persistent_groups_map[ $group ] ) ) {
+				$stats['transaction_used'] = true;
+
+				$result = self::execute_with_transaction(
+					function () use ( $group, $specific_keys, $wpdb ) {
+
+						if ( $specific_keys !== null ) {
+							// Clear specific keys
+							$transient_keys = array();
+							$timeout_keys   = array();
+
+							foreach ( $specific_keys as $key ) {
+								$cache_key        = self::generate_key( $group, $key );
+								$transient_keys[] = '_transient_' . self::PREFIX . $cache_key;
+								$timeout_keys[]   = '_transient_timeout_' . self::PREFIX . $cache_key;
+							}
+
+							$all_keys = array_merge( $transient_keys, $timeout_keys );
+							return self::safe_batch_delete_transients( $all_keys );
+						} else {
+							// Clear entire group
+							$prefix         = '_transient_' . self::PREFIX . $group . '_';
+							$timeout_prefix = '_transient_timeout_' . self::PREFIX . $group . '_';
+
+							// Get all keys for this group
+							$query = $wpdb->prepare(
+								"SELECT option_name FROM $wpdb->options
+                             WHERE option_name LIKE %s OR option_name LIKE %s",
+								$wpdb->esc_like( $prefix ) . '%',
+								$wpdb->esc_like( $timeout_prefix ) . '%'
+							);
+
+							frl_flush_db(); // Ensure clean database state
+							$keys_to_delete = $wpdb->get_col( $query );
+
+							if ( ! empty( $keys_to_delete ) ) {
+								return self::safe_batch_delete_transients( $keys_to_delete );
+							}
+
+							return array( 'deleted_count' => 0 );
+						}
+					},
+					'atomic_clear_group_' . $group
+				);
+
+				if ( $result !== false ) {
+					$stats['persistent_cleared'] = $result['deleted_count'] ?? 0;
+					$stats['success']            = true;
+				}
+			}
+
+			// Clear runtime cache regardless of transaction result
+			$stats['runtime_cleared'] = self::purge_group_runtime( $group );
+
+			// Set success for runtime-only groups
+			if ( ! isset( self::$persistent_groups_map[ $group ] ) ) {
+				$stats['success'] = true;
+			}
+
+			return $stats;
+		} finally {
+			frl_is_already_running( __METHOD__, true );
 		}
-
-		// Clear runtime cache regardless of transaction result
-		$stats['runtime_cleared'] = self::purge_group_runtime( $group );
-
-		// Set success for runtime-only groups
-		if ( ! isset( self::$persistent_groups_map[ $group ] ) ) {
-			$stats['success'] = true;
-		}
-
-		return $stats;
 	}
 
 	/**
@@ -1440,43 +1458,46 @@ class Frl_Cache_Manager {
 			return array();
 		}
 
-		// Reset the cleared groups tracker for this batch operation
-		self::$groups_cleared = array();
+		try {
+			// Reset the cleared groups tracker for this batch operation
+			self::$groups_cleared = array();
 
-		$stats = array(
-			'runtime'        => 0,
-			'persistent'     => 0,
-			'wordpress'      => 0,
-			'skipped_groups' => FRL_CACHE_HEAVY_GROUPS,
-		);
+			$stats = array(
+				'runtime'        => 0,
+				'persistent'     => 0,
+				'wordpress'      => 0,
+				'skipped_groups' => FRL_CACHE_HEAVY_GROUPS,
+			);
 
-		// Get all defined groups from TTL config
-		$all_groups = array_keys( self::$default_ttls );
+			// Get all defined groups from TTL config
+			$all_groups = array_keys( self::$default_ttls );
 
-		foreach ( $all_groups as $group ) {
-			// Skip heavy groups
-			if ( isset( self::$heavy_groups_map[ $group ] ) ) {
-				continue;
+			foreach ( $all_groups as $group ) {
+				// Skip heavy groups
+				if ( isset( self::$heavy_groups_map[ $group ] ) ) {
+					continue;
+				}
+
+				// Clear group WITHOUT dependencies
+				$group_stats = self::clear_group_with_dependencies( $group, null, false );
+
+				// Aggregate statistics
+				$stats['runtime']    += $group_stats['runtime'];
+				$stats['persistent'] += $group_stats['persistent'];
+				$stats['wordpress']  += $group_stats['wordpress'];
+
+				// Store group-specific stats too
+				$stats['groups'][ $group ] = $group_stats;
 			}
 
-			// Clear group WITHOUT dependencies
-			$group_stats = self::clear_group_with_dependencies( $group, null, false );
+			// Explicitly clear key/deferred caches if needed, but not full runtime
+			self::$key_cache       = array();
+			self::$deferred_writes = array();
 
-			// Aggregate statistics
-			$stats['runtime']    += $group_stats['runtime'];
-			$stats['persistent'] += $group_stats['persistent'];
-			$stats['wordpress']  += $group_stats['wordpress'];
-
-			// Store group-specific stats too
-			$stats['groups'][ $group ] = $group_stats;
+			return $stats;
+		} finally {
+			frl_is_already_running( __METHOD__, true );
 		}
-
-		// Explicitly clear key/deferred caches if needed, but not full runtime
-		self::$key_cache       = array();
-		self::$deferred_writes = array();
-
-		frl_is_already_running( __METHOD__, true );
-		return $stats;
 	}
 
 	/**
