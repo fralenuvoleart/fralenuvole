@@ -220,14 +220,13 @@ function frl_get_html_option( string $option_name, ?string $php_enabled_option =
 		'html',
 		$cache_key,
 		function () use ( $option_name, $php_enabled_option ) {
-			if ( ! frl_get_option( $option_name ) ) {
+			$html = frl_get_option( $option_name );
+			if ( ! $html ) {
 				return '';
 			}
 
-			$html = frl_get_option( $option_name );
 			if ( $php_enabled_option && frl_get_option( $php_enabled_option ) ) {
-				$processed_html = frl_process_php_string( $html, $option_name );
-				return $processed_html;
+				return frl_process_php_string( $html, $option_name );
 			}
 			return $html;
 		}
