@@ -27,15 +27,13 @@ const FRL_VERSION = '5.7.4.5';
 // Load required core files and constants
 require_once __DIR__ . '/includes/bootstrap.php';
 
-// Load core infrastructure
-
-// Load lifecycle hooks after bootstrap
-require_once FRL_DIR_PATH . 'includes/plugin-lifecycle.php';
-
 // FRL_MODE=disable: Stop loading the plugin entirely
 if ( defined( 'FRL_MODE' ) && FRL_MODE === 'disable' ) {
 	return;
 }
+
+// Load lifecycle hooks after bootstrap
+require_once FRL_DIR_PATH . 'includes/plugin-lifecycle.php';
 
 // Register lifecycle hooks (callbacks defined in includes/lifecycle.php)
 register_activation_hook( __FILE__, 'frl_activate_plugin' );

@@ -6,7 +6,8 @@ Plugin maintenance and hardening. Recent work includes null-guard fixes, transla
 
 ## Changes Made
 
-1. **Added null guard to [`frl_get_plugin_options_db()`](includes/helpers/functions-options.php:308)** — `$wpdb->get_results()` can return `null` on DB failure; added `if (!is_array($results)) { return array(); }` before the `foreach` to prevent `foreach() argument must be of type array|object, null given` warning.
+1. **Fixed `FRL_MODE=disable` fatal error in [`fralenuvole.php`](fralenuvole.php:30-33)** — The disable guard was placed AFTER `require_once FRL_DIR_PATH . 'includes/plugin-lifecycle.php'` (line 33 old/line 36 new), but `FRL_DIR_PATH` is defined in [`config/config-base.php`](config/config-base.php:23) which is loaded in [`bootstrap.php`](includes/bootstrap.php:37) AFTER the disable check at line 28-30. Moved the guard to immediately after `require_once` of bootstrap, before any `FRL_DIR_PATH` usage. Also removed the now-redundant duplicate guard. Full analysis in [`plans/debug-mode-failure-points.md`](plans/debug-mode-failure-points.md).
+2. **Added null guard to [`frl_get_plugin_options_db()`](includes/helpers/functions-options.php:308)** — `$wpdb->get_results()` can return `null` on DB failure; added `if (!is_array($results)) { return array(); }` before the `foreach` to prevent `foreach() argument must be of type array|object, null given` warning.
 
 ## Prior Tasks (Completed)
 
