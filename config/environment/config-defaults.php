@@ -44,11 +44,11 @@ const FRL_ENV_DEFAULT = array(
 		'pbnova'            => false,
 		'frl'               => false,
 		'wsform'            => true,
+		'call_to_actions'   => false,
 		'thirdparty'        => true,
 		'subdomain_adapter' => false,
 		'acf'               => false,
 		'acf-migration'     => false,
-		'call_to_actions'   => false,
 	),
 	'wp_options'     => array(
 		'blog_public' => 1,
