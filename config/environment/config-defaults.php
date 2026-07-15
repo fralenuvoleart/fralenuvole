@@ -55,6 +55,7 @@ const FRL_ENV_DEFAULT = array(
 	),
 	'plugin_options' => array(
 		'wsform_webhook'             => false,
+		'cta_webhook'                => false,
 		'header_html'                => '',
 		'header_html_php'            => false,
 		'footer_html'                => 'file',

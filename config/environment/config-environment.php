@@ -30,6 +30,7 @@ const FRL_ENV_PBS_TEMPLATE = array(
 	),
 	'plugin_options' => array(
 		'wsform_webhook' => true,
+		'cta_webhook'    => true,
 	),
 );
 
