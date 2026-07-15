@@ -45,34 +45,21 @@ function frl_channel_tracking_init() {
  * Enqueue channel-tracking.js and cta-actions.js with a shared localized config.
  */
 function frl_channel_tracking_enqueue() {
-	$js_dir_url  = FRL_DIR_URL . 'assets/js/';
-	$js_dir_path = FRL_DIR_PATH . 'assets/js/';
+	// Guard: skip admin/CLI/REST/cron/AJAX/non-HTML requests, matching frl_public_scripts().
+	if ( ! frl_is_valid_frontend_page_request() ) {
+		return;
+	}
 
-	$ct_version = file_exists( $js_dir_path . 'public-channel-tracking.js' )
-		? filemtime( $js_dir_path . 'public-channel-tracking.js' )
-		: '1.0.0';
-	wp_enqueue_script(
-		'frl-channel-tracking',
-		$js_dir_url . 'public-channel-tracking.js',
-		array(),
-		$ct_version,
+	// frl_enqueue_scripts() handles cached filemtime() versioning + dedupe internally.
+	// Resulting handles are 'frl-channel-tracking' / 'frl-cta-actions' (FRL_PREFIX + key).
+	frl_enqueue_scripts(
 		array(
-			'strategy'  => 'defer',
-			'in_footer' => true,
-		)
-	);
-
-	$cta_version = file_exists( $js_dir_path . 'public-cta-actions.js' )
-		? filemtime( $js_dir_path . 'public-cta-actions.js' )
-		: '1.0.0';
-	wp_enqueue_script(
-		'frl-cta-actions',
-		$js_dir_url . 'public-cta-actions.js',
-		array( 'frl-channel-tracking' ), // dependency guarantees load order + config-global availability
-		$cta_version,
+			'channel-tracking' => 'assets/js/public-channel-tracking.js',
+			'cta-actions'      => 'assets/js/public-cta-actions.js',
+		),
+		'channel_tracking',
 		array(
-			'strategy'  => 'defer',
-			'in_footer' => true,
+			'cta-actions' => array( 'frl-channel-tracking' ), // load-order + config-global dependency
 		)
 	);
 
