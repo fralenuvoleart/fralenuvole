@@ -86,24 +86,6 @@ add_action(
 	1
 );
 
-// Button-click webhook AJAX handlers (logged-in and logged-out users).
-// Module-toggle-gated: automatically stands down when call-to-actions is
-// enabled, preventing a double-registration race on wp_ajax_frl_button_webhook.
-if ( ! frl_get_option( 'module_call_to_actions' ) ) {
-	add_action(
-		'wp_ajax_frl_button_webhook',
-		'frl_wsf_button_webhook_handler',
-		10,
-		0
-	);
-	add_action(
-		'wp_ajax_nopriv_frl_button_webhook',
-		'frl_wsf_button_webhook_handler',
-		10,
-		0
-	);
-}
-
 /**
  * Gets the matching webhook configurations based on the environment and form ID.
  *
@@ -322,82 +304,4 @@ function frl_wsf_spam_filter_submission( $field_error_action_array, $post_mode, 
 	}
 
 	return $field_error_action_array;
-}
-
-/**
- * Handles button-click webhook requests sent via sendBeacon from the frontend.
- * Looks up the webhook URL server-side from WS_BUTTON_ACTIONS (never exposed to client).
- * Reuses frl_wsf_should_send_webhook() for dedupe and frl_wsf_execute_webhook_submission() for dispatch.
- */
-function frl_wsf_button_webhook_handler() {
-	// Public analytics endpoint (nopriv). Protected by sanitization, deduplication,
-	// and rate limiting. No nonce: Cloudflare CDN caching causes nonce expiration.
-
-	// wp_unslash() before sanitizing: these free-text values (reference_id, UTM params, etc.)
-	// are sent verbatim to a third-party webhook — without unslashing, any submitted value
-	// containing a quote or backslash would arrive at the webhook with a spurious extra
-	// backslash (sanitize_text_field()/sanitize_url() do not strip WP's added magic-quote slash).
-	$action_id = sanitize_text_field( wp_unslash( $_POST['action_id'] ?? '' ) );
-	if ( empty( $action_id ) || ! defined( 'WS_BUTTON_ACTIONS' ) ) {
-		wp_send_json_error( 'Invalid action', 400 );
-	}
-
-	$webhook_url = '';
-	$use_cron    = false;
-	foreach ( WS_BUTTON_ACTIONS as $btn ) {
-		if ( ( $btn['id'] ?? '' ) === $action_id && ! empty( $btn['webhook'] ) ) { // @phpstan-ignore-line
-			$webhook_url = $btn['webhook'];
-			$use_cron    = $btn['use_cron'] ?? false; // @phpstan-ignore-line Offset 'use_cron' on array does not exist
-			break;
-		}
-	}
-
-	if ( empty( $webhook_url ) ) {
-		wp_send_json_error( 'No webhook configured', 404 );
-	}
-
-	$service  = 'Webpage';
-	$page_url = sanitize_url( wp_unslash( $_POST['page_url'] ?? '' ) );
-	$post_id  = url_to_postid( $page_url );
-	if ( $post_id > 0 && defined( 'WS_BUTTON_WEBHOOK_SERVICE_META' ) ) {
-		$meta = frl_get_post_meta( $post_id, WS_BUTTON_WEBHOOK_SERVICE_META, true );
-		if ( ! empty( $meta ) ) {
-			$service = sanitize_text_field( $meta );
-		}
-	}
-
-	$post_data = array(
-		'Reference ID'     => sanitize_text_field( wp_unslash( $_POST['reference_id'] ?? '' ) ),
-		'CTA'              => ucfirst( $action_id ),
-		'Service'          => $service,
-		'Language'         => sanitize_text_field( wp_unslash( $_POST['language'] ?? '' ) ),
-		'Referer'          => sanitize_url( wp_unslash( $_POST['referer'] ?? '' ) ),
-		'User IP'          => sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' ),
-		'Page URL'         => $page_url,
-		'Channel Source'   => sanitize_text_field( wp_unslash( $_POST['source'] ?? '' ) ),
-		'Channel Medium'   => sanitize_text_field( wp_unslash( $_POST['medium'] ?? '' ) ),
-		'Channel Campaign' => sanitize_text_field( wp_unslash( $_POST['campaign'] ?? '' ) ),
-		'Channel Term'     => sanitize_text_field( wp_unslash( $_POST['term'] ?? '' ) ),
-		'Channel Content'  => sanitize_text_field( wp_unslash( $_POST['content'] ?? '' ) ),
-		'Channel GCLID'    => sanitize_text_field( wp_unslash( $_POST['gclid'] ?? '' ) ),
-		'Channel FBCLID'   => sanitize_text_field( wp_unslash( $_POST['fbclid'] ?? '' ) ),
-		'Channel Landing'  => sanitize_text_field( wp_unslash( $_POST['landing'] ?? '' ) ),
-	);
-
-	if ( ! frl_wsf_should_send_webhook( $post_data ) ) {
-		wp_send_json_success( 'Deduplicated' );
-	}
-
-	$args = array(
-		'url'  => $webhook_url,
-		'data' => $post_data,
-	);
-
-	if ( $use_cron ) {
-		wp_schedule_single_event( time(), 'frl_wsf_send_form_submission_webhook', array( $args ) );
-	} else {
-		frl_wsf_execute_webhook_submission( $args );
-	}
-
-	wp_send_json_success( 'Webhook sent' );
 }

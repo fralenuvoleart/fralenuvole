@@ -53,31 +53,6 @@ const WSFORM_ALL_WEBHOOKS_CONFIG = array(
 				'Channel Landing'      => 'field_247',
 			),
 		),
-		array(
-			'form_id'    => 9, // Second webhook trigger
-			'use_cron'   => false,
-			'url'        => 'https://webhooks.integrately.com/a/webhooks/171f3cf7dd074bc08c0ad004a245c5d7',
-			'fields_map' => array(
-				// Reference ID is used to identify webhook submission, must be present to dedupe.
-				'Reference ID'     => 'field_157',
-				// CTA is used to identify the channel of the webhook submission. Must be present to dedupe.
-				'CTA'              => 'field_158',
-				'Contact method'   => 'field_158',
-				'Service'          => 'field_159',
-				'Language'         => 'field_162',
-				'Page URL'         => 'field_160',
-				'Referer'          => 'field_163',
-				'User IP'          => 'field_164',
-				'Channel Source'   => 'field_165',
-				'Channel Medium'   => 'field_166',
-				'Channel Landing'  => 'field_167',
-				'Channel Campaign' => 'field_168',
-				'Channel Term'     => 'field_169',
-				'Channel Content'  => 'field_170',
-				'Channel GCLID'    => 'field_171',
-				'Channel FBCLID'   => 'field_172',
-			),
-		),
 	),
 	// PB Property
 	'pbp'     => array(
