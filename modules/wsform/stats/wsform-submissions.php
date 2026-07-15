@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 function frl_wsf_get_submission_data( $days = 30 ) {
 	global $wpdb;
 
-	$stats_form_ids = defined( 'WS_STATS_FORM_IDS' ) ? WS_STATS_FORM_IDS : null;
+	$stats_form_ids = defined( 'WSFORM_STATS_FORM_IDS' ) ? WSFORM_STATS_FORM_IDS : null;
 	if ( is_array( $stats_form_ids ) ) {
 		$stats_form_ids = array_filter( $stats_form_ids, 'is_int' );
 		if ( empty( $stats_form_ids ) ) {
@@ -51,7 +51,7 @@ function frl_wsf_get_submission_data( $days = 30 ) {
 			$results = array();
 
 			if ( $wsf_table_exists ) {
-				// Get form submissions within date range, optionally filtered by WS_STATS_FORM_IDS
+				// Get form submissions within date range, optionally filtered by WSFORM_STATS_FORM_IDS
 				$query_sql = "SELECT
                     DATE(s.date_added) as submit_date,
                     s.form_id,

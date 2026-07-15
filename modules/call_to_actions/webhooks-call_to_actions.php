@@ -38,14 +38,15 @@ function frl_cta_webhook_handler() {
 		wp_send_json_error( 'Invalid action', 400 );
 	}
 
-	$env_config  = frl_environment_get_config();
-	$env_prefix  = $env_config['prefix'] ?? 'default';
-	$webhook_url = '';
+	$env_config     = frl_environment_get_config();
+	$env_prefix     = $env_config['prefix'] ?? 'default';
+	$webhook_config = array();
 
 	if ( defined( 'CTA_WEBHOOK_CONFIG' ) && isset( CTA_WEBHOOK_CONFIG[ $env_prefix ][ $action_id ] ) ) {
-		$webhook_url = CTA_WEBHOOK_CONFIG[ $env_prefix ][ $action_id ];
+		$webhook_config = CTA_WEBHOOK_CONFIG[ $env_prefix ][ $action_id ];
 	}
 
+	$webhook_url = $webhook_config['url'] ?? '';
 	if ( empty( $webhook_url ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );
 	}
@@ -83,7 +84,7 @@ function frl_cta_webhook_handler() {
 		}
 	}
 
-	$use_cron = defined( 'CTA_WEBHOOK_USE_CRON' ) && CTA_WEBHOOK_USE_CRON;
+	$use_cron = $webhook_config['use_cron'] ?? false;
 	if ( $use_cron ) {
 		frl_send_webhook_async( $webhook_url, $post_data );
 	} else {

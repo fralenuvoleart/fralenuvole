@@ -62,7 +62,6 @@ function frl_channel_tracking_enqueue() {
 		'cookieDays'        => CT_ATTR_COOKIE_DAYS,
 		'cookiePath'        => CT_ATTR_COOKIE_PATH,
 		'cookieDomain'      => CT_ATTR_COOKIE_DOMAIN,
-		'fieldMapping'      => array(),
 		'keys'              => CT_ATTR_KEYS,
 		'ctaActions'        => $actions,
 		'referenceIdLength' => CT_ATTR_REFERENCE_ID_LENGTH,

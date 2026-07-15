@@ -33,12 +33,16 @@ const CTA_ACTIONS = array(
 	),
 );
 
-// Per-environment CTA webhook URLs. Flat action_id → URL mapping.
+// Per-environment CTA webhook configs. action_id → {url, use_cron} mapping.
 // Resolved via environment prefix at runtime.
+// Matches wsform's WSFORM_ALL_WEBHOOKS_CONFIG pattern.
 const CTA_WEBHOOK_CONFIG = array(
 	'default' => array(),
 	'pbs'     => array(
-		'email' => 'https://webhooks.integrately.com/a/webhooks/171f3cf7dd074bc08c0ad004a245c5d7',
+		'email' => array(
+			'url'      => 'https://webhooks.integrately.com/a/webhooks/171f3cf7dd074bc08c0ad004a245c5d7',
+			'use_cron' => false,
+		),
 	),
 );
 

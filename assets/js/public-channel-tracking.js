@@ -167,7 +167,6 @@
      * Optimized form population with cookie string caching
      */
     function populateFormFields() {
-        var mapping = CONFIG.fieldMapping;
         var cookieString = document.cookie; // Cache document.cookie string once
         var keys = Array.isArray(CONFIG.keys) && CONFIG.keys.length
             ? CONFIG.keys
@@ -176,7 +175,7 @@
 
         for (var i = 0; i < keys.length; i++) {
             var key = keys[i];
-            var fieldName = mapping[key] || (CONFIG.fieldPrefix + key);
+            var fieldName = CONFIG.fieldPrefix + key;
             var value = getCookie(key, cookieString) || (defaults[key] || '');
             
             // Perform targeted queries (broadened to ensure detection)

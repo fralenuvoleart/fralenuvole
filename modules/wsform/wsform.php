@@ -205,7 +205,7 @@ function frl_wsf_translate_form_success( $message ) {
  * @return array Modified $widgets array with WS Form widget config added.
  */
 function frl_wsf_add_dashboard_widget( $widgets ) {
-	$entries = defined( 'WS_STATS_FORM_IDS' ) ? WS_STATS_FORM_IDS : array();
+	$entries = defined( 'WSFORM_STATS_FORM_IDS' ) ? WSFORM_STATS_FORM_IDS : array();
 	// @phpstan-ignore function.alreadyNarrowedType
 	if ( ! is_array( $entries ) ) {
 		$entries = array( $entries );
