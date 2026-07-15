@@ -108,8 +108,8 @@ The Kinsta API (`kinsta.logs.get`) is **line-based, not time-based**:
 3. **If the user specified a site name**, extract the site ID and live environment ID from the JSON output.
 4. **If no site specified**:
    - Check conversation history for a previously analyzed site — reuse it.
-   - If ≤3 sites exist in the account, list them inline (no `ask_followup` — just say "Analyzing pbservices.ge (only site found)" or "Which: pbservices.ge, pbproperty.ge, or pbnova.com?").
-   - Only use `ask_followup_question` if >3 sites.
+   - **Default site: `pbservices.ge`.** If no conversation history exists and the user didn't specify a site, analyze pbservices.ge without asking. Announce it briefly: "Analyzing pbservices.ge (default site)."
+   - Only ask which site if the user explicitly requests a different site or if conversation history points to a different site.
 5. Default to the **live** environment. Read [`references/site-context.md`](references/site-context.md) — required context for interpreting traffic-hour patterns and geo-IP results. If the site has an `unknown — ask` entry, ask once via `ask_followup_question`, then persist the answer via `apply_diff`.
 5. **Read [`references/site-context.md`](references/site-context.md)** — it records the admin's
    and business owner's timezones and each site's confirmed primary visitor market. This is
@@ -564,6 +564,61 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
       findings, KB references. **Copy from the probe JSON output, the report's own data tables,
       or `site-context.md` — never retype.** Before finalizing the report, grep for any URL
       you wrote and diff it against the source it came from.
+   8. **At a Glance: bold only key words and numbers, never entire paragraphs.**
+      Bold formatting draws the eye — when an entire paragraph is bold, nothing stands out and
+      the visual hierarchy collapses. Use bold sparingly on the most critical words, numbers,
+      and verdict terms within each sentence. The At a Glance section's purpose is scanability;
+      a wall of bold text defeats that purpose. Example: "Cache HIT at **32%** in a
+      **post-midnight cold-start window** — daytime rate not assessable. **No security
+      incidents.**"
+   9. **At a Glance: never flag cache HIT rate as "below target" when the cache-perf window is
+      a short post-midnight cold-start period.**
+      Kinsta purges the server page cache every 24 hours at approximately midnight UTC. A
+      cache-perf log covering only the post-purge window (e.g., 22:33–01:00 UTC, ≈2.5 hours)
+      will always show a low HIT rate because the cache is cold — this is expected platform
+      behavior, not a configuration defect. In such windows, describe the cache state factually
+      (e.g., "Cache HIT at **32%** — expected for this post-midnight cold-start window; daytime
+      rate not assessable from this data") rather than as a "below target" finding. Only flag
+      cache HIT as a genuine 🟡 concern when the cache-perf window spans ≥6 hours of daytime
+      traffic (e.g., 09:00–21:00 UTC) where a cold-start excuse no longer applies.
+   10. **Cache cold-start mechanism: explain once in Cache Root Cause Analysis, cite by name
+       everywhere else.**
+       The midnight-UTC cache purge and its effect on HIT rates is a single root cause. Describe
+       it in full ONLY in the Cache Root Cause Analysis card (Primary Root Cause). Every other
+       section that references the cache HIT rate (Overall Assessment, At a Glance, Traffic
+       Anomalies) must cite it by a short reference — `"(see Cache Root Cause Analysis for the
+       cold-start window explanation)"` or `"as noted in Cache Root Cause"` — and NEVER
+       re-explain the purge mechanism, timing, or expected behavior. This is a specific,
+       high-frequency application of Directive 3 (explain once, cite thereafter) that has been
+       repeatedly violated in past runs.
+   11. **Bold key metrics selectively within prose paragraphs.**
+       When a paragraph contains several numbers, bold the 1–2 most significant metrics to
+       create visual waypoints for a scanning reader. Never bold every number in a paragraph —
+       that produces the same uniformity problem as bolding entire paragraphs. Choose the
+       numbers that carry the most diagnostic weight (e.g., the HIT rate percentage, the error
+       count, the bot request volume) and bold only those. Example: "Cache HIT at **32%** (208
+       of 657 entries), BYPASS **40%** (265 entries), MISS 28% (184 entries)."
+   12. **Bytespider: never default to "Monitor" without stating the site's ZH-content relevance
+       explicitly.**
+       Bytespider is ByteDance's crawler for Doubao (China's #1 consumer AI search engine). Per
+       `bot-taxonomy.md`, the verdict is case-by-case based on whether the site has
+       Chinese-language content (`/zh/`). If the site has ZH content, Bytespider is expected
+       search-engine traffic — state this explicitly and assign `✅ Keep`, not `👀 Monitor`. If
+       the site has no ZH content, state that explicitly as the reason for any non-Keep verdict.
+       Never write "Monitor Bytespider volume" as a vague, unexplained recommendation — always
+       answer: does this site target a Chinese-speaking audience, and is the volume
+       proportionate? A site without ZH content receiving moderate Bytespider volume is normal
+       internet background radiation, not a finding.
+   13. **403 spam-block rules: only recommend adding new rules when new spam patterns appear in
+       the error log.**
+       When existing Nginx keyword blocks (e.g., `yinlang388`, `388ym.com`) are confirmed
+       working by log evidence (spam requests return 403 as intended), do NOT recommend "verify
+       the rules are still current" or "review error log monthly for new patterns" as an action
+       — the rules are already verified by the data in front of you. The only actionable
+       recommendation for 403 spam-block rules is: "Add Nginx keyword block for [new spam
+       domain/pattern]" when a NEW spam pattern is observed in the error log that is not already
+       covered by existing rules. If no new patterns are observed, state `✅ Existing Nginx
+       spam-block rules are working as intended — no new patterns detected.` and move on.
 
 
    **Full section structure — see [`references/report-structure.md`](references/report-structure.md) for the authoritative contract.** The summary below is a quick reference; the contract file defines exact formats, conditional display rules, and the marker inventory.
@@ -580,13 +635,13 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
    
    **Part 1 sections** (LLM orders by severity: 🔴 > 🟡 > 🔧 > ✅; within same tier by impact magnitude):
 
-   - **Overall Assessment** (`<!-- LLM:OVERALL_ASSESSMENT -->`) — severity-icon verdict line + 5-row summary table (Security / Stability / Cache / Bot traffic / Slow pages) with a slightly wider Status&nbsp;&nbsp; column. Never a dense prose paragraph.
+   - **Overall Assessment** (`<!-- LLM:OVERALL_ASSESSMENT -->`) — severity-icon verdict line + 5-row summary table (Security / Stability / Cache / Bot traffic / Slow pages) with a slightly wider Status&nbsp;&nbsp; column. Never a dense prose paragraph. ⚠️ **D9:** If cache-perf window <6h daytime, don't call HIT rate "below target." **D10:** Reference cache cold-start by name only — full explanation lives in Cache Root Cause.
    - **🎯 Convergent Cross-Signals** — script-authored, deterministic (NOT an LLM marker). A set-intersection across the report's own notable-URL lists (top cache-MISSed pages, burst targets, top 403/404 error URLs); a URL in 2+ lists is named as the single highest-priority fix target with combined evidence cited. Excludes `Kinsta-Log-Analyzer-Probe` traffic (self-generated, not a real finding). Always present — states the overlap or states plainly that none was found. Positioned right after Overall Assessment, before every individual finding card, since its purpose is to reprioritize what follows before the reader reaches it.
-   - **Attack/Security Findings** (`<!-- LLM:ATTACK_SECURITY -->`) — Event/Analysis/Source/Actions card format, one card per distinct pattern. If none: single `#### ✅ No security incidents` card.
-   - **Cache Root Cause Analysis** (`<!-- LLM:CACHE_ROOT_CAUSE -->`) — sub-headed cards (`#### 🔴 Primary Root Cause`, `#### 🟡 Secondary Contributor`). Evidence-cited from both probe passes. If cache is healthy: `✅ Cache HIT rate at or above target.`
-   - **Bot Traffic Strategy** (`<!-- LLM:BOT_STRATEGY -->`) — table (bot | requests | % | verdict | evidence) with Totals row. Per Conciseness Directive 2, if >70% of bots resolve to the same verdict, collapse them into one summary row (`"✅ Keep (N bots, no action — see Part 2 for the full list)"`) and itemize only the outliers (Block/Monitor/Throttle). **Note:** Directive 2 applies to THIS Part 1 table only — the auto-generated per-category bot tables in Part 2 are the full evidence appendix and must list every bot individually; do not collapse those. After writing the Part 1 table, inject a **Verdict** column into every auto-generated bot table in Part 2 using the exact verdict from this Strategy table (`✅ Keep` / `🔧 Block` / `👀 Monitor` / `🔧 Throttle`).
+   - **Attack/Security Findings** (`<!-- LLM:ATTACK_SECURITY -->`) — Event/Analysis/Source/Actions card format, one card per distinct pattern. If none: single `#### ✅ No security incidents` card. ⚠️ **D13:** 403 spam-blocks confirmed working → `✅ Existing rules working`. Only recommend new rules when new spam patterns appear. Never say "verify rules are still current."
+   - **Cache Root Cause Analysis** (`<!-- LLM:CACHE_ROOT_CAUSE -->`) — sub-headed cards (`#### 🔴 Primary Root Cause`, `#### 🟡 Secondary Contributor`). Evidence-cited from both probe passes. If cache is healthy: `✅ Cache HIT rate at or above target.` ⚠️ **D10: THIS is the ONE AND ONLY place where the midnight-UTC cache purge mechanism gets a full explanation.** Every other section references it by short name only (e.g., `"post-midnight cold-start window (see Cache Root Cause)"`). If you write the purge timing/behavior explanation in any other section, you have violated this rule.
+   - **Bot Traffic Strategy** (`<!-- LLM:BOT_STRATEGY -->`) — table (bot | requests | % | verdict | evidence) with Totals row. Per Conciseness Directive 2, if >70% of bots resolve to the same verdict, collapse them into one summary row (`"✅ Keep (N bots, no action — see Part 2 for the full list)"`) and itemize only the outliers (Block/Monitor/Throttle). **Note:** Directive 2 applies to THIS Part 1 table only — the auto-generated per-category bot tables in Part 2 are the full evidence appendix and must list every bot individually; do not collapse those. After writing the Part 1 table, inject a **Verdict** column into every auto-generated bot table in Part 2 using the exact verdict from this Strategy table (`✅ Keep` / `🔧 Block` / `👀 Monitor` / `🔧 Throttle`). ⚠️ **D5:** Precede table with one-line takeaway. **D12:** Bytespider verdict MUST state whether site has ZH content — if yes → `✅ Keep` (Doubao, China's #1 search engine); if no → state reason explicitly, never default to vague `👀 Monitor`.
    - **Concentrated Traffic Spikes & Bursts** (`<!-- LLM:BURST_CARDS -->`) — Event/Analysis/Source/Actions card format. Use 🔧 unless active attack. Name source IP/bot and target URL(s) explicitly. If none: `✅ No concentrated bursts.`
-   - **Traffic Anomalies** (`<!-- LLM:TRAFFIC_ANOMALIES -->`) — card format, one per spike/pattern, with admin/owner local-time conversion per `site-context.md`. If none: `✅ Traffic within normal diurnal variation.`
+   - **Traffic Anomalies** (`<!-- LLM:TRAFFIC_ANOMALIES -->`) — card format, one per spike/pattern, with admin/owner local-time conversion per `site-context.md`. If none: `✅ Traffic within normal diurnal variation.` ⚠️ **D9:** Don't call cache HIT "anomalous" for cold-start window. **D10:** Cite by name, don't re-explain the purge.
    - **404/Error Fix Recommendations** (`<!-- LLM:ERROR_FIXES -->`) — card format for ALL items regardless of priority. Template:
      ```
      #### 🔧|ℹ️ [Priority] — [Short title]
@@ -598,7 +653,7 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
          - **No action required** ✅
            [reason on new indented line]]
      ```
-     Low-priority items MAY group into a single `#### ℹ️ Low Priority — Miscellaneous` card with one bullet per item. Never bare bullets without a heading. If none: `✅ No actionable 404s.`
+     Low-priority items MAY group into a single `#### ℹ️ Low Priority — Miscellaneous` card with one bullet per item. Never bare bullets without a heading. If none: `✅ No actionable 404s.` ⚠️ **D13:** Only recommend adding new Nginx keyword blocks when new spam patterns appear. Existing working rules → `✅ Existing rules working as intended.`
 
    ```
    # PART 2: TECHNICAL APPENDIX
@@ -662,6 +717,13 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
    - **Anomalies found in this period** — bullet list, one line per distinct finding, severity icon per line, plain-language (no jargon a manager wouldn't know)
    - **Priority actions this period** — numbered list, ordered by urgency, each action concrete enough to hand to whoever's fixing it
 
+   **Formatting rules for At a Glance** (see Conciseness Directives 8–10 for full text):
+   - Bold only key words and numbers within each bullet, never entire paragraphs (Directive 8).
+   - Never flag cache HIT as "below target" when the window is a short post-midnight cold-start
+     period; state it factually as expected behavior (Directive 9).
+   - Reference the cache cold-start mechanism by name only — the full explanation lives in Cache
+     Root Cause Analysis, not here (Directive 10).
+
 9a. **Scope note.** Append the following boilerplate block immediately after the Priority
     Actions numbered list (before the `>` blockquote that starts with "Scope:"). The origin-vs-
     edge-cache distinction belongs here.
@@ -684,7 +746,52 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
     section headings appear, (c) Part 1/Part 2 dividers are present, (d) card format compliance.
     If validation fails, fix the reported issues and re-run.
 
-10a. **URL spelling verification (MANDATORY — do not skip).** Run [`scripts/verify_urls.py`](scripts/verify_urls.py)
+10b. **Conciseness Directive Compliance Audit (MANDATORY — do not skip).**
+    Before declaring the report complete, run these grep checks against `$REPORT_PATH`.
+    Each check corresponds to a directive that has been repeatedly violated. If any grep
+    produces output, fix the violation before proceeding — do NOT skip with "close enough."
+
+    ```bash
+    REPORT="$REPORT_PATH"
+
+    # D8: At a Glance — no entire bold paragraphs (line starting+ending with ** >120 chars)
+    echo "=== D8: Bold-paragraph check ==="
+    grep -n '^\*\*.\{120,\}\*\*$' "$REPORT" || echo "PASS"
+
+    # D9: "below target" near "cache" — only valid if window ≥6h daytime
+    echo "=== D9: 'below target' near 'cache' ==="
+    grep -n -i 'cache.*below.target\|below.target.*cache' "$REPORT" || echo "PASS"
+
+    # D10: Cache purge explanation count must be ≤1 (explain once in Cache Root Cause)
+    echo "=== D10: Cache-purge explanation count (must be ≤1) ==="
+    COUNT=$(grep -ci 'purge.*cache\|cache.*purge\|cache.*emptied\|cache.*completely.cold\|every 24 hours.*midnight\|post-purge.cold' "$REPORT")
+    if [ "$COUNT" -le 1 ]; then echo "PASS (count=$COUNT)"; else echo "FAIL: $COUNT occurrences — explain once in Cache Root Cause, cite by name elsewhere"; fi
+
+    # D12: Bytespider "Monitor" without ZH-content justification
+    echo "=== D12: Bytespider Monitor without ZH justification ==="
+    if grep -qi 'bytespider.*monitor\|monitor.*bytespider' "$REPORT"; then
+      echo "WARNING: Bytespider flagged as Monitor — verify ZH-content relevance is stated explicitly"
+      grep -n -i 'bytespider' "$REPORT"
+    else
+      echo "PASS"
+    fi
+
+    # D13: "verify 403 rules are still current" or "review error log monthly for new patterns"
+    echo "=== D13: 403 rule 'verify current' recommendation ==="
+    grep -n -i 'verify.*403.*rules.*current\|review.*error.log.*monthly.*new patterns\|verify.*spam-block.*still current' "$REPORT" || echo "PASS"
+
+    # D3: __cf_bm cookie explanation count must be ≤1
+    echo "=== D3: __cf_bm explanation count (must be ≤1) ==="
+    COUNT=$(grep -ci '__cf_bm.*cookie\|Cloudflare Bot Management.*cookie\|cf_bm.*bypass' "$REPORT")
+    if [ "$COUNT" -le 1 ]; then echo "PASS (count=$COUNT)"; else echo "FAIL: $COUNT occurrences — explain once, cite by name elsewhere"; fi
+
+    echo "=== Directive compliance audit complete ==="
+    ```
+
+    If any check prints FAIL, fix the report and re-run the audit. Do NOT proceed to
+    `--validate` or PDF export until every check passes.
+
+10c. **URL spelling verification (MANDATORY — do not skip).** Run [`scripts/verify_urls.py`](scripts/verify_urls.py)
     to mechanically diff every URL in the LLM-authored commentary against the source files:
     ```bash
     python3 .roo/skills/kinsta-log-analyzer/scripts/verify_urls.py \
