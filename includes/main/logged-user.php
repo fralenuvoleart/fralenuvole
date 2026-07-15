@@ -175,22 +175,6 @@ function frl_admin_bar_add_menu_primary( $data ) {
 
 	// only for plugin admin
 	if ( frl_has_access() ) {
-		// options.php link
-		$data['menu_primary']['options_php'] = array(
-			'id'     => FRL_PREFIX . '-menu-child-options-php',
-			'title'  => __( 'WordPress Options' ),
-			'href'   => admin_url( 'options.php' ),
-			'parent' => $parent_id,
-		);
-
-		// Clear Website Transients link
-		$data['menu_primary']['clear_website_transients'] = array(
-			'id'     => FRL_PREFIX . '-menu-child-clear-website-transients',
-			'title'  => __( 'Clear Website Transients' ),
-			'href'   => add_query_arg( FRL_PREFIX . '_action', 'clear_website_transients' ),
-			'parent' => $parent_id,
-		);
-
 		// Debug log entry count
 		$data['menu_primary']['debug_log'] = array(
 			'id'     => FRL_PREFIX . '-menu-child-debug-log',
