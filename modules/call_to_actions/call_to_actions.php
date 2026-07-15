@@ -10,7 +10,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Load configuration
 require_once __DIR__ . '/config-constants-call_to_actions.php';
-require_once __DIR__ . '/config-options-call_to_actions.php';
 require_once __DIR__ . '/webhooks-call_to_actions.php';
 require_once FRL_DIR_PATH . 'public/channel-tracking.php';
 
@@ -28,6 +27,6 @@ add_filter(
 	}
 );
 
-// AJAX handler for CTA click webhooks (legacy action name preserved — see plan §1)
-add_action( 'wp_ajax_frl_button_webhook', 'frl_cta_webhook_handler', 10, 0 );
-add_action( 'wp_ajax_nopriv_frl_button_webhook', 'frl_cta_webhook_handler', 10, 0 );
+// AJAX handler for CTA click webhooks
+add_action( 'wp_ajax_frl_cta_webhook', 'frl_cta_webhook_handler', 10, 0 );
+add_action( 'wp_ajax_nopriv_frl_cta_webhook', 'frl_cta_webhook_handler', 10, 0 );

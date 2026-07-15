@@ -10,12 +10,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Handles CTA-click webhook requests sent via sendBeacon from the frontend.
  * Looks up the webhook URL server-side from CTA_WEBHOOK_CONFIG (never exposed to client).
- * Same request contract as the original frl_wsf_button_webhook_handler().
- * Direct (non-inverted) use of frl_should_dedupe_webhook() — new call site, no polarity pitfall.
  */
 function frl_cta_webhook_handler() {
-	// Public analytics endpoint (nopriv). Protected by sanitization, deduplication,
-	// and rate limiting. No nonce: Cloudflare CDN caching causes nonce expiration.
+	// Public analytics endpoint (nopriv). Protected by sanitization
+	// and per-IP rate limiting. No nonce: Cloudflare CDN caching causes nonce expiration.
+
+	// Per-IP rate limit: max 30 requests per minute from the same IP.
+	$client_ip   = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0' );
+	$rate_key    = 'frl_cta_rate_' . md5( $client_ip );
+	$rate_count  = (int) frl_get_transient( $rate_key );
+	$rate_window = CTA_WEBHOOK_RATE_WINDOW;
+	$rate_max    = CTA_WEBHOOK_RATE_LIMIT;
+
+	if ( $rate_count >= $rate_max ) {
+		frl_log( 'CTA rate limit hit for IP: {ip}', array( 'ip' => $client_ip ) );
+		wp_send_json_error( 'Too many requests', 429 );
+	}
+
+	frl_set_transient( $rate_key, $rate_count + 1, $rate_window );
 
 	// wp_unslash() before sanitizing: these free-text values (reference_id, UTM params, etc.)
 	// are sent verbatim to a third-party webhook — without unslashing, any submitted value
@@ -48,31 +60,37 @@ function frl_cta_webhook_handler() {
 		}
 	}
 
-	$post_data = array(
-		'Reference ID'     => sanitize_text_field( wp_unslash( $_POST['reference_id'] ?? '' ) ),
-		'CTA'              => ucfirst( $action_id ),
-		'Service'          => $service,
-		'Language'         => sanitize_text_field( wp_unslash( $_POST['language'] ?? '' ) ),
-		'Referer'          => sanitize_url( wp_unslash( $_POST['referer'] ?? '' ) ),
-		'User IP'          => sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' ),
-		'Page URL'         => $page_url,
-		'Channel Source'   => sanitize_text_field( wp_unslash( $_POST['source'] ?? '' ) ),
-		'Channel Medium'   => sanitize_text_field( wp_unslash( $_POST['medium'] ?? '' ) ),
-		'Channel Campaign' => sanitize_text_field( wp_unslash( $_POST['campaign'] ?? '' ) ),
-		'Channel Term'     => sanitize_text_field( wp_unslash( $_POST['term'] ?? '' ) ),
-		'Channel Content'  => sanitize_text_field( wp_unslash( $_POST['content'] ?? '' ) ),
-		'Channel GCLID'    => sanitize_text_field( wp_unslash( $_POST['gclid'] ?? '' ) ),
-		'Channel FBCLID'   => sanitize_text_field( wp_unslash( $_POST['fbclid'] ?? '' ) ),
-		'Channel Landing'  => sanitize_text_field( wp_unslash( $_POST['landing'] ?? '' ) ),
-	);
-
-	if ( frl_should_dedupe_webhook( $post_data, array( 'Reference ID', 'CTA' ), 6 * HOUR_IN_SECONDS ) ) {
-		wp_send_json_success( 'Deduplicated' );
+	$post_data = array();
+	foreach ( CTA_WEBHOOK_FIELDS as $field => $source ) {
+		switch ( $source ) {
+			case '__action_id__':
+				$post_data[ $field ] = ucfirst( $action_id );
+				break;
+			case '__service__':
+				$post_data[ $field ] = $service;
+				break;
+			case '__remote_addr__':
+				$post_data[ $field ] = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
+				break;
+			case '__page_url__':
+				$post_data[ $field ] = $page_url;
+				break;
+			case '__referer__':
+				$post_data[ $field ] = sanitize_url( wp_unslash( $_POST['referer'] ?? '' ) );
+				break;
+			default:
+				$post_data[ $field ] = sanitize_text_field( wp_unslash( $_POST[ $source ] ?? '' ) );
+		}
 	}
 
-	$result = frl_send_webhook( $webhook_url, $post_data );
-	if ( ! $result['success'] ) {
-		wp_send_json_error( 'Webhook dispatch failed', 502 );
+	$use_cron = defined( 'CTA_WEBHOOK_USE_CRON' ) && CTA_WEBHOOK_USE_CRON;
+	if ( $use_cron ) {
+		frl_send_webhook_async( $webhook_url, $post_data );
+	} else {
+		$result = frl_send_webhook( $webhook_url, $post_data );
+		if ( ! $result['success'] ) {
+			wp_send_json_error( 'Webhook dispatch failed', 502 );
+		}
 	}
 
 	wp_send_json_success( 'Webhook sent' );

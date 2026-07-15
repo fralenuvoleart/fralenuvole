@@ -12,7 +12,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Load WS Form configuration
 require_once __DIR__ . '/config-constants-wsform.php';
-require_once __DIR__ . '/config-constants-webhooks.php';
 require_once FRL_DIR_PATH . 'public/channel-tracking.php';
 
 /**
@@ -166,7 +165,7 @@ function frl_wsf_translate_fields( $form, $preview ) {
 			$default = $field->meta->default_value;
 
 			if ( '#refer_url' === $default ) {
-				$referrer                   = isset( $_SERVER['HTTP_REFERER'] ) ? $_SERVER['HTTP_REFERER'] : '';
+				$referrer                   = sanitize_text_field( wp_unslash( $_SERVER['HTTP_REFERER'] ?? '' ) );
 				$field->meta->default_value = $referrer;
 			} elseif ( '#user_ip' === $default ) {
 				$field->meta->default_value = frl_get_client_ip();

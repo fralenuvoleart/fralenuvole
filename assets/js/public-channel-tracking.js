@@ -147,14 +147,14 @@
             for (var i = 0; i < keys.length; i++) setCookie(keys[i], currentSource[keys[i]], CONFIG.cookieDays);
             setCookie('landing', window.location.href.split('?')[0], CONFIG.cookieDays);
         } else if (!getCookie('source')) {
-            setCookie('source', '(direct)', CONFIG.cookieDays);
-            setCookie('medium', '(none)', CONFIG.cookieDays);
-            setCookie('campaign', '');
-            setCookie('term', '');
-            setCookie('content', '');
-            setCookie('gclid', '');
-            setCookie('fbclid', '');
-            setCookie('landing', window.location.href.split('?')[0], CONFIG.cookieDays);
+        	setCookie('source', '(direct)', CONFIG.cookieDays);
+        	setCookie('medium', '(none)', CONFIG.cookieDays);
+        	setCookie('campaign', '', CONFIG.cookieDays);
+        	setCookie('term', '', CONFIG.cookieDays);
+        	setCookie('content', '', CONFIG.cookieDays);
+        	setCookie('gclid', '', CONFIG.cookieDays);
+        	setCookie('fbclid', '', CONFIG.cookieDays);
+        	setCookie('landing', window.location.href.split('?')[0], CONFIG.cookieDays);
         }
 
         if (!getCookie('reference_id')) {

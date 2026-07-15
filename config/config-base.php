@@ -46,7 +46,7 @@ const FRL_DEFAULT_AUTHOR_CPT_ID = 18765;
 const FRL_DEFAULT_EDITOR_CPT_ID = 18765;
 
 // Hooks context map
-const FRL_AB_CPT_LIST = array(
+const FRL_ADMINBAR_CPT_LIST = array(
 	'page'  => array(
 		'title'  => 'All Pages',
 		'href'   => '/wp-admin/edit.php?post_type=page',

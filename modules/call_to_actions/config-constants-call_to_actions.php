@@ -41,3 +41,32 @@ const CTA_WEBHOOK_CONFIG = array(
 		'email' => 'https://webhooks.integrately.com/a/webhooks/171f3cf7dd074bc08c0ad004a245c5d7',
 	),
 );
+
+// Webhook field → POST key mapping. Mirrors wsform's fields_map pattern.
+// Sentinels (prefixed __) are resolved specially in the handler:
+//   __action_id__   → ucfirst($action_id)
+//   __service__     → resolved from CTA_SERVICE_META post meta
+//   __remote_addr__ → $_SERVER['REMOTE_ADDR']
+//   __page_url__    → pre-resolved $page_url (sanitize_url)
+//   __referer__     → sanitize_url (not sanitize_text_field)
+const CTA_WEBHOOK_FIELDS = array(
+	'Reference ID'     => 'reference_id',
+	'CTA'              => '__action_id__',
+	'Service'          => '__service__',
+	'Language'         => 'language',
+	'Referer'          => '__referer__',
+	'User IP'          => '__remote_addr__',
+	'Page URL'         => '__page_url__',
+	'Channel Source'   => 'source',
+	'Channel Medium'   => 'medium',
+	'Channel Campaign' => 'campaign',
+	'Channel Term'     => 'term',
+	'Channel Content'  => 'content',
+	'Channel GCLID'    => 'gclid',
+	'Channel FBCLID'   => 'fbclid',
+	'Channel Landing'  => 'landing',
+);
+
+// CTA webhook per-IP rate limiting.
+const CTA_WEBHOOK_RATE_LIMIT  = 30;
+const CTA_WEBHOOK_RATE_WINDOW = 60;

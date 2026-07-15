@@ -49,7 +49,7 @@
         if (!CONFIG.ajaxUrl) return;
         var cookieString = document.cookie;
         var data = new FormData();
-        data.append('action', 'frl_button_webhook');
+        data.append('action', 'frl_cta_webhook');
         // Note: nonce intentionally omitted (see channel-tracking.php for explanation)
         data.append('action_id', actionId);
         data.append('page_url', window.location.href);

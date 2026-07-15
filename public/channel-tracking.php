@@ -11,25 +11,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Channel Tracking constants (migrated from WS_ATTR_*)
-const CT_ATTR_PREFIX              = 'channel';
-const CT_ATTR_COOKIE_DAYS         = 90;
-const CT_ATTR_COOKIE_PATH         = '/';
-const CT_ATTR_COOKIE_DOMAIN       = null;
-const CT_ATTR_REFERENCE_ID_LENGTH = 8;
-const CT_ATTR_FIELD_MAPPING       = array();
-const CT_ATTR_KEYS                = array(
-	'source',
-	'medium',
-	'campaign',
-	'term',
-	'content',
-	'gclid',
-	'fbclid',
-	'landing',
-	'reference_id',
-);
-
 /**
  * Initialize channel tracking. Guard ensures single init regardless
  * of which module requests it first.
@@ -81,7 +62,7 @@ function frl_channel_tracking_enqueue() {
 		'cookieDays'        => CT_ATTR_COOKIE_DAYS,
 		'cookiePath'        => CT_ATTR_COOKIE_PATH,
 		'cookieDomain'      => CT_ATTR_COOKIE_DOMAIN,
-		'fieldMapping'      => CT_ATTR_FIELD_MAPPING,
+		'fieldMapping'      => array(),
 		'keys'              => CT_ATTR_KEYS,
 		'ctaActions'        => $actions,
 		'referenceIdLength' => CT_ATTR_REFERENCE_ID_LENGTH,
@@ -92,5 +73,8 @@ function frl_channel_tracking_enqueue() {
 		$config['language'] = function_exists( 'frl_get_language' ) ? strtoupper( frl_get_language() ) : '';
 	}
 
-	wp_localize_script( 'frl-channel-tracking', 'frlChannelTrackingConfig', $config );
+	$localized = wp_localize_script( 'frl-channel-tracking', 'frlChannelTrackingConfig', $config );
+	if ( ! $localized ) {
+		frl_log( 'Channel tracking: wp_localize_script() failed — handle may not be registered' );
+	}
 }

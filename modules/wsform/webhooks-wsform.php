@@ -78,14 +78,6 @@ function frl_wsf_clear_field_249_errors( mixed $field_error_action_array, mixed 
 	return array_values( $filtered_errors );
 }
 
-// This action hook will be triggered by WP-Cron to process the webhook in the background.
-add_action(
-	'frl_wsf_send_form_submission_webhook',
-	'frl_wsf_execute_webhook_submission',
-	10,
-	1
-);
-
 /**
  * Gets the matching webhook configurations based on the environment and form ID.
  *
@@ -107,21 +99,6 @@ function frl_wsf_get_matching_configs( $form_id ) {
 	}
 
 	return $matching_configs;
-}
-
-/**
- * Determines whether a webhook should be sent based on dedupe rules.
- *
- * Thin wrapper around frl_should_dedupe_webhook().
- * NOTE the negation: frl_should_dedupe_webhook() returns true when the
- * call SHOULD be suppressed; this function's contract is the opposite.
- * Do not remove the `!`.
- *
- * @param array $post_data
- * @return bool
- */
-function frl_wsf_should_send_webhook( array $post_data ): bool {
-	return ! frl_should_dedupe_webhook( $post_data, array( 'Reference ID', 'CTA' ), 6 * HOUR_IN_SECONDS );
 }
 
 /**
@@ -201,38 +178,15 @@ function frl_wsf_submit_webhook( $submit ) {
 			$post_data['Service'] = 'Webpage';
 		}
 
-		if ( ! frl_wsf_should_send_webhook( $post_data ) ) {
-			continue;
-		}
-
-		// 2. Schedule or execute the webhook.
-		$args = array(
-			'url'  => $webhook_url,
-			'data' => $post_data,
-		);
-
 		// Check if cron should be used (defaults to true for backward compatibility)
 		$use_cron = $config['use_cron'] ?? true;
 
 		if ( $use_cron ) {
-			wp_schedule_single_event( time(), 'frl_wsf_send_form_submission_webhook', array( $args ) );
+			frl_send_webhook_async( $webhook_url, $post_data );
 		} else {
-			frl_wsf_execute_webhook_submission( $args );
+			frl_send_webhook( $webhook_url, $post_data );
 		}
 	}
-}
-
-/**
- * Executes the actual webhook cURL request in the background via WP-Cron.
- * Thin wrapper around frl_send_webhook().
- * This function is hooked to 'frl_wsf_send_form_submission_webhook'.
- *
- * @param array $args An array containing 'url' and 'data'.
- */
-function frl_wsf_execute_webhook_submission( $args ) {
-	$url  = $args['url'] ?? '';
-	$data = $args['data'] ?? array();
-	frl_send_webhook( $url, $data ); // return value intentionally ignored — matches original fire-and-forget behavior
 }
 
 /**
@@ -255,7 +209,7 @@ function frl_wsf_spam_filter_submission( $field_error_action_array, $post_mode, 
 
 	foreach ( $configs as $webhook_config ) {
 		// Skip if not matching form
-		if ( ( $webhook_config['form_id'] ?? null ) !== (int) $form_id ) {
+		if ( (int) ( $webhook_config['form_id'] ?? -1 ) !== (int) $form_id ) {
 			continue;
 		}
 

@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 require_once __DIR__ . '/config-mu.php';
 require_once __DIR__ . '/config-base.php';
+
 require_once __DIR__ . '/config-options.php';
 require_once __DIR__ . '/config-fields.php';
 require_once __DIR__ . '/config-cache.php';
@@ -17,3 +18,4 @@ require_once __DIR__ . '/environment/config-environment.php';
 require_once __DIR__ . '/config-translator.php';
 require_once __DIR__ . '/config-schema.php';
 require_once __DIR__ . '/config-themekit.php';
+require_once __DIR__ . '/config-channel-tracking.php';

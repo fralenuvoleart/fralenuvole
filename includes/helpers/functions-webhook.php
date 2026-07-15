@@ -4,43 +4,39 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Determines whether a webhook call should be SUPPRESSED as a duplicate.
+ * Schedules a fire-and-forget webhook dispatch via WP-Cron.
+ * The actual cURL call runs in a background cron job ('frl_webhook_dispatch' action).
  *
- * ⚠ Polarity note: this is the INVERSE of the old frl_wsf_should_send_webhook()
- * ("should send" = true means proceed). This function answers "should dedupe"
- * (true means suppress). Callers migrating from the old function MUST negate
- * the return value — see the wsform thin wrapper below.
- *
- * Logged-in users are NEVER deduped (preserves the original staff/QA bypass).
- * Any empty identity component means no reliable dedupe key can be formed,
- * so the call is NEVER deduped in that case either (fail open, matches original).
- *
- * @param array $data Payload data (already-built post_data array).
- * @param array $keys Which $data keys to combine into the dedupe identity, in order.
- * @param int   $ttl  Suppression window in seconds. Default 21600 (6h) — matches the
- *                    previous hardcoded `6 * HOUR_IN_SECONDS`.
- * @return bool True = suppress (duplicate). False = proceed.
+ * @param string $url  Webhook endpoint URL.
+ * @param array  $data Payload to send.
+ * @return bool True if the event was scheduled, false on failure.
  */
-function frl_should_dedupe_webhook( array $data, array $keys, int $ttl = 21600 ): bool {
-	if ( is_user_logged_in() ) {
+function frl_send_webhook_async( string $url, array $data ): bool {
+	$scheduled = wp_schedule_single_event(
+		time(),
+		'frl_webhook_dispatch',
+		array(
+			array(
+				'url'  => $url,
+				'data' => $data,
+			),
+		)
+	);
+	if ( false === $scheduled ) {
+		frl_log( 'WEBHOOK ERROR: frl_send_webhook_async() — wp_schedule_single_event failed' );
 		return false;
 	}
-
-	$parts = array();
-	foreach ( $keys as $key ) {
-		$parts[] = strtolower( trim( (string) ( $data[ $key ] ?? '' ) ) );
-	}
-	if ( in_array( '', $parts, true ) ) {
-		return false;
-	}
-
-	$dedupe_key = 'webhook_dedupe_' . md5( implode( '|', $parts ) );
-	if ( frl_get_transient( $dedupe_key ) ) {
-		return true;
-	}
-	frl_set_transient( $dedupe_key, 1, $ttl );
-	return false;
+	return true;
 }
+add_action(
+	'frl_webhook_dispatch',
+	function ( array $args ) {
+		$url  = $args['url'] ?? '';
+		$data = $args['data'] ?? array();
+		frl_send_webhook( $url, $data );
+	}
+);
+
 
 /**
  * Dispatches a webhook via cURL. Same cURL options/timeouts/failure-logging

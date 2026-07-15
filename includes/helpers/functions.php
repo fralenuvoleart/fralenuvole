@@ -246,7 +246,16 @@ function frl_enqueue_scripts( $assets, $assets_key, $deps = array() ) {
 		$is_css = str_ends_with( $path, '.css' );
 
 		if ( $is_js ) {
-			wp_enqueue_script( $full_handle, $url, $dependencies, $version, true );
+			wp_enqueue_script(
+				$full_handle,
+				$url,
+				$dependencies,
+				$version,
+				array(
+					'strategy'  => 'defer',
+					'in_footer' => true,
+				)
+			);
 		} elseif ( $is_css ) {
 			wp_enqueue_style( $full_handle, $url, $dependencies, $version );
 		}
