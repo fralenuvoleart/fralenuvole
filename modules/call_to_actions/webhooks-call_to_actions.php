@@ -86,7 +86,9 @@ function frl_cta_webhook_handler() {
 	}
 
 	if ( $use_cron ) {
-		frl_send_webhook_async( $webhook_url, $post_data );
+		if ( ! frl_send_webhook_async( $webhook_url, $post_data ) ) {
+			wp_send_json_error( 'Webhook scheduling failed', 502 );
+		}
 	} else {
 		$result = frl_send_webhook( $webhook_url, $post_data );
 		if ( ! $result['success'] ) {

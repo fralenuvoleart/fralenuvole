@@ -10,8 +10,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once FRL_DIR_PATH . 'includes/helpers/functions-webhook.php';
-
 add_filter(
 	'wsf_pre_render',
 	'frl_wsf_set_language',
