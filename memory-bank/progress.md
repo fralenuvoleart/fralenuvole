@@ -56,7 +56,8 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 |---|---|
 | `subdomain_adapter` | Bidirectional URL transformation between a main domain and language-specific subdomain mirrors. See `docs/SUBDOMAIN-ADAPTER.md`. |
 | `thirdparty` | SASWP schema property injection, Greenshift REST schema fixes, third-party plugin admin asset conditionals. |
-| `wsform` | WS Form language pre-fill, webhook dispatch (async via WP-Cron by default for form submissions; button-click tracking endpoint), channel-tracking UTM capture, spam filter, submission stats widget. |
+| `wsform` | WS Form language pre-fill, webhook dispatch (async via WP-Cron by default for form submissions), spam filter, submission stats widget. Channel-tracking and CTA handling extracted to shared infra and `call-to-actions` module respectively. |
+| `call_to_actions` | WhatsApp, Telegram, Email CTA click handling with marketing webhook dispatch. Uses shared `public/channel-tracking.php` and `includes/helpers/functions-webhook.php`. |
 | `pbnova`, `pbs`, `pbproperty` | Brand-specific custom post types, config constants, and third-party integrations (GeoDirectory query/translation filters) for individual deployments. |
 | `acf` / `acf-migration` | ACF shortcode helpers; standalone ACPT → SCF/ACF field migration toolset (parser, importer, repeater transformer, compat shim, WP-CLI commands). |
 | `frl` | House brand module: Bible passage audio proxy (ESV API, cached signed-URL redirect), menu sitemap shortcode. |

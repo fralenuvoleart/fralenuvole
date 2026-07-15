@@ -2,9 +2,9 @@
     'use strict';
 
     /**
-     * Configuration is provided via wp_localize_script (wsfAttributionConfig)
+     * Configuration is provided via wp_localize_script (frlChannelTrackingConfig)
      */
-    var CONFIG = window.wsfAttributionConfig;
+    var CONFIG = window.frlChannelTrackingConfig;
     if (!CONFIG) return;
 
     var SEARCH_ENGINES = {
@@ -140,96 +140,6 @@
         return result;
     }
 
-    function buildChatUrl(actionConfig, referenceId) {
-        if (!actionConfig || !actionConfig.url) return '';
-        var url = actionConfig.url;
-
-        if (actionConfig.template) {
-            var template = actionConfig.template;
-            
-            // 1. Replace reference_id
-            template = template.replace(/{reference_id}/g, referenceId || '');
-
-            // 2. Replace {field-data-name:xxx} with value from element having data-name="xxx"
-            template = template.replace(/{field-data-name:([^}]+)}/g, function(match, fieldName) {
-                var selector = '[data-name="' + fieldName + '"]';
-                var el = document.querySelector(selector);
-                return el ? (el.value || '') : '';
-            });
-
-            // 3. Inject into URL
-            url = url.replace('{template}', encodeURIComponent(template));
-        }
-
-        if (actionConfig.subject) {
-            url = url.replace('{subject}', encodeURIComponent(actionConfig.subject));
-        }
-
-        return url;
-    }
-
-    function fireButtonWebhook(actionId) {
-        if (!CONFIG.ajaxUrl) return;
-        var cookieString = document.cookie;
-        var data = new FormData();
-        data.append('action', 'frl_button_webhook');
-        // Note: nonce intentionally omitted (see channel-tracking.php for explanation)
-        data.append('action_id', actionId);
-        data.append('page_url', window.location.href);
-        data.append('referer', document.referrer || '');
-        data.append('language', CONFIG.language || '');
-        var cookieKeys = ['source', 'medium', 'campaign', 'term', 'content', 'gclid', 'fbclid', 'landing', 'reference_id'];
-        for (var i = 0; i < cookieKeys.length; i++) {
-            data.append(cookieKeys[i], getCookie(cookieKeys[i], cookieString) || '');
-        }
-        navigator.sendBeacon(CONFIG.ajaxUrl, data);
-    }
-
-    function attachChatButtonHandlers() {
-        if (!Array.isArray(CONFIG.chatActions) || !CONFIG.chatActions.length) return;
-
-        var referenceId = getCookie('reference_id');
-        function bindChatHandler(element, actionConfig) {
-            var initialRef = getCookie('reference_id') || referenceId || '';
-            var initialUrl = buildChatUrl(actionConfig, initialRef);
-            if (initialUrl) {
-                element.setAttribute('data-button-url', initialUrl);
-            }
-            element.addEventListener('click', function(e) {
-                var currentRef = getCookie('reference_id') || referenceId || '';
-                var targetUrl = buildChatUrl(actionConfig, currentRef);
-                if (targetUrl) {
-                    element.setAttribute('data-button-url', targetUrl);
-                    if (targetUrl.indexOf('mailto:') === 0) {
-                        e.preventDefault();
-                        window.location.href = targetUrl;
-                    } else {
-                        window.open(targetUrl, '_blank');
-                    }
-                }
-                if (actionConfig.hasWebhook) {
-                    fireButtonWebhook(actionConfig.id);
-                }
-            });
-        }
-        for (var i = 0; i < CONFIG.chatActions.length; i++) {
-            var action = CONFIG.chatActions[i];
-            if (!action || !action.id || !action.url) continue;
-
-            var selector = '[data-action="' + action.id + '"]';
-            var elements = document.querySelectorAll(selector);
-            if (!elements.length) continue;
-
-            for (var e = 0; e < elements.length; e++) {
-                var el = elements[e];
-                if (el.getAttribute('data-button-bounded') === '1') continue;
-                el.setAttribute('data-button-bounded', '1');
-
-                bindChatHandler(el, action);
-            }
-        }
-    }
-
     function captureAttribution() {
         var currentSource = determineCurrentSource();
         if (currentSource) {
@@ -315,13 +225,10 @@
         
         // Initial populations
         populateFormFields();
-        attachChatButtonHandlers();
         
         // Retry after a short delay in case WS Form is slow to render its HTML
         setTimeout(populateFormFields, 1000);
         setTimeout(populateFormFields, 3000);
-        setTimeout(attachChatButtonHandlers, 1000);
-        setTimeout(attachChatButtonHandlers, 3000);
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', populateFormFields);
@@ -330,7 +237,6 @@
         }
         document.addEventListener('wsf-rendered', function() {
             debouncedPopulate();
-            attachChatButtonHandlers();
         });
         
         if (typeof MutationObserver !== 'undefined') {

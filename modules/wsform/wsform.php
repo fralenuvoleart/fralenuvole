@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Load WS Form configuration
 require_once __DIR__ . '/config-constants-wsform.php';
 require_once __DIR__ . '/config-constants-webhooks.php';
+require_once FRL_DIR_PATH . 'public/channel-tracking.php';
 
 /**
  * Returns the resolved webhook configs for the current environment.
@@ -78,24 +79,16 @@ function frl_wsf_init() {
 		frl_wsf_init_stats();
 	}
 
-	if ( frl_get_option( 'wsform_channel_tracking' ) ) {
-		frl_wsf_init_tracking();
-	}
+	frl_channel_tracking_init();
 }
 
 /**
  * Init WS Form Webhook specific functionalities.
  */
 function frl_wsf_init_webhook() {
-	require_once __DIR__ . '/webhooks.php';
+	require_once __DIR__ . '/webhooks-wsform.php';
 }
 
-/**
- * Init WS Form Channel Tracking.
- */
-function frl_wsf_init_tracking() {
-	require_once __DIR__ . '/channel-tracking.php';
-}
 
 // Callback function for the wsf_field_invalid_feedback_text filter hook
 function frl_wsf_translate_invalid_text( $text ) {

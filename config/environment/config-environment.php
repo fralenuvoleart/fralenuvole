@@ -26,6 +26,7 @@ const FRL_ENV_PBS_TEMPLATE = array(
 	'modules'        => array(
 		'pbs'               => true,
 		'subdomain_adapter' => true,
+		'call_to_actions'   => true,
 	),
 	'plugin_options' => array(
 		'wsform_webhook' => true,

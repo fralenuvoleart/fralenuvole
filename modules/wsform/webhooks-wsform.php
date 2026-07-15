@@ -10,6 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once FRL_DIR_PATH . 'includes/helpers/functions-webhook.php';
+
 add_filter(
 	'wsf_pre_render',
 	'frl_wsf_set_language',
@@ -84,19 +86,23 @@ add_action(
 	1
 );
 
-// Button-click webhook AJAX handlers (logged-in and logged-out users)
-add_action(
-	'wp_ajax_frl_button_webhook',
-	'frl_wsf_button_webhook_handler',
-	10,
-	0
-);
-add_action(
-	'wp_ajax_nopriv_frl_button_webhook',
-	'frl_wsf_button_webhook_handler',
-	10,
-	0
-);
+// Button-click webhook AJAX handlers (logged-in and logged-out users).
+// Module-toggle-gated: automatically stands down when call-to-actions is
+// enabled, preventing a double-registration race on wp_ajax_frl_button_webhook.
+if ( ! frl_get_option( 'module_call_to_actions' ) ) {
+	add_action(
+		'wp_ajax_frl_button_webhook',
+		'frl_wsf_button_webhook_handler',
+		10,
+		0
+	);
+	add_action(
+		'wp_ajax_nopriv_frl_button_webhook',
+		'frl_wsf_button_webhook_handler',
+		10,
+		0
+	);
+}
 
 /**
  * Gets the matching webhook configurations based on the environment and form ID.
@@ -124,33 +130,16 @@ function frl_wsf_get_matching_configs( $form_id ) {
 /**
  * Determines whether a webhook should be sent based on dedupe rules.
  *
+ * Thin wrapper around frl_should_dedupe_webhook().
+ * NOTE the negation: frl_should_dedupe_webhook() returns true when the
+ * call SHOULD be suppressed; this function's contract is the opposite.
+ * Do not remove the `!`.
+ *
  * @param array $post_data
  * @return bool
  */
-function frl_wsf_should_send_webhook( array $post_data ) {
-	if ( is_user_logged_in() ) {
-		return true;
-	}
-
-	$reference_id = isset( $post_data['Reference ID'] ) ? trim( (string) $post_data['Reference ID'] ) : '';
-	$channel      = isset( $post_data['CTA'] ) ? trim( (string) $post_data['CTA'] ) : '';
-
-	if ( $reference_id === '' || $channel === '' ) {
-		return true;
-	}
-
-	// Unprefixed key: frl_get_transient()/frl_set_transient() apply the plugin's
-	// frl_ prefix and static per-request cache layer themselves (same convention
-	// used by every other subsystem), so no manual "frl_" prefix is added here.
-	$dedupe_key = 'wsf_webhook_dedupe_' . md5( $reference_id . '|' . strtolower( $channel ) );
-	if ( frl_get_transient( $dedupe_key ) ) {
-		return false;
-	}
-
-	$ttl = 6 * HOUR_IN_SECONDS;
-	frl_set_transient( $dedupe_key, 1, $ttl );
-
-	return true;
+function frl_wsf_should_send_webhook( array $post_data ): bool {
+	return ! frl_should_dedupe_webhook( $post_data, array( 'Reference ID', 'CTA' ), 6 * HOUR_IN_SECONDS );
 }
 
 /**
@@ -253,81 +242,15 @@ function frl_wsf_submit_webhook( $submit ) {
 
 /**
  * Executes the actual webhook cURL request in the background via WP-Cron.
+ * Thin wrapper around frl_send_webhook().
  * This function is hooked to 'frl_wsf_send_form_submission_webhook'.
  *
  * @param array $args An array containing 'url' and 'data'.
  */
 function frl_wsf_execute_webhook_submission( $args ) {
-	$webhook_url = $args['url'] ?? '';
-	$post_data   = $args['data'] ?? array();
-
-	if ( empty( $webhook_url ) || ! filter_var( $webhook_url, FILTER_VALIDATE_URL ) ) {
-		frl_log( 'WEBHOOK ERROR: frl_wsf_execute_webhook_submission() - Invalid or missing webhook URL.', array( 'url' => $webhook_url ) );
-		return;
-	}
-
-	// Attempt to encode the data to JSON, checking for errors.
-	$json_payload = json_encode( $post_data );
-
-	if ( $json_payload === false ) {
-		frl_log(
-			'WEBHOOK ERROR: Failed to encode data to JSON in frl_wsf_execute_webhook_submission(). Error: {error}. Data: {data}',
-			array(
-				'error' => json_last_error_msg(),
-				'data'  => print_r( $post_data, true ),
-			)
-		);
-		return;
-	}
-
-	// Initialize cURL session with Webhook URL
-	$ch = curl_init( $webhook_url );
-
-	try {
-		// Set cURL options
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-		curl_setopt(
-			$ch,
-			CURLOPT_HTTPHEADER,
-			array(
-				'Accept: application/json',
-				'Content-Type: application/json',
-			)
-		);
-		curl_setopt( $ch, CURLOPT_POST, true );
-		curl_setopt( $ch, CURLOPT_POSTFIELDS, $json_payload );
-		curl_setopt( $ch, CURLOPT_TIMEOUT, 15 );
-		curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 5 );
-		curl_setopt( $ch, CURLOPT_NOSIGNAL, true );
-		curl_setopt( $ch, CURLOPT_ENCODING, '' );
-
-		// Execute the request and get the response
-		$response  = curl_exec( $ch );
-		$http_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
-
-		// Check for errors
-		if ( $response === false ) {
-			$error = curl_error( $ch );
-			frl_log(
-				'WEBHOOK ERROR: cURL execution failed for frl_wsf_execute_webhook_submission(). Error: {error}. Payload: {payload}',
-				array(
-					'error'   => $error,
-					'payload' => $json_payload,
-				)
-			);
-		} elseif ( $http_code < 200 || $http_code >= 300 ) {
-			frl_log(
-				'WEBHOOK ERROR: Received non-2xx HTTP status code ({status}) in frl_wsf_execute_webhook_submission(). Response: {response}. Payload: {payload}',
-				array(
-					'status'   => $http_code,
-					'response' => $response,
-					'payload'  => $json_payload,
-				)
-			);
-		}
-	} finally {
-		$ch = null; // curl_close() deprecated since PHP 8.5; no-op since 8.0
-	}
+	$url  = $args['url'] ?? '';
+	$data = $args['data'] ?? array();
+	frl_send_webhook( $url, $data ); // return value intentionally ignored — matches original fire-and-forget behavior
 }
 
 /**

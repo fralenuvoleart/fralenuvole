@@ -2,12 +2,15 @@
 
 ## Current Focus
 
-Plugin maintenance and hardening. Recent work includes null-guard fixes, translation adapter enhancements, and cache system improvements.
+CTA extraction from wsform module into standalone `call_to_actions` module. Phases 1-3 implemented; Phase 4 gated behind production verification.
 
 ## Changes Made
 
-1. **Fixed `FRL_MODE=disable` fatal error in [`fralenuvole.php`](fralenuvole.php:30-33)** — The disable guard was placed AFTER `require_once FRL_DIR_PATH . 'includes/plugin-lifecycle.php'` (line 33 old/line 36 new), but `FRL_DIR_PATH` is defined in [`config/config-base.php`](config/config-base.php:23) which is loaded in [`bootstrap.php`](includes/bootstrap.php:37) AFTER the disable check at line 28-30. Moved the guard to immediately after `require_once` of bootstrap, before any `FRL_DIR_PATH` usage. Also removed the now-redundant duplicate guard. Full analysis in [`plans/debug-mode-failure-points.md`](plans/debug-mode-failure-points.md).
-2. **Added null guard to [`frl_get_plugin_options_db()`](includes/helpers/functions-options.php:308)** — `$wpdb->get_results()` can return `null` on DB failure; added `if (!is_array($results)) { return array(); }` before the `foreach` to prevent `foreach() argument must be of type array|object, null given` warning.
+1. **Extracted CTA logic from wsform into `modules/call_to_actions/`** — New standalone module for WhatsApp, Telegram, and Email CTA click handling with marketing webhook dispatch. Full plan in [`plans/EXTRACTION-call-to-actions.md`](plans/EXTRACTION-call-to-actions.md).
+2. **Created shared webhook utilities** — [`includes/helpers/functions-webhook.php`](includes/helpers/functions-webhook.php): `frl_send_webhook()` (generic cURL dispatch) and `frl_should_dedupe_webhook()` (transient-based dedupe, polarity inverted from old `frl_wsf_should_send_webhook()`).
+3. **Moved channel tracking to `public/`** — [`public/channel-tracking.php`](public/channel-tracking.php) with `CT_ATTR_*` constants, `frl_channel_tracking_init()` (guarded), `frl_channel_tracking_enqueue()`. JS split into [`public/assets/js/channel-tracking.js`](public/assets/js/channel-tracking.js) (attribution only) and [`public/assets/js/cta-actions.js`](public/assets/js/cta-actions.js) (CTA click handling with unconditional `preventDefault()` fix for anchor-tag safety).
+4. **wsform webhooks thinned to delegates** — [`modules/wsform/webhooks.php`](modules/wsform/webhooks.php): `frl_wsf_should_send_webhook()` → 3-line `! frl_should_dedupe_webhook()` wrapper; `frl_wsf_execute_webhook_submission()` → 3-line `frl_send_webhook()` wrapper. AJAX hooks gated on `! frl_get_option('module_call_to_actions')`.
+5. **🐛 Fixed module key hyphenation bug** — Module key `call-to-actions` contained hyphens which break PHP variable-name auto-discovery in [`functions-modules.php:251`](includes/helpers/functions-modules.php:251) (`$$var_name` where `$var_name = 'frl_call-to-actions_default_fields'` is invalid PHP). Renamed to `call_to_actions` across all files: directory, config-options filename/variable, env configs, and wsform gate check.
 
 ## Prior Tasks (Completed)
 

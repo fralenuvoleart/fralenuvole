@@ -37,6 +37,7 @@ const FRL_ENV_DEFAULT = array(
 			'better-search-replace/better-search-replace.php',
 		),
 	),
+	// Module keys: underscores only — hyphens break variable-name auto-discovery.
 	'modules'        => array(
 		'pbs'               => false,
 		'pbproperty'        => false,
@@ -47,6 +48,7 @@ const FRL_ENV_DEFAULT = array(
 		'subdomain_adapter' => false,
 		'acf'               => false,
 		'acf-migration'     => false,
+		'call_to_actions'   => false,
 	),
 	'wp_options'     => array(
 		'blog_public' => 1,

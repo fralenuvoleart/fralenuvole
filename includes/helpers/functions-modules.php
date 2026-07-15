@@ -248,6 +248,7 @@ function frl_modules_module_get_default_config( $module_key ) {
 			include $module_config_file_path; // Use the validated path
 
 			// isset() avoids an undefined-variable warning if a module omits this var.
+			// Module keys must use underscores only — hyphens break $$var_name dereference.
 			$var_name    = frl_prefix( $module_key . '_default_fields' );
 			$field_value = isset( $$var_name ) ? $$var_name : array();
 			if ( frl_is_array_not_empty( $field_value ) ) {
