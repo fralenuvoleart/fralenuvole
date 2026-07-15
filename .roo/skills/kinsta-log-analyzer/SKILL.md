@@ -5,6 +5,8 @@ description: Fetch Kinsta server logs (error, access, cache-perf) via the Kinsta
 
 # Kinsta Log Analyzer
 
+## 🚨 ALL DIRECTIVES IN THIS SKILL MUST BE FOLLOWED LITERALLY. "LITERALLY" MEANS EXACTLY AS WRITTEN — NO INTERPRETATION, NO APPROXIMATION, NO "CLOSE ENOUGH."
+
 ## When to Use
 - User asks to "analyze Kinsta logs", "check server logs", "debug errors on Kinsta"
 - Periodic log health checks
@@ -747,6 +749,7 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
     If validation fails, fix the reported issues and re-run.
 
 10b. **Conciseness Directive Compliance Audit (MANDATORY — do not skip).**
+    **🚨 ALL DIRECTIVES MUST BE FOLLOWED LITERALLY. "LITERALLY" MEANS EXACTLY AS WRITTEN.**
     Before declaring the report complete, run these grep checks against `$REPORT_PATH`.
     Each check corresponds to a directive that has been repeatedly violated. If any grep
     produces output, fix the violation before proceeding — do NOT skip with "close enough."
