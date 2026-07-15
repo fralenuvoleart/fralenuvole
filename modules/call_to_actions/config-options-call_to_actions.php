@@ -24,7 +24,8 @@ $frl_call_to_actions_default_fields = array(
 		'label'             => 'Enable CTA Webhooks',
 		'description'       => 'Fire marketing webhooks on CTA clicks (WhatsApp, Telegram, Email)',
 		'type'              => 'checkbox',
-		'default'           => 0,
+		'default'           => 1,
 		'sanitize_callback' => 'absint',
+		'restricted'        => true,
 	),
 );

@@ -34,19 +34,20 @@ function frl_cta_webhook_handler() {
 	// containing a quote or backslash would arrive at the webhook with a spurious extra
 	// backslash (sanitize_text_field()/sanitize_url() do not strip WP's added magic-quote slash).
 	$action_id = sanitize_text_field( wp_unslash( $_POST['action_id'] ?? '' ) );
-	if ( empty( $action_id ) || ! defined( 'CTA_ACTIONS' ) ) {
+	if ( empty( $action_id ) ) {
 		wp_send_json_error( 'Invalid action', 400 );
 	}
 
-	$env_config     = frl_environment_get_config();
-	$env_prefix     = $env_config['prefix'] ?? 'default';
-	$webhook_config = array();
+	$env_config = frl_environment_get_config();
+	$env_prefix = $env_config['prefix'] ?? 'default';
 
-	if ( defined( 'CTA_WEBHOOK_CONFIG' ) && isset( CTA_WEBHOOK_CONFIG[ $env_prefix ][ $action_id ] ) ) {
-		$webhook_config = CTA_WEBHOOK_CONFIG[ $env_prefix ][ $action_id ];
+	if ( ! defined( 'CTA_WEBHOOK_CONFIG' ) || empty( CTA_WEBHOOK_CONFIG[ $env_prefix ] ) ) {
+		wp_send_json_error( 'No webhook configured', 404 );
 	}
 
-	$webhook_url = $webhook_config['url'] ?? '';
+	$env_entry   = CTA_WEBHOOK_CONFIG[ $env_prefix ];
+	$webhook_url = $env_entry['webhook_url'] ?? '';
+	$use_cron    = $env_entry['use_cron'] ?? false;
 	if ( empty( $webhook_url ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );
 	}
@@ -84,7 +85,6 @@ function frl_cta_webhook_handler() {
 		}
 	}
 
-	$use_cron = $webhook_config['use_cron'] ?? false;
 	if ( $use_cron ) {
 		frl_send_webhook_async( $webhook_url, $post_data );
 	} else {

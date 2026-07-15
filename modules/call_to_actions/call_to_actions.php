@@ -15,14 +15,18 @@ require_once FRL_DIR_PATH . 'public/channel-tracking.php';
 // Initialize shared channel tracking (guarded — no-op if already initialized by wsform)
 frl_channel_tracking_init();
 
-// Register CTA actions for the shared tracking config
+// Register CTA actions for the shared tracking config.
+// Extracts the 'actions' list from CTA_WEBHOOK_CONFIG for the current environment.
 add_filter(
 	'frl_channel_tracking_cta_actions',
 	function ( array $actions ): array {
-		if ( ! defined( 'CTA_ACTIONS' ) ) {
+		if ( ! defined( 'CTA_WEBHOOK_CONFIG' ) ) {
 			return $actions;
 		}
-		return array_merge( $actions, CTA_ACTIONS );
+		$env_config  = frl_environment_get_config();
+		$env_prefix  = $env_config['prefix'] ?? 'default';
+		$env_actions = CTA_WEBHOOK_CONFIG[ $env_prefix ]['actions'] ?? array();
+		return array_merge( $actions, $env_actions );
 	}
 );
 
