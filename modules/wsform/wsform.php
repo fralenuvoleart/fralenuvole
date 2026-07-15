@@ -78,7 +78,9 @@ function frl_wsf_init() {
 		frl_wsf_init_stats();
 	}
 
-	frl_channel_tracking_init();
+	if ( frl_get_option( 'wsform_channel_tracking' ) ) {
+		frl_channel_tracking_init();
+	}
 }
 
 /**

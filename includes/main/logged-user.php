@@ -324,13 +324,13 @@ function frl_admin_bar_add_page_tools( $wp_admin_bar ) {
 /**
  * Add Custom Post Type (CPT) links to the cached menu data.
  *
- * CPT links are static (from FRL_AB_CPT_LIST constant) and safe to cache per-user.
+ * CPT links are static (from FRL_ADMINBAR_CPT_LIST constant) and safe to cache per-user.
  *
  * @param array $data The cached menu data array.
  * @return array Updated data array containing CPT group and link entries.
  */
 function frl_admin_bar_add_cpt_links( $data ) {
-	$cpt_list     = FRL_AB_CPT_LIST;
+	$cpt_list     = FRL_ADMINBAR_CPT_LIST;
 	$cpt_group_id = FRL_PREFIX . '-cpt-menu-group';
 
 	$data['cpt_group'] = array(

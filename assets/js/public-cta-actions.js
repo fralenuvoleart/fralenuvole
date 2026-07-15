@@ -90,15 +90,15 @@
                     }
                 }
                 if (actionConfig.hasWebhook) {
-                    fireCtaWebhook(actionConfig.id);
+                    fireCtaWebhook(actionConfig.action_id);
                 }
             });
         }
         for (var i = 0; i < CONFIG.ctaActions.length; i++) {
             var action = CONFIG.ctaActions[i];
-            if (!action || !action.id || !action.url) continue;
+            if (!action || !action.action_id || !action.url) continue;
 
-            var selector = '[data-action="' + action.id + '"]';
+            var selector = '[data-action="' + action.action_id + '"]';
             var elements = document.querySelectorAll(selector);
             if (!elements.length) continue;
 
