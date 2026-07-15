@@ -719,6 +719,7 @@ class Frl_Cache_Manager {
 
 		return self::with_auth_preservation(
 			function () {
+				try {
 				// Reset the cleared groups tracker for this batch operation
 				self::$groups_cleared = array();
 
@@ -785,8 +786,9 @@ class Frl_Cache_Manager {
 
 				return $stats;
 			} finally {
-			frl_is_already_running( __METHOD__, true );
+				frl_is_already_running( __METHOD__, true );
 			}
+		}
 		);
 	}
 
