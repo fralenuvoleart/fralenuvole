@@ -720,75 +720,75 @@ class Frl_Cache_Manager {
 		return self::with_auth_preservation(
 			function () {
 				try {
-				// Reset the cleared groups tracker for this batch operation
-				self::$groups_cleared = array();
+					// Reset the cleared groups tracker for this batch operation
+					self::$groups_cleared = array();
 
-				$stats = array(
-					'runtime'      => 0,
-					'persistent'   => 0,
-					'wordpress'    => 0,
-					'key_cache'    => count( self::$key_cache ),
-					'deferred'     => count( self::$deferred_writes ),
-					'transients'   => 0,     // Add missing key expected by logged-user.php
-					'object_cache' => 0,    // Add missing key expected by logged-user.php
-				);
+					$stats = array(
+						'runtime'      => 0,
+						'persistent'   => 0,
+						'wordpress'    => 0,
+						'key_cache'    => count( self::$key_cache ),
+						'deferred'     => count( self::$deferred_writes ),
+						'transients'   => 0,     // Add missing key expected by logged-user.php
+						'object_cache' => 0,    // Add missing key expected by logged-user.php
+					);
 
-				// 1. Start with a clean slate - clear all runtime variables
-				self::$runtime_cache       = array();
-				self::$key_cache           = array();
-				self::$lru['access_order'] = array();
-				self::$deferred_writes     = array();
-				self::$loaded_groups       = array(); // Reset loaded groups tracking
+					// 1. Start with a clean slate - clear all runtime variables
+					self::$runtime_cache       = array();
+					self::$key_cache           = array();
+					self::$lru['access_order'] = array();
+					self::$deferred_writes     = array();
+					self::$loaded_groups       = array(); // Reset loaded groups tracking
 
-				// Optimization: Perform a single batch transient deletion for all plugin transients
-				// if object cache is not functional, avoiding multiple DB calls in the loop.
-				if ( ! self::is_object_cache_truly_functional() ) {
-					$transient_stats                = self::delete_transients_from_db( self::PREFIX );
-					$stats['transients']            = $transient_stats['transients'];
-					self::$transients_batch_deleted = true;
-				}
-
-				// 3. Flush each cache group using the comprehensive method
-				// This ensures consistent behavior across all clearing operations
-				foreach ( array_keys( self::$default_ttls ) as $group ) {
-					// Skip TTL fallback key — not a real cache group.
-					// 'default' in FRL_CACHE_TTL is a TTL fallback (see set()
-					// line 269), not a cache group; iterating it would trigger
-					// unrecognized-group warnings in clear_group_with_dependencies().
-					if ( $group === 'default' ) {
-						continue;
-					}
-					$group_stats = self::clear_group_with_dependencies( $group, null, false );
-
-					// Aggregate statistics
-					$stats['runtime'] += $group_stats['runtime'];
-
-					// If object cache is functional, aggregate persistent stats as object_cache
-					if ( self::is_object_cache_truly_functional() ) {
-						$stats['persistent']   += $group_stats['persistent'];
-						$stats['object_cache'] += $group_stats['persistent'];
-					} else {
-						// If using transients, the persistent stats from the loop might be 0
-						// because we already cleared them in batch, or they might be redundant.
-						// We rely on the batch count above for 'transients' total.
-						$stats['persistent'] += $group_stats['persistent'];
+					// Optimization: Perform a single batch transient deletion for all plugin transients
+					// if object cache is not functional, avoiding multiple DB calls in the loop.
+					if ( ! self::is_object_cache_truly_functional() ) {
+						$transient_stats                = self::delete_transients_from_db( self::PREFIX );
+						$stats['transients']            = $transient_stats['transients'];
+						self::$transients_batch_deleted = true;
 					}
 
-					$stats['wordpress'] += $group_stats['wordpress'];
+					// 3. Flush each cache group using the comprehensive method
+					// This ensures consistent behavior across all clearing operations
+					foreach ( array_keys( self::$default_ttls ) as $group ) {
+						// Skip TTL fallback key — not a real cache group.
+						// 'default' in FRL_CACHE_TTL is a TTL fallback (see set()
+						// line 269), not a cache group; iterating it would trigger
+						// unrecognized-group warnings in clear_group_with_dependencies().
+						if ( $group === 'default' ) {
+							continue;
+						}
+						$group_stats = self::clear_group_with_dependencies( $group, null, false );
 
-					// Store group-specific stats too
-					$stats['groups'][ $group ] = $group_stats;
+						// Aggregate statistics
+						$stats['runtime'] += $group_stats['runtime'];
+
+						// If object cache is functional, aggregate persistent stats as object_cache
+						if ( self::is_object_cache_truly_functional() ) {
+							$stats['persistent']   += $group_stats['persistent'];
+							$stats['object_cache'] += $group_stats['persistent'];
+						} else {
+							// If using transients, the persistent stats from the loop might be 0
+							// because we already cleared them in batch, or they might be redundant.
+							// We rely on the batch count above for 'transients' total.
+							$stats['persistent'] += $group_stats['persistent'];
+						}
+
+						$stats['wordpress'] += $group_stats['wordpress'];
+
+						// Store group-specific stats too
+						$stats['groups'][ $group ] = $group_stats;
+					}
+
+					// Reset batch-delete flag so subsequent calls (e.g., clear_transients for a specific group)
+					// are not incorrectly skipped.
+					self::$transients_batch_deleted = false;
+
+					return $stats;
+				} finally {
+					frl_is_already_running( __METHOD__, true );
 				}
-
-				// Reset batch-delete flag so subsequent calls (e.g., clear_transients for a specific group)
-				// are not incorrectly skipped.
-				self::$transients_batch_deleted = false;
-
-				return $stats;
-			} finally {
-				frl_is_already_running( __METHOD__, true );
 			}
-		}
 		);
 	}
 
