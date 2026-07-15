@@ -4,6 +4,7 @@
 - **Context Synchronization:** You MUST read the `/memory-bank` directory before every task. Use it as the primary source of truth over your general training data.
 - **Auto-Update Protocol:** Update `activeContext.md` and `progress.md` after every significant change without being prompted.
 - **Deep Scan Initialization:** If no `memory-bank/` exists, you must offer to initialize it by scanning `docs/` and the codebase to preserve legacy architectural decisions.
+- **Memory-Bank Scope:** `memory-bank/` documents the **fralenuvole plugin ONLY**. Skills (kinsta-log-analyzer, etc.), shell tools (deploy, warmup), and external operations MUST NOT write to memory-bank. Their state belongs in their own skill-specific directories (`.roo/skills/<name>/references/`), tool headers, or external logs.
 
 ## 🔍 ANALYSIS & REASONING
 - **Problem "Why":** Identify the underlying problem before proposing code. Do not rely solely on comments or assumptions.
@@ -58,11 +59,6 @@ Token budget: graph is cost-justified only when sessions involve
 - **CRITICAL RULE: When user gives a direct instruction with clear intent — DO IT.** Do not over-analyze, do not loop on their words, do not ask for clarification. Execute the instruction as-is.
 - **CRITICAL RULE: Do not re-loop same topic over and over again.** If you already have the context, use it. Excessive file I/O wastes time and frustrates the user.
 - **CRITICAL RULE: If a fix causes a regression, revert immediately and report. Do not design "v2" without explicit user approval.** Let the user decide the next step.
-
-## 🚫 COMMENT/DOCBLOCK VERBOSITY GUARDRAIL (FAILURE RECORD)
-- **Root cause of failure:** Added multi-sentence rationale essays to code comments, docblocks, and option descriptions instead of concise one-liners, bloating every touched file.
-- **CRITICAL RULE: Comments/docblocks/descriptions = 1 short line stating what+why. Never multi-sentence paragraphs.** Detailed rationale belongs in the chat response, not permanently duplicated in the file.
-- **CRITICAL RULE: Match the existing file's comment density.** If surrounding comments are one-liners, new comments must be one-liners too — do not introduce a denser style than what's already there.
 
 ## 🚫 LOOP PREVENTION (ENFORCED LIMITS)
 - **switch_mode LIMIT: 1 per task.** Call `switch_mode` exactly once — at the natural conclusion of planning, after the user has approved the plan. Never call it as a fallback when the user is frustrated, never call it to "keep going," and never call it a second time.
