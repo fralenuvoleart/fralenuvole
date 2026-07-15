@@ -1288,6 +1288,8 @@ class Frl_Cache_Manager {
 	 * @return array{group: string, runtime_cleared: int, persistent_cleared: int, transaction_used: bool, success: bool} Operation statistics.
 	 */
 	public static function atomic_clear_group( $group, ?array $specific_keys = null ) {
+		global $wpdb;
+
 		if ( frl_is_already_running( __METHOD__ ) ) {
 			return array(
 				'group'              => $group,
