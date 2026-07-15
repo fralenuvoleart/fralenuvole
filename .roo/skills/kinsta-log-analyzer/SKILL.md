@@ -727,16 +727,24 @@ the script exits with a warning instead of failing the run — the Markdown repo
 deliverable regardless of whether the PDF export succeeds.
 
 ### Step 8: Send Report by Email (User-Initiated Only)
-
+ 
 After PDF export, **ask the user** whether to email the report. Do not send email automatically.
 Only send the PDF if the user explicitly chooses to send it in their chat response.
-
+ 
 When the user confirms, send the PDF using
 [`scripts/send_report_email.py`](scripts/send_report_email.py).
-
+ 
+**Configuration — two files, split by sensitivity:**
+ 
+| File | Contents | Version-controlled? |
+|---|---|---|
+| [`config/email.json`](config/email.json) | Non-sensitive: `from_email`, `to_emails`, `subject`, `body_signature` | ✅ Yes — lives inside the skill folder |
+| `~/.config/kinsta-log-analyzer/email.json` | Sensitive: `smtp_host`, `smtp_port`, `username`, `password` | ❌ No — outside the project tree (see [`config/email.json.example`](config/email.json.example)) |
+ 
+The script merges both at runtime. Recipients, subject, and signature are portable with the skill;
+SMTP credentials stay on the local machine only.
+ 
 **Prerequisites:**
-- A config file at `~/.config/kinsta-log-analyzer/email.json` (see
-  [`config/email.json.example`](config/email.json.example)).
 - For Gmail: an **App Password** is required because regular account passwords do not work when
   2-Step Verification is enabled. Generate it at
   https://myaccount.google.com/apppasswords after enabling 2-Step Verification.
@@ -804,8 +812,9 @@ per Step 7) and whether the report was emailed.
 | [`scripts/probe_urls.py`](scripts/probe_urls.py) | Live HTTP probe (status/timing/headers) — a real-time snapshot, not historical. Run twice: baseline (fixed URLs, Step 2) and targeted (dynamic URLs from findings, Step 4) | **Execute** in Steps 2 & 4 |
 | [`scripts/verify_urls.py`](scripts/verify_urls.py) | Post-generation mechanical URL verification — diffs every URL in LLM-authored commentary against source files (probe JSON, site-context.md, report data tables). Catches transliteration errors that are invisible to spell-check | **Execute** in Step 6.10a — mandatory, do not skip |
 | [`scripts/export_pdf.sh`](scripts/export_pdf.sh) | Converts the final Markdown report to PDF via `md-to-pdf`/`npx`, driven by the system's existing Chromium (no Puppeteer download, no pandoc) | **Execute** in Step 7, after Step 6 is fully written |
-| [`scripts/send_report_email.py`](scripts/send_report_email.py) | Sends the Markdown + PDF report as email attachments via SMTP (Gmail by default). Reads credentials from `~/.config/kinsta-log-analyzer/email.json` | **Execute** in Step 8 (optional), if the user chooses to email the report |
-| [`config/email.json.example`](config/email.json.example) | Example SMTP/email config. Copy to `~/.config/kinsta-log-analyzer/email.json` and fill in credentials | Reference when setting up email |
+| [`scripts/send_report_email.py`](scripts/send_report_email.py) | Sends the PDF report as email attachment via SMTP (Gmail by default). Merges non-sensitive fields from [`config/email.json`](config/email.json) (recipients, subject, signature) with SMTP credentials from `~/.config/kinsta-log-analyzer/email.json` | **Execute** in Step 8 (optional), if the user chooses to email the report |
+| [`config/email.json`](config/email.json) | Non-sensitive email fields: `from_email`, `to_emails`, `subject`, `body_signature`. Lives in the skill folder; version-controlled | Edit directly to change recipients or subject |
+| [`config/email.json.example`](config/email.json.example) | Template for `~/.config/kinsta-log-analyzer/email.json` — SMTP credentials only (`smtp_host`, `smtp_port`, `username`, `password`). Not version-controlled | Copy to `~/.config/kinsta-log-analyzer/email.json` and fill in credentials |
 | [`scripts/report.css`](scripts/report.css) | Print stylesheet applied by `export_pdf.sh` — larger body text, `table-layout: fixed` + word-wrap so wide tables don't overflow/truncate in the PDF | Used automatically by `export_pdf.sh`; edit directly if PDF styling needs further tweaks |
 | [`references/site-context.md`](references/site-context.md) | Admin/business-owner timezones, each site's confirmed primary market, and the fixed "Known Probe URLs" list per site — a living cache, update it when the user confirms new context | **Read** in Steps 1 & 2; **update** via `apply_diff` when new context is learned |
 | [`references/bot-taxonomy.md`](references/bot-taxonomy.md) | Accurate, unbiased per-bot reference: real nature (crawler vs. on-demand agent), robots.txt/Crawl-Delay compliance matrix, Kinsta/WordPress-generic mitigation tiers (no hosted-app code involved — see Step 6.5), and the ASN-vs-reverse-DNS distinction | **Read in full** in Step 6 before writing any bot-related recommendation |
