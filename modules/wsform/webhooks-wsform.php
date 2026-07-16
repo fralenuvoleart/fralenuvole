@@ -136,7 +136,7 @@ function frl_wsf_set_language( $form, $preview ) {
 function frl_wsf_submit_webhook( $submit ) {
 	// Defensive: Don't send webhook if submission has validation errors
 	// (e.g., spam filter blocked it)
-	if ( ! empty( $submit->error_validation_actions ) && count( $submit->error_validation_actions ) > 0 ) {
+	if ( ! empty( $submit->error_validation_actions ) && is_array( $submit->error_validation_actions ) && count( $submit->error_validation_actions ) > 0 ) {
 		return;
 	}
 
@@ -202,6 +202,11 @@ function frl_wsf_spam_filter_submission( $field_error_action_array, $post_mode, 
 		return $field_error_action_array;
 	}
 
+	// Guard against non-array input from other plugins/filters
+	if ( ! is_array( $field_error_action_array ) ) {
+		$field_error_action_array = array();
+	}
+
 	$form_id = $submit->form_id ?? 0;
 	$configs = frl_wsf_get_all_webhook_configs();
 
@@ -235,8 +240,8 @@ function frl_wsf_spam_filter_submission( $field_error_action_array, $post_mode, 
 			if ( is_array( $value ) ) {
 				$value = empty( $value[0] ) ? '' : $value[0];
 			}
-			// Trim to handle whitespace-only values
-			if ( ! empty( trim( (string) $value ) ) ) {
+			// Trim to handle whitespace-only values; guard against non-scalar (arrays/repeaters)
+			if ( is_scalar( $value ) && ! empty( trim( (string) $value ) ) ) {
 				++$filled_count;
 			}
 		}

@@ -102,6 +102,11 @@ function frl_wsf_translate_fields( $form, $preview ) {
 	static $frl_wsf_success_style_added = false;
 	static $frl_wsf_success_message     = null;
 
+	// Defensive: guard against forms with no actions configured
+	if ( ! isset( $form->meta->action->groups[0]->rows ) ) {
+		return $form;
+	}
+
 	$form_actions = $form->meta->action->groups[0]->rows;
 
 	foreach ( $form_actions as $key => $action ) {

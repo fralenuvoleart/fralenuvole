@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-CTA extraction from wsform module into standalone `call_to_actions` module. Implementation complete. Plan rewritten as as-built document in [`plans/EXTRACTION-call-to-actions.md`](plans/EXTRACTION-call-to-actions.md).
+CTA extraction from wsform module into standalone `call_to_actions` module. Implementation complete. Plan rewritten as as-built document in [`plans/EXTRACTION-call-to-actions.md`](plans/EXTRACTION-call-to-actions.md). Post-extraction hardening: webhook deduplication fix + PHP 8+ defensive type checks applied to wsform and webhook helpers.
 
 ## Changes Made
 
@@ -18,6 +18,8 @@ CTA extraction from wsform module into standalone `call_to_actions` module. Impl
 10. **CTA handler: per-IP rate limiting** — `CTA_WEBHOOK_RATE_LIMIT` (30) / `CTA_WEBHOOK_RATE_WINDOW` (60s) in [`config-constants-call_to_actions.php`](modules/call_to_actions/config-constants-call_to_actions.php). Payload built via declarative `CTA_WEBHOOK_FIELDS` constant with sentinel values.
 11. **Removed dead `fieldMapping`** — JS now always uses `fieldPrefix + key` (e.g., `channel_source`). Matches `data-name` attributes on WS Form hidden fields.
 12. **Removed dead `config-options-call_to_actions.php`** — module toggle via env config (`config-defaults.php` / `config-environment.php`), auto-created by `frl_modules_load_options_defaults()`.
+13. **🐛 Fixed webhook deduplication bug** — [`frl_send_webhook_async()`](includes/helpers/functions-webhook.php): injects `wp_generate_uuid4()` as a sibling cron arg (`_frl_uuid`) to defeat WP-Cron's 10-minute event deduplication window. UUID participates in the cron hash but never reaches the webhook payload.
+14. **🛡️ PHP 8+ defensive type guards in wsform** — [`frl_wsf_submit_webhook()`](modules/wsform/webhooks-wsform.php): `is_array()` check before `count()` on `error_validation_actions`. [`frl_wsf_spam_filter_submission()`](modules/wsform/webhooks-wsform.php): array guard before `[]` append; `is_scalar()` guard before `(string)` cast. [`frl_wsf_translate_fields()`](modules/wsform/wsform.php): `isset()` guard before deep object traversal on `$form->meta->action->groups[0]->rows`.
 
 ## Prior Tasks (Completed)
 

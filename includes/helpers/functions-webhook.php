@@ -7,18 +7,29 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Schedules a fire-and-forget webhook dispatch via WP-Cron.
  * The actual cURL call runs in a background cron job ('frl_webhook_dispatch' action).
  *
- * @param string $url  Webhook endpoint URL.
- * @param array  $data Payload to send.
+ * @param string      $url       Webhook endpoint URL.
+ * @param array       $data      Payload to send.
+ * @param string|null $dedup_key Optional unique key for dedup. When omitted, a
+ *                               UUID is generated (every call is unique). When
+ *                               provided (e.g. a DB submit ID), identical keys
+ *                               within 10 min are deduplicated by WP-Cron —
+ *                               useful for preventing double-click duplicates.
  * @return bool True if the event was scheduled, false on failure.
  */
-function frl_send_webhook_async( string $url, array $data ): bool {
+function frl_send_webhook_async( string $url, array $data, ?string $dedup_key = null ): bool {
+	// Dedup key: caller-supplied (e.g., wsform submit ID) or auto-generated UUID.
+	// Lives as a sibling cron arg so it participates in WP-Cron's dedup hash
+	// but never reaches the webhook payload.
+	$_frl_uuid = $dedup_key ?? wp_generate_uuid4();
+
 	$scheduled = wp_schedule_single_event(
 		time(),
 		'frl_webhook_dispatch',
 		array(
 			array(
-				'url'  => $url,
-				'data' => $data,
+				'url'       => $url,
+				'data'      => $data,
+				'_frl_uuid' => $_frl_uuid,
 			),
 		)
 	);
