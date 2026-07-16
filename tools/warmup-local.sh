@@ -12,6 +12,19 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 set -euo pipefail
 
+# --- Singleton lock: prevent concurrent warmup runs ---
+PIDFILE="/tmp/warmup-local.pid"
+if [[ -f "$PIDFILE" ]]; then
+    OLD_PID=$(cat "$PIDFILE")
+    if kill -0 "$OLD_PID" 2>/dev/null; then
+        echo "Warmup already running (PID $OLD_PID). Aborting." >&2
+        exit 1
+    fi
+fi
+echo $$ > "$PIDFILE"
+trap 'rm -f "$PIDFILE"' EXIT
+# --- end singleton lock ---
+
 LOG_DIR="$(dirname "$SCRIPT_DIR")/logs"
 mkdir -p "$LOG_DIR"
 
