@@ -176,8 +176,9 @@ function frl_wsf_submit_webhook( $submit ) {
 			$post_data['Service'] = 'Webpage';
 		}
 
-		// Check if cron should be used (defaults to true for backward compatibility)
-		$use_cron = $config['use_cron'] ?? true;
+		// Check if cron should be used — per-webhook default, overridable per env.
+		$env_config = frl_environment_get_config();
+		$use_cron   = $env_config['use_cron'] ?? $config['use_cron'] ?? true;
 
 		if ( $use_cron ) {
 			frl_send_webhook_async( $webhook_url, $post_data );

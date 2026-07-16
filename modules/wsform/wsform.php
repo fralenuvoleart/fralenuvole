@@ -31,15 +31,10 @@ require_once FRL_DIR_PATH . 'public/channel-tracking.php';
 function frl_wsf_get_all_webhook_configs(): array {
 	$env_config = frl_environment_get_config();
 	$config_key = $env_config['webhook_config'] ?? $env_config['prefix'] ?? false;
-	$configs    = ( $config_key && isset( WSFORM_ALL_WEBHOOKS_CONFIG[ $config_key ] ) )
-						? WSFORM_ALL_WEBHOOKS_CONFIG[ $config_key ]
-						: array();
 
-	if ( ! empty( $env_config['webhooks'] ) && is_array( $env_config['webhooks'] ) ) {
-		$configs = array_replace_recursive( $configs, $env_config['webhooks'] );
-	}
-
-	return $configs;
+	return ( $config_key && isset( WSFORM_ALL_WEBHOOKS_CONFIG[ $config_key ] ) )
+		? WSFORM_ALL_WEBHOOKS_CONFIG[ $config_key ]
+		: array();
 }
 
 // Register WS Form Stats widget and tab

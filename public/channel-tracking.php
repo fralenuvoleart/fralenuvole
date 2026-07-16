@@ -48,11 +48,11 @@ function frl_channel_tracking_enqueue() {
 
 	$has_any_webhook = false;
 	foreach ( $actions as &$action ) {
-		$action['hasWebhook'] = ! empty( $action['webhook'] );
+		$action['hasWebhook'] = ! empty( $action['send_webhook'] );
 		if ( $action['hasWebhook'] ) {
 			$has_any_webhook = true;
 		}
-		unset( $action['webhook'] ); // never expose the webhook URL to the client
+		unset( $action['send_webhook'] ); // never expose to client
 	}
 	unset( $action );
 

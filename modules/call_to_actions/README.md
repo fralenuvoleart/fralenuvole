@@ -19,7 +19,7 @@ On click:
 1. `e.preventDefault()` — stops native navigation
 2. Builds the deep link URL, replacing `{reference_id}` with the cookie value
 3. Opens WhatsApp/Telegram in a new tab, or triggers mailto for email
-4. Fires `sendBeacon` → `admin-ajax.php?action=frl_cta_webhook` → Integrately
+4. If `send_webhook` is enabled for the action, fires `sendBeacon` → `admin-ajax.php?action=frl_cta_webhook` → Integrately
 
 ## Configuration
 
@@ -32,22 +32,43 @@ const CTA_WEBHOOK_CONFIG = array(
         'webhook_url' => 'https://webhooks.integrately.com/...',
         'use_cron'    => false,
         'actions'     => array(
-            array('action_id' => 'whatsapp', 'url' => '...', 'template' => '...', 'webhook' => true),
-            array('action_id' => 'telegram', 'url' => '...', 'template' => '...', 'webhook' => true),
-            array('action_id' => 'email',    'url' => '...', 'template' => '...', 'webhook' => true),
+            array(
+                'action_id'    => 'whatsapp',
+                'url'          => 'https://wa.me/...',
+                'template'     => '...',
+                'send_webhook' => true,   // fire marketing webhook on click
+            ),
         ),
     ),
 );
 ```
 
-Webhook dispatch toggle: `cta_webhook` option in plugin settings (Modules tab).
-When disabled, only deep links work — no webhooks fire.
+### `use_cron` resolution order
+
+1. `$env_config['use_cron']` — env-level override (e.g., `false` on staging)
+2. Per-env constant entry in `CTA_WEBHOOK_CONFIG`
+3. Hard default: `false` (sync)
+
+### Admin toggles
+
+| Option | Purpose |
+|---|---|
+| `module_call_to_actions` | Enable/disable the entire module (env config) |
+| `cta_webhook` | Master kill switch for webhook dispatch (Modules tab). When disabled, `send_webhook` is stripped from all actions — only deep links work, no webhooks fire. |
+
+### Per-action webhook toggle
+
+Each action in `CTA_WEBHOOK_CONFIG` has a `send_webhook` boolean. Set to `false` on individual actions to skip webhook dispatch while keeping the deep link functional (e.g., email CTA that only opens mailto).
+
+### Staging
+
+Staging env templates set `'use_cron' => false` to force synchronous dispatch for testability. Production inherits the per-webhook constant defaults.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `call_to_actions.php` | Module entry point |
-| `config-constants-call_to_actions.php` | CTA definitions and webhook config |
+| `call_to_actions.php` | Module entry point, admin toggle gate, action registration filter |
+| `config-constants-call_to_actions.php` | CTA definitions, webhook URL, `send_webhook` flags, field mapping, rate limit |
 | `config-options-call_to_actions.php` | `cta_webhook` admin toggle |
-| `webhooks-call_to_actions.php` | AJAX handler for webhook dispatch |
+| `webhooks-call_to_actions.php` | AJAX handler: rate limiting, payload assembly, webhook dispatch |

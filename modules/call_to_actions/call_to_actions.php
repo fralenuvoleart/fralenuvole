@@ -30,7 +30,7 @@ add_filter(
 		// If webhook dispatch is disabled, strip webhook flag so JS doesn't fire sendBeacon.
 		if ( ! frl_get_option( 'cta_webhook' ) ) {
 			foreach ( $env_actions as &$action ) {
-				$action['webhook'] = false;
+				$action['send_webhook'] = false;
 			}
 			unset( $action );
 		}

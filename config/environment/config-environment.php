@@ -55,6 +55,7 @@ const FRL_ENV_PBS_STAGING = array(
 	'extends'     => 'FRL_ENV_PBS_TEMPLATE',
 	'type'        => 'staging',
 	'counterpart' => 'pbservices.ge',
+	'use_cron'    => false,
 	'modules'     => array(
 		'subdomain_adapter' => true,
 	),
@@ -85,6 +86,7 @@ const FRL_ENV_PBP_STAGING = array(
 	'extends'     => 'FRL_ENV_PBP_TEMPLATE',
 	'type'        => 'staging',
 	'counterpart' => 'pbproperty.ge',
+	'use_cron'    => false,
 );
 
 // --- PB Nova ---
@@ -113,6 +115,7 @@ const FRL_ENV_PBNOVA_STAGING = array(
 	'extends'     => 'FRL_ENV_PBNOVA_TEMPLATE',
 	'type'        => 'staging',
 	'counterpart' => 'pbnova.com',
+	'use_cron'    => false,
 );
 
 // --- Fralenuvole ---

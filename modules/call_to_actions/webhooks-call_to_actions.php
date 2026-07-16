@@ -49,7 +49,9 @@ function frl_cta_webhook_handler() {
 
 	$env_entry   = CTA_WEBHOOK_CONFIG[ $env_prefix ];
 	$webhook_url = $env_entry['webhook_url'] ?? '';
-	$use_cron    = $env_entry['use_cron'] ?? false;
+	// Per-webhook default from constants, overridable per env.
+	$use_cron = $env_config['use_cron'] ?? $env_entry['use_cron'] ?? false;
+
 	if ( empty( $webhook_url ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );
 	}
