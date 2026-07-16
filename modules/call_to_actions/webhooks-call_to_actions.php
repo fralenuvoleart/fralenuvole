@@ -89,12 +89,15 @@ function frl_cta_webhook_handler() {
 		}
 	}
 
+	$dedup_key      = 'cta_' . md5( $client_ip . $action_id );
+	$dedup_interval = 5; // 5 seconds
+
 	if ( $use_cron ) {
-		if ( ! frl_send_webhook_async( $webhook_url, $post_data ) ) {
+		if ( ! frl_send_webhook_async( $webhook_url, $post_data, $dedup_key, $dedup_interval ) ) {
 			wp_send_json_error( 'Webhook scheduling failed', 502 );
 		}
 	} else {
-		$result = frl_send_webhook( $webhook_url, $post_data );
+		$result = frl_send_webhook( $webhook_url, $post_data, $dedup_key, $dedup_interval );
 		if ( ! $result['success'] ) {
 			wp_send_json_error( 'Webhook dispatch failed', 502 );
 		}

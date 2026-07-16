@@ -10,13 +10,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-add_filter(
-	'wsf_pre_render',
-	'frl_wsf_set_language',
-	10,
-	2
-);
-
 add_action(
 	'wsf_submit_post_complete',
 	'frl_wsf_submit_webhook',
@@ -32,8 +25,8 @@ add_filter(
 );
 
 /**
- * Fix: Remove validation errors for field 249 (channel_content/utm_content).
- * This field is populated by channel tracking and should never block form submission.
+ * Fix: Remove validation errors for channel tracking fields.
+ * These fields are populated by channel tracking and should never block form submission.
  * Hook runs at priority 100 (after WS Form's validation at 10) to filter out errors.
  *
  * @param mixed $field_error_action_array Array of error actions.
@@ -43,12 +36,12 @@ add_filter(
  */
 add_filter(
 	'wsf_submit_validate',
-	'frl_wsf_clear_field_249_errors',
+	'frl_wsf_clear_channel_tracking_errors',
 	100,
 	3
 );
 
-function frl_wsf_clear_field_249_errors( mixed $field_error_action_array, mixed $post_mode, mixed $submit ) {
+function frl_wsf_clear_channel_tracking_errors( mixed $field_error_action_array, mixed $post_mode, mixed $submit ) {
 	// Only process on submit
 	if ( $post_mode !== 'submit' ) {
 		return $field_error_action_array;
@@ -59,14 +52,31 @@ function frl_wsf_clear_field_249_errors( mixed $field_error_action_array, mixed 
 		return $field_error_action_array;
 	}
 
-	// Filter out any validation errors for field 249
+	$form_id = $submit->form_id ?? 0;
+	$configs = frl_wsf_get_matching_configs( $form_id );
+
+	$fields_to_clear = array();
+	foreach ( $configs as $config ) {
+		$fields_map = $config['fields_map'] ?? array();
+		foreach ( $fields_map as $key => $field_id ) {
+			if ( str_starts_with( $key, 'Channel ' ) ) {
+				$fields_to_clear[] = (int) str_replace( 'field_', '', $field_id );
+			}
+		}
+	}
+
+	if ( empty( $fields_to_clear ) ) {
+		return $field_error_action_array;
+	}
+
+	// Filter out any validation errors for channel tracking fields
 	$filtered_errors = array_filter(
 		$field_error_action_array,
-		function ( $error ) {
-			// Keep errors that are NOT for field 249
+		function ( $error ) use ( $fields_to_clear ) {
+			// Keep errors that are NOT for channel tracking fields
 			// phpcs:ignore Universal.Operators.StrictComparisons.LooseEqual -- Intentional loose comparison: $error['field_id'] originates from a third-party WS Form filter payload and its exact type (int vs numeric string) is not guaranteed at this boundary.
-			if ( isset( $error['field_id'] ) && $error['field_id'] == 249 ) {
-				return false; // Remove field 249 errors
+			if ( isset( $error['field_id'] ) && in_array( (int) $error['field_id'], $fields_to_clear, true ) ) {
+				return false; // Remove channel tracking field errors
 			}
 			return true; // Keep all other errors
 		}
@@ -97,34 +107,6 @@ function frl_wsf_get_matching_configs( $form_id ) {
 	}
 
 	return $matching_configs;
-}
-
-/**
- * Translate labels and options, and set field default values
- *
- * @param mixed $form    Form ID or form object.
- * @param bool  $preview Whether the form is in preview mode.
- * @return mixed
- */
-function frl_wsf_set_language( $form, $preview ) {
-	/** @disregard P1010 Undefined type */
-	$fields = wsf_form_get_fields( $form );
-
-	foreach ( $fields as $object ) {
-		/** @disregard P1010 Undefined type */
-		$field = wsf_field_get_object( $form, $object->id );
-
-		// Skip if field not found
-		if ( $field === null ) {
-			continue;
-		}
-
-		if ( isset( $field->meta->default_value ) && 'Language' === $field->label ) {
-			$field->meta->default_value = strtoupper( frl_get_language() );
-		}
-	}
-
-	return $form;
 }
 
 /**
@@ -180,10 +162,13 @@ function frl_wsf_submit_webhook( $submit ) {
 		$env_config = frl_environment_get_config();
 		$use_cron   = $env_config['use_cron'] ?? $config['use_cron'] ?? true;
 
+		$dedup_key      = 'wsf_' . ( $submit->id ?? wp_generate_uuid4() );
+		$dedup_interval = 60; // 1 minute
+
 		if ( $use_cron ) {
-			frl_send_webhook_async( $webhook_url, $post_data );
+			frl_send_webhook_async( $webhook_url, $post_data, $dedup_key, $dedup_interval );
 		} else {
-			frl_send_webhook( $webhook_url, $post_data );
+			frl_send_webhook( $webhook_url, $post_data, $dedup_key, $dedup_interval );
 		}
 	}
 }

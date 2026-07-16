@@ -4,19 +4,43 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Checks if an operation is a duplicate based on a transient lock.
+ *
+ * @param string $key      Unique identifier for the operation.
+ * @param int    $interval Lock duration in seconds (default 60).
+ * @return bool True if it's a duplicate (locked), false otherwise.
+ */
+function frl_is_duplicate_operation( string $key, int $interval = 60 ): bool {
+	if ( empty( $key ) || $interval <= 0 ) {
+		return false;
+	}
+
+	$transient_key = 'dedup_' . md5( $key );
+
+	if ( frl_get_transient( $transient_key ) ) {
+		return true; // It's a duplicate, block it
+	}
+
+	frl_set_transient( $transient_key, true, $interval );
+	return false; // Not a duplicate, proceed and lock
+}
+
+/**
  * Schedules a fire-and-forget webhook dispatch via WP-Cron.
  * The actual cURL call runs in a background cron job ('frl_webhook_dispatch' action).
  *
- * @param string      $url       Webhook endpoint URL.
- * @param array       $data      Payload to send.
- * @param string|null $dedup_key Optional unique key for dedup. When omitted, a
- *                               UUID is generated (every call is unique). When
- *                               provided (e.g. a DB submit ID), identical keys
- *                               within 10 min are deduplicated by WP-Cron —
- *                               useful for preventing double-click duplicates.
+ * @param string      $url            Webhook endpoint URL.
+ * @param array       $data           Payload to send.
+ * @param string|null $dedup_key      Optional unique key for dedup.
+ * @param int         $dedup_interval Lock duration in seconds (default 60).
  * @return bool True if the event was scheduled, false on failure.
  */
-function frl_send_webhook_async( string $url, array $data, ?string $dedup_key = null ): bool {
+function frl_send_webhook_async( string $url, array $data, ?string $dedup_key = null, int $dedup_interval = 60 ): bool {
+	if ( $dedup_key !== null && frl_is_duplicate_operation( $dedup_key, $dedup_interval ) ) {
+		frl_log( 'WEBHOOK DEDUP: Async dispatch blocked for key {key}', array( 'key' => $dedup_key ) );
+		return true; // Treat as success to avoid triggering error flows
+	}
+
 	// Dedup key: caller-supplied (e.g., wsform submit ID) or auto-generated UUID.
 	// Lives as a sibling cron arg so it participates in WP-Cron's dedup hash
 	// but never reaches the webhook payload.
@@ -44,6 +68,7 @@ add_action(
 	function ( array $args ) {
 		$url  = $args['url'] ?? '';
 		$data = $args['data'] ?? array();
+		// Pass null for dedup_key here because deduplication already happened at scheduling time
 		frl_send_webhook( $url, $data );
 	}
 );
@@ -54,9 +79,22 @@ add_action(
  * behavior as the original frl_wsf_execute_webhook_submission() — only the
  * log message text now references frl_send_webhook() (cosmetic only).
  *
+ * @param string      $url            Webhook endpoint URL.
+ * @param array       $data           Payload to send.
+ * @param string|null $dedup_key      Optional unique key for dedup.
+ * @param int         $dedup_interval Lock duration in seconds (default 60).
  * @return array{success: bool, http_code: int, error: ?string}
  */
-function frl_send_webhook( string $url, array $data ): array {
+function frl_send_webhook( string $url, array $data, ?string $dedup_key = null, int $dedup_interval = 60 ): array {
+	if ( $dedup_key !== null && frl_is_duplicate_operation( $dedup_key, $dedup_interval ) ) {
+		frl_log( 'WEBHOOK DEDUP: Sync dispatch blocked for key {key}', array( 'key' => $dedup_key ) );
+		return array(
+			'success'   => true, // Treat as success to avoid triggering error flows
+			'http_code' => 200,
+			'error'     => null,
+		);
+	}
+
 	if ( empty( $url ) || ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
 		frl_log( 'WEBHOOK ERROR: frl_send_webhook() - Invalid or missing webhook URL.', array( 'url' => $url ) );
 		return array(

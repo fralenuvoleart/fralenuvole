@@ -98,22 +98,20 @@ function frl_wsf_translate_fields( $form, $preview ) {
 	static $frl_wsf_success_message     = null;
 
 	// Defensive: guard against forms with no actions configured
-	if ( ! isset( $form->meta->action->groups[0]->rows ) ) {
-		return $form;
-	}
+	if ( isset( $form->meta->action->groups[0]->rows ) ) {
+		$form_actions = $form->meta->action->groups[0]->rows;
 
-	$form_actions = $form->meta->action->groups[0]->rows;
+		foreach ( $form_actions as $key => $action ) {
 
-	foreach ( $form_actions as $key => $action ) {
+			if ( ! empty( $action->data ) && count( $action->data ) > 1 && str_contains( $action->data[0], 'Show Message' ) ) {
+				$json = json_decode( $action->data[1] );
 
-		if ( ! empty( $action->data ) && count( $action->data ) > 1 && str_contains( $action->data[0], 'Show Message' ) ) {
-			$json = json_decode( $action->data[1] );
-
-			if ( isset( $json->meta ) && isset( $json->meta->action_message_message ) ) {
-				$message = $json->meta->action_message_message;
-				// Capture the first available success message; avoid re-registering hooks
-				if ( $frl_wsf_success_message === null ) {
-					$frl_wsf_success_message = $message;
+				if ( isset( $json->meta ) && isset( $json->meta->action_message_message ) ) {
+					$message = $json->meta->action_message_message;
+					// Capture the first available success message; avoid re-registering hooks
+					if ( $frl_wsf_success_message === null ) {
+						$frl_wsf_success_message = $message;
+					}
 				}
 			}
 		}
@@ -172,7 +170,7 @@ function frl_wsf_translate_fields( $form, $preview ) {
 			} elseif ( '#user_ip' === $default ) {
 				$field->meta->default_value = frl_get_client_ip();
 			} elseif ( '#lang' === $default ) {
-				$field->meta->default_value = get_locale();
+				$field->meta->default_value = strtoupper( frl_get_language() );
 			}
 		}
 	}
@@ -189,11 +187,11 @@ function frl_wsf_translate_form_success( $message ) {
 		}
 
 		.wsf-alert-success:before {
-			content: "<?php echo frl_get_translation( $message ); ?>";
+			content: "<?php echo addslashes( frl_get_translation( $message ) ); ?>";
 		}
 
 		[data-wsf-message]:has( + form input[aria-label="Date"]:is([value="Sat"],[value="Sun"])) .wsf-alert-success:before {
-			content: "<?php echo frl_get_translation( 'Thank you for your inquiry. We will answer you on Monday.' ); ?>";
+			content: "<?php echo addslashes( frl_get_translation( 'Thank you for your inquiry. We will answer you on Monday.' ) ); ?>";
 		}
 	</style>
 	<?php
