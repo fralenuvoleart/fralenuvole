@@ -32,7 +32,6 @@ function frl_channel_tracking_enqueue() {
 	}
 
 	// frl_enqueue_scripts() handles cached filemtime() versioning + dedupe internally.
-	// Resulting handles are 'frl-channel-tracking' / 'frl-cta-actions' (FRL_PREFIX + key).
 	frl_enqueue_scripts(
 		array(
 			'channel-tracking' => 'assets/js/public-channel-tracking.js',
@@ -40,7 +39,7 @@ function frl_channel_tracking_enqueue() {
 		),
 		'channel_tracking',
 		array(
-			'cta-actions' => array( 'frl-channel-tracking' ), // load-order + config-global dependency
+			'cta-actions' => array( 'frl-channel-tracking' ),
 		)
 	);
 
