@@ -118,5 +118,11 @@ done
 ELAPSED=$(( $(date +%s) - START_TIME ))
 echo "Completed: $success success, $failed failed ($TOTAL total) in ${ELAPSED}s" | tee -a "$LOG_FILE"
 
+if ((failed > 0)); then
+    echo "" | tee -a "$LOG_FILE"
+    echo "--- Failed URLs ---" | tee -a "$LOG_FILE"
+    grep '✗' "$LOG_FILE" | tee -a "$LOG_FILE"
+fi
+
 # Clean up logs older than 7 days to save disk space.
 find "$LOG_DIR" -maxdepth 1 -name "warmup-*.log" -type f -mtime +7 -delete 2>/dev/null
