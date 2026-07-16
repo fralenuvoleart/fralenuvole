@@ -16,7 +16,9 @@ function frl_cta_webhook_handler() {
 	// and per-IP rate limiting. No nonce: Cloudflare CDN caching causes nonce expiration.
 
 	// Per-IP rate limit: max 30 requests per minute from the same IP.
-	$client_ip   = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0' );
+	// Best-effort (TOCTOU): concurrent requests may both pass the gate.
+	// Acceptable — CTA webhooks are low-stakes analytics, not security-critical.
+	$client_ip   = frl_get_client_ip() ?: '0.0.0.0';
 	$rate_key    = 'frl_cta_rate_' . md5( $client_ip );
 	$rate_count  = (int) frl_get_transient( $rate_key );
 	$rate_window = CTA_WEBHOOK_RATE_WINDOW;
@@ -39,7 +41,7 @@ function frl_cta_webhook_handler() {
 	}
 
 	$env_config = frl_environment_get_config();
-	$env_prefix = $env_config['prefix'] ?? 'default';
+	$env_prefix = $env_config['webhook_config'] ?? $env_config['prefix'] ?? 'default';
 
 	if ( ! defined( 'CTA_WEBHOOK_CONFIG' ) || empty( CTA_WEBHOOK_CONFIG[ $env_prefix ] ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );
@@ -72,7 +74,7 @@ function frl_cta_webhook_handler() {
 				$post_data[ $field ] = $service;
 				break;
 			case '__remote_addr__':
-				$post_data[ $field ] = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
+				$post_data[ $field ] = frl_get_client_ip();
 				break;
 			case '__page_url__':
 				$post_data[ $field ] = $page_url;
