@@ -818,8 +818,8 @@ def generate_report(site_name, error_findings, error_meta, access_data,
             evidence_parts.append(error_urls[top_conv_url])
         convergent_lines.append(
             f"`{top_conv_url}` appears in {len(lists_hit)} of the report's notable-URL lists — "
-            f"{', '.join(evidence_parts)}. Fixing this one page addresses multiple findings at "
-            f"once — prioritize it ahead of the broader recommendations below."
+            f"{', '.join(evidence_parts)}. The relevant sections below (Cache Root Cause, "
+            f"Bursts, or Error Recommendations) address whether this overlap is actionable."
         )
         remaining = len(convergent) - 1
         if remaining:

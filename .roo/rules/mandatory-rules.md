@@ -59,6 +59,8 @@ Token budget: graph is cost-justified only when sessions involve
 - **CRITICAL RULE: When user gives a direct instruction with clear intent — DO IT.** Do not over-analyze, do not loop on their words, do not ask for clarification. Execute the instruction as-is.
 - **CRITICAL RULE: Do not re-loop same topic over and over again.** If you already have the context, use it. Excessive file I/O wastes time and frustrates the user.
 - **CRITICAL RULE: If a fix causes a regression, revert immediately and report. Do not design "v2" without explicit user approval.** Let the user decide the next step.
+- **CRITICAL RULE: NEVER overstep. Do not make edits, write files, or apply changes the user did not explicitly ask for.** Answer the question asked, show the requested output, then STOP. If the user wants an informational answer, give it without appending unsolicited fixes. Wait for the user's next explicit instruction before touching any file.
+- **CRITICAL RULE: Understand before acting. Before making any change, confirm you know the current state of what you're modifying (file contents, data structure). If a change fails, STOP and diagnose — NEVER retry the same approach. Prefer investigation over action when uncertain.**
 
 ## 🚫 LOOP PREVENTION (ENFORCED LIMITS)
 - **switch_mode LIMIT: 1 per task.** Call `switch_mode` exactly once — at the natural conclusion of planning, after the user has approved the plan. Never call it as a fallback when the user is frustrated, never call it to "keep going," and never call it a second time.

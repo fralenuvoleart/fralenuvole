@@ -552,7 +552,7 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
       conclusion (`"14 of 15 bots need no action; only Bytespider should be blocked — see
       table for detail."`) so a skimming reader gets the answer without parsing the grid.
    6. **Never use `~` (tilde) for approximation in report content.** Some Markdown renderers
-      (including the one used by `md-to-pdf` for PDF export) interpret `~` as a strikethrough
+      (including Typst, used by pandoc for PDF export) interpret `~` as a strikethrough
       delimiter, causing text between two tildes to render with a line through it. Use `≈` or
       "approximately" instead. Example: write `≈85%` or "approximately 85%", never `~85%`.
       This applies to the At a Glance Scope note and any other LLM-written
@@ -632,8 +632,7 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
    ```
    (a real `# ` heading, not decorative dashes — a fixed-width Unicode-line divider wraps
    unpredictably across different viewport/page widths in VS Code, browser preview, and PDF;
-   a heading just wraps its words like any other heading, and gets dedicated CSS styling — see
-   `report.css`'s `h1:not(:first-of-type)` rule)
+   a heading just wraps its words like any other heading)
    
    **Part 1 sections** (LLM orders by severity: 🔴 > 🟡 > 🔧 > ✅; within same tier by impact magnitude):
 
@@ -819,22 +818,23 @@ Step 6's Analyst Commentary, At a Glance, and silent final review are already wr
 since the PDF is a snapshot of whatever the Markdown file contains at the moment it runs:
 
 ```bash
+# Default: Typst engine (Quarto's bundled pandoc + Typst, no extra deps)
 bash .roo/skills/kinsta-log-analyzer/scripts/export_pdf.sh "$REPORT_PATH"
+
+# Chromium engine (md-to-pdf + system Chromium, best visual design, A4)
+bash .roo/skills/kinsta-log-analyzer/scripts/export_pdf.sh --engine chromium "$REPORT_PATH"
 ```
 
-Uses `md-to-pdf` via `npx` (a small package, not Puppeteer's full bundle) driven by the system's
-already-installed Chromium (`/usr/bin/chromium`) — `PUPPETEER_SKIP_DOWNLOAD`/
-`PUPPETEER_EXECUTABLE_PATH` stop Puppeteer from downloading its own ~300MB Chromium copy. Also
-applies [`scripts/report.css`](scripts/report.css) and an explicit `--pdf-options` override.
+Two engines supported:
 
-**Both `--stylesheet` and `--pdf-options` REPLACE `md-to-pdf`'s defaults, they do not merge with
-them** (confirmed by reading `md-to-pdf`'s own source) — this is why `report.css` is a complete,
-self-contained stylesheet (not just a diff of a few properties) and why `--pdf-options` re-states
-`format:"a4"` even though only the `margin` value actually needed changing (the tool's own default
-margin is asymmetric: `top:30mm/right:40mm/bottom:30mm/left:20mm`). Output is
-`{report_path minus .md}.pdf` in the same `reports/` folder. If Chromium isn't present at that path,
-the script exits with a warning instead of failing the run — the Markdown report is the primary
-deliverable regardless of whether the PDF export succeeds.
+| Engine | Command | Deps | Best For |
+|---|---|---|---|
+| `typst` (default) | `quarto pandoc ... --pdf-engine=typst` | Quarto only | Clean typography, no extra installs |
+| `chromium` | `npx md-to-pdf` + system Chromium | Chromium at `/usr/bin/chromium` | Visual design, compact layout, A4 |
+
+Output is `{report_path minus .md}.pdf` in the same `reports/` folder. If the chosen engine's
+dependencies aren't found, the script exits with a warning — the Markdown report is the primary
+deliverable regardless of PDF export success.
 
 ### Step 8: Send Report by Email (User-Initiated Only)
  
@@ -908,7 +908,7 @@ per Step 7) and whether the report was emailed.
 | Report file not found | Looked in `$DIR` instead of the reports folder | Reports live in `~/Downloads/kinsta-logs/reports/`, named `report_{site_name}_{env_name}_{YYYYMMDDHHMM}.md` — check `analyze_logs.py`'s printed `📄` line for the exact path |
 | Analyst Commentary vanished after a later run | `analyze_logs.py` regenerates the entire report from scratch every run — a manually-appended commentary is not part of that generation and gets silently overwritten | Never re-run the script against real `$DIR` log files whose report is the one being reviewed; use scratch-copied log files (Step 3's warning). If it already happened, re-run Step 3 cleanly, then redo Steps 6.8–6.10 in the same batch of work |
 | Report shows "unknown"/"no PTR record" everywhere | `--no-geoip` was passed, or `ipinfo.io` is failing/rate-limiting broadly | Check the top-of-report banner — it states which case applies. Re-run without `--no-geoip`, or wait and retry if ipinfo.io is down |
-| PDF export fails/skipped | Chromium not found at `/usr/bin/chromium`, or `npx`/network unavailable | Set `CHROMIUM_BIN` to the correct path and re-run [`scripts/export_pdf.sh`](scripts/export_pdf.sh); the Markdown report is still valid on its own regardless |
+| PDF export fails/skipped | Quarto not found (typst engine), or Chromium missing (chromium engine), or npx/network unavailable | For typst: install Quarto or set `TYPST_BIN`. For chromium: set `CHROMIUM_BIN` to the correct path. The Markdown report is still valid on its own regardless |
 | `verify_urls.py` reports URL mismatch | A URL in the LLM-authored commentary was retyped from memory instead of copy-pasted from a source file — transliterated non-English words (e.g. Russian in Latin script) have no semantic meaning to the LLM, so a retyped URL will almost always have a spelling error | Copy the correct URL from the "Did you mean?" hint in the error output, replace the misspelled one in the report via `sed`, then re-run `verify_urls.py`. Also re-run `--validate` and re-export PDF |
 
 ---
@@ -921,11 +921,11 @@ per Step 7) and whether the report was emailed.
 | [`scripts/analyze_logs.py`](scripts/analyze_logs.py) | Log analysis + cross-file correlation, including per-bot URL/IP-concentration ("bursts"), ASN/hosting-provider/reverse-DNS detection, and grouped status codes (local parsing is deterministic; geo-IP/ASN/PTR lookups are not — see `--no-geoip`). **Always regenerates the full report from scratch**, and writes it to `~/Downloads/kinsta-logs/reports/` (not `$DIR`) — see Step 3's scratch-testing warning and the Troubleshooting entry above | **Execute** in Step 3 |
 | [`scripts/probe_urls.py`](scripts/probe_urls.py) | Live HTTP probe (status/timing/headers) — a real-time snapshot, not historical. Run twice: baseline (fixed URLs, Step 2) and targeted (dynamic URLs from findings, Step 4) | **Execute** in Steps 2 & 4 |
 | [`scripts/verify_urls.py`](scripts/verify_urls.py) | Post-generation mechanical URL verification — diffs every URL in LLM-authored commentary against source files (probe JSON, site-context.md, report data tables). Catches transliteration errors that are invisible to spell-check | **Execute** in Step 6.10a — mandatory, do not skip |
-| [`scripts/export_pdf.sh`](scripts/export_pdf.sh) | Converts the final Markdown report to PDF via `md-to-pdf`/`npx`, driven by the system's existing Chromium (no Puppeteer download, no pandoc) | **Execute** in Step 7, after Step 6 is fully written |
+| [`scripts/export_pdf.sh`](scripts/export_pdf.sh) | Converts the final Markdown report to PDF via one of two engines: `typst` (default, Quarto pandoc+Typst) or `chromium` (md-to-pdf + system Chromium) | **Execute** in Step 7, after Step 6 is fully written |
+| [`scripts/report.css`](scripts/report.css) | Sans-serif report stylesheet applied by the `chromium` engine — larger body text (13px), compact tables (11px), professional typography | Used automatically by `export_pdf.sh --engine chromium` |
 | [`scripts/send_report_email.py`](scripts/send_report_email.py) | Sends the PDF report as email attachment via SMTP (Gmail by default). Merges non-sensitive fields from [`config/email.json`](config/email.json) (recipients, subject, signature) with SMTP credentials from `~/.config/kinsta-log-analyzer/email.json` | **Execute** in Step 8 (optional), if the user chooses to email the report |
 | [`config/email.json`](config/email.json) | Non-sensitive email fields: `from_email`, `to_emails`, `subject`, `body_signature`. Lives in the skill folder; version-controlled | Edit directly to change recipients or subject |
 | [`config/email.json.example`](config/email.json.example) | Template for `~/.config/kinsta-log-analyzer/email.json` — SMTP credentials only (`smtp_host`, `smtp_port`, `username`, `password`). Not version-controlled | Copy to `~/.config/kinsta-log-analyzer/email.json` and fill in credentials |
-| [`scripts/report.css`](scripts/report.css) | Print stylesheet applied by `export_pdf.sh` — larger body text, `table-layout: fixed` + word-wrap so wide tables don't overflow/truncate in the PDF | Used automatically by `export_pdf.sh`; edit directly if PDF styling needs further tweaks |
 | [`references/site-context.md`](references/site-context.md) | Admin/business-owner timezones, each site's confirmed primary market, and the fixed "Known Probe URLs" list per site — a living cache, update it when the user confirms new context | **Read** in Steps 1 & 2; **update** via `apply_diff` when new context is learned |
 | [`references/bot-taxonomy.md`](references/bot-taxonomy.md) | Accurate, unbiased per-bot reference: real nature (crawler vs. on-demand agent), robots.txt/Crawl-Delay compliance matrix, Kinsta/WordPress-generic mitigation tiers (no hosted-app code involved — see Step 6.5), and the ASN-vs-reverse-DNS distinction | **Read in full** in Step 6 before writing any bot-related recommendation |
 | [`references/operational-playbook.md`](references/operational-playbook.md) | Expert server guidance for each anomaly type (cache, errors, response time, traffic spikes, SSL) | **Read** when the report flags an issue needing deeper action |
@@ -935,9 +935,8 @@ per Step 7) and whether the report was emailed.
 ## Configuration
 Reads credentials from `.roo/mcp.json` → `mcpServers.kinsta.env`. Kinsta Knowledge Base lookups
 (Step 6.6) use the `tavily` MCP server (`tavily-search`), also configured in `.roo/mcp.json`.
-PDF export (Step 7) shells out to `npx md-to-pdf`, pointed at the system's Chromium binary via
-`CHROMIUM_BIN` (default `/usr/bin/chromium`) — no separate install/config needed if Chromium is
-already present.
+PDF export (Step 7) supports two engines: `typst` (default, Quarto pandoc+Typst, no extra deps)
+and `chromium` (md-to-pdf + system Chromium at `/usr/bin/chromium`). Switch with `--engine`.
 
 ## Privacy & Retention
 - Visitor IPs from the access/error logs are written to disk under `~/Downloads/kinsta-logs/` and are not automatically cleaned up — periodically prune old log/report files if this is a concern.
