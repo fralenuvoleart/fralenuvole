@@ -222,7 +222,7 @@ script changes, copy log JSON files to `/tmp/` first.
 
 The script produces a **two-part report skeleton** with `<!-- LLM: -->` markers where analyst content belongs. See [`references/report-structure.md`](references/report-structure.md) for the authoritative section contract. The skeleton includes:
 
-- **Part 1 (Executive Brief):** headings and `<!-- LLM: -->` markers for Overall Assessment, Cache Root Cause, Attack/Security, Bot Strategy, Burst Cards, Traffic Anomalies, 404 Fixes, and At a Glance. LLM orders Part 1 sections by severity tier.
+- **Part 1 (Summary & Findings):** headings and `<!-- LLM: -->` markers for Overall Assessment, Cache Root Cause, Attack/Security, Bot Strategy, Burst Cards, Traffic Anomalies, 404 Fixes, and At a Glance. LLM orders Part 1 sections by severity tier.
 - **Part 2 (Technical Appendix):** auto-generated data tables — Cache Performance (HIT/MISS/BYPASS, top-MISSed URLs, HIT-vs-MISS response time), Bot & Crawler Traffic (per-category tables without verdict column), Top Visitor IPs, Traffic Overview (Status Codes, Requests per Hour, Performance), and Slowest Pages. Plus `<!-- LLM: -->` markers for Probe Cross-Match and KB References.
 - **Validation pass:** when run with `--validate <report_path>`, the script checks that all markers are filled, no permanently suppressed sections appear, and card formats comply.
 
@@ -628,7 +628,7 @@ approximation. The script has generated a two-part skeleton with `<!-- LLM: -->`
    The report has two parts with a hard visual divider:
 
    ```
-   # PART 1: EXECUTIVE BRIEF
+   # PART 1: SUMMARY & FINDINGS
    ```
    (a real `# ` heading, not decorative dashes — a fixed-width Unicode-line divider wraps
    unpredictably across different viewport/page widths in VS Code, browser preview, and PDF;

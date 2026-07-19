@@ -834,7 +834,7 @@ def generate_report(site_name, error_findings, error_meta, access_data,
         )
 
     # ══════════════════════════════════════════════════════════════
-    # PART 1: EXECUTIVE BRIEF — script emits headings + <!-- LLM: --> markers only.
+    # PART 1: SUMMARY & FINDINGS — script emits headings + <!-- LLM: --> markers only.
     # LLM fills every marker per Step 6 of SKILL.md and references/report-structure.md.
     # LLM re-orders these sections by severity before finalizing (script order is a
     # neutral default, not a mandate).
@@ -842,7 +842,7 @@ def generate_report(site_name, error_findings, error_meta, access_data,
     # A real "# " heading (not a fixed-width Unicode-line divider) — a run of decorative
     # ━ characters wraps unpredictably across VS Code/browser/PDF viewport widths; a heading
     # just wraps its words, and h1:not(:first-of-type) in report.css gives it distinct styling.
-    L.append("# PART 1: EXECUTIVE BRIEF")
+    L.append("# PART 1: SUMMARY & FINDINGS")
     L.append("")
     L.append("## 📌 At a Glance")
     L.append("")
@@ -1405,8 +1405,8 @@ def validate_report(path):
         if section in text:
             problems.append(f"Forbidden section present: '{section}'")
 
-    if "PART 1: EXECUTIVE BRIEF" not in text:
-        problems.append("Missing 'PART 1: EXECUTIVE BRIEF' divider")
+    if "PART 1: SUMMARY & FINDINGS" not in text:
+        problems.append("Missing 'PART 1: SUMMARY & FINDINGS' divider")
     if "PART 2: TECHNICAL APPENDIX" not in text:
         problems.append("Missing 'PART 2: TECHNICAL APPENDIX' divider")
 
