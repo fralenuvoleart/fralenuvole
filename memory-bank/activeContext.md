@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-CTA extraction from wsform module into standalone `call_to_actions` module. Implementation complete. Plan rewritten as as-built document in [`plans/EXTRACTION-call-to-actions.md`](plans/EXTRACTION-call-to-actions.md). Post-extraction hardening: webhook deduplication fix + PHP 8+ defensive type checks applied to wsform and webhook helpers.
+CTA extraction from wsform module into standalone `call_to_actions` module. Implementation complete. Plan rewritten as as-built document in [`plans/EXTRACTION-call-to-actions.md`](plans/EXTRACTION-call-to-actions.md). Post-extraction hardening: webhook deduplication fix + PHP 8+ defensive type checks applied to wsform and webhook helpers. Added Polylang translation support for CTA template/subject messages.
 
 ## Changes Made
 
@@ -20,6 +20,7 @@ CTA extraction from wsform module into standalone `call_to_actions` module. Impl
 12. **Removed dead `config-options-call_to_actions.php`** — module toggle via env config (`config-defaults.php` / `config-environment.php`), auto-created by `frl_modules_load_options_defaults()`.
 13. **🐛 Fixed webhook deduplication bug** — [`frl_send_webhook_async()`](includes/helpers/functions-webhook.php): optional `$dedup_key` param (defaults to `wp_generate_uuid4()`) stored as sibling cron arg `_frl_uuid` to defeat WP-Cron's 10-minute event dedup. UUID never reaches the webhook payload. Callers omit `$dedup_key` (auto-UUID) — wsform's `error_validation_actions` guard already prevents webhooks on failed submissions, and double-click is a JS-level concern (WS Form disables the submit button).
 14. **🛡️ PHP 8+ defensive type guards in wsform** — [`frl_wsf_submit_webhook()`](modules/wsform/webhooks-wsform.php): `is_array()` check before `count()` on `error_validation_actions`. [`frl_wsf_spam_filter_submission()`](modules/wsform/webhooks-wsform.php): array guard before `[]` append; `is_scalar()` guard before `(string)` cast. [`frl_wsf_translate_fields()`](modules/wsform/wsform.php): `isset()` guard before deep object traversal on `$form->meta->action->groups[0]->rows`.
+15. **🌐 CTA template translation via Polylang** — [`call_to_actions.php`](modules/call_to_actions/call_to_actions.php): `frl_get_translation()` called on `template` and `subject` in the `frl_channel_tracking_cta_actions` filter. Strings auto-register via `Frl_Translation_Service::queue_string_registration()` on first use, cached in `translations` group. Falls back to original English if Polylang inactive or no translation exists. `{reference_id}` placeholder passes through translation as literal text.
 
 ## Prior Tasks (Completed)
 
