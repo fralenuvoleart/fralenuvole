@@ -1,10 +1,5 @@
 Ops scripts for the fralenuvole plugin.
 
-- warmup.sh
-Warms the WP page cache by crawling the live sitemap.
-Runs anywhere (local or Kinsta SSH). Usage: ./warmup.sh
-Logs (warmup.sh) are written to ../logs/, not here.
-
 - backup-local.sh
 Zips the plugin into a versioned backup archive.
 LOCAL ONLY (hardcoded local mirror paths).
