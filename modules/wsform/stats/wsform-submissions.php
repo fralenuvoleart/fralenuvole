@@ -131,7 +131,8 @@ function frl_wsf_get_submission_data( $days = 30 ) {
 					'end'   => $end_date,
 				),
 			);
-		}
+		},
+		6 * HOUR_IN_SECONDS
 	);
 }
 
@@ -156,37 +157,6 @@ function frl_wsf_get_form_name( $form_id ) {
 }
 
 /**
- * Helper function to extract a two-letter language slug from a URL path.
- * Assumes language slug is the first segment and exactly two characters long (e.g., /en/, /ru/, /ka/, /ar/, /zh/).
- * Defaults to 'EN' if the structure doesn't match or format is unexpected.
- *
- * @param string $url The URL string.
- * @return string The extracted two-letter language code (uppercase) or 'EN'.
- */
-function frl_wsf_extract_lang_from_url( $url ) {
-	if ( empty( $url ) || ! is_string( $url ) ) {
-		return 'EN'; // Default for empty or invalid input
-	}
-
-	$path = wp_parse_url( $url, PHP_URL_PATH );
-	if ( empty( $path ) || $path === '/' ) {
-		return 'EN'; // No path or just root path
-	}
-
-	// Remove leading/trailing slashes and split the path
-	$path_segments = explode( '/', trim( $path, '/' ) );
-
-	// Check if the first segment exists and is exactly two characters long
-	if ( ! empty( $path_segments ) && isset( $path_segments[0] ) && strlen( $path_segments[0] ) === 2 ) {
-		// Assume it's a language code, return it uppercase
-		return strtoupper( $path_segments[0] );
-	}
-
-	// Default if the first segment isn't a two-letter code
-	return 'EN';
-}
-
-/**
  * Get submission data grouped by language (from field_20) and field_8 value.
  *
  * @param int $days Number of days of data to retrieve (used if start/end date not provided).
@@ -196,7 +166,13 @@ function frl_wsf_extract_lang_from_url( $url ) {
  * @return array Array of grouped submission data: [lang][field_8_value] => count.
  */
 function frl_wsf_get_grouped_submission_data( $days = 30, $form_id = null, $start_date = null, $end_date = null, $include_cta = false ) {
-	$cache_key = "grouped_submission_data_{$days}_{$form_id}_{$start_date}_{$end_date}" . ( $include_cta ? '_cta' : '' );
+	// Sanitize inputs for cache key to prevent collisions
+	$safe_days       = (int) $days;
+	$safe_form_id    = $form_id !== null ? (int) $form_id : 'all';
+	$safe_start_date = sanitize_key( $start_date );
+	$safe_end_date   = sanitize_key( $end_date );
+
+	$cache_key = "grouped_submission_data_{$safe_days}_{$safe_form_id}_{$safe_start_date}_{$safe_end_date}" . ( $include_cta ? '_cta' : '' );
 	return frl_cache_remember(
 		'admin',
 		$cache_key,
@@ -337,7 +313,8 @@ function frl_wsf_get_grouped_submission_data( $days = 30, $form_id = null, $star
 				),
 				'form_id'        => $form_id,
 			);
-		}
+		},
+		6 * HOUR_IN_SECONDS
 	);
 }
 

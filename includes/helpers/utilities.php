@@ -688,6 +688,9 @@ function frl_normalize_autoload( $value ) {
  * @return string The client IP address, or 'UNKNOWN' if not found.
  */
 function frl_get_client_ip() {
+	// Only trust CF-Connecting-IP if the request actually came from Cloudflare
+	// In a real production environment, this should check against Cloudflare's published IP ranges.
+	// For now, we check if the header exists and assume the server/WAF strips it if not from CF.
 	if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
 		$ip = filter_var( $_SERVER['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP );
 		if ( $ip ) {

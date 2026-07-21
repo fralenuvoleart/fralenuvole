@@ -247,6 +247,8 @@
                         for (var n = 0; n < nodes.length; n++) {
                             if (nodes[n].nodeType === 1) { // Element node
                                 debouncedPopulate();
+                                // Disconnect after first relevant mutation to avoid performance hit
+                                observer.disconnect();
                                 return;
                             }
                         }

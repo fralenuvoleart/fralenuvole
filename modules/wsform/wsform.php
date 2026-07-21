@@ -30,6 +30,12 @@ require_once FRL_DIR_PATH . 'public/channel-tracking.php';
  */
 function frl_wsf_get_all_webhook_configs(): array {
 	$env_config = frl_environment_get_config();
+
+	// If webhook_config is explicitly false, do not fall back to prefix
+	if ( array_key_exists( 'webhook_config', $env_config ) && $env_config['webhook_config'] === false ) {
+		return array();
+	}
+
 	$config_key = $env_config['webhook_config'] ?? $env_config['prefix'] ?? false;
 
 	return ( $config_key && isset( WSFORM_ALL_WEBHOOKS_CONFIG[ $config_key ] ) )

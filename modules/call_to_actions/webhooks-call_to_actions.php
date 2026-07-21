@@ -15,6 +15,16 @@ function frl_cta_webhook_handler() {
 	// Public analytics endpoint (nopriv). Protected by sanitization
 	// and per-IP rate limiting. No nonce: Cloudflare CDN caching causes nonce expiration.
 
+	// Lightweight origin check to prevent trivial cross-site abuse
+	$referer = $_SERVER['HTTP_REFERER'] ?? '';
+	if ( ! empty( $referer ) ) {
+		$referer_host = wp_parse_url( $referer, PHP_URL_HOST );
+		$home_host    = wp_parse_url( home_url(), PHP_URL_HOST );
+		if ( $referer_host && $home_host && $referer_host !== $home_host ) {
+			wp_send_json_error( 'Invalid origin', 403 );
+		}
+	}
+
 	// Per-IP rate limit: max 30 requests per minute from the same IP.
 	// Best-effort (TOCTOU): concurrent requests may both pass the gate.
 	// Acceptable — CTA webhooks are low-stakes analytics, not security-critical.
@@ -24,12 +34,18 @@ function frl_cta_webhook_handler() {
 	$rate_window = CTA_WEBHOOK_RATE_WINDOW;
 	$rate_max    = CTA_WEBHOOK_RATE_LIMIT;
 
-	if ( $rate_count >= $rate_max ) {
+	// Daily cap per IP
+	$daily_key   = 'frl_cta_daily_' . md5( $client_ip . gmdate( 'Ymd' ) );
+	$daily_count = (int) frl_get_transient( $daily_key );
+	$daily_max   = 100;
+
+	if ( $rate_count >= $rate_max || $daily_count >= $daily_max ) {
 		frl_log( 'CTA rate limit hit for IP: {ip}', array( 'ip' => $client_ip ) );
 		wp_send_json_error( 'Too many requests', 429 );
 	}
 
 	frl_set_transient( $rate_key, $rate_count + 1, $rate_window );
+	frl_set_transient( $daily_key, $daily_count + 1, DAY_IN_SECONDS );
 
 	// wp_unslash() before sanitizing: these free-text values (reference_id, UTM params, etc.)
 	// are sent verbatim to a third-party webhook — without unslashing, any submitted value
@@ -48,9 +64,9 @@ function frl_cta_webhook_handler() {
 	}
 
 	$env_entry   = CTA_WEBHOOK_CONFIG[ $env_prefix ];
-	$webhook_url = $env_entry['webhook_url'] ?? '';
+	$webhook_url = $env_config['cta_webhook_url'] ?? $env_entry['webhook_url'] ?? '';
 	// Per-webhook default from constants, overridable per env.
-	$use_cron = $env_config['use_cron'] ?? $env_entry['use_cron'] ?? false;
+	$use_cron = $env_config['use_cron'] ?? $env_entry['use_cron'] ?? true;
 
 	if ( empty( $webhook_url ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );
@@ -58,11 +74,14 @@ function frl_cta_webhook_handler() {
 
 	$service  = 'Webpage';
 	$page_url = sanitize_url( wp_unslash( $_POST['page_url'] ?? '' ) );
-	$post_id  = url_to_postid( $page_url );
-	if ( $post_id > 0 && defined( 'CTA_SERVICE_META' ) ) {
-		$meta = frl_get_post_meta( $post_id, CTA_SERVICE_META, true );
-		if ( ! empty( $meta ) ) {
-			$service = sanitize_text_field( $meta );
+
+	if ( ! empty( $page_url ) && defined( 'CTA_SERVICE_META' ) ) {
+		$post_id = url_to_postid( $page_url );
+		if ( $post_id > 0 ) {
+			$meta = frl_get_post_meta( $post_id, CTA_SERVICE_META, true );
+			if ( ! empty( $meta ) ) {
+				$service = sanitize_text_field( $meta );
+			}
 		}
 	}
 

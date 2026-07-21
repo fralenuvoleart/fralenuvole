@@ -38,16 +38,30 @@ function frl_cta_init() {
 
 			$env_actions = CTA_WEBHOOK_CONFIG[ $env_prefix ]['actions'] ?? array();
 
-			// Translate template and subject via Polylang (falls back to original if inactive).
-			foreach ( $env_actions as &$action ) {
-				if ( ! empty( $action['template'] ) ) {
-					$action['template'] = frl_get_translation( $action['template'] );
-				}
-				if ( ! empty( $action['subject'] ) ) {
-					$action['subject'] = frl_get_translation( $action['subject'] );
-				}
-			}
-			unset( $action );
+			// Cache translations to avoid running frl_get_translation on every request
+			$lang      = frl_get_language();
+			$cache_key = 'cta_actions_trans_' . md5( wp_json_encode( $env_actions ) . '_' . $lang );
+
+			$translated_actions = frl_cache_remember(
+				'public',
+				$cache_key,
+				function () use ( $env_actions ) {
+					// Translate template and subject via Polylang (falls back to original if inactive).
+					foreach ( $env_actions as &$action ) {
+						if ( ! empty( $action['template'] ) ) {
+							$action['template'] = frl_get_translation( $action['template'] );
+						}
+						if ( ! empty( $action['subject'] ) ) {
+							$action['subject'] = frl_get_translation( $action['subject'] );
+						}
+					}
+					unset( $action );
+					return $env_actions;
+				},
+				DAY_IN_SECONDS
+			);
+
+			$env_actions = $translated_actions;
 
 			// If webhook dispatch is disabled, strip webhook flag so JS doesn't fire sendBeacon.
 			if ( ! frl_get_option( 'cta_webhook' ) ) {

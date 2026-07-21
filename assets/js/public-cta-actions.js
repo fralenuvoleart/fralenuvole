@@ -47,7 +47,6 @@
 
     function fireCtaWebhook(actionId) {
         if (!CONFIG.ajaxUrl) return;
-        var cookieString = document.cookie;
         var data = new FormData();
         data.append('action', 'frl_cta_webhook');
         // Note: nonce intentionally omitted (see channel-tracking.php for explanation)
@@ -59,7 +58,45 @@
         for (var i = 0; i < cookieKeys.length; i++) {
             data.append(cookieKeys[i], getCookie(cookieKeys[i]) || '');
         }
-        navigator.sendBeacon(CONFIG.ajaxUrl, data);
+        
+        // Use fetch with keepalive instead of sendBeacon for better reliability and error handling
+        if (window.fetch) {
+            fetch(CONFIG.ajaxUrl, {
+                method: 'POST',
+                body: data,
+                keepalive: true
+            }).catch(function(error) {
+                // Queue for retry on next page load if failed
+                try {
+                    var queue = JSON.parse(sessionStorage.getItem('frl_cta_queue') || '[]');
+                    queue.push({
+                        actionId: actionId,
+                        timestamp: new Date().getTime()
+                    });
+                    sessionStorage.setItem('frl_cta_queue', JSON.stringify(queue));
+                } catch (e) {}
+            });
+        } else {
+            // Fallback for older browsers
+            navigator.sendBeacon(CONFIG.ajaxUrl, data);
+        }
+    }
+
+    // Process any queued webhooks from previous failed attempts
+    function processQueuedWebhooks() {
+        try {
+            var queue = JSON.parse(sessionStorage.getItem('frl_cta_queue') || '[]');
+            if (queue.length > 0) {
+                sessionStorage.removeItem('frl_cta_queue');
+                // Only retry events less than 24 hours old
+                var now = new Date().getTime();
+                for (var i = 0; i < queue.length; i++) {
+                    if (now - queue[i].timestamp < 86400000) {
+                        fireCtaWebhook(queue[i].actionId);
+                    }
+                }
+            }
+        } catch (e) {}
     }
 
     function attachCtaHandlers() {
@@ -113,6 +150,7 @@
     }
 
     // Init: bind immediately + retries for late-rendered elements
+    processQueuedWebhooks();
     attachCtaHandlers();
     setTimeout(attachCtaHandlers, 1000);
     setTimeout(attachCtaHandlers, 3000);

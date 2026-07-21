@@ -116,13 +116,19 @@ function frl_wsf_get_matching_configs( $form_id ) {
  * @param object $submit The form submission object from WS Form.
  */
 function frl_wsf_submit_webhook( $submit ) {
+	// Defensive: Ensure submit object is valid
+	if ( ! is_object( $submit ) || ! isset( $submit->form_id ) ) {
+		frl_log( 'WSFORM WEBHOOK: invalid submit object', array( 'submit' => $submit ), true );
+		return;
+	}
+
 	// Defensive: Don't send webhook if submission has validation errors
 	// (e.g., spam filter blocked it)
 	if ( ! empty( $submit->error_validation_actions ) && is_array( $submit->error_validation_actions ) && count( $submit->error_validation_actions ) > 0 ) {
 		return;
 	}
 
-	$form_id          = $submit->form_id ?? 0;
+	$form_id          = $submit->form_id;
 	$matching_configs = frl_wsf_get_matching_configs( $form_id );
 
 	if ( empty( $matching_configs ) ) {
@@ -144,11 +150,15 @@ function frl_wsf_submit_webhook( $submit ) {
 				$value = $submit->meta[ $field ];
 				if ( is_array( $value ) && isset( $value['value'] ) ) {
 					$value = $value['value'];
-					if ( is_array( $value ) ) {
-						$value = empty( $value[0] ) ? '' : $value[0];
-					}
 				}
-				$post_data[ $key ] = $value;
+
+				// Preserve arrays where possible, join if needed
+				if ( is_array( $value ) ) {
+					$value = count( $value ) === 1 ? reset( $value ) : implode( ' | ', array_map( 'strval', $value ) );
+				}
+
+				// Normalize/sanitize value
+				$post_data[ $key ] = is_scalar( $value ) ? (string) $value : '';
 			} else {
 				$post_data[ $key ] = '';
 			}
@@ -167,7 +177,20 @@ function frl_wsf_submit_webhook( $submit ) {
 		$dedup_interval = 60; // 1 minute
 
 		if ( $use_cron ) {
-			frl_send_webhook_async( $webhook_url, $post_data, $dedup_key, $dedup_interval );
+			$scheduled = frl_send_webhook_async( $webhook_url, $post_data, $dedup_key, $dedup_interval );
+			if ( ! $scheduled ) {
+				frl_log(
+					'WSFORM WEBHOOK SCHEDULE FAILED: submit_id={submit_id} form_id={form_id} url={url}',
+					array(
+						'submit_id' => $submit->id ?? 'unknown',
+						'form_id'   => $form_id,
+						'url'       => $webhook_url,
+					),
+					true
+				);
+				// Fallback to sync dispatch
+				frl_send_webhook( $webhook_url, $post_data, $dedup_key, $dedup_interval );
+			}
 		} else {
 			frl_send_webhook( $webhook_url, $post_data, $dedup_key, $dedup_interval );
 		}
@@ -237,6 +260,16 @@ function frl_wsf_spam_filter_submission( $field_error_action_array, $post_mode, 
 		$all_filled = ( $filled_count === count( $fields_to_check ) );
 
 		if ( $all_filled ) {
+			frl_log(
+				'WSFORM SPAM BLOCKED: form_id={form_id} submit_id={submit_id}',
+				array(
+					'form_id'   => $form_id,
+					'submit_id' => $submit->id ?? 'unknown',
+					'fields'    => $fields_to_check,
+				),
+				true
+			);
+
 			$field_error_action_array[] = array(
 				'action'  => 'message',
 				'message' => __( 'Submission blocked: spam detected.', 'fralenuvole' ),
