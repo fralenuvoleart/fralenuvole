@@ -49,9 +49,8 @@ function frl_cta_init() {
 					// Translate template and subject via Polylang (falls back to original if inactive).
 					foreach ( $env_actions as &$action ) {
 						if ( ! empty( $action['template'] ) ) {
-							// Preserve \r\n through translation via {br} sentinel.
-							$action['template'] = str_replace( "\r\n", '{br}', $action['template'] );
 							$action['template'] = frl_get_translation( $action['template'] );
+							// Restore \r\n from {br} sentinels added by translator.
 							$action['template'] = str_replace( '{br}', "\r\n", $action['template'] );
 						}
 						if ( ! empty( $action['subject'] ) ) {
