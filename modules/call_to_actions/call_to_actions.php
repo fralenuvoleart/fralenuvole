@@ -43,13 +43,16 @@ function frl_cta_init() {
 			$cache_key = 'cta_actions_trans_' . md5( wp_json_encode( $env_actions ) . '_' . $lang );
 
 			$translated_actions = frl_cache_remember(
-				'public',
+				'html',
 				$cache_key,
 				function () use ( $env_actions ) {
 					// Translate template and subject via Polylang (falls back to original if inactive).
 					foreach ( $env_actions as &$action ) {
 						if ( ! empty( $action['template'] ) ) {
+							// Preserve \r\n through translation via {br} sentinel.
+							$action['template'] = str_replace( "\r\n", '{br}', $action['template'] );
 							$action['template'] = frl_get_translation( $action['template'] );
+							$action['template'] = str_replace( '{br}', "\r\n", $action['template'] );
 						}
 						if ( ! empty( $action['subject'] ) ) {
 							$action['subject'] = frl_get_translation( $action['subject'] );
