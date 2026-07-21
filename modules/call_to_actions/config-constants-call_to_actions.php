@@ -25,7 +25,7 @@ const CTA_WEBHOOK_CONFIG = array(
 			array(
 				'action_id'    => 'whatsapp',
 				'url'          => 'https://wa.me/995599654454?text={template}',
-				'template'     => "Hello,\r\nI'd like to enquire about your services.\r\n\r\n\r\n---\r\nSupport number: PIN-{reference_id}-PBS",
+				'template'     => "Support number: PIN-{reference_id}-PBS\r\n---\r\nHello, I'd like to enquire about your services.\r\n\r\n",
 				'send_webhook' => true,
 			),
 			array(
