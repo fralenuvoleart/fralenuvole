@@ -2,7 +2,15 @@
 
 ## Current Focus
 
-CTA extraction from wsform module into standalone `call_to_actions` module. Implementation complete. Plan rewritten as as-built document in [`plans/EXTRACTION-call-to-actions.md`](plans/EXTRACTION-call-to-actions.md). Post-extraction hardening: webhook deduplication fix + PHP 8+ defensive type checks applied to wsform and webhook helpers. Added Polylang translation support for CTA template/subject messages.
+Lead-retrieval audit of `wsform` + `call_to_actions` (2026): fixed Cloudflare IP-detection gap, `pbp` sync-webhook blocking, dedup-key collision risk. CTA extraction from wsform module into standalone `call_to_actions` module. Implementation complete. Plan rewritten as as-built document in [`plans/EXTRACTION-call-to-actions.md`](plans/EXTRACTION-call-to-actions.md). Post-extraction hardening: webhook deduplication fix + PHP 8+ defensive type checks applied to wsform and webhook helpers. Added Polylang translation support for CTA template/subject messages.
+
+## Lead-Retrieval Audit Fixes (latest)
+
+1. **🐛 `frl_get_client_ip()` Cloudflare gap** — [`utilities.php`](../includes/helpers/utilities.php): checked `REMOTE_ADDR` first, which is always syntactically valid, so the `HTTP_X_FORWARDED_FOR`/`HTTP_CLIENT_IP` fallback never ran behind an unfixed CDN. Reordered to `HTTP_CF_CONNECTING_IP` → `HTTP_X_FORWARDED_FOR` → `HTTP_CLIENT_IP` → `REMOTE_ADDR` last. This collapsed CTA per-IP rate limiting to a site-wide limit and mislabeled every lead's "User IP" field.
+2. **Deduplicated IP logic** — [`frl_maybe_throttle_user_agent()`](../includes/mu/functions-mu.php) now calls the shared `frl_get_client_ip()` instead of its own inline duplicate (safe: `bootstrap.php` loads `utilities.php` before `mu.php` runs).
+3. **`pbp` webhook was blocking the form's success response** — [`WSFORM_ALL_WEBHOOKS_CONFIG['pbp']`](../modules/wsform/config-constants-wsform.php) had `use_cron: false` (temporary testing), causing a synchronous cURL call (up to 20s) inside the same request that returns WS Form's "Thank you" response. Flipped to `true`, matching `pbs`.
+4. **Bounded async webhook retry** — `frl_webhook_dispatch` cron handler ([`functions-webhook.php`](../includes/helpers/functions-webhook.php)) now retries up to `FRL_WEBHOOK_RETRY['max_attempts']` times with backoff delays from `FRL_WEBHOOK_RETRY['delays']` (both in [`config-base.php`](../config/config-base.php)) on failure. Async-only by design — sync callers are inside a live request and must not be delayed further.
+5. **Dedup-key collision fix** — [`frl_wsf_submit_webhook()`](../modules/wsform/webhooks-wsform.php) dedup key now includes `md5($webhook_url)`, not just the submission ID, so a form with multiple webhook destinations for the same `form_id` won't have its second destination silently dropped as a "duplicate" of the first.
 
 ## Changes Made
 

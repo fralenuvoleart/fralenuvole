@@ -84,6 +84,12 @@ const FRL_EMAIL_NOTIFICATIONS = array(
 	'to'            => 'francesco.csto@gmail.com',
 );
 
+// Async webhook dispatch: bounded retry-with-backoff on failure
+const FRL_WEBHOOK_RETRY = array(
+	'max_attempts' => 3,
+	'delays'       => array( 60, 300, 900 ), // 1 min, 5 min, 15 min
+);
+
 // Strings to ignore for debug log count bubble
 const FRL_LOG_COUNT_IGNORE = array(
 	'Automatic updates',

@@ -682,22 +682,36 @@ function frl_normalize_autoload( $value ) {
 /**
  * Get the client's IP address.
  *
- * Checks REMOTE_ADDR, HTTP_CLIENT_IP, and HTTP_X_FORWARDED_FOR.
+ * Order: HTTP_CF_CONNECTING_IP, HTTP_X_FORWARDED_FOR, HTTP_CLIENT_IP, REMOTE_ADDR last —
+ * REMOTE_ADDR is always valid, so checking it first would mask the real IP behind a CDN.
  *
  * @return string The client IP address, or 'UNKNOWN' if not found.
  */
 function frl_get_client_ip() {
+	if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
+		$ip = filter_var( $_SERVER['HTTP_CF_CONNECTING_IP'], FILTER_VALIDATE_IP );
+		if ( $ip ) {
+			return $ip;
+		}
+	}
+
+	if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+		$ip = filter_var( trim( explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] )[0] ), FILTER_VALIDATE_IP );
+		if ( $ip ) {
+			return $ip;
+		}
+	}
+
+	$ip = filter_var( $_SERVER['HTTP_CLIENT_IP'] ?? '', FILTER_VALIDATE_IP );
+	if ( $ip ) {
+		return $ip;
+	}
+
 	$ip = filter_var( $_SERVER['REMOTE_ADDR'] ?? '', FILTER_VALIDATE_IP );
 	if ( $ip ) {
 		return $ip;
 	}
 
-	foreach ( array( 'HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR' ) as $key ) {
-		$ip = filter_var( $_SERVER[ $key ] ?? '', FILTER_VALIDATE_IP );
-		if ( $ip ) {
-			return $ip;
-		}
-	}
 	return 'UNKNOWN';
 }
 

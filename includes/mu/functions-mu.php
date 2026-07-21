@@ -45,13 +45,8 @@ function frl_maybe_throttle_user_agent(): void {
 		return;
 	}
 
-	// Determine Real IP (Cloudflare Optimized)
-	$ip = $_SERVER['REMOTE_ADDR'];
-	if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
-		$ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
-	} elseif ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
-		$ip = trim( explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] )[0] );
-	}
+	// Determine Real IP via the shared, Cloudflare-aware helper (single source of truth).
+	$ip = frl_get_client_ip();
 
 	$transient_key = 'bot_throttle_' . md5( $ip );
 	$request_count = (int) frl_get_transient( $transient_key );

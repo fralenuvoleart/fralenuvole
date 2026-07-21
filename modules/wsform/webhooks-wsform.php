@@ -162,7 +162,8 @@ function frl_wsf_submit_webhook( $submit ) {
 		$env_config = frl_environment_get_config();
 		$use_cron   = $env_config['use_cron'] ?? $config['use_cron'] ?? true;
 
-		$dedup_key      = 'wsf_' . ( $submit->id ?? wp_generate_uuid4() );
+		// Include webhook_url: multiple configs can share a form_id, and dedup must be per-destination.
+		$dedup_key      = 'wsf_' . ( $submit->id ?? wp_generate_uuid4() ) . '_' . md5( $webhook_url );
 		$dedup_interval = 60; // 1 minute
 
 		if ( $use_cron ) {

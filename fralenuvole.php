@@ -118,6 +118,9 @@ function frl_load_core_components() {
 		frl_rewriter_init();
 	}
 
+	// Webhook dispatch: always loaded, no disable toggle.
+	frl_webhook_init();
+
 	// Themekit — always loaded (no master disable toggle)
 	require_once FRL_DIR_PATH . 'core/themekit/themekit.php';
 

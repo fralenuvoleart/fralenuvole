@@ -54,7 +54,7 @@ const WSFORM_ALL_WEBHOOKS_CONFIG = array(
 	'pbp'     => array(
 		array(
 			'form_id'     => 2, // Must match the WS Form ID exactly.
-			'use_cron'    => false,
+			'use_cron'    => true,
 			'url'         => 'https://webhooks.integrately.com/a/webhooks/70ace417574440f7b3835a71655b8a40',
 			'spam_filter' => array(
 				'block_if_all_filled' => array(),

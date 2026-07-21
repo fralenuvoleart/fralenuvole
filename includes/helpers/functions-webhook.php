@@ -63,15 +63,71 @@ function frl_send_webhook_async( string $url, array $data, ?string $dedup_key = 
 	}
 	return true;
 }
-add_action(
-	'frl_webhook_dispatch',
-	function ( array $args ) {
-		$url  = $args['url'] ?? '';
-		$data = $args['data'] ?? array();
-		// Pass null for dedup_key here because deduplication already happened at scheduling time
-		frl_send_webhook( $url, $data );
+/**
+ * Registers the frl_webhook_dispatch cron handler. Called explicitly from
+ * frl_load_core_components() (fralenuvole.php) — not at file-root scope.
+ */
+function frl_webhook_init(): void {
+	add_action( 'frl_webhook_dispatch', 'frl_webhook_dispatch_handler' );
+}
+
+/**
+ * Cron handler for 'frl_webhook_dispatch'. Dispatches the webhook and,
+ * on failure, retries with backoff up to FRL_WEBHOOK_RETRY['max_attempts']
+ * (config/config-base.php).
+ *
+ * @param array $args Contains url, data, _frl_uuid, and optional _frl_attempt.
+ */
+function frl_webhook_dispatch_handler( array $args ): void {
+	$url     = $args['url'] ?? '';
+	$data    = $args['data'] ?? array();
+	$attempt = (int) ( $args['_frl_attempt'] ?? 0 );
+	$uuid    = $args['_frl_uuid'] ?? wp_generate_uuid4();
+
+	// dedup_key stays null: already deduped at scheduling time, and retries must not self-block.
+	$result = frl_send_webhook( $url, $data );
+
+	if ( $result['success'] ) {
+		return;
 	}
-);
+
+	if ( $attempt >= FRL_WEBHOOK_RETRY['max_attempts'] ) {
+		frl_log(
+			'WEBHOOK ERROR: giving up after {attempts} attempt(s) for {url}',
+			array(
+				'attempts' => $attempt + 1,
+				'url'      => $url,
+			)
+		);
+		return;
+	}
+
+	$retry_delays = FRL_WEBHOOK_RETRY['delays'];
+	$delay        = $retry_delays[ $attempt ] ?? end( $retry_delays );
+	$scheduled    = wp_schedule_single_event(
+		time() + $delay,
+		'frl_webhook_dispatch',
+		array(
+			array(
+				'url'          => $url,
+				'data'         => $data,
+				'_frl_uuid'    => $uuid,
+				'_frl_attempt' => $attempt + 1,
+			),
+		)
+	);
+
+	frl_log(
+		$scheduled
+			? 'WEBHOOK RETRY: scheduling attempt {attempt} in {delay}s for {url}'
+			: 'WEBHOOK ERROR: retry scheduling failed for {url} after attempt {attempt}',
+		array(
+			'attempt' => $attempt + 1,
+			'delay'   => $delay,
+			'url'     => $url,
+		)
+	);
+}
 
 
 /**
