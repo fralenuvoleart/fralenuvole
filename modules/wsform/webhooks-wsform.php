@@ -59,7 +59,26 @@ function frl_wsf_clear_channel_tracking_errors( mixed $field_error_action_array,
 	foreach ( $configs as $config ) {
 		$fields_map = $config['fields_map'] ?? array();
 		foreach ( $fields_map as $key => $field_id ) {
-			if ( str_starts_with( $key, 'Channel ' ) ) {
+			// Clear validation errors for all channel tracking fields.
+			// We check against the known keys defined in CT_ATTR_KEYS.
+			$is_channel_field = false;
+			if ( defined( 'CT_ATTR_KEYS' ) && is_array( CT_ATTR_KEYS ) ) {
+				foreach ( CT_ATTR_KEYS as $ct_key ) {
+					// Match keys like 'Channel Source', 'Channel Medium', etc.
+					// Also match 'Reference ID' as it's populated by the same script.
+					if ( strcasecmp( $key, 'Channel ' . $ct_key ) === 0 || strcasecmp( $key, 'Reference ID' ) === 0 ) {
+						$is_channel_field = true;
+						break;
+					}
+				}
+			} else {
+				// Fallback if CT_ATTR_KEYS is not defined
+				if ( str_starts_with( $key, 'Channel ' ) || $key === 'Reference ID' ) {
+					$is_channel_field = true;
+				}
+			}
+
+			if ( $is_channel_field ) {
 				$fields_to_clear[] = (int) str_replace( 'field_', '', $field_id );
 			}
 		}
@@ -154,11 +173,29 @@ function frl_wsf_submit_webhook( $submit ) {
 
 				// Preserve arrays where possible, join if needed
 				if ( is_array( $value ) ) {
-					$value = count( $value ) === 1 ? reset( $value ) : implode( ' | ', array_map( 'strval', $value ) );
+					if ( count( $value ) === 1 ) {
+						$value = reset( $value );
+					} else {
+						// Safely implode arrays, handling potential nested objects/arrays
+						$safe_values = array();
+						foreach ( $value as $v ) {
+							if ( is_scalar( $v ) ) {
+								$safe_values[] = (string) $v;
+							} else {
+								$safe_values[] = wp_json_encode( $v );
+							}
+						}
+						$value = implode( ' | ', $safe_values );
+					}
 				}
 
 				// Normalize/sanitize value
-				$post_data[ $key ] = is_scalar( $value ) ? (string) $value : '';
+				if ( is_scalar( $value ) ) {
+					$post_data[ $key ] = (string) $value;
+				} else {
+					// Fallback for complex nested structures that weren't caught above
+					$post_data[ $key ] = wp_json_encode( $value );
+				}
 			} else {
 				$post_data[ $key ] = '';
 			}

@@ -39,8 +39,9 @@ function frl_cta_init() {
 			$env_actions = CTA_WEBHOOK_CONFIG[ $env_prefix ]['actions'] ?? array();
 
 			// Cache translations to avoid running frl_get_translation on every request
-			$lang      = frl_get_language();
-			$cache_key = 'cta_actions_trans_' . md5( wp_json_encode( $env_actions ) . '_' . $lang );
+			$lang          = frl_get_language();
+			$trans_version = frl_get_translation_version();
+			$cache_key     = 'cta_actions_trans_' . md5( wp_json_encode( $env_actions ) . '_' . $lang . '_' . $trans_version );
 
 			$translated_actions = frl_cache_remember(
 				'html',

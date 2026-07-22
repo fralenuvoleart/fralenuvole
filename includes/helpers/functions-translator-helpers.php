@@ -389,3 +389,15 @@ function frl_get_post_translation( int $post_id, string $language ) {
 	}
 	return Frl_Translation_Service::get_instance()->get_post_translation( $post_id, $language );
 }
+
+/**
+ * Get the global translation version.
+ *
+ * @return int
+ */
+function frl_get_translation_version(): int {
+	if ( ! frl_translator_is_enabled() ) {
+		return 1;
+	}
+	return Frl_Translation_Service::get_instance()->get_translation_version();
+}

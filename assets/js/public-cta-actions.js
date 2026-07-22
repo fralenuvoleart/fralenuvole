@@ -68,12 +68,12 @@
             }).catch(function(error) {
                 // Queue for retry on next page load if failed
                 try {
-                    var queue = JSON.parse(sessionStorage.getItem('frl_cta_queue') || '[]');
+                    var queue = JSON.parse(localStorage.getItem('frl_cta_queue') || '[]');
                     queue.push({
                         actionId: actionId,
                         timestamp: new Date().getTime()
                     });
-                    sessionStorage.setItem('frl_cta_queue', JSON.stringify(queue));
+                    localStorage.setItem('frl_cta_queue', JSON.stringify(queue));
                 } catch (e) {}
             });
         } else {
@@ -85,9 +85,9 @@
     // Process any queued webhooks from previous failed attempts
     function processQueuedWebhooks() {
         try {
-            var queue = JSON.parse(sessionStorage.getItem('frl_cta_queue') || '[]');
+            var queue = JSON.parse(localStorage.getItem('frl_cta_queue') || '[]');
             if (queue.length > 0) {
-                sessionStorage.removeItem('frl_cta_queue');
+                localStorage.removeItem('frl_cta_queue');
                 // Only retry events less than 24 hours old
                 var now = new Date().getTime();
                 for (var i = 0; i < queue.length; i++) {
