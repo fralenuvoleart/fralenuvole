@@ -186,6 +186,8 @@ function frl_wsf_translate_fields( $form, $preview ) {
 
 // Helper function to translate "Thank you" message
 function frl_wsf_translate_form_success( $message ) {
+	$translated_message = esc_html( frl_get_translation( $message ) );
+	$translated_weekend = esc_html( frl_get_translation( 'Thank you for your inquiry. We will answer you on Monday.' ) );
 	?>
 	<style>
 		.wsf-alert-success p {
@@ -193,11 +195,11 @@ function frl_wsf_translate_form_success( $message ) {
 		}
 
 		.wsf-alert-success:before {
-			content: "<?php echo addslashes( frl_get_translation( $message ) ); ?>";
+			content: "<?php echo $translated_message; ?>";
 		}
 
 		[data-wsf-message]:has( + form input[aria-label="Date"]:is([value="Sat"],[value="Sun"])) .wsf-alert-success:before {
-			content: "<?php echo addslashes( frl_get_translation( 'Thank you for your inquiry. We will answer you on Monday.' ) ); ?>";
+			content: "<?php echo $translated_weekend; ?>";
 		}
 	</style>
 	<?php

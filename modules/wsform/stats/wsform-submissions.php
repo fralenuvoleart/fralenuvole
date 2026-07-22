@@ -131,8 +131,7 @@ function frl_wsf_get_submission_data( $days = 30 ) {
 					'end'   => $end_date,
 				),
 			);
-		},
-		6 * HOUR_IN_SECONDS
+		}
 	);
 }
 
@@ -313,8 +312,7 @@ function frl_wsf_get_grouped_submission_data( $days = 30, $form_id = null, $star
 				),
 				'form_id'        => $form_id,
 			);
-		},
-		6 * HOUR_IN_SECONDS
+		}
 	);
 }
 

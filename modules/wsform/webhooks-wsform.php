@@ -188,8 +188,9 @@ function frl_wsf_submit_webhook( $submit ) {
 					),
 					true
 				);
-				// Fallback to sync dispatch
-				frl_send_webhook( $webhook_url, $post_data, $dedup_key, $dedup_interval );
+				// Fallback to sync dispatch — pass null dedup_key to avoid being
+				// blocked by the transient lock already set by frl_send_webhook_async().
+				frl_send_webhook( $webhook_url, $post_data );
 			}
 		} else {
 			frl_send_webhook( $webhook_url, $post_data, $dedup_key, $dedup_interval );
@@ -218,14 +219,13 @@ function frl_wsf_spam_filter_submission( $field_error_action_array, $post_mode, 
 	}
 
 	$form_id = $submit->form_id ?? 0;
-	$configs = frl_wsf_get_all_webhook_configs();
+	$configs = frl_wsf_get_matching_configs( $form_id );
+
+	if ( empty( $configs ) ) {
+		return $field_error_action_array;
+	}
 
 	foreach ( $configs as $webhook_config ) {
-		// Skip if not matching form
-		if ( (int) ( $webhook_config['form_id'] ?? -1 ) !== (int) $form_id ) {
-			continue;
-		}
-
 		// Skip if no spam filter configured
 		$spam_filter = $webhook_config['spam_filter'] ?? array();
 		if ( empty( $spam_filter ) ) {
