@@ -14,6 +14,55 @@ if ( ! defined( 'ABSPATH' ) ) {
 require_once __DIR__ . '/config-constants-wsform.php';
 require_once FRL_DIR_PATH . 'public/channel-tracking.php';
 
+// Register WS Form Stats widget and tab
+add_action(
+	'plugins_loaded',
+	'frl_wsf_init',
+	10,
+	0
+);
+
+// Pre-render fields for translation
+add_filter(
+	'wsf_pre_render',
+	'frl_wsf_translate_fields',
+	10,
+	2
+);
+
+// Add filter for invalid feedback text
+add_filter(
+	'wsf_field_invalid_feedback_text',
+	'frl_wsf_translate_invalid_text',
+	10,
+	1
+);
+
+// Translate action messages (like "Thank you") dynamically on submit
+add_filter(
+	'wsf_actions_post_submit',
+	'frl_wsf_translate_submit_actions',
+	10,
+	3
+);
+
+/**
+ * Initialize WS Form additional features
+ */
+function frl_wsf_init() {
+	if ( frl_get_option( 'wsform_webhook' ) ) {
+		frl_wsf_init_webhook();
+	}
+
+	if ( frl_get_option( 'wsform_dash_widget' ) ) {
+		frl_wsf_init_stats();
+	}
+
+	if ( frl_get_option( 'wsform_channel_tracking' ) ) {
+		frl_channel_tracking_init();
+	}
+}
+
 /**
  * Returns the resolved webhook configs for the current environment.
  * Always available regardless of whether the webhook subsystem is active.
@@ -43,47 +92,6 @@ function frl_wsf_get_all_webhook_configs(): array {
 		: array();
 }
 
-// Register WS Form Stats widget and tab
-add_action(
-	'plugins_loaded',
-	'frl_wsf_init',
-	10,
-	0
-);
-
-// Pre-render fields for translation
-add_filter(
-	'wsf_pre_render',
-	'frl_wsf_translate_fields',
-	10,
-	2
-);
-
-// Add filter for invalid feedback text
-add_filter(
-	'wsf_field_invalid_feedback_text',
-	'frl_wsf_translate_invalid_text',
-	10,
-	1
-);
-
-/**
- * Initialize WS Form additional features
- */
-function frl_wsf_init() {
-	if ( frl_get_option( 'wsform_webhook' ) ) {
-		frl_wsf_init_webhook();
-	}
-
-	if ( frl_get_option( 'wsform_dash_widget' ) ) {
-		frl_wsf_init_stats();
-	}
-
-	if ( frl_get_option( 'wsform_channel_tracking' ) ) {
-		frl_channel_tracking_init();
-	}
-}
-
 /**
  * Init WS Form Webhook specific functionalities.
  */
@@ -99,42 +107,6 @@ function frl_wsf_translate_invalid_text( $text ) {
 
 // Translate labels and options, and set field default values
 function frl_wsf_translate_fields( $form, $preview ) {
-	// Ensure we add the wp_head style block at most once per request
-	static $frl_wsf_success_style_added = false;
-	static $frl_wsf_success_message     = null;
-
-	// Defensive: guard against forms with no actions configured
-	if ( isset( $form->meta->action->groups[0]->rows ) ) {
-		$form_actions = $form->meta->action->groups[0]->rows;
-
-		foreach ( $form_actions as $key => $action ) {
-
-			if ( ! empty( $action->data ) && count( $action->data ) > 1 && str_contains( $action->data[0], 'Show Message' ) ) {
-				$json = json_decode( $action->data[1] );
-
-				if ( isset( $json->meta ) && isset( $json->meta->action_message_message ) ) {
-					$message = $json->meta->action_message_message;
-					// Capture the first available success message; avoid re-registering hooks
-					if ( $frl_wsf_success_message === null ) {
-						$frl_wsf_success_message = $message;
-					}
-				}
-			}
-		}
-	}
-
-	// Register a single head hook once per request (skip previews to avoid duplicates)
-	if ( ! $preview && ! $frl_wsf_success_style_added && $frl_wsf_success_message !== null ) {
-		add_action(
-			'wp_head',
-			function () use ( $frl_wsf_success_message ) {
-				frl_wsf_translate_form_success( $frl_wsf_success_message );
-			},
-			100,
-			0
-		);
-		$frl_wsf_success_style_added = true;
-	}
 	/** @disregard P1010 Undefined type */
 	$fields = wsf_form_get_fields( $form );
 	foreach ( $fields as $object ) {
@@ -184,25 +156,54 @@ function frl_wsf_translate_fields( $form, $preview ) {
 	return $form;
 }
 
-// Helper function to translate "Thank you" message
-function frl_wsf_translate_form_success( $message ) {
-	$translated_message = esc_html( frl_get_translation( $message ) );
-	$translated_weekend = esc_html( frl_get_translation( 'Thank you for your inquiry. We will answer you on Monday.' ) );
-	?>
-	<style>
-		.wsf-alert-success p {
-			display: none;
-		}
+/**
+ * Translates the success message returned by WS Form via AJAX.
+ * This avoids the issue where translated CSS content gets frozen in the page cache.
+ *
+ * @param array  $actions The actions array.
+ * @param object $form    The form object.
+ * @param object $submit  The submit object.
+ * @return array The modified actions array.
+ */
+function frl_wsf_translate_submit_actions( $actions, $form, $submit ) {
+	if ( ! is_array( $actions ) ) {
+		return $actions;
+	}
 
-		.wsf-alert-success:before {
-			content: "<?php echo $translated_message; ?>";
+	// Check if we need the weekend message override
+	// We look for a field with aria-label "Date" and value "Sat" or "Sun" in the submission data
+	$is_weekend = false;
+	if ( isset( $submit->meta ) ) {
+		foreach ( $submit->meta as $key => $value ) {
+			if ( str_starts_with( $key, 'field_' ) ) {
+				$field_id = (int) str_replace( 'field_', '', $key );
+				/** @disregard P1010 Undefined type */
+				$field = wsf_field_get_object( $form, $field_id );
+				if ( $field && isset( $field->label ) && $field->label === 'Date' ) {
+					if ( $value === 'Sat' || $value === 'Sun' ) {
+						$is_weekend = true;
+						break;
+					}
+				}
+			}
 		}
+	}
 
-		[data-wsf-message]:has( + form input[aria-label="Date"]:is([value="Sat"],[value="Sun"])) .wsf-alert-success:before {
-			content: "<?php echo $translated_weekend; ?>";
+	foreach ( $actions as $key => $action ) {
+		if ( isset( $action['id'] ) && $action['id'] === 'message' ) {
+			if ( isset( $action['meta']['action_message_message'] ) ) {
+				$message = $action['meta']['action_message_message'];
+
+				if ( $is_weekend ) {
+					$actions[ $key ]['meta']['action_message_message'] = frl_get_translation( 'Thank you for your inquiry. We will answer you on Monday.' );
+				} else {
+					$actions[ $key ]['meta']['action_message_message'] = frl_get_translation( $message );
+				}
+			}
 		}
-	</style>
-	<?php
+	}
+
+	return $actions;
 }
 
 /**
