@@ -1,6 +1,18 @@
 <?php
 
 /**
+ * WS Form — Who controls what (admin ALWAYS wins at runtime)
+ *
+ * Setting               | Admin option? | Constant fallback? | Default
+ * ----------------------|---------------|--------------------|--------
+ * Webhooks on/off       | YES           | prefix → constant  | ON
+ * Cron vs sync dispatch | YES           | per-webhook true   | Cron
+ * Channel tracking      | YES           | none               | ON
+ * Dashboard widget      | YES           | none               | OFF
+ *
+ * Webhooks fire ONLY IF: admin switch is ON + this site's prefix
+ * matches a key in WSFORM_ALL_WEBHOOKS_CONFIG below.
+ *
  * WS Form module settings
  */
 
