@@ -30,6 +30,14 @@ $frl_wsform_default_fields = array(
 		'sanitize_callback' => 'absint',
 		'restricted'        => true,
 	),
+	'wsform_use_cron'         => array(
+		'label'             => 'Use Cron for Webhooks',
+		'description'       => 'Send webhooks via WP-Cron (async). Disable for sync dispatch.',
+		'type'              => 'checkbox',
+		'default'           => 1,
+		'sanitize_callback' => 'absint',
+		'restricted'        => true,
+	),
 	'wsform_channel_tracking' => array(
 		'label'             => 'Enable Channel Tracking',
 		'description'       => 'Enable Attribution Channel Tracking for WS Forms',

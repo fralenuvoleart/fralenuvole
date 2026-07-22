@@ -22,14 +22,12 @@ const FRL_ENV_MAP = array(
 // --- PBS ---
 const FRL_ENV_PBS_TEMPLATE = array(
 	'prefix'         => 'pbs',
-	'webhook_config' => 'pbs',
 	'modules'        => array(
 		'pbs'               => true,
 		'subdomain_adapter' => true,
 		'call_to_actions'   => true,
 	),
 	'plugin_options' => array(
-		'wsform_webhook' => true,
 		'cta_webhook'    => true,
 	),
 );
@@ -55,7 +53,6 @@ const FRL_ENV_PBS_STAGING = array(
 	'extends'     => 'FRL_ENV_PBS_TEMPLATE',
 	'type'        => 'staging',
 	'counterpart' => 'pbservices.ge',
-	'use_cron'    => false,
 	'modules'     => array(
 		'subdomain_adapter' => true,
 	),
@@ -64,12 +61,10 @@ const FRL_ENV_PBS_STAGING = array(
 // --- PBP ---
 const FRL_ENV_PBP_TEMPLATE = array(
 	'prefix'         => 'pbp',
-	'webhook_config' => 'pbp',
 	'modules'        => array(
 		'pbproperty' => true,
 	),
 	'plugin_options' => array(
-		'wsform_webhook'           => true,
 		'header_html'              => 'file',
 		'header_html_php'          => true,
 		'schema_organization_name' => 'PB Property Georgia',
@@ -86,7 +81,6 @@ const FRL_ENV_PBP_STAGING = array(
 	'extends'     => 'FRL_ENV_PBP_TEMPLATE',
 	'type'        => 'staging',
 	'counterpart' => 'pbproperty.ge',
-	'use_cron'    => false,
 );
 
 // --- PB Nova ---
@@ -115,7 +109,6 @@ const FRL_ENV_PBNOVA_STAGING = array(
 	'extends'     => 'FRL_ENV_PBNOVA_TEMPLATE',
 	'type'        => 'staging',
 	'counterpart' => 'pbnova.com',
-	'use_cron'    => false,
 );
 
 // --- Fralenuvole ---

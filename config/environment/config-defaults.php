@@ -24,10 +24,8 @@ const FRL_ENV_STAGING_PREFIXES = array( 'stg-', 'staging.', 'stage', 'dev.', 'te
 // --- Base Default Configuration ---
 /** Universal baseline applied to every site. Override per brand via templates. */
 const FRL_ENV_DEFAULT = array(
-	'prefix'         => 'default',         // Requires override — display label only
+	'prefix'         => 'default',
 	'type'           => 'production',        // Base type
-	'webhook_config' => false,     // Requires override — false = no webhook lookup
-	'use_cron'       => null,      // null = let per-webhook config decide; true/false = force all webhooks
 	'plugins'        => array(
 		'active'   => array(
 			'litespeed-cache/litespeed-cache.php',
@@ -55,8 +53,6 @@ const FRL_ENV_DEFAULT = array(
 		'blog_public' => 1,
 	),
 	'plugin_options' => array(
-		'wsform_webhook'             => false,
-		'wsform_channel_tracking'    => false,
 		'cta_webhook'                => false,
 		'header_html'                => '',
 		'header_html_php'            => false,

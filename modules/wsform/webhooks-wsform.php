@@ -168,9 +168,8 @@ function frl_wsf_submit_webhook( $submit ) {
 			$post_data['Service'] = 'Webpage';
 		}
 
-		// Check if cron should be used — per-webhook default, overridable per env.
-		$env_config = frl_environment_get_config();
-		$use_cron   = $env_config['use_cron'] ?? $config['use_cron'] ?? true;
+		// Admin option wins. Falls back to per-webhook constant, then hardcoded true.
+		$use_cron = filter_var( frl_get_option( 'wsform_use_cron' ), FILTER_VALIDATE_BOOLEAN ) ?? $config['use_cron'] ?? true;
 
 		// Include webhook_url: multiple configs can share a form_id, and dedup must be per-destination.
 		$dedup_key      = 'wsf_' . ( $submit->id ?? wp_generate_uuid4() ) . '_' . md5( $webhook_url );
