@@ -45,16 +45,19 @@ const CTA_WEBHOOK_CONFIG = array(
 
 ### `use_cron` resolution order
 
-1. `$env_config['use_cron']` — env-level override (e.g., `false` on staging)
-2. Per-env constant entry in `CTA_WEBHOOK_CONFIG`
-3. Hard default: `false` (sync)
+1. Admin option `cta_use_cron` — if explicitly saved in Modules tab, this wins.
+2. Per-env constant entry in `CTA_WEBHOOK_CONFIG` (e.g., `'pbs' => ['use_cron' => false]`).
+3. Hard default: `true` (WP-Cron async dispatch).
 
 ### Admin toggles
 
 | Option | Purpose |
 |---|---|
-| `module_call_to_actions` | Enable/disable the entire module (env config) |
 | `cta_webhook` | Master kill switch for webhook dispatch (Modules tab). When disabled, `send_webhook` is stripped from all actions — only deep links work, no webhooks fire. |
+| `cta_use_cron` | Async (WP-Cron) vs sync (inline cURL) dispatch. Defaults to on. Can be overridden per-environment in `CTA_WEBHOOK_CONFIG`. |
+
+The module on/off toggle (`module_call_to_actions`) is managed by the Environment system
+(`config-defaults.php` / `config-environment.php`).
 
 ### Per-action webhook toggle
 
@@ -62,7 +65,9 @@ Each action in `CTA_WEBHOOK_CONFIG` has a `send_webhook` boolean. Set to `false`
 
 ### Staging
 
-Staging env templates set `'use_cron' => false` to force synchronous dispatch for testability. Production inherits the per-webhook constant defaults.
+To force synchronous dispatch on staging, set `'use_cron' => false` in the staging environment's
+`CTA_WEBHOOK_CONFIG` entry and ensure the admin option `cta_use_cron` is not explicitly saved
+(the per-env constant is the fallback, not the override).
 
 ## Files
 

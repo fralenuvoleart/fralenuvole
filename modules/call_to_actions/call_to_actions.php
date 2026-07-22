@@ -63,15 +63,18 @@ function frl_cta_init() {
 				DAY_IN_SECONDS
 			);
 
-			$env_actions = $translated_actions;
-
 			// If webhook dispatch is disabled, strip webhook flag so JS doesn't fire sendBeacon.
+			// Use array_map to avoid reference-mutation of the cached array.
 			if ( ! frl_get_option( 'cta_webhook' ) ) {
-				foreach ( $env_actions as &$action ) {
-					$action['send_webhook'] = false;
-				}
-				unset( $action );
+				$translated_actions = array_map(
+					function ( array $action ): array {
+						$action['send_webhook'] = false;
+						return $action;
+					},
+					$translated_actions
+				);
 			}
+			$env_actions = $translated_actions;
 
 			return array_merge( $actions, $env_actions );
 		}

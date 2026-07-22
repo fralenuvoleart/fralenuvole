@@ -65,8 +65,12 @@ function frl_cta_webhook_handler() {
 
 	$env_entry   = CTA_WEBHOOK_CONFIG[ $env_prefix ];
 	$webhook_url = $env_entry['webhook_url'] ?? '';
-	// Admin option wins, falls back to per-env constant entry.
-	$use_cron = filter_var( frl_get_option( 'cta_use_cron' ), FILTER_VALIDATE_BOOLEAN ) ?? $env_entry['use_cron'] ?? true;
+	// Admin option wins if explicitly saved. Falls back to per-env constant, then true.
+	// Using raw get_option(null) to distinguish "never saved" from "saved as false."
+	$db_value = get_option( frl_prefix( 'cta_use_cron' ), null );
+	$use_cron = ( null !== $db_value )
+		? filter_var( $db_value, FILTER_VALIDATE_BOOLEAN )
+		: ( $env_entry['use_cron'] ?? true );
 
 	if ( empty( $webhook_url ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );
@@ -76,12 +80,20 @@ function frl_cta_webhook_handler() {
 	$page_url = sanitize_url( wp_unslash( $_POST['page_url'] ?? '' ) );
 
 	if ( ! empty( $page_url ) && defined( 'CTA_SERVICE_META' ) ) {
-		$post_id = url_to_postid( $page_url );
-		if ( $post_id > 0 ) {
-			$meta = frl_get_post_meta( $post_id, CTA_SERVICE_META, true );
-			if ( ! empty( $meta ) ) {
-				$service = sanitize_text_field( $meta );
+		// Cache the page_url → service lookup to avoid url_to_postid() DB query on every click.
+		$service_key = 'cta_service_' . md5( $page_url );
+		$cached_meta = frl_get_transient( $service_key );
+		if ( false !== $cached_meta ) {
+			$service = $cached_meta;
+		} else {
+			$post_id = url_to_postid( $page_url );
+			if ( $post_id > 0 ) {
+				$meta = frl_get_post_meta( $post_id, CTA_SERVICE_META, true );
+				if ( ! empty( $meta ) ) {
+					$service = sanitize_text_field( $meta );
+				}
 			}
+			frl_set_transient( $service_key, $service, HOUR_IN_SECONDS );
 		}
 	}
 
