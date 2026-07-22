@@ -16,6 +16,3 @@ A comprehensive framework for administrators and developers, engineered for high
 
 1. Upload `fralenuvole` to the `/wp-content/plugins/` directory
 2. Activate the plugin through the 'Plugins' menu in WordPress
-
-
-
