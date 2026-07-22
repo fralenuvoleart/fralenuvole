@@ -30,7 +30,7 @@ function frl_cta_init() {
 				return $actions;
 			}
 			$env_config = frl_environment_get_config();
-			$env_prefix = $env_config['webhook_config'] ?? $env_config['prefix'] ?? 'default';
+			$env_prefix = $env_config['prefix'] ?? 'default';
 
 			if ( ! isset( CTA_WEBHOOK_CONFIG[ $env_prefix ] ) || ! is_array( CTA_WEBHOOK_CONFIG[ $env_prefix ] ) ) {
 				return $actions;

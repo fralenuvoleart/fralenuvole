@@ -1,5 +1,15 @@
 <?php
 /**
+ * Call-to-Actions — Who controls what (admin ALWAYS wins at runtime)
+ *
+ * Setting         | Admin option? | Constant fallback?  | Default
+ * ----------------|---------------|---------------------|--------
+ * CTA webhooks    | YES           | prefix → constant   | ON
+ * Cron vs sync    | YES           | per-env entry true  | Cron
+ *
+ * CTA actions activate ONLY IF: admin switch is ON + this site's prefix
+ * matches a key in CTA_WEBHOOK_CONFIG below.
+ *
  * Call-to-Actions Module — Constants
  *
  * Unified per-environment CTA webhook config matching wsform's

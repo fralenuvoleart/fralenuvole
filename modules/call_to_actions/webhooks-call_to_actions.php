@@ -57,16 +57,16 @@ function frl_cta_webhook_handler() {
 	}
 
 	$env_config = frl_environment_get_config();
-	$env_prefix = $env_config['webhook_config'] ?? $env_config['prefix'] ?? 'default';
+	$env_prefix = $env_config['prefix'] ?? 'default';
 
 	if ( ! defined( 'CTA_WEBHOOK_CONFIG' ) || empty( CTA_WEBHOOK_CONFIG[ $env_prefix ] ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );
 	}
 
 	$env_entry   = CTA_WEBHOOK_CONFIG[ $env_prefix ];
-	$webhook_url = $env_config['cta_webhook_url'] ?? $env_entry['webhook_url'] ?? '';
-	// Per-webhook default from constants, overridable per env.
-	$use_cron = $env_config['use_cron'] ?? $env_entry['use_cron'] ?? true;
+	$webhook_url = $env_entry['webhook_url'] ?? '';
+	// Admin option wins, falls back to per-env constant entry.
+	$use_cron = filter_var( frl_get_option( 'cta_use_cron' ), FILTER_VALIDATE_BOOLEAN ) ?? $env_entry['use_cron'] ?? true;
 
 	if ( empty( $webhook_url ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );
