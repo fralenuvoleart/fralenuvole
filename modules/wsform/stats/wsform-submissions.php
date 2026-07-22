@@ -187,7 +187,7 @@ function frl_wsf_get_grouped_submission_data( $days = 30, $form_id = null, $star
 					$end_date = $start_date;
 				}
 			} else {
-				// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Intentional: this must reflect the site's local calendar date (so "today" means local-today, not UTC-today) for correct date-range boundaries; time() would give the wrong date on sites whose UTC offset crosses midnight.
+				// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Intentional: this must reflect the site's local calendar date (so "today" means local-today, not UTC-today) for correct date-range boundaries.
 				$end_date_time = current_time( 'timestamp' );
 				$end_date      = gmdate( 'Y-m-d', $end_date_time );
 				$start_date    = gmdate( 'Y-m-d', strtotime( "-{$days} days", $end_date_time ) );
