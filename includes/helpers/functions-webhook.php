@@ -41,10 +41,11 @@ function frl_send_webhook_async( string $url, array $data, ?string $dedup_key = 
 		return true; // Treat as success to avoid triggering error flows
 	}
 
-	// Dedup key: caller-supplied (e.g., wsform submit ID) or auto-generated UUID.
-	// Lives as a sibling cron arg so it participates in WP-Cron's dedup hash
-	// but never reaches the webhook payload.
-	$_frl_uuid = $dedup_key ?? wp_generate_uuid4();
+	// _frl_uuid is always a unique UUID to defeat WP-Cron's 10-minute dedup.
+	// The caller's $dedup_key (if any) was already checked above via transient.
+	// Mixing a deterministic dedup_key into _frl_uuid would cause wp_schedule_single_event
+	// to return false when the transient expires but WP-Cron still has the old event queued.
+	$_frl_uuid = wp_generate_uuid4();
 
 	$scheduled = wp_schedule_single_event(
 		time(),
