@@ -198,10 +198,7 @@ function frl_wsf_translate_submit_actions( $actions, $form, $submit ) {
 	foreach ( $actions as $key => $action ) {
 		if ( isset( $action['id'] ) && $action['id'] === 'message' ) {
 			if ( isset( $action['meta']['action_message_message'] ) ) {
-				// Strip HTML wrapper (<p>...</p>) that WS Form's editor adds
-				// to the stored message. The Polylang string translations are
-				// registered against plain text, not HTML-wrapped versions.
-				$message = wp_strip_all_tags( $action['meta']['action_message_message'] );
+				$message = $action['meta']['action_message_message'];
 
 				if ( $is_weekend ) {
 					$actions[ $key ]['meta']['action_message_message'] = frl_get_translation( WSFORM_WEEKEND_MESSAGE, $lang );
