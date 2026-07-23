@@ -189,15 +189,21 @@ function frl_wsf_translate_submit_actions( $actions, $form, $submit ) {
 		}
 	}
 
+	// Derive language from the page the form is on, not from the request context.
+	// WS Form submits via REST API (wp-json/ws-form/v1/submit) which hits the main
+	// domain without a language prefix — pll_current_language() would return the
+	// default, short-circuiting frl_get_translation() before pll_translate_string().
+	$lang = frl_get_language( (int) ( $submit->post_id ?? 0 ) );
+
 	foreach ( $actions as $key => $action ) {
 		if ( isset( $action['id'] ) && $action['id'] === 'message' ) {
 			if ( isset( $action['meta']['action_message_message'] ) ) {
 				$message = $action['meta']['action_message_message'];
 
 				if ( $is_weekend ) {
-					$actions[ $key ]['meta']['action_message_message'] = frl_get_translation( 'Thank you for your inquiry. We will answer you on Monday.' );
+					$actions[ $key ]['meta']['action_message_message'] = frl_get_translation( WSFORM_WEEKEND_MESSAGE, $lang );
 				} else {
-					$actions[ $key ]['meta']['action_message_message'] = frl_get_translation( $message );
+					$actions[ $key ]['meta']['action_message_message'] = frl_get_translation( $message, $lang );
 				}
 			}
 		}
