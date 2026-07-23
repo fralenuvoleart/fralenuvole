@@ -193,12 +193,15 @@ function frl_wsf_translate_submit_actions( $actions, $form, $submit ) {
 	// WS Form submits via REST API (wp-json/ws-form/v1/submit) which hits the main
 	// domain without a language prefix — pll_current_language() would return the
 	// default, short-circuiting frl_get_translation() before pll_translate_string().
-	$lang = frl_get_language( (int) ( $submit->post_id ?? 0 ) );
+	$lang = frl_get_language( (int) ( $submit->meta['post_id'] ?? 0 ) );
 
 	foreach ( $actions as $key => $action ) {
 		if ( isset( $action['id'] ) && $action['id'] === 'message' ) {
 			if ( isset( $action['meta']['action_message_message'] ) ) {
-				$message = $action['meta']['action_message_message'];
+				// Strip HTML wrapper (<p>...</p>) that WS Form's editor adds
+				// to the stored message. The Polylang string translations are
+				// registered against plain text, not HTML-wrapped versions.
+				$message = wp_strip_all_tags( $action['meta']['action_message_message'] );
 
 				if ( $is_weekend ) {
 					$actions[ $key ]['meta']['action_message_message'] = frl_get_translation( WSFORM_WEEKEND_MESSAGE, $lang );
