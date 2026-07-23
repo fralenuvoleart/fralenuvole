@@ -99,6 +99,10 @@
         } catch (e) {}
     }
 
+    // WeakSet tracks already-bound elements in memory only — resets on every
+    // page load and cannot leak into cached HTML (unlike a DOM attribute).
+    var boundElements = new WeakSet();
+
     function attachCtaHandlers() {
         if (!Array.isArray(CONFIG.ctaActions) || !CONFIG.ctaActions.length) return;
 
@@ -141,8 +145,8 @@
 
             for (var e = 0; e < elements.length; e++) {
                 var el = elements[e];
-                if (el.getAttribute('data-cta-bound') === '1') continue;
-                el.setAttribute('data-cta-bound', '1');
+                if (boundElements.has(el)) continue;
+                boundElements.add(el);
 
                 bindCtaHandler(el, action);
             }
