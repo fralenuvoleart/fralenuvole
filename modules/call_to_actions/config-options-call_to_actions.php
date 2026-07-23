@@ -32,7 +32,7 @@ $frl_call_to_actions_default_fields = array(
 		'label'             => 'Use Cron for CTA Webhooks',
 		'description'       => 'Send CTA webhooks via WP-Cron (async). Disable for sync dispatch.',
 		'type'              => 'checkbox',
-		'default'           => 1,
+		'default'           => 0,
 		'sanitize_callback' => 'absint',
 	),
 );
