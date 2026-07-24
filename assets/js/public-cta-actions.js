@@ -45,18 +45,34 @@
         return url;
     }
 
-    function fireCtaWebhook(actionId) {
+    function fireCtaWebhook(actionId, options) {
         if (!CONFIG.ajaxUrl) return;
+        options = options || {};
         var data = new FormData();
         data.append('action', 'frl_cta_webhook');
         // Note: nonce intentionally omitted (see channel-tracking.php for explanation)
         data.append('action_id', actionId);
-        data.append('page_url', window.location.href);
-        data.append('referer', document.referrer || '');
+        data.append('page_url', options.pageUrl || window.location.href);
+        data.append('referer', options.referer !== undefined ? options.referer : (document.referrer || ''));
         data.append('language', CONFIG.language || '');
+        
+        var cookieData = options.cookieData || {};
+        var isRetry = !!options.cookieData;
         var cookieKeys = ['source', 'medium', 'campaign', 'term', 'content', 'gclid', 'fbclid', 'landing', 'reference_id'];
+        
         for (var i = 0; i < cookieKeys.length; i++) {
-            data.append(cookieKeys[i], getCookie(cookieKeys[i]) || '');
+            var key = cookieKeys[i];
+            var val = '';
+            if (isRetry) {
+                val = cookieData[key] || '';
+            } else {
+                val = getCookie(key) || '';
+                if (key === 'reference_id' && !val && options.fallbackRefId) {
+                    val = options.fallbackRefId;
+                }
+                cookieData[key] = val;
+            }
+            data.append(key, val);
         }
         
         // Use fetch with keepalive instead of sendBeacon for better reliability and error handling
@@ -71,7 +87,10 @@
                     var queue = JSON.parse(localStorage.getItem('frl_cta_queue') || '[]');
                     queue.push({
                         actionId: actionId,
-                        timestamp: new Date().getTime()
+                        cookieData: cookieData,
+                        pageUrl: options.pageUrl || window.location.href,
+                        referer: options.referer !== undefined ? options.referer : (document.referrer || ''),
+                        timestamp: options.timestamp || new Date().getTime()
                     });
                     localStorage.setItem('frl_cta_queue', JSON.stringify(queue));
                 } catch (e) {}
@@ -91,8 +110,14 @@
                 // Only retry events less than 24 hours old
                 var now = new Date().getTime();
                 for (var i = 0; i < queue.length; i++) {
-                    if (now - queue[i].timestamp < 86400000) {
-                        fireCtaWebhook(queue[i].actionId);
+                    var item = queue[i];
+                    if (now - item.timestamp < 86400000) {
+                        fireCtaWebhook(item.actionId, {
+                            cookieData: item.cookieData,
+                            pageUrl: item.pageUrl,
+                            referer: item.referer,
+                            timestamp: item.timestamp
+                        });
                     }
                 }
             }
@@ -131,7 +156,9 @@
                     }
                 }
                 if (actionConfig.hasWebhook) {
-                    fireCtaWebhook(actionConfig.action_id);
+                    fireCtaWebhook(actionConfig.action_id, {
+                        fallbackRefId: currentRef
+                    });
                 }
             });
         }
