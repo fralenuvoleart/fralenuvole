@@ -34,5 +34,6 @@ $frl_call_to_actions_default_fields = array(
 		'type'              => 'checkbox',
 		'default'           => 0,
 		'sanitize_callback' => 'absint',
+		'restricted'        => true,
 	),
 );
