@@ -117,7 +117,20 @@ function frl_shortcodes_init() {
 	* @return string Possibly shortcode-processed block content.
 	*/
 function frl_maybe_apply_shortcodes_block( $block_content, $block ) {
-	if ( ! is_string( $block_content ) || ! str_contains( $block_content, '[' . FRL_PREFIX ) ) {
+	if ( ! is_string( $block_content ) ) {
+		return $block_content;
+	}
+
+	// Synced Pattern blocks (core/block): process any shortcode bracket.
+	if ( isset( $block['blockName'] ) && 'core/block' === $block['blockName'] ) {
+		if ( str_contains( $block_content, '[' ) ) {
+			return apply_shortcodes( $block_content, $block );
+		}
+		return $block_content;
+	}
+
+	// All other blocks: only process frl_ prefixed shortcodes.
+	if ( ! str_contains( $block_content, '[' . FRL_PREFIX ) ) {
 		return $block_content;
 	}
 	return apply_shortcodes( $block_content, $block );
