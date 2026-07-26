@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 $frl_call_to_actions_default_fields = array(
 	// Add a section title to the modules tab
-	'section_title_cta' => array(
+	'cta_section_title' => array(
 		'label'       => 'Call to Actions Module',
 		'type'        => 'section_title',
 		'description' => 'WhatsApp, Telegram, and Email CTA click tracking + webhooks',

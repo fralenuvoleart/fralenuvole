@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 $frl_wsform_default_fields = array(
 	// Add a section title to the modules tab
-	'section_title_wsform'    => array(
+	'wsform_section_title'    => array(
 		'label'       => 'WS Form Module',
 		'type'        => 'section_title',
 		'description' => 'WS Form module settings',

@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $frl_subdomain_adapter_default_fields = array(
-	'section_title_subdomain_adapter'  => array(
+	'subdomain_adapter_section_title'  => array(
 		'label'       => 'Subdomain Adapter Module',
 		'type'        => 'section_title',
 		'description' => 'Settings for subdomain adapter module',

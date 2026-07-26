@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 $frl_frl_default_fields = array(
 	// Add a section title to the modules tab
-	'section_title_frl' => array(
+	'frl_section_title' => array(
 		'label'       => 'FRL Module',
 		'type'        => 'section_title',
 		'description' => 'FRL module settings',

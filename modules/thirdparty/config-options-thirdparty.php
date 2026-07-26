@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $frl_thirdparty_default_fields = array(
-	'section_title_thirdparty'     => array(
+	'thirdparty_section_title'     => array(
 		'label'       => 'Third-Party Module',
 		'type'        => 'section_title',
 		'description' => 'Settings for third-party module integrations',
