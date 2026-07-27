@@ -149,6 +149,10 @@ function frl_wsf_translate_fields( $form, $preview ) {
 				$field->meta->default_value = frl_get_client_ip();
 			} elseif ( '#lang' === $default ) {
 				$field->meta->default_value = strtoupper( frl_get_language() );
+			} elseif ( '#service_type' === $default ) {
+				global $post;
+				$service_type               = $post ? frl_get_post_meta( $post->ID, 'service-settings_service-type', true ) : '';
+				$field->meta->default_value = $service_type ?: 'Webpage';
 			}
 		}
 	}
