@@ -259,6 +259,11 @@ function frl_alter_query( WP_Query $query ): void {
 		return;
 	}
 
+	// Skip attachment queries (media library modal, etc.)
+	if ( $query->get( 'post_type' ) === 'attachment' ) {
+		return;
+	}
+
 	$query->set( 'update_post_meta_cache', false );
 	$query->set( 'update_post_term_cache', false );
 	$query->set( 'no_found_rows', true );

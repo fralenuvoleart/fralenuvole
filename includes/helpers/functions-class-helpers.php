@@ -304,15 +304,22 @@ function frl_environment_init() {
 }
 
 /**
- * Retrieves the current environment configuration
+ * Retrieves the current environment configuration.
  *
- * Bypass frl_environment_is_loaded() check to allow to retrieve
- * configuration even if environment manager is not loaded.
+ * Bypasses frl_environment_is_loaded() because that function also gates on
+ * request type (rejects REST, AJAX, CLI, CRON, etc.), and callers in those
+ * contexts still need config data when the class IS available.
  *
- * @return array Environment configuration
+ * Returns empty array when Frl_Environment_Manager is not loaded (e.g.,
+ * environment disabled via admin option).
+ *
+ * @return array Environment configuration, or empty array if unavailable.
  */
 function frl_environment_get_config(): array {
-	// Bypass frl_environment_is_loaded() check
+	// Bypass frl_environment_is_loaded() check; guard against class not loaded
+	if ( ! class_exists( 'Frl_Environment_Manager' ) ) {
+		return array();
+	}
 	$config = Frl_Environment_Manager::get_config();
 	return $config;
 }
