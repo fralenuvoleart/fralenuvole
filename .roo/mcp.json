@@ -1,52 +1,33 @@
 {
-	"mcpServers": {
-		"context7": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"@upstash/context7-mcp"
-			],
-			"env": {
-				"DEFAULT_MINIMUM_TOKENS": ""
-			},
-			"alwaysAllow": [
-				"resolve-library-id",
-				"query-docs"
-			]
-		},
-		"tavily": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"tavily-mcp@0.2.3"
-			],
-			"env": {
-				"TAVILY_API_KEY": "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"
-			},
-			"alwaysAllow": [
-				"tavily-extract",
-				"tavily-crawl",
-				"tavily-search"
-			]
-		},
-		"memory": {
-			"command": "npx",
-			"args": [
-				"-y",
-				"@modelcontextprotocol/server-memory"
-			],
-			"env": {
-				"MEMORY_FILE_PATH": "/home/francesco/.config/Code - OSS/User/globalStorage/zoocodeorganization.zoo-code/memory.jsonl"
-			},
-			"alwaysAllow": [
-				"read_graph",
-				"add_observations",
-				"delete_entities",
-				"delete_relations",
-				"create_entities",
-				"create_relations",
-				"search_nodes"
-			]
-		}
-	}
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
+      "env": {
+        "DEFAULT_MINIMUM_TOKENS": ""
+      },
+      "alwaysAllow": [
+        "resolve-library-id",
+        "query-docs"
+      ]
+    },
+    "tavily": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "tavily-mcp@0.2.3"
+      ],
+      "env": {
+        "TAVILY_API_KEY": "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"
+      },
+      "alwaysAllow": [
+        "tavily-extract",
+        "tavily-crawl",
+        "tavily-search"
+      ]
+    }
+  }
 }
