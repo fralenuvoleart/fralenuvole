@@ -425,6 +425,30 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			}
 		}
 
+		// Fallback: when the slug has multiple segments and no matching term
+		// exists, the URL may be a valid post permalink — e.g. under
+		// /%category%/%postname%/ where the catch-all incorrectly intercepted
+		// before WordPress's built-in permalink rules could match.
+		$segments = explode( '/', $slug );
+		if ( count( $segments ) >= 2 ) {
+			$post_name = end( $segments );
+			$posts     = get_posts(
+				array(
+					'name'           => $post_name,
+					'post_type'      => 'post',
+					'post_status'    => 'publish',
+					'posts_per_page' => 1,
+				)
+			);
+			if ( ! empty( $posts ) ) {
+				return array(
+					'name'      => $post_name,
+					'post_type' => 'post',
+					'lang'      => $lang,
+				);
+			}
+		}
+
 		return array();
 	}
 

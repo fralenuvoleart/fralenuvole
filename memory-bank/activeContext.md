@@ -4,6 +4,13 @@
 
 Lead-retrieval audit of `wsform` + `call_to_actions` (2026): fixed Cloudflare IP-detection gap, `pbp` sync-webhook blocking, dedup-key collision risk. CTA extraction from wsform module into standalone `call_to_actions` module. Implementation complete. Plan rewritten as as-built document in [`plans/EXTRACTION-call-to-actions.md`](plans/EXTRACTION-call-to-actions.md). Post-extraction hardening: webhook deduplication fix + PHP 8+ defensive type checks applied to wsform and webhook helpers. Added Polylang translation support for CTA template/subject messages.
 
+## Latest Fix: Rewriter — Taxonomy Base Removal 404 on `/%category%/%postname%/`
+
+- **Bug**: `remove_tax_base = category` with permalink `/%category%/%postname%/` caused 404 on post URLs like `/gospel/gospel-of-john/`. The catch-all rewrite rule `(.+?)/?$` at `'top'` priority intercepted the URL before WordPress's built-in permalink rules could match.
+- **Fix**: Added post-resolution fallback in [`Frl_Taxonomy_Base_Removal_Feature::resolve_request()`](core/rewriter/features/class-taxonomy-base-removal-feature.php:428-450). When no term matches a multi-segment slug, attempts `get_posts()` by `name` before giving up.
+- **Plan**: [`plans/TAXONOMY-BASE-REMOVAL-404-FIX.md`](plans/TAXONOMY-BASE-REMOVAL-404-FIX.md)
+- **Lines changed**: +17 in one method, one file. No other files modified.
+
 ## Lead-Retrieval Audit Fixes (latest)
 
 1. **🐛 `frl_get_client_ip()` Cloudflare gap** — [`utilities.php`](../includes/helpers/utilities.php): checked `REMOTE_ADDR` first, which is always syntactically valid, so the `HTTP_X_FORWARDED_FOR`/`HTTP_CLIENT_IP` fallback never ran behind an unfixed CDN. Reordered to `HTTP_CF_CONNECTING_IP` → `HTTP_X_FORWARDED_FOR` → `HTTP_CLIENT_IP` → `REMOTE_ADDR` last. This collapsed CTA per-IP rate limiting to a site-wide limit and mislabeled every lead's "User IP" field.
