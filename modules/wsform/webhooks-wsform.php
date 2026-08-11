@@ -199,6 +199,12 @@ function frl_wsf_submit_webhook( $submit ) {
 			} else {
 				$post_data[ $key ] = '';
 			}
+
+			// Sanitize phone number fields before webhook dispatch.
+			if ( str_contains( $key, 'Phone' ) && ! empty( $post_data[ $key ] ) ) {
+				$phone_result      = frl_wsf_sanitize_phone_number( $post_data[ $key ] );
+				$post_data[ $key ] = $phone_result['clean'];
+			}
 		}
 
 		if ( array_key_exists( 'Service', $fields_map ) && empty( $post_data['Service'] ) ) {

@@ -103,3 +103,59 @@ const WSFORM_ALL_WEBHOOKS_CONFIG = array(
 		),
 	),
 );
+
+/**
+ * frl_wsf_phone_sanitizer Extension markers
+ *
+ */
+const PHONE_EXTENSION_PATTERN = '/
+    (?:ext\.?|extension|x|\#)
+    \s*[:.\-]?\s*
+    (\d{1,6})
+    \s*$
+/ix';
+
+// ---------------------------------------------------------------------
+// 2. Invisible / unicode-variant characters that sneak in via copy-paste
+// ---------------------------------------------------------------------
+// 1. Captures extension markers (ext, x, #) trailing a phone number.
+// 2. Invisible / unicode-variant characters that sneak in via copy-paste.
+const PHONE_INVISIBLE_CHARS = "/[\x{200B}\x{200C}\x{200D}\x{2060}\x{FEFF}]/u"; // ZWSP, ZWNJ, ZWJ, word joiner, BOM
+const PHONE_DASH_VARIANTS   = "/[\x{2010}-\x{2015}\x{2212}]/u"; // unicode hyphen/minus variants -> '-'
+const PHONE_SPACE_VARIANTS  = "/[\x{00A0}\x{2000}-\x{200A}\x{202F}\x{205F}\x{3000}]/u"; // unicode spaces -> ' '
+
+// Default country calling code applied to bare national numbers (no '+',
+// no detected international prefix). Georgia = 995. Pass null (or your
+// own code) per-call to override.
+const PHONE_DEFAULT_COUNTRY_CODE = '995';
+
+// Standard telephone keypad, for optional vanity-number conversion
+// (1-800-FLOWERS -> 1-800-3569377).
+const PHONE_KEYPAD_MAP = array(
+	'A' => '2',
+	'B' => '2',
+	'C' => '2',
+	'D' => '3',
+	'E' => '3',
+	'F' => '3',
+	'G' => '4',
+	'H' => '4',
+	'I' => '4',
+	'J' => '5',
+	'K' => '5',
+	'L' => '5',
+	'M' => '6',
+	'N' => '6',
+	'O' => '6',
+	'P' => '7',
+	'Q' => '7',
+	'R' => '7',
+	'S' => '7',
+	'T' => '8',
+	'U' => '8',
+	'V' => '8',
+	'W' => '9',
+	'X' => '9',
+	'Y' => '9',
+	'Z' => '9',
+);
