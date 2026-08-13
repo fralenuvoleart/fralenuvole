@@ -129,6 +129,10 @@ const PHONE_SPACE_VARIANTS  = "/[\x{00A0}\x{2000}-\x{200A}\x{202F}\x{205F}\x{300
 // own code) per-call to override.
 const PHONE_DEFAULT_COUNTRY_CODE = '995';
 
+// Georgian mobile numbers: optional trunk '0' followed by 3/4/5 and 8 digits.
+// Only numbers matching this pattern get the country code prepended.
+const PHONE_PATTERN_GEORGIA = '/^(?:0)?[345]\d{8}$/';
+
 // Standard telephone keypad, for optional vanity-number conversion
 // (1-800-FLOWERS -> 1-800-3569377).
 const PHONE_KEYPAD_MAP = array(
