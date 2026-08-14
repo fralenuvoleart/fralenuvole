@@ -62,8 +62,9 @@ function frl_wsf_maybe_prepend_country_code( string $digits ): array {
 	}
 
 	// Pass 1: match bare national numbers against country patterns.
+	// Skip prefix-only entries (pattern = null).
 	foreach ( PHONE_COUNTRY_CONFIGS as $config ) {
-		if ( ! preg_match( $config['pattern'], $digits ) ) {
+		if ( $config['pattern'] === null || ! preg_match( $config['pattern'], $digits ) ) {
 			continue;
 		}
 
@@ -97,6 +98,28 @@ function frl_wsf_maybe_prepend_country_code( string $digits ): array {
 		}
 
 		$national_part = substr( $digits, $code_len );
+
+		// Prefix-only entry (pattern = null): accept if the national
+		// part meets the minimum length guard.
+		if ( $config['pattern'] === null ) {
+			$without_trunk = ( strncmp( $national_part, '0', 1 ) === 0 )
+				? substr( $national_part, 1 )
+				: $national_part;
+
+			if ( strlen( $without_trunk ) < PHONE_MIN_NATIONAL_DIGITS ) {
+				return array(
+					'digits'    => $digits,
+					'prepended' => false,
+					'code'      => $code,
+				);
+			}
+
+			return array(
+				'digits'    => $code . $without_trunk,
+				'prepended' => true,
+				'code'      => $code,
+			);
+		}
 
 		if ( ! preg_match( $config['pattern'], $national_part ) ) {
 			return array(
@@ -289,14 +312,20 @@ assert_false( 'PHONE_DEFAULT_COUNTRY_CODE is removed', defined( 'PHONE_DEFAULT_C
 assert_false( 'PHONE_PATTERN_GEORGIA is removed', defined( 'PHONE_PATTERN_GEORGIA' ) );
 assert_false( 'PHONE_PATTERN_SOUTHAFRICA is removed', defined( 'PHONE_PATTERN_SOUTHAFRICA' ) );
 
-$configs = PHONE_COUNTRY_CONFIGS;
-assert_eq( 'Config has 3 entries', 3, count( $configs ) );
+$configs      = PHONE_COUNTRY_CONFIGS;
+$config_count = count( $configs );
+assert_true( 'Config has 200+ entries', $config_count > 200 );
 assert_eq( 'Entry 0 code', '995', $configs[0]['code'] );
 assert_eq( 'Entry 0 pattern', '/^(?:0)?[345]\d{8}$/', $configs[0]['pattern'] );
 assert_eq( 'Entry 1 code', '27', $configs[1]['code'] );
 assert_eq( 'Entry 1 pattern', '/^(?:0)?[6-8]\d{8}$/', $configs[1]['pattern'] );
-assert_eq( 'Entry 2 code', '27', $configs[2]['code'] );
-assert_eq( 'Entry 2 pattern', '/^(?:0)?[1-5]\d{8}$/', $configs[2]['pattern'] );
+// Entry 2 is first prefix-only (code '1')
+assert_eq( 'Entry 2 code', '1', $configs[2]['code'] );
+assert_eq( 'Entry 2 pattern', null, $configs[2]['pattern'] );
+// Last entry is SA landline fallback
+$last = $configs[ $config_count - 1 ];
+assert_eq( 'Last entry code', '27', $last['code'] );
+assert_eq( 'Last entry pattern', '/^(?:0)?[1-5]\d{8}$/', $last['pattern'] );
 
 assert_true( 'Entry 0 has code key', array_key_exists( 'code', $configs[0] ) );
 assert_true( 'Entry 0 has pattern key', array_key_exists( 'pattern', $configs[0] ) );
@@ -312,10 +341,11 @@ $r = frl_wsf_maybe_prepend_country_code( '' );
 assert_eq( 'Empty string: digits unchanged', '', $r['digits'] );
 assert_false( 'Empty string: not prepended', $r['prepended'] );
 
-// 2b. Non-matching number (US)
+// 2b. Number starting with 212 — detected as Morocco prefix
 $r = frl_wsf_maybe_prepend_country_code( '2125551234' );
-assert_eq( 'US number: digits unchanged', '2125551234', $r['digits'] );
-assert_false( 'US number: not prepended', $r['prepended'] );
+assert_eq( '212...: digits unchanged', '2125551234', $r['digits'] );
+assert_true( '212...: prepended flag', $r['prepended'] );
+assert_eq( '212...: code', '212', $r['code'] );
 
 // 2c. Georgian mobile — no trunk
 $r = frl_wsf_maybe_prepend_country_code( '555123456' );
@@ -370,9 +400,9 @@ $r = frl_wsf_maybe_prepend_country_code( '0311234567' );
 assert_eq( 'SA landline DBN (031): Georgia wins (first match)', '995311234567', $r['digits'] );
 assert_true( 'SA landline DBN: prepended flag', $r['prepended'] );
 
-// 2m. Boundary: 7 digits (too short for GE/SA patterns)
+// 2m. Boundary: 7 digits starting with 55 — national part (5 digits) below 6-min guard
 $r = frl_wsf_maybe_prepend_country_code( '5551234' );
-assert_false( '7-digit GE-like: too short, not matched', $r['prepended'] );
+assert_false( '7-digit 55...: rejected (national < 6 digits)', $r['prepended'] );
 
 // 2n. Boundary: exactly 9 digits (minimum for patterns)
 $r = frl_wsf_maybe_prepend_country_code( '555123456' );
@@ -390,9 +420,9 @@ assert_false( 'Only "995": too short, not matched', $r['prepended'] );
 $r = frl_wsf_maybe_prepend_country_code( '27' );
 assert_false( 'Only "27": too short, not matched', $r['prepended'] );
 
-// 2r. Digits with hyphens (should not reach here with hyphens, but defensive)
+// 2r. Digits with hyphens — prefix '55' matches, hyphens counted in length
 $r = frl_wsf_maybe_prepend_country_code( '555-123-456' );
-assert_false( 'Digits with hyphens: not matched (hyphens not stripped here)', $r['prepended'] );
+assert_true( 'Digits with hyphens: Brazil prefix matched', $r['prepended'] );
 
 // =====================================================================
 // 3. frl_wsf_sanitize_phone_number() — INTEGRATION TESTS
@@ -466,10 +496,11 @@ $r = frl_wsf_sanitize_phone_number( '031 123 4567' );
 assert_eq( 'Bare SA landline DBN (031): Georgia wins', '+995311234567', $r['clean'] );
 assert_true( 'Bare SA landline DBN: valid', $r['valid'] );
 
-// 3n. US number (no country match)
+// 3n. US number (415) — detected as Switzerland prefix '41'
 $r = frl_wsf_sanitize_phone_number( '(415) 555-2671' );
-assert_eq( 'US number: clean unchanged', '4155552671', $r['clean'] );
-assert_true( 'US number: valid (10 digits)', $r['valid'] );
+assert_eq( 'US 415: clean', '+4155552671', $r['clean'] );
+assert_eq( 'US 415: code', '41', $r['code'] );
+assert_true( 'US 415: valid', $r['valid'] );
 
 // 3o. Extension (stripped, not returned)
 $r = frl_wsf_sanitize_phone_number( '555 123 456 ext. 789' );
@@ -492,9 +523,10 @@ $r = frl_wsf_sanitize_phone_number( '1-800-FLOWERS' );
 assert_eq( 'Vanity OFF: letters dropped', '1800', $r['clean'] );
 assert_false( 'Vanity OFF: not valid (too short)', $r['valid'] );
 
-// 3s. Vanity letters (on) — US number, no GE/SA pattern matches
+// 3s. Vanity letters (on) — US number, detected via prefix '1'
 $r = frl_wsf_sanitize_phone_number( '1-800-FLOWERS', true );
-assert_eq( 'Vanity ON: letters converted', '18003569377', $r['clean'] );
+assert_eq( 'Vanity ON: letters converted', '+18003569377', $r['clean'] );
+assert_eq( 'Vanity ON: code', '1', $r['code'] );
 assert_true( 'Vanity ON: valid', $r['valid'] );
 
 // 3t. Bare international Georgian (country code present without +)
@@ -514,9 +546,9 @@ $r = frl_wsf_sanitize_phone_number( '12345' );
 assert_eq( 'Too short: clean', '12345', $r['clean'] );
 assert_false( 'Too short: not valid', $r['valid'] );
 
-// 3w. Number too long for E.164 (>15 digits)
+// 3w. Number too long for E.164 (>15 digits) — prefix '1' detected
 $r = frl_wsf_sanitize_phone_number( '1234567890123456' );
-assert_eq( 'Too long: clean', '1234567890123456', $r['clean'] );
+assert_eq( 'Too long: clean', '+1234567890123456', $r['clean'] );
 assert_false( 'Too long: not valid', $r['valid'] );
 
 // 3x. Number starting with trunk 0 — now matches SA landline [1-5]
@@ -634,10 +666,10 @@ $regression = array(
 	array( '0692730173', '+27692730173', '27', 11, true ),
 	// SA mobile with trunk
 	array( '0788264593', '+27788264593', '27', 11, true ),
-	// AU mobile (not in config — passes through)
-	array( '61432513335', '61432513335', null, 11, true ),
-	// AZ mobile (not in config — passes through)
-	array( '994503333724', '994503333724', null, 12, true ),
+	// AU mobile (prefix-only, now detected)
+	array( '61432513335', '+61432513335', '61', 11, true ),
+	// AZ mobile (prefix-only, now detected)
+	array( '994503333724', '+994503333724', '994', 12, true ),
 	// GE explicit + (user asserts validity)
 	array( '+995995595525', '+995995595525', '995', 12, true ),
 	// GE bare intl — prefix recognised but national part malformed

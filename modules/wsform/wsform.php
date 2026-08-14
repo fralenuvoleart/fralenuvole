@@ -485,8 +485,9 @@ function frl_wsf_maybe_prepend_country_code( string $digits ): array {
 	}
 
 	// Pass 1: match bare national numbers against country patterns.
+	// Skip prefix-only entries (pattern = null).
 	foreach ( PHONE_COUNTRY_CONFIGS as $config ) {
-		if ( ! preg_match( $config['pattern'], $digits ) ) {
+		if ( $config['pattern'] === null || ! preg_match( $config['pattern'], $digits ) ) {
 			continue;
 		}
 
@@ -524,6 +525,28 @@ function frl_wsf_maybe_prepend_country_code( string $digits ): array {
 		}
 
 		$national_part = substr( $digits, $code_len );
+
+		// Prefix-only entry (pattern = null): accept if the national
+		// part meets the minimum length guard.
+		if ( $config['pattern'] === null ) {
+			$without_trunk = ( strncmp( $national_part, '0', 1 ) === 0 )
+				? substr( $national_part, 1 )
+				: $national_part;
+
+			if ( strlen( $without_trunk ) < PHONE_MIN_NATIONAL_DIGITS ) {
+				return array(
+					'digits'    => $digits,
+					'prepended' => false,
+					'code'      => $code,
+				);
+			}
+
+			return array(
+				'digits'    => $code . $without_trunk,
+				'prepended' => true,
+				'code'      => $code,
+			);
+		}
 
 		// Prefix recognised but national part is malformed — report the
 		// country code so the caller can flag it invalid.

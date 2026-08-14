@@ -200,8 +200,10 @@ function frl_wsf_submit_webhook( $submit ) {
 				$post_data[ $key ] = '';
 			}
 
-			// Sanitize phone number fields before webhook dispatch.
-			if ( str_contains( $key, 'Phone' ) && ! empty( $post_data[ $key ] ) ) {
+			// Sanitize only the exact 'Phone' key before webhook dispatch.
+			// Keys like 'Phone Raw' must stay unsanitized to preserve the
+			// original user input from the same underlying field.
+			if ( 'Phone' === $key && ! empty( $post_data[ $key ] ) ) {
 				$phone_result      = frl_wsf_sanitize_phone_number( $post_data[ $key ] );
 				$post_data[ $key ] = $phone_result['clean'];
 			}
