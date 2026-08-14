@@ -124,14 +124,28 @@ const PHONE_INVISIBLE_CHARS = "/[\x{200B}\x{200C}\x{200D}\x{2060}\x{FEFF}]/u"; /
 const PHONE_DASH_VARIANTS   = "/[\x{2010}-\x{2015}\x{2212}]/u"; // unicode hyphen/minus variants -> '-'
 const PHONE_SPACE_VARIANTS  = "/[\x{00A0}\x{2000}-\x{200A}\x{202F}\x{205F}\x{3000}]/u"; // unicode spaces -> ' '
 
-// Default country calling code applied to bare national numbers (no '+',
-// no detected international prefix). Georgia = 995. Pass null (or your
-// own code) per-call to override.
-const PHONE_DEFAULT_COUNTRY_CODE = '995';
-
-// Georgian mobile numbers: optional trunk '0' followed by 3/4/5 and 8 digits.
-// Only numbers matching this pattern get the country code prepended.
-const PHONE_PATTERN_GEORGIA = '/^(?:0)?[345]\d{8}$/';
+/**
+ * Country detection configs for bare national numbers (no '+', no
+ * detected international prefix). Matched in order; first pattern that
+ * matches wins — so list more-specific patterns first.
+ *
+ * Overlap note: Georgia mobile [345] sits inside SA landline [1-5], so
+ * Georgia must be listed first to claim those shared leading digits.
+ */
+const PHONE_COUNTRY_CONFIGS = array(
+	array(
+		'code'    => '995',
+		'pattern' => '/^(?:0)?[345]\d{8}$/', // Georgia: mobile 3xx/4xx/5xx
+	),
+	array(
+		'code'    => '27',
+		'pattern' => '/^(?:0)?[6-8]\d{8}$/', // South Africa: mobile 06x/07x/08x
+	),
+	array(
+		'code'    => '27',
+		'pattern' => '/^(?:0)?[1-5]\d{8}$/', // South Africa: landline 01x-05x
+	),
+);
 
 // Standard telephone keypad, for optional vanity-number conversion
 // (1-800-FLOWERS -> 1-800-3569377).
