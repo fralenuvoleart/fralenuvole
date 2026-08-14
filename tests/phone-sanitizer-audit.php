@@ -20,12 +20,18 @@ function frl_wsf_phone_normalize_unicode( string $text ): string {
 		}
 	} else {
 		static $full_width_digits = array(
-			"\u{FF10}" => '0', "\u{FF11}" => '1', "\u{FF12}" => '2',
-			"\u{FF13}" => '3', "\u{FF14}" => '4', "\u{FF15}" => '5',
-			"\u{FF16}" => '6', "\u{FF17}" => '7', "\u{FF18}" => '8',
+			"\u{FF10}" => '0',
+			"\u{FF11}" => '1',
+			"\u{FF12}" => '2',
+			"\u{FF13}" => '3',
+			"\u{FF14}" => '4',
+			"\u{FF15}" => '5',
+			"\u{FF16}" => '6',
+			"\u{FF17}" => '7',
+			"\u{FF18}" => '8',
 			"\u{FF19}" => '9',
 		);
-		$text = strtr( $text, $full_width_digits );
+		$text                     = strtr( $text, $full_width_digits );
 	}
 
 	$text = preg_replace( PHONE_INVISIBLE_CHARS, '', $text );
@@ -93,7 +99,11 @@ function frl_wsf_maybe_prepend_country_code( string $digits ): array {
 		$national_part = substr( $digits, $code_len );
 
 		if ( ! preg_match( $config['pattern'], $national_part ) ) {
-			continue;
+			return array(
+				'digits'    => $digits,
+				'prepended' => false,
+				'code'      => $code,
+			);
 		}
 
 		$without_trunk = ( strncmp( $national_part, '0', 1 ) === 0 )
@@ -157,13 +167,16 @@ function frl_wsf_sanitize_phone_number(
 		$leading_plus = true;
 	}
 
-	$code = null;
+	$code               = null;
+	$recognised_invalid = false;
 
 	if ( ! $leading_plus ) {
 		$result = frl_wsf_maybe_prepend_country_code( $digits );
 		if ( $result['prepended'] ) {
 			$digits       = $result['digits'];
 			$leading_plus = true;
+		} elseif ( $result['code'] !== null ) {
+			$recognised_invalid = true;
 		}
 		$code = $result['code'];
 	}
@@ -182,7 +195,9 @@ function frl_wsf_sanitize_phone_number(
 	$clean       = $leading_plus ? ( '+' . $digits ) : $digits;
 	$digit_count = strlen( $digits );
 
-	$valid = (bool) preg_match( '/^\+?[1-9]\d{6,14}$/', $clean );
+	$valid = $recognised_invalid
+		? false
+		: (bool) preg_match( '/^\+?[1-9]\d{6,14}$/', $clean );
 
 	return array(
 		'raw'         => $raw,
@@ -208,7 +223,12 @@ function frl_wsf_sanitize_phone_numbers_batch(
 function frl_wsf_split_multiple_phone_numbers( string $raw ): array {
 	$pattern = '/\s*(?:\/|;|\||\bor\b|\band\b|,(?!\s*(?:ext\.?|extension|x|\#)))\s*/i';
 	$parts   = preg_split( $pattern, $raw );
-	$parts   = array_filter( $parts, function ( $p ) { return trim( $p ) !== ''; } );
+	$parts   = array_filter(
+		$parts,
+		function ( $p ) {
+			return trim( $p ) !== '';
+		}
+	);
 	return array_map(
 		function ( $p ) {
 			return frl_wsf_sanitize_phone_number( $p, false );
@@ -224,37 +244,37 @@ function frl_wsf_split_multiple_phone_numbers( string $raw ): array {
 $pass = 0;
 $fail = 0;
 
-function assert_eq( $label, $expected, $actual ) {
+function assert_eq( string $label, $expected, $actual ): void {
 	global $pass, $fail;
 	if ( $expected === $actual ) {
-		$pass++;
+		++$pass;
 		echo "  ✅ $label\n";
 	} else {
-		$fail++;
+		++$fail;
 		echo "  ❌ $label\n";
 		echo '     expected: ' . json_encode( $expected ) . "\n";
 		echo '     actual:   ' . json_encode( $actual ) . "\n";
 	}
 }
 
-function assert_true( $label, $condition ) {
+function assert_true( string $label, bool $condition ): void {
 	global $pass, $fail;
 	if ( $condition ) {
-		$pass++;
+		++$pass;
 		echo "  ✅ $label\n";
 	} else {
-		$fail++;
+		++$fail;
 		echo "  ❌ $label (expected true)\n";
 	}
 }
 
-function assert_false( $label, $condition ) {
+function assert_false( string $label, bool $condition ): void {
 	global $pass, $fail;
 	if ( ! $condition ) {
-		$pass++;
+		++$pass;
 		echo "  ✅ $label\n";
 	} else {
-		$fail++;
+		++$fail;
 		echo "  ❌ $label (expected false)\n";
 	}
 }
@@ -569,22 +589,22 @@ assert_eq( 'Comma+ext: code', '995', $split[0]['code'] );
 // =====================================================================
 echo "\n=== 6. FUNCTION SIGNATURE AUDIT ===\n";
 
-$refl = new ReflectionFunction( 'frl_wsf_sanitize_phone_number' );
+$refl   = new ReflectionFunction( 'frl_wsf_sanitize_phone_number' );
 $params = $refl->getParameters();
 assert_eq( 'sanitize: param count', 2, count( $params ) );
 assert_eq( 'sanitize: param 0 name', 'raw', $params[0]->getName() );
 assert_eq( 'sanitize: param 1 name', 'convert_vanity_letters', $params[1]->getName() );
 
-$refl = new ReflectionFunction( 'frl_wsf_maybe_prepend_country_code' );
+$refl   = new ReflectionFunction( 'frl_wsf_maybe_prepend_country_code' );
 $params = $refl->getParameters();
 assert_eq( 'prepend: param count', 1, count( $params ) );
 assert_eq( 'prepend: param 0 name', 'digits', $params[0]->getName() );
 
-$refl = new ReflectionFunction( 'frl_wsf_sanitize_phone_numbers_batch' );
+$refl   = new ReflectionFunction( 'frl_wsf_sanitize_phone_numbers_batch' );
 $params = $refl->getParameters();
 assert_eq( 'batch: param count', 2, count( $params ) );
 
-$refl = new ReflectionFunction( 'frl_wsf_split_multiple_phone_numbers' );
+$refl   = new ReflectionFunction( 'frl_wsf_split_multiple_phone_numbers' );
 $params = $refl->getParameters();
 assert_eq( 'split: param count', 1, count( $params ) );
 
@@ -601,6 +621,48 @@ for ( $i = 0; $i < 1000; $i++ ) {
 $elapsed = ( microtime( true ) - $start ) * 1000;
 echo '  3000 sanitizations in ' . round( $elapsed, 2 ) . "ms\n";
 assert_true( 'Performance < 100ms for 3000 calls', $elapsed < 100 );
+
+// =====================================================================
+// 8. REAL-WORLD REGRESSION — permanent fixture
+// =====================================================================
+echo "\n=== 8. REAL-WORLD REGRESSION ===\n";
+
+$regression = array(
+	// SA bare international (code present, no +)
+	array( '27817232816', '+27817232816', '27', 11, true ),
+	// SA mobile with trunk
+	array( '0692730173', '+27692730173', '27', 11, true ),
+	// SA mobile with trunk
+	array( '0788264593', '+27788264593', '27', 11, true ),
+	// AU mobile (not in config — passes through)
+	array( '61432513335', '61432513335', null, 11, true ),
+	// AZ mobile (not in config — passes through)
+	array( '994503333724', '994503333724', null, 12, true ),
+	// GE explicit + (user asserts validity)
+	array( '+995995595525', '+995995595525', '995', 12, true ),
+	// GE bare intl — prefix recognised but national part malformed
+	array( '995995595525', '995995595525', '995', 12, false ),
+	// GE explicit +
+	array( '+995599654454', '+995599654454', '995', 12, true ),
+	// GE bare intl — valid national part
+	array( '995599654454', '+995599654454', '995', 12, true ),
+	// GE national with trunk
+	array( '0599654454', '+995599654454', '995', 12, true ),
+	// GE bare national
+	array( '599654454', '+995599654454', '995', 12, true ),
+	// GE explicit + with formatting
+	array( '+995 (599) 65 44 54', '+995599654454', '995', 12, true ),
+);
+
+foreach ( $regression as $i => $row ) {
+	list( $input, $clean, $code, $digits, $valid ) = $row;
+	$r     = frl_wsf_sanitize_phone_number( $input );
+	$label = sprintf( '#%d %s', $i + 1, $input );
+	assert_eq( "$label → clean", $clean, $r['clean'] );
+	assert_eq( "$label → code", $code, $r['code'] );
+	assert_eq( "$label → digits", $digits, $r['digit_count'] );
+	assert_eq( "$label → valid", $valid, $r['valid'] );
+}
 
 // =====================================================================
 // SUMMARY
