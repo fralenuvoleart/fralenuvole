@@ -523,7 +523,7 @@ final class Frl_Rewriter_Path_Utils {
 		/**
 		 * Filters whether to skip the rewriter's canonical redirect.
 		 *
-		 * Allows other modules (e.g., Subdomain Adapter) to cancel the redirect
+		 * Allows other modules to cancel the redirect
 		 * when they handle URL structure independently. Without this, the rewriter
 		 * in directory mode (force_lang=1) would add /{lang}/ prefixes that conflict
 		 * with subdomain clean URLs, creating redirect loops.

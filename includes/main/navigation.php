@@ -64,7 +64,7 @@ function frl_render_block_core_navigation_translation( $settings, $metadata ) {
 
 		// Resolve translated navigation ID — always attempt translation regardless of
 		// default language. pll_get_post() returns the original ID when no translation
-		// exists, so the guard would be redundant and broke subdomain adapter setups
+		// exists, so the guard would be redundant and broke setups
 		// where default_lang is overridden at runtime to match current_lang.
 		if ( ! empty( $current_lang ) ) {
 			$cache_key = "wp_navigation_{$nav_id}";

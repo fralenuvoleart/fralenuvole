@@ -261,7 +261,7 @@ class Frl_Environment_Manager {
 
 			// Check if a hooked callback already handled cache clearing during
 			// frl_environment_before_wp_options. This prevents redundant cache operations
-			// when a module (e.g., subdomain adapter) already performed a full clear.
+			// when a module already performed a full clear.
 			$cache_already_cleared = ! empty( $results['cache_cleared'] );
 
 			if ( ! $cache_already_cleared ) {

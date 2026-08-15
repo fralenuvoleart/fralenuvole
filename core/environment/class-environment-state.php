@@ -88,8 +88,6 @@ class Frl_Environment_State {
 		}
 
 		// Allow modules to trigger enforcement via additional state checks.
-		// This is how the subdomain adapter triggers enforcement when
-		// polylang['default_lang'] doesn't match the subdomain's language.
 		if ( ! $state_changed ) {
 			$state_changed = (bool) apply_filters( 'frl_environment_state_changed', false, $config ?? array() );
 		}

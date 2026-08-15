@@ -450,7 +450,6 @@
 .form-table:has(#frl_module_wsform:not(:checked)) tr:has([id*="frl_wsform_"]),
 .form-table:has(#frl_module_call_to_actions:not(:checked)) tr:has([id*="frl_cta_"]),
 .form-table:has(#frl_module_thirdparty:not(:checked)) tr:has([id*="frl_thirdparty_"]),
-.form-table:has(#frl_module_subdomain_adapter:not(:checked)) tr:has([id*="frl_subdomain_adapter_"]),
 .form-table:has(#frl_wsform_webhook:not(:checked)) tr:has([id="frl_wsform_use_cron"]),
 .form-table:has(#frl_cta_webhook:not(:checked)) tr:has([id="frl_cta_use_cron"])
 {

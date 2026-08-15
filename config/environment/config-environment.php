@@ -9,7 +9,6 @@ require_once __DIR__ . '/config-defaults.php';
 // --- Environment Map ---
 const FRL_ENV_MAP = array(
 	'pbservices.ge'                         => 'FRL_ENV_PBS_PRODUCTION',
-	'ru.pbservices.ge'                      => 'FRL_ENV_PBS_RU_SUBDOMAIN',
 	'pbproperty.ge'                         => 'FRL_ENV_PBP_PRODUCTION',
 	'pbnova.com'                            => 'FRL_ENV_PBNOVA_PRODUCTION',
 	'fralenuvole.art'                       => 'FRL_ENV_FRALENUVOLE_PRODUCTION',
@@ -24,7 +23,6 @@ const FRL_ENV_PBS_TEMPLATE = array(
 	'prefix'         => 'pbs',
 	'modules'        => array(
 		'pbs'               => true,
-		'subdomain_adapter' => true,
 		'call_to_actions'   => true,
 	),
 	'plugin_options' => array(
@@ -37,25 +35,10 @@ const FRL_ENV_PBS_PRODUCTION = array(
 	'counterpart' => 'stg-pbservicesge-staging.kinsta.cloud',
 );
 
-/** RU Subdomain - PBS replica on Russian server */
-const FRL_ENV_PBS_RU_SUBDOMAIN = array(
-	'extends'    => 'FRL_ENV_PBS_TEMPLATE',
-	'prefix'     => 'pbs_ru',
-	'wp_options' => array(
-		'blog_public' => 0,
-	),
-	'modules'    => array(
-		'subdomain_adapter' => true,
-	),
-);
-
 const FRL_ENV_PBS_STAGING = array(
 	'extends'     => 'FRL_ENV_PBS_TEMPLATE',
 	'type'        => 'staging',
 	'counterpart' => 'pbservices.ge',
-	'modules'     => array(
-		'subdomain_adapter' => true,
-	),
 );
 
 // --- PBP ---

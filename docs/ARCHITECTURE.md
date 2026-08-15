@@ -14,7 +14,7 @@ Fralenuvole is a comprehensive administrator/developer framework built on top of
 | `admin/` | WordPress admin UI: settings page, dashboard, widgets, metaboxes, action handlers. |
 | `includes/` | Bootstrap, plugin lifecycle hooks, shared frontend/backend helpers, the MU-plugin's own helper file. |
 | `public/` | Frontend-only hooks, shortcodes, and the JSON-LD schema subsystem. |
-| `modules/` | Opt-in, per-environment feature modules (brand-specific CPTs, third-party integrations, subdomain adapter, WS Form integration, etc.). |
+| `modules/` | Opt-in, per-environment feature modules (brand-specific CPTs, third-party integrations, WS Form integration, etc.). |
 | `config/` | All PHP constants: cache groups/TTLs/dependencies, cache operation definitions, default option fields, environment map/templates, rewriter feature registry, translator delimiters. |
 | `assets/mu/` | The single MU-plugin bootstrap file, synced into `wp-content/mu-plugins/` on activation. |
 | `docs/` | This reference set — one file per subsystem. |
@@ -59,7 +59,6 @@ See `docs/HOOKS.md` for the full priority table and the reasoning behind each re
 | Environment Manager | `docs/ENVIRONMENT.md` | Domain → environment-profile mapping that auto-applies WP options, plugin options, and plugin/module activation state, with throttled re-enforcement and manual-override tracking. |
 | Rewriter | `docs/REWRITER.md` | Feature-based URL rewriting (multilingual CPT slugs, taxonomy/CPT base removal) with priority-ordered, self-registering, mutually-independent features. |
 | Translator | `docs/TRANSLATOR.md` | Adapter-pattern translation service decoupled from the multilingual plugin (Polylang implemented). Handles block tokens, field translation, and permalink translation with pattern-based caching. |
-| Subdomain Adapter | `docs/SUBDOMAIN-ADAPTER.md` | Bidirectional URL transform between a main domain and language-specific subdomain mirrors, working *with* Polylang's own language-resolution filter rather than post-processing URLs. |
 | ThemeKit | `docs/THEMEKIT.md` | Theme-independent body classes, base styles, and block-pattern/provider-style removal. |
 | Plugin Exclusion | `docs/PLUGIN-EXCLUSIONS.md` | MU-plugin-based conditional plugin loading (frontend/backend-screen/capability rules) without deactivating the excluded plugin. |
 | Admin UI | `docs/ADMIN-UI.md` | Tabbed settings page, dashboard widgets, log manager, tag validator, import/export. |
@@ -101,7 +100,7 @@ For a new developer, the recommended reading order is:
 |---|---|
 | Polylang | Primary multilingual plugin (implemented adapter) |
 | WPML | Alternative multilingual plugin (adapter interface is ready; no concrete adapter shipped yet) |
-| ACF / SCF | Custom field translation targets; `acf-migration` module provides an ACPT→SCF migration path |
+| ACF / SCF | Custom field translation targets; |
 | WS Form | Form submission webhook dispatch and channel tracking |
 | GeoDirectory | Property-listing query/translation filters (`pbproperty` module) |
 | Litespeed Cache / Docket Cache / Redis / Memcached | Object-cache backends detected and used by the Cache Manager when active |

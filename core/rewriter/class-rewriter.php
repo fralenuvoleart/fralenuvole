@@ -415,20 +415,7 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 		frl_cache_clear( 'options' );
 		frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
 
-		// Prevent the Subdomain Adapter from translating page_on_front /
-		// page_for_posts during rule generation. Reference counter because
-		// frl_flush_rewrite_rules() also increments via its own codepath,
-		// and the two can nest via do_action('update_option_permalink_structure').
-		if ( class_exists( 'Frl_Subdomain_Adapter' ) ) {
-			++Frl_Subdomain_Adapter::$flush_depth;
-		}
-		try {
-			flush_rewrite_rules( true );
-		} finally {
-			if ( class_exists( 'Frl_Subdomain_Adapter' ) ) {
-				--Frl_Subdomain_Adapter::$flush_depth;
-			}
-		}
+		flush_rewrite_rules( true );
 	}
 
 	/**

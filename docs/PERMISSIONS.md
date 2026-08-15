@@ -101,8 +101,7 @@ that specific plugin is not expected to trigger this path.
 
 Not patched: frl_is_admin() gates 9+ independent call sites (frontend
 component/script loading via frl_is_valid_frontend_page_request(), MU-plugin
-plugin-exclusion frontend/backend detection, subdomain-adapter
-should_transform(), schema generation, cache preload group selection, and
+plugin-exclusion frontend/backend detection, schema generation, cache preload group selection, and
 more) with no automated test suite to catch a regression across all of them.
 No concrete reproduction of this edge case has been observed. Left as-is
 until an actual failure is reproduced — do not speculatively change this

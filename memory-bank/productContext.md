@@ -9,7 +9,6 @@ A high-performance, "Swiss-army knife" WordPress administrator plugin designed f
 - **Cache Manager:** A unified interface supporting Litespeed, Docket Cache, Redis, Memcached, and WordPress Transients, with dependency cascading and language-aware keys.
 - **Options System:** A three-tier fallback (Static → Persistent → DB) with per-type value normalization.
 - **Translation Service:** Adapter-based architecture with self-contained fallbacks, decoupled from the translation provider (Polylang implemented; WPML-ready) via `Frl_Translation_Adapter_Interface`. Deferred string registration via the `shutdown` hook.
-- **Subdomain Adapter:** Bidirectional URL transformation between main domains and language-specific subdomain mirrors. Uses the `pll_get_current_language` filter to make Polylang treat a subdomain's language as its default.
 - **Plugin Exclusion:** MU-plugin-based loader that prevents specified plugins from loading (without deactivating them), gated by frontend/backend-screen/capability rules.
 
 ## 🛠️ Critical Workflows

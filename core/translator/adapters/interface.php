@@ -106,9 +106,6 @@ interface Frl_Translation_Adapter_Interface {
 	/**
 	 * Set the default language in the database.
 	 *
-	 * Used by the subdomain adapter to sync the DB default to the
-	 * subdomain's language on first visit.
-	 *
 	 * @param string $lang 2-letter language code.
 	 * @return bool True if the default language was updated, false otherwise.
 	 */

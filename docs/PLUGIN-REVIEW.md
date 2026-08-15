@@ -36,7 +36,7 @@ The Translator's adapter pattern (Polylang, WPML-ready via `Frl_Translation_Adap
 
 ### Documentation (Excellent)
 
-The `docs/` directory contains dedicated markdown files for every subsystem (ARCHITECTURE, CACHE, ENVIRONMENT, REWRITER, TRANSLATOR, SUBDOMAIN-ADAPTER, THEMEKIT, PLUGIN-EXCLUSIONS, ADMIN-UI, PERMISSIONS, DEBUG-MODES, HOOKS). The `memory-bank/` directory adds `systemPatterns.md` (architectural invariants), `productContext.md`, `activeContext.md`, and `progress.md`.
+The `docs/` directory contains dedicated markdown files for every subsystem (ARCHITECTURE, CACHE, ENVIRONMENT, REWRITER, TRANSLATOR, THEMEKIT, PLUGIN-EXCLUSIONS, ADMIN-UI, PERMISSIONS, DEBUG-MODES, HOOKS). The `memory-bank/` directory adds `systemPatterns.md` (architectural invariants), `productContext.md`, `activeContext.md`, and `progress.md`.
 
 The `systemPatterns.md` "Critical Invariants" section documents *why* patterns exist and what breaks if changed — the hardest knowledge to preserve across maintainers.
 
@@ -77,7 +77,7 @@ Once the persistent cache layer is warm, a frontend page render performs zero da
 | **Frontend** | Critical CSS injection, deferred CSS, featured-image preload (responsive srcset + mobile hero), header/footer HTML+scripts, REST endpoint pruning, login branding, 15 shortcodes |
 | **Admin** | Tabbed settings UI, dashboard widgets (5 types), log manager (streaming viewer), tag validator, import/export, bulk resave, debug display, cache/environment diagnostic tables |
 | **Schema** | Dual JSON-LD subsystems: static SASWP property injection + dynamic `wp_head` generator |
-| **Modules** | Subdomain adapter, WS Form integration (webhooks, stats, UTM tracking), ACF helpers + ACPT→SCF migration, GeoDirectory filters, Bible audio proxy, menu sitemap |
+| **Modules** | WS Form integration (webhooks, stats, UTM tracking), ACF helpers + ACPT→SCF migration, GeoDirectory filters, Bible audio proxy, menu sitemap |
 
 ---
 

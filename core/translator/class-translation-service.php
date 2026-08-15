@@ -125,8 +125,7 @@ final class Frl_Translation_Service {
 
 			// Fallback: if the adapter returned nothing (e.g. Polylang not ready
 			// on early AJAX requests), try to derive language from the query var.
-			// IMPORTANT: this must NOT overwrite a valid adapter result, otherwise
-			// the subdomain adapter's language override is silently discarded.
+			// IMPORTANT: this must NOT overwrite a valid adapter result, otherwise language override is silently discarded.
 			if ( empty( $language ) ) {
 				global $wp_query;
 				if ( isset( $wp_query->query['lang'] ) && is_string( $wp_query->query['lang'] ) && strlen( $wp_query->query['lang'] ) === 2 ) {
@@ -401,7 +400,6 @@ final class Frl_Translation_Service {
 		// Early return if current language is the source language — block text
 		// tokens are always authored in the source language, so no translation
 		// is needed. The source language is filterable via frl_source_language
-		// (Subdomain Adapter pins it to 'en' on RU subdomains).
 		if ( $language === $this->get_source_language() ) {
 			return array_combine( $strings, $strings );
 		}
