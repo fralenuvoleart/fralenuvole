@@ -11,7 +11,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once __DIR__ . '/config-constants-frl.php';
-require_once __DIR__ . '/bible.php';
 require_once __DIR__ . '/menu-sitemap.php';
 
 add_action( 'wp_enqueue_scripts', 'frl_module_public_scripts', FRL_THEMEKIT_STYLE_PRIORITY['modules'], 1 );

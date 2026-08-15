@@ -22,11 +22,14 @@ const FRL_ENV_MAP = array(
 const FRL_ENV_PBS_TEMPLATE = array(
 	'prefix'         => 'pbs',
 	'modules'        => array(
-		'pbs'               => true,
-		'call_to_actions'   => true,
+		'pbs'             => true,
+		'call_to_actions' => true,
 	),
 	'plugin_options' => array(
-		'cta_webhook'    => true,
+		'cta_webhook'              => true,
+		'schema_organization_name' => 'PB Services Georgia',
+		'schema_organization_url'  => 'https://pbservices.ge/',
+		'schema_founder_name'      => 'Rati (Iese) Abashmadze',
 	),
 );
 

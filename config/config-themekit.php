@@ -44,5 +44,5 @@ const FRL_THEMEKIT_PATTERNS_CATEGORIES = array(
  * body class "has-{param}" will be added (e.g. "has-frlq").
  */
 const FRL_THEMEKIT_TRACKED_QUERY_PARAMS = array(
-	'frlq',   // Bible reference query param
+	'frlq',
 );

@@ -159,19 +159,19 @@ const FRL_DEFAULT_FIELDS = array(
 				'label'       => 'Organization name',
 				'description' => 'Organization name for Schema generation',
 				'type'        => 'text',
-				'default'     => 'PB Services Georgia',
+				'default'     => '',
 			),
 			'schema_organization_url'           => array(
 				'label'       => 'Organization URL',
 				'description' => 'Organization URL for Schema generation',
 				'type'        => 'text',
-				'default'     => 'https://pbservices.ge/',
+				'default'     => '',
 			),
 			'schema_founder_name'               => array(
 				'label'       => 'Founder Name',
 				'description' => 'Founder Name for Schema generation',
 				'type'        => 'text',
-				'default'     => 'Rati (Iese) Abashmadze',
+				'default'     => '',
 			),
 			'schema_properties'                 => array(
 				'label'             => 'Enable Schema Properties',
@@ -275,6 +275,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 60,
 				'sanitize_callback' => 'absint',
 				'size'              => 5,
+				'autoload'          => 'no',
 			),
 			'heartbeat_dashboard_interval'        => array(
 				'label'             => 'Dashboard Interval',
@@ -283,6 +284,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 120,
 				'sanitize_callback' => 'absint',
 				'size'              => 5,
+				'autoload'          => 'no',
 			),
 			'section_title_image_support'         => array(
 				'label'       => 'Image Support',
@@ -534,11 +536,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'restricted'        => true,
 			),
-			'remove_tax_base_info'              => array(
-				'label'    => 'Registered Taxonomies',
-				'type'     => 'custom',
-				'callback' => 'frl_render_rewrite_taxonomies',
-			),
 			'remove_cpt_base'                   => array(
 				'label'             => 'CPT Base Removal',
 				'description'       => 'Remove CPT base from URLs (e.g., /my-service/ instead of /service/my-service/). One CPT slug per line. Priority 40.',
@@ -547,11 +544,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'placeholder'       => "flag\njurisdiction",
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'restricted'        => true,
-			),
-			'remove_cpt_base_info'              => array(
-				'label'    => 'Registered CPTs',
-				'type'     => 'custom',
-				'callback' => 'frl_render_rewrite_cpts',
 			),
 		),
 	),
@@ -853,6 +845,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'checkbox',
 				'default'     => 1,
 				'restricted'  => true,
+				'autoload'    => 'no',
 			),
 			'debug_display'                 => array(
 				'label'       => 'WP_DEBUG_DISPLAY',

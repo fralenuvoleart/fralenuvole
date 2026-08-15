@@ -1,19 +1,7 @@
 /**
  * Fralenuvole
- * bible - public.css - Public Bible CSS Styles
+ * public.css - Public CSS Styles
  */
-
-.frl-bible-audio {
-    margin-block-end: 2rem !important;
-}
-
-.frl-bible-audio audio {
-    width: 100%;
-}
-
-.frl-bible-audio figcaption {
-    text-align: center;
-}
 
 body.has-frlq .frl-menu-sitemap {
     display: none;

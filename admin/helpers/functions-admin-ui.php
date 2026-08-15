@@ -305,52 +305,6 @@ function frl_render_copyable_list_ui( $id, $description, $items ) {
 }
 
 /**
- * Renders a helper UI that lists all public taxonomies.
- *
- * @see frl_render_copyable_list_ui()
- * @return string The HTML for the helper UI.
- */
-function frl_render_rewrite_taxonomies() {
-	$taxonomies = get_taxonomies( array( 'public' => true ), 'objects' );
-	$items      = array();
-	if ( ! empty( $taxonomies ) ) {
-		foreach ( $taxonomies as $slug => $tax ) {
-			$items[ $tax->label ] = $slug;
-		}
-	}
-	return frl_render_copyable_list_ui(
-		'taxonomies',
-		__( 'Click an item to copy its slug.', FRL_PREFIX ),
-		$items
-	);
-}
-
-/**
- * Renders a helper UI that lists all public Custom Post Types.
- *
- * @see frl_render_copyable_list_ui()
- * @return string The HTML for the helper UI.
- */
-function frl_render_rewrite_cpts() {
-	$post_types = get_post_types( array( 'public' => true ), 'objects' );
-	$items      = array();
-	if ( ! empty( $post_types ) ) {
-		foreach ( $post_types as $slug => $cpt ) {
-			// Skip built-in types such as post, page, attachment, etc.
-			if ( ! empty( $cpt->_builtin ) ) {
-				continue;
-			}
-			$items[ $cpt->label ] = $slug;
-		}
-	}
-	return frl_render_copyable_list_ui(
-		'cpts',
-		__( 'Click an item to copy its slug.', FRL_PREFIX ),
-		$items
-	);
-}
-
-/**
  * Renders the checkbox UI for enabling multilingual CPT slugs.
  *
  * This function gets the available CPTs from Frl_Rewriter and compares them

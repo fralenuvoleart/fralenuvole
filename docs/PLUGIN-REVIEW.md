@@ -77,7 +77,7 @@ Once the persistent cache layer is warm, a frontend page render performs zero da
 | **Frontend** | Critical CSS injection, deferred CSS, featured-image preload (responsive srcset + mobile hero), header/footer HTML+scripts, REST endpoint pruning, login branding, 15 shortcodes |
 | **Admin** | Tabbed settings UI, dashboard widgets (5 types), log manager (streaming viewer), tag validator, import/export, bulk resave, debug display, cache/environment diagnostic tables |
 | **Schema** | Dual JSON-LD subsystems: static SASWP property injection + dynamic `wp_head` generator |
-| **Modules** | WS Form integration (webhooks, stats, UTM tracking), ACF helpers + ACPT→SCF migration, GeoDirectory filters, Bible audio proxy, menu sitemap |
+| **Modules** | WS Form integration (webhooks, stats, UTM tracking), ACF helpers + ACPT→SCF migration, GeoDirectory filters, menu sitemap |
 
 ---
 

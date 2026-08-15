@@ -59,7 +59,7 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 | `call_to_actions` | WhatsApp, Telegram, Email CTA click handling with marketing webhook dispatch. Uses shared `public/channel-tracking.php` and `includes/helpers/functions-webhook.php`. |
 | `pbnova`, `pbs`, `pbproperty` | Brand-specific custom post types, config constants, and third-party integrations (GeoDirectory query/translation filters) for individual deployments. |
 | `acf`| ACF shortcode helpers; standalone ACPT → SCF/ACF field migration toolset (parser, importer, repeater transformer, compat shim, WP-CLI commands). |
-| `frl` | House brand module: Bible passage audio proxy (ESV API, cached signed-URL redirect), menu sitemap shortcode. |
+| `frl` | House brand module: menu sitemap shortcode. |
 
 ## Known, Accepted Design Trade-Offs
 
