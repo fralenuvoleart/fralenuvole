@@ -56,6 +56,7 @@ const FRL_ENV_DEFAULT = array(
 		'header_html_php'            => false,
 		'footer_html'                => 'file',
 		'footer_html_php'            => true,
+		'editor_metabox'             => false,
 		'debug'                      => false,
 		'error_reporting_email'      => true,
 		'error_reporting_notice'     => true,

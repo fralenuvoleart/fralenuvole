@@ -27,6 +27,7 @@ const FRL_ENV_PBS_TEMPLATE = array(
 	),
 	'plugin_options' => array(
 		'cta_webhook'              => true,
+		'editor_metabox'           => true,
 		'schema_organization_name' => 'PB Services Georgia',
 		'schema_organization_url'  => 'https://pbservices.ge/',
 		'schema_founder_name'      => 'Rati (Iese) Abashmadze',
@@ -53,6 +54,7 @@ const FRL_ENV_PBP_TEMPLATE = array(
 	'plugin_options' => array(
 		'header_html'              => 'file',
 		'header_html_php'          => true,
+		'editor_metabox'           => true,
 		'schema_organization_name' => 'PB Property Georgia',
 		'schema_organization_url'  => 'https://pbproperty.ge/',
 	),

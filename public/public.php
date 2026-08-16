@@ -34,6 +34,17 @@ function frl_public_scripts() {
 	if ( ! frl_is_valid_frontend_page_request() ) {
 		return;
 	}
+
+	// Skip if the public scroll-state script is disabled in settings.
+	if ( frl_get_option( 'disable_public_scroll_js' ) ) {
+		return;
+	}
+
+	// Fail gracefully if the asset file has been removed.
+	if ( ! file_exists( FRL_DIR_PATH . 'assets/js/public.js' ) ) {
+		return;
+	}
+
 	$assets = array( 'public-js' => 'assets/js/public.js' );
 	frl_enqueue_scripts( $assets, 'public_assets' );
 }
