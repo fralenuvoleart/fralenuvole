@@ -72,7 +72,7 @@ fi
 
 if $DO_PUSH; then
     echo "Committing and pushing to fralenuvole.art repo..."
-    cd "$TARGET_DIR/.."
+    cd "$TARGET_DIR/../../.."
     if git diff --quiet && git diff --cached --quiet && [[ -z "$(git ls-files --others --exclude-standard)" ]]; then
         echo "No changes to commit."
         exit 0
@@ -83,6 +83,6 @@ if $DO_PUSH; then
     echo "✅ Pushed to fralenuvole.art repo."
 else
     echo "Review changes with:"
-    echo "  cd \"$TARGET_DIR/..\" && git status"
+    echo "  cd \"$TARGET_DIR/../../..\" && git status"
     echo "To auto-commit+push, re-run with --push"
 fi
