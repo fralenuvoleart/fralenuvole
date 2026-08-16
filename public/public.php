@@ -36,17 +36,22 @@ function frl_public_scripts() {
 	}
 
 	// Skip if the public scroll-state script is disabled in settings.
-	if ( frl_get_option( 'disable_public_scroll_js' ) ) {
+	if ( frl_get_option( 'scroll_listener' ) ) {
+		$scroll_assets = array(
+			'scroll-listener-js'  => 'assets/js/scroll-listener.js',
+			'scroll-listener-css' => 'assets/css/scroll-listener.css',
+		);
+
+		frl_enqueue_scripts( $scroll_assets, 'scroll_listener_assets' );
 		return;
 	}
 
 	// Fail gracefully if the asset file has been removed.
-	if ( ! file_exists( FRL_DIR_PATH . 'assets/js/public.js' ) ) {
-		return;
-	}
+	if ( FRL_PUBLIC_JS && file_exists( FRL_DIR_PATH . 'assets/js/public.js' ) ) {
+		$public_assets = array( 'public-js' => 'assets/js/public.js' );
 
-	$assets = array( 'public-js' => 'assets/js/public.js' );
-	frl_enqueue_scripts( $assets, 'public_assets' );
+		frl_enqueue_scripts( $public_assets, 'public_assets' );
+	}
 }
 
 /**

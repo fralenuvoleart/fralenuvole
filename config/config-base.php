@@ -76,6 +76,9 @@ const FRL_LANGSWITCHER_ARGS = array(
 	'hide_languages'         => '',      // Both: comma-separated list of lang slugs
 );
 
+// Load public JS file
+const FRL_PUBLIC_JS = false;
+
 // Email notifications
 const FRL_EMAIL_NOTIFICATIONS = array(
 	'rate_key'      => 'email_rate_limit',

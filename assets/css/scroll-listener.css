@@ -1,0 +1,169 @@
+/**
+ * Fralenuvole
+ * scroll-listener.css - Header and Hero CSS Styles
+ */
+
+:root {
+    --frl-header-height: 128px;
+    --frl-header-mobile-height: 62px;
+    --frl-header-shift: calc(var(--frl-header-height) - var(--frl-header-mobile-height));
+}
+
+/* Hero overlap below the header */
+.frl-header+.frl-hero {
+    margin-top: calc(-1 * var(--frl-header-height)) !important;
+}
+
+.frl-header,
+.frl-header a,
+.frl-header .frl-logo,
+.frl-header>.wp-block-group,
+.frl-header .frl-logo,
+.frl-header .frl-logo-mobile {
+    transition: all 0.3s ease;
+}
+
+.frl-header .frl-logo-mobile {
+    transition-duration: 0s;
+}
+
+.frl-is-scroll-up .frl-header .frl-logo {
+    opacity: 0;
+}
+
+.frl-is-top .frl-header .frl-logo,
+.frl-is-scroll-up:not(.frl-is-top) .frl-header .frl-logo-mobile {
+    opacity: 1;
+}
+
+:root:not(.has-modal-open) .frl-header {
+    position: sticky;
+    top: calc(var(--wp-admin--admin-bar--height, 0px) - var(--frl-header-shift));
+    z-index: 100;
+}
+
+/* Hide when scrolling down (only after past hero) */
+.frl-is-scroll-down .frl-header {
+    transform: translateY(calc(-1* var(--frl-header-shift)));
+}
+
+@media screen and (max-width: 600px) {
+
+    /* Correction for wp-adminbar on mobile */
+    :root:not(.frl-is-top) .frl-header {
+        top: calc(-1 * var(--frl-header-mobile-height));
+    }
+
+    .frl-is-scroll-up .frl-header .frl-logo-mobile {
+        margin: 0 !important;
+    }
+
+    .frl-is-scroll-up .frl-header .frl-navigation {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .frl-header .wp-block-navigation__container,
+    .frl-header .wp-block-navigation__container li,
+    .frl-header .wp-block-navigation__container a {
+        width: 100%;
+        text-align: center;
+    }
+
+    .frl-header .wp-block-navigation__container {
+        font-size: 2em;
+        text-align: center;
+    }
+}
+
+/* Desktop-only to avoid menu flickering */
+@media screen and (min-width: 600.02px) {
+
+    /* Show when scrolling up */
+    .frl-is-scroll-up:not(.has-modal-open) .frl-header,
+    /* Never hide at the very top */
+    .frl-is-top:not(.has-modal-open) .frl-header {
+        transform: translateY(0);
+    }
+}
+
+/* Box shadow */
+.frl-is-scroll-up:not(.frl-is-top) .frl-header>.wp-block-group {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Add default background color if not hero */
+.frl-header:not(:has(+.frl-hero))>.wp-block-group {
+    background: #fff;
+}
+
+.frl-is-top:not(.has-modal-open) .frl-header:has(+.frl-hero) a,
+.frl-is-top .frl-header:has(+.frl-hero) .wp-block-navigation__responsive-container-open {
+    color: white;
+}
+
+/* Solid after hero */
+.frl-has-hero:not(.frl-is-top) .frl-header>.wp-block-group {
+    background: #fff;
+}
+
+.frl-has-hero.frl-is-top .frl-header>.wp-block-group {
+    box-shadow: none;
+}
+
+.frl-has-hero:not(.frl-is-top) .frl-header a,
+.frl-has-hero:not(.frl-is-top) .frl-header .wp-block-navigation__responsive-container-open {
+    color: inherit;
+}
+
+/* Style Customizations */
+.frl-hero .hero-text,
+.frl-has-hero.frl-is-top .frl-header button,
+.frl-has-hero.frl-is-top:not(.has-modal-open) .frl-header a {
+    filter: drop-shadow(3px 3px 6px rgba(0, 0, 0, .5));
+}
+
+.frl-has-hero .frl-header .custom-logo {
+    filter: brightness(1.4);
+}
+
+.frl-hero>.wp-block-cover__background {
+    mix-blend-mode: hard-light;
+}
+
+@media screen and (min-width: 600.02px) {
+    .frl-hero .has-parallax {
+        animation: parallax linear;
+        animation-range: 0vh 110vh;
+        animation-timeline: scroll();
+        top: -20%;
+        bottom: -10%;
+        height: auto;
+    }
+}
+
+.frl-hero .hero-text {
+    animation: parallax-text linear;
+    animation-range: 0vh 100vh;
+    animation-timeline: scroll();
+}
+
+@keyframes parallax {
+    from {
+        transform: translateY(0%);
+    }
+
+    to {
+        transform: translateY(90%);
+    }
+}
+
+@keyframes parallax-text {
+    from {
+        transform: translateY(0%);
+    }
+
+    to {
+        transform: translateY(300%);
+    }
+}
