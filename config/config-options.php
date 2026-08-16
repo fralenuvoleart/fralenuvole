@@ -230,6 +230,13 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'absint',
 				'autoload'          => 'no',
 			),
+			'scroll_listener'                     => array(
+				'label'             => 'Enable Scroll Listener',
+				'description'       => 'Enable the frontend scroll listener JS and header/hero CSS styles.',
+				'type'              => 'checkbox',
+				'default'           => 0,
+				'sanitize_callback' => 'absint',
+			),
 			'nav_menu_custom_urls'                => array(
 				'label'             => 'Nav Menu URL Transforms',
 				'description'       => 'Transform <code>#frl_url_*</code> fragments to URLs in navigation menus.',
@@ -247,13 +254,6 @@ const FRL_DEFAULT_FIELDS = array(
 					jurisdiction
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
-			),
-			'scroll_listener'            => array(
-				'label'             => 'Enable Scroll Listener',
-				'description'       => 'Enable the frontend scroll listener JS and header/hero CSS styles.',
-				'type'              => 'checkbox',
-				'default'           => 0,
-				'sanitize_callback' => 'absint',
 			),
 			'section_title_heartbeat'             => array(
 				'label'       => 'Heartbeat API',
