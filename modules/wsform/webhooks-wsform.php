@@ -203,9 +203,12 @@ function frl_wsf_submit_webhook( $submit ) {
 			// Sanitize only the exact 'Phone' key before webhook dispatch.
 			// Keys like 'Phone Raw' must stay unsanitized to preserve the
 			// original user input from the same underlying field.
-			if ( 'Phone' === $key && ! empty( $post_data[ $key ] ) ) {
-				$phone_result      = frl_phone_number_sanitize( $post_data[ $key ] );
-				$post_data[ $key ] = $phone_result['clean'];
+			// Phone validation is gated behind the wsform_phone_validation option.
+			if ( 'Phone' === $key && ! empty( $post_data[ $key ] ) && frl_get_option( 'wsform_phone_validation' ) ) {
+				$phone_result = frl_phone_number_sanitize( $post_data[ $key ] );
+
+				// Only expose the clean number when it is valid; otherwise blank it.
+				$post_data[ $key ] = $phone_result['valid'] ? $phone_result['clean'] : '';
 			}
 		}
 

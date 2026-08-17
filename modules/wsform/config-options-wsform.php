@@ -22,6 +22,14 @@ $frl_wsform_default_fields = array(
 		'type'        => 'section_title',
 		'description' => 'WS Form module settings',
 	),
+	'wsform_phone_validation' => array(
+		'label'             => 'Enable Phone Validation',
+		'description'       => 'Enable Best-Effort Phone validation for the phone field',
+		'type'              => 'checkbox',
+		'default'           => 0,
+		'sanitize_callback' => 'absint',
+		'restricted'        => true,
+	),
 	'wsform_webhook'          => array(
 		'label'             => 'Enable WS Form Webhook',
 		'description'       => 'Enable WS Form Webhook to send form data to your server',
