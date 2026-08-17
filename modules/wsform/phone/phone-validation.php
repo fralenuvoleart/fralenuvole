@@ -82,10 +82,10 @@ function frl_phone_number_sanitize(
 	$clean       = $leading_plus ? ( '+' . $digits ) : $digits;
 	$digit_count = strlen( $digits );
 
-	// E.164 allows 7-15 digits and the first digit can't be 0.
+	// Per-country national length when configured, generic E.164 otherwise.
 	$valid = $invalid
 		? false
-		: (bool) preg_match( '/^\+?[1-9]\d{6,14}$/', $clean );
+		: frl_phone_valid_length( $digits, $code );
 
 	return array(
 		'raw'         => $raw,
@@ -211,13 +211,14 @@ function frl_phone_convert_vanity_letters( string $text ): string {
 }
 
 /**
- * Strip a single leading trunk zero from a digit-only string.
+ * Strip a leading trunk prefix from a digit-only string.
  *
  * @param string $digits Digit-only string.
+ * @param string $trunk  Regex matching the trunk prefix (default '/^0/').
  * @return string
  */
-function frl_phone_strip_trunk_zero( string $digits ): string {
-	return ( strncmp( $digits, '0', 1 ) === 0 ) ? substr( $digits, 1 ) : $digits;
+function frl_phone_strip_trunk( string $digits, string $trunk = '/^0/' ): string {
+	return (string) preg_replace( $trunk, '', $digits, 1 );
 }
 
 /**
@@ -237,6 +238,43 @@ function frl_phone_find_country_code( string $digits ): ?string {
 }
 
 /**
+ * Get the configured national-number length range for a country code.
+ *
+ * @param string $code Country calling code.
+ * @return array{min: int, max: int}|null
+ */
+function frl_phone_country_length( string $code ): ?array {
+	foreach ( PHONE_COUNTRY_CONFIGS as $config ) {
+		if ( $config['code'] === $code && isset( $config['min_digits'], $config['max_digits'] ) ) {
+			return array(
+				'min' => $config['min_digits'],
+				'max' => $config['max_digits'],
+			);
+		}
+	}
+	return null;
+}
+
+/**
+ * Validate the national-number length, falling back to a generic E.164
+ * length check when the country has no configured range.
+ *
+ * @param string  $digits Digit string including the country code (no '+').
+ * @param ?string $code   Detected country code, or null.
+ * @return bool
+ */
+function frl_phone_valid_length( string $digits, ?string $code ): bool {
+	if ( null !== $code ) {
+		$range = frl_phone_country_length( $code );
+		if ( null !== $range ) {
+			$national_len = strlen( $digits ) - strlen( $code );
+			return $national_len >= $range['min'] && $national_len <= $range['max'];
+		}
+	}
+	return (bool) preg_match( '/^[1-9]\d{6,14}$/', $digits );
+}
+
+/**
  * Prepend a country calling code to a bare national number.
  *
  * Confidence-tiered detection over PHONE_COUNTRY_CONFIGS (first-match-wins):
@@ -244,7 +282,7 @@ function frl_phone_find_country_code( string $digits ): ?string {
  *   2. Prefix-only entries — matched by country-code prefix, with a length
  *      guard that is stricter for short (1-2 digit) codes.
  *
- * Strips a leading trunk zero.
+ * Strips a leading trunk prefix.
  *
  * @param string $digits Digit-only string (no '+', no formatting).
  * @return array{digits: string, prepended: bool, code: ?string, valid: bool}
@@ -273,7 +311,7 @@ function frl_phone_maybe_prepend_country_code( string $digits ): array {
 			$national_part = substr( $digits, $code_len );
 
 			if ( preg_match( $config['pattern'], $national_part ) ) {
-				$without_trunk = frl_phone_strip_trunk_zero( $national_part );
+				$without_trunk = frl_phone_strip_trunk( $national_part, $config['trunk'] ?? '/^0/' );
 
 				return array(
 					'digits'    => $code . $without_trunk,
@@ -294,7 +332,7 @@ function frl_phone_maybe_prepend_country_code( string $digits ): array {
 
 		// Bare national number matching the country pattern.
 		if ( preg_match( $config['pattern'], $digits ) ) {
-			$without_trunk = frl_phone_strip_trunk_zero( $digits );
+			$without_trunk = frl_phone_strip_trunk( $digits, $config['trunk'] ?? '/^0/' );
 
 			return array(
 				'digits'    => $code . $without_trunk,
@@ -319,7 +357,7 @@ function frl_phone_maybe_prepend_country_code( string $digits ): array {
 		}
 
 		$national_part = substr( $digits, $code_len );
-		$without_trunk = frl_phone_strip_trunk_zero( $national_part );
+		$without_trunk = frl_phone_strip_trunk( $national_part, $config['trunk'] ?? '/^0/' );
 
 		// Short codes collide with bare national numbers, so require a
 		// longer national part before accepting them.

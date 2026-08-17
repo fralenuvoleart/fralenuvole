@@ -52,8 +52,8 @@ function frl_phone_convert_vanity_letters( string $text ): string {
 	);
 }
 
-function frl_phone_strip_trunk_zero( string $digits ): string {
-	return ( strncmp( $digits, '0', 1 ) === 0 ) ? substr( $digits, 1 ) : $digits;
+function frl_phone_strip_trunk( string $digits, string $trunk = '/^0/' ): string {
+	return (string) preg_replace( $trunk, '', $digits, 1 );
 }
 
 function frl_phone_find_country_code( string $digits ): ?string {
@@ -64,6 +64,29 @@ function frl_phone_find_country_code( string $digits ): ?string {
 		}
 	}
 	return null;
+}
+
+function frl_phone_country_length( string $code ): ?array {
+	foreach ( PHONE_COUNTRY_CONFIGS as $config ) {
+		if ( $config['code'] === $code && isset( $config['min_digits'], $config['max_digits'] ) ) {
+			return array(
+				'min' => $config['min_digits'],
+				'max' => $config['max_digits'],
+			);
+		}
+	}
+	return null;
+}
+
+function frl_phone_valid_length( string $digits, ?string $code ): bool {
+	if ( null !== $code ) {
+		$range = frl_phone_country_length( $code );
+		if ( null !== $range ) {
+			$national_len = strlen( $digits ) - strlen( $code );
+			return $national_len >= $range['min'] && $national_len <= $range['max'];
+		}
+	}
+	return (bool) preg_match( '/^[1-9]\d{6,14}$/', $digits );
 }
 
 function frl_phone_extract_digits( string $text ): array {
@@ -129,7 +152,7 @@ function frl_phone_maybe_prepend_country_code( string $digits ): array {
 			$national_part = substr( $digits, $code_len );
 
 			if ( preg_match( $config['pattern'], $national_part ) ) {
-				$without_trunk = frl_phone_strip_trunk_zero( $national_part );
+				$without_trunk = frl_phone_strip_trunk( $national_part, $config['trunk'] ?? '/^0/' );
 
 				return array(
 					'digits'    => $code . $without_trunk,
@@ -149,7 +172,7 @@ function frl_phone_maybe_prepend_country_code( string $digits ): array {
 
 		// Bare national number matching the country pattern.
 		if ( preg_match( $config['pattern'], $digits ) ) {
-			$without_trunk = frl_phone_strip_trunk_zero( $digits );
+			$without_trunk = frl_phone_strip_trunk( $digits, $config['trunk'] ?? '/^0/' );
 
 			return array(
 				'digits'    => $code . $without_trunk,
@@ -174,7 +197,7 @@ function frl_phone_maybe_prepend_country_code( string $digits ): array {
 		}
 
 		$national_part = substr( $digits, $code_len );
-		$without_trunk = frl_phone_strip_trunk_zero( $national_part );
+		$without_trunk = frl_phone_strip_trunk( $national_part, $config['trunk'] ?? '/^0/' );
 
 		$min = ( $code_len <= 2 )
 			? PHONE_MIN_LOCAL_DIGITS
@@ -249,7 +272,7 @@ function frl_phone_number_sanitize(
 
 	$valid = $invalid
 		? false
-		: (bool) preg_match( '/^\+?[1-9]\d{6,14}$/', $clean );
+		: frl_phone_valid_length( $digits, $code );
 
 	return array(
 		'raw'         => $raw,

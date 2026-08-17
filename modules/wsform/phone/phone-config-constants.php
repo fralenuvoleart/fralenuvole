@@ -50,140 +50,437 @@ const PHONE_COUNTRY_CONFIGS = array(
 	// ── Validated patterns (ordered, first-match-wins) ──────────
 	// Asia, Middle East & Americas.
 	array(
-		'code'    => '995',
-		'pattern' => '/^(?:0)?[345]\d{8}$/', // Georgia: mobile 3xx/4xx/5xx.
+		'code'       => '995',
+		'pattern'    => '/^(?:0)?[345]\d{8}$/', // Georgia: mobile 3xx/4xx/5xx.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '7',
-		'pattern' => '/^(?:[80])?9\d{9}$/', // Russia: mobile 9xx.
+		'code'       => '7',
+		'pattern'    => '/^(?:[80])?9\d{9}$/', // Russia: mobile 9xx.
+		'trunk'      => '/^[08]/',
+		'min_digits' => 10,
+		'max_digits' => 10,
 	),
 	array(
-		'code'    => '7',
-		'pattern' => '/^(?:[80])?7[04-8]\d{8}$/', // Kazakhstan: mobile 70x, 74x-78x.
+		'code'       => '98',
+		'pattern'    => '/^(?:0)?9\d{9}$/',
+		'min_digits' => 10,
+		'max_digits' => 10,
+	), // Iran.
+	array(
+		'code'       => '970',
+		'pattern'    => '/^(?:0)?5\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Palestine.
+	array(
+		'code'       => '7',
+		'pattern'    => '/^(?:[80])?7(?:0[0-25-8]|47|5[01]|6[0-4]|7[15-8]|80)\d{7}$/', // Kazakhstan: mobile 700-708, 747, 750-751, 760-764, 771-778, 780.
+		'trunk'      => '/^[08]/',
+		'min_digits' => 10,
+		'max_digits' => 10,
 	),
 	array(
-		'code'    => '91',
-		'pattern' => '/^(?:0)?[6-9]\d{9}$/', // India: mobile 6x-9x.
+		'code'       => '92',
+		'pattern'    => '/^(?:0)?3\d{9}$/', // Pakistan: mobile 3xx.
+		'min_digits' => 10,
+		'max_digits' => 10,
 	),
 	array(
-		'code'    => '92',
-		'pattern' => '/^(?:0)?3\d{9}$/', // Pakistan: mobile 3xx.
+		'code'       => '966',
+		'pattern'    => '/^(?:0)?5\d{8}$/', // Saudi Arabia: mobile 5xx.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '966',
-		'pattern' => '/^(?:0)?5\d{8}$/', // Saudi Arabia: mobile 5xx.
+		'code'       => '27',
+		'pattern'    => '/^(?:0)?[6-8]\d{8}$/', // South Africa: mobile 06x/07x/08x.
+		'min_digits' => 9,
+		'max_digits' => 9,
+	),
+	// ── South Africa landline (overlaps with Georgia [345]) ──
+	array(
+		'code'       => '27',
+		'pattern'    => '/^(?:0)?[1-5]\d{8}$/', // South Africa: landline 01x-05x.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '66',
-		'pattern' => '/^(?:0)?[689]\d{8}$/', // Thailand: mobile 6x, 8x, 9x.
+		'code'       => '66',
+		'pattern'    => '/^(?:0)?[689]\d{8}$/', // Thailand: mobile 6x, 8x, 9x.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '971',
-		'pattern' => '/^(?:0)?5[024-68]\d{7}$/', // United Arab Emirates: mobile 50, 52, 54, 55, 56, 58.
+		'code'       => '971',
+		'pattern'    => '/^(?:0)?5[024-68]\d{7}$/', // United Arab Emirates: mobile 50, 52, 54, 55, 56, 58.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '1',
-		'pattern' => '/^(?:1)?[2-9]\d{2}[2-9]\d{6}$/', // United States: NANP format (10 digits).
+		'code'       => '1',
+		'pattern'    => '/^(?:1)?[2-9]\d{2}[2-9]\d{6}$/', // United States: NANP format (10 digits).
+		'min_digits' => 10,
+		'max_digits' => 10,
 	),
 	// Europe.
 	array(
-		'code'    => '43',
-		'pattern' => '/^(?:0)?6\d{7,12}$/', // Austria: mobile 6xx (8-13 digits).
+		'code'       => '43',
+		'pattern'    => '/^(?:0)?6(?:50|60|64|7[6-8]|8[018]|9[09])\d{7,10}$/', // Austria: mobile 650-699 (10-13 digits).
+		'min_digits' => 10,
+		'max_digits' => 13,
 	),
 	array(
-		'code'    => '33',
-		'pattern' => '/^(?:0)?[67]\d{8}$/', // France: mobile 6x, 7x.
+		'code'       => '33',
+		'pattern'    => '/^(?:0)?[67]\d{8}$/', // France: mobile 6x, 7x.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '49',
-		'pattern' => '/^(?:0)?1[5-7]\d{8,9}$/', // Germany: mobile 15x, 16x, 17x.
+		'code'       => '49',
+		'pattern'    => '/^(?:0)?1[5-7]\d{8,9}$/', // Germany: mobile 15x, 16x, 17x.
+		'min_digits' => 10,
+		'max_digits' => 11,
 	),
 	array(
-		'code'    => '30',
-		'pattern' => '/^(?:0)?69\d{8}$/', // Greece: mobile 69x.
+		'code'       => '30',
+		'pattern'    => '/^(?:0)?69\d{8}$/', // Greece: mobile 69x.
+		'min_digits' => 10,
+		'max_digits' => 10,
 	),
 	array(
-		'code'    => '39',
-		'pattern' => '/^(?:0)?3\d{8,9}$/', // Italy: mobile 3xx.
+		'code'       => '39',
+		'pattern'    => '/^(?:0)?3\d{8,9}$/', // Italy: mobile 3xx.
+		'min_digits' => 9,
+		'max_digits' => 10,
 	),
 	array(
-		'code'    => '31',
-		'pattern' => '/^(?:0)?6\d{8}$/', // Netherlands: mobile 6x.
+		'code'       => '31',
+		'pattern'    => '/^(?:0)?6\d{8}$/', // Netherlands: mobile 6x.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '47',
-		'pattern' => '/^(?:0)?[49]\d{7}$/', // Norway: mobile 4xx, 9xx.
+		'code'       => '47',
+		'pattern'    => '/^(?:0)?[49]\d{7}$/', // Norway: mobile 4xx, 9xx.
+		'min_digits' => 8,
+		'max_digits' => 8,
 	),
 	array(
-		'code'    => '351',
-		'pattern' => '/^(?:0)?9[1-36]\d{7}$/', // Portugal: mobile 91, 92, 93, 96.
+		'code'       => '351',
+		'pattern'    => '/^(?:0)?9[1-36]\d{7}$/', // Portugal: mobile 91, 92, 93, 96.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '34',
-		'pattern' => '/^(?:0)?[67]\d{8}$/', // Spain: mobile 6x, 7x.
+		'code'       => '34',
+		'pattern'    => '/^(?:0)?[67]\d{8}$/', // Spain: mobile 6x, 7x.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '46',
-		'pattern' => '/^(?:0)?7[02369]\d{7}$/', // Sweden: mobile 70, 72, 73, 76, 79.
+		'code'       => '46',
+		'pattern'    => '/^(?:0)?7[02369]\d{7}$/', // Sweden: mobile 70, 72, 73, 76, 79.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '41',
-		'pattern' => '/^(?:0)?7[5-9]\d{7}$/', // Switzerland: mobile 75-79.
+		'code'       => '41',
+		'pattern'    => '/^(?:0)?7[5-9]\d{7}$/', // Switzerland: mobile 75-79.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '90',
-		'pattern' => '/^(?:0)?5\d{9}$/', // Türkiye: mobile 5xx.
+		'code'       => '90',
+		'pattern'    => '/^(?:0)?5\d{9}$/', // Türkiye: mobile 5xx.
+		'min_digits' => 10,
+		'max_digits' => 10,
 	),
 	array(
-		'code'    => '44',
-		'pattern' => '/^(?:0)?7[1-9]\d{8}$/', // United Kingdom: mobile 71-79.
+		'code'       => '44',
+		'pattern'    => '/^(?:0)?7[1-9]\d{8}$/', // United Kingdom: mobile 71-79.
+		'min_digits' => 10,
+		'max_digits' => 10,
 	),
 	// CIS, Eastern Europe, Baltics & Balkans.
 	array(
-		'code'    => '374',
-		'pattern' => '/^(?:0)?(?:33|[49]\d|55|77)\d{6}$/', // Armenia: mobile 33, 4x, 55, 77, 9x.
+		'code'       => '374',
+		'pattern'    => '/^(?:0)?(?:33|4[13479]|5[05]|66|77|9[13-9])\d{6}$/', // Armenia: mobile 33, 41, 43, 44, 47, 49, 50, 55, 66, 77, 91-99.
+		'min_digits' => 8,
+		'max_digits' => 8,
 	),
 	array(
-		'code'    => '994',
-		'pattern' => '/^(?:0)?(?:40|5[015]|60|7[07]|99)\d{7}$/', // Azerbaijan mobile prefixes.
+		'code'       => '994',
+		'pattern'    => '/^(?:0)?(?:40|5[015]|60|7[07]|99)\d{7}$/', // Azerbaijan mobile prefixes.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '375',
-		'pattern' => '/^(?:80|0)?(?:25|29|33|44)\d{7}$/', // Belarus: mobile 25, 29, 33, 44.
+		'code'       => '375',
+		'pattern'    => '/^(?:80|0)?(?:25|29|33|44)\d{7}$/', // Belarus: mobile 25, 29, 33, 44.
+		'trunk'      => '/^(?:80|0)/',
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '996',
-		'pattern' => '/^(?:0)?[25789]\d{8}$/', // Kyrgyzstan: mobile 2xx, 5xx, 7xx, 8xx, 9xx.
+		'code'       => '996',
+		'pattern'    => '/^(?:0)?(?:2[02]|5\d|7\d|88|9\d)\d{7}$/', // Kyrgyzstan: mobile 20, 22, 5x, 7x, 88, 9x.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '371',
-		'pattern' => '/^(?:0)?2\d{7}$/', // Latvia: mobile 2xxxxxxx.
+		'code'       => '371',
+		'pattern'    => '/^(?:0)?2\d{7}$/', // Latvia: mobile 2xxxxxxx.
+		'min_digits' => 8,
+		'max_digits' => 8,
 	),
 	array(
-		'code'    => '40',
-		'pattern' => '/^(?:0)?7\d{8}$/', // Romania: mobile 7xx.
+		'code'       => '40',
+		'pattern'    => '/^(?:0)?7\d{8}$/', // Romania: mobile 7xx.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '381',
-		'pattern' => '/^(?:0)?6\d{7,8}$/', // Serbia: mobile 6xx.
+		'code'       => '381',
+		'pattern'    => '/^(?:0)?6\d{7,8}$/', // Serbia: mobile 6xx.
+		'min_digits' => 8,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '380',
-		'pattern' => '/^(?:0)?[35-79]\d{8}$/', // Ukraine: mobile 39, 50, 6x, 73, 9x.
+		'code'       => '380',
+		'pattern'    => '/^(?:0)?(?:39|50|6[3678]|73|9[1-9])\d{7}$/', // Ukraine: mobile 39, 50, 63, 66, 67, 68, 73, 91-99.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
 	array(
-		'code'    => '998',
-		'pattern' => '/^(?:0)?[2357-9]\d{8}$/', // Uzbekistan: mobile 20, 33, 5x, 77, 88, 9x.
+		'code'       => '998',
+		'pattern'    => '/^(?:0)?(?:20|33|5[05]|77|88|9\d)\d{7}$/', // Uzbekistan: mobile 20, 33, 50, 55, 77, 88, 90-99.
+		'min_digits' => 9,
+		'max_digits' => 9,
 	),
-	// Africa.
 	array(
-		'code'    => '27',
-		'pattern' => '/^(?:0)?[6-8]\d{8}$/', // South Africa: mobile 06x/07x/08x.
-	),
-	// ── Fallback (must be last — overlaps with Georgia [345]) ──
+		'code'       => '32',
+		'pattern'    => '/^(?:0)?4[5-9]\d{7}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Belgium.
 	array(
-		'code'    => '27',
-		'pattern' => '/^(?:0)?[1-5]\d{8}$/', // South Africa: landline 01x-05x.
+		'code'       => '36',
+		'pattern'    => '/^(?:0)?(?:20|30|31|50|70)\d{7}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Hungary.
+	array(
+		'code'       => '45',
+		'pattern'    => '/^(?:0)?(?:2\d|3[01]|4[0-2]|5[0-3]|6[01]|71|81|9[1-3])\d{6}$/',
+		'min_digits' => 8,
+		'max_digits' => 8,
+	), // Denmark.
+	array(
+		'code'       => '48',
+		'pattern'    => '/^(?:0)?(?:45|5[0137]|6[069]|7[2389]|88)\d{7}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Poland.
+	array(
+		'code'       => '51',
+		'pattern'    => '/^(?:0)?9\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Peru.
+	array(
+		'code'       => '52',
+		'pattern'    => '/^(?:0)?[2-9]\d{9}$/',
+		'min_digits' => 10,
+		'max_digits' => 10,
+	), // Mexico.
+	array(
+		'code'       => '53',
+		'pattern'    => '/^(?:0)?5\d{7}$/',
+		'min_digits' => 8,
+		'max_digits' => 8,
+	), // Cuba.
+	array(
+		'code'       => '54',
+		'pattern'    => '/^(?:0)?(?:9)?[1-9]\d{9}$/',
+		'min_digits' => 10,
+		'max_digits' => 11,
+	), // Argentina.
+	array(
+		'code'       => '55',
+		'pattern'    => '/^(?:0)?[1-9]{2}9\d{8}$/',
+		'min_digits' => 11,
+		'max_digits' => 11,
+	), // Brazil.
+	array(
+		'code'       => '56',
+		'pattern'    => '/^(?:0)?9\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Chile.
+	array(
+		'code'       => '57',
+		'pattern'    => '/^(?:0)?3\d{9}$/',
+		'min_digits' => 10,
+		'max_digits' => 10,
+	), // Colombia.
+	array(
+		'code'       => '58',
+		'pattern'    => '/^(?:0)?4\d{9}$/',
+		'min_digits' => 10,
+		'max_digits' => 10,
+	), // Venezuela.
+	array(
+		'code'       => '60',
+		'pattern'    => '/^(?:0)?1(?:1\d{8}|[02-9]\d{7})$/',
+		'min_digits' => 9,
+		'max_digits' => 10,
+	), // Malaysia.
+	array(
+		'code'       => '61',
+		'pattern'    => '/^(?:0)?4\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Australia.
+	array(
+		'code'       => '62',
+		'pattern'    => '/^(?:0)?8\d{8,11}$/',
+		'min_digits' => 9,
+		'max_digits' => 12,
+	), // Indonesia.
+	array(
+		'code'       => '63',
+		'pattern'    => '/^(?:0)?9\d{9}$/',
+		'min_digits' => 10,
+		'max_digits' => 10,
+	), // Philippines.
+	array(
+		'code'       => '64',
+		'pattern'    => '/^(?:0)?2\d{7,9}$/',
+		'min_digits' => 8,
+		'max_digits' => 10,
+	), // New Zealand.
+	array(
+		'code'       => '65',
+		'pattern'    => '/^(?:0)?[89]\d{7}$/',
+		'min_digits' => 8,
+		'max_digits' => 8,
+	), // Singapore.
+	array(
+		'code'       => '81',
+		'pattern'    => '/^(?:0)?[789]0\d{8}$/',
+		'min_digits' => 10,
+		'max_digits' => 10,
+	), // Japan.
+	array(
+		'code'       => '82',
+		'pattern'    => '/^(?:0)?1\d{9}$/',
+		'min_digits' => 10,
+		'max_digits' => 10,
+	), // South Korea.
+	array(
+		'code'       => '84',
+		'pattern'    => '/^(?:0)?[35789]\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Vietnam.
+	array(
+		'code'       => '86',
+		'pattern'    => '/^(?:0)?1[3-9]\d{9}$/',
+		'min_digits' => 11,
+		'max_digits' => 11,
+	), // China.
+	array(
+		'code'       => '93',
+		'pattern'    => '/^(?:0)?7\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Afghanistan.
+	array(
+		'code'       => '350',
+		'pattern'    => '/^(?:0)?5\d{7}$/',
+		'min_digits' => 8,
+		'max_digits' => 8,
+	), // Gibraltar.
+	array(
+		'code'       => '352',
+		'pattern'    => '/^(?:0)?6\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Luxembourg.
+	array(
+		'code'       => '353',
+		'pattern'    => '/^(?:0)?8\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Ireland.
+	array(
+		'code'       => '354',
+		'pattern'    => '/^(?:0)?[6-8]\d{6}$/',
+		'min_digits' => 7,
+		'max_digits' => 7,
+	), // Iceland.
+	array(
+		'code'       => '355',
+		'pattern'    => '/^(?:0)?6\d{7}$/',
+		'min_digits' => 8,
+		'max_digits' => 8,
+	), // Albania.
+	array(
+		'code'       => '356',
+		'pattern'    => '/^(?:0)?[79]\d{7}$/',
+		'min_digits' => 8,
+		'max_digits' => 8,
+	), // Malta.
+	array(
+		'code'       => '357',
+		'pattern'    => '/^(?:0)?9\d{7}$/',
+		'min_digits' => 8,
+		'max_digits' => 8,
+	), // Cyprus.
+	array(
+		'code'       => '358',
+		'pattern'    => '/^(?:0)?[45]\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Finland.
+	array(
+		'code'       => '359',
+		'pattern'    => '/^(?:0)?[89]\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Bulgaria.
+	array(
+		'code'       => '372',
+		'pattern'    => '/^(?:0)?[58]\d{6,7}$/',
+		'min_digits' => 7,
+		'max_digits' => 8,
+	), // Estonia.
+	array(
+		'code'       => '852',
+		'pattern'    => '/^(?:0)?[4-9]\d{7}$/',
+		'min_digits' => 8,
+		'max_digits' => 8,
+	), // Hong Kong.
+	array(
+		'code'       => '886',
+		'pattern'    => '/^(?:0)?9\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Taiwan.
+	array(
+		'code'       => '967',
+		'pattern'    => '/^(?:0)?7\d{8}$/',
+		'min_digits' => 9,
+		'max_digits' => 9,
+	), // Yemen.
+	// India.
+	array(
+		'code'       => '91',
+		'pattern'    => '/^(?:0)?[6-9]\d{9}$/', // India: mobile 6x-9x.
+		'min_digits' => 10,
+		'max_digits' => 10,
 	),
 	// ── Prefix-only entries (pattern = null) ────────────────────
 	// All ITU-T E.164 country calling codes.  Sorted numerically.
@@ -193,98 +490,6 @@ const PHONE_COUNTRY_CONFIGS = array(
 		'pattern' => null,
 	), // Egypt.
 	array(
-		'code'    => '32',
-		'pattern' => null,
-	), // Belgium.
-	array(
-		'code'    => '36',
-		'pattern' => null,
-	), // Hungary.
-	array(
-		'code'    => '45',
-		'pattern' => null,
-	), // Denmark.
-	array(
-		'code'    => '48',
-		'pattern' => null,
-	), // Poland.
-	array(
-		'code'    => '51',
-		'pattern' => null,
-	), // Peru.
-	array(
-		'code'    => '52',
-		'pattern' => null,
-	), // Mexico.
-	array(
-		'code'    => '53',
-		'pattern' => null,
-	), // Cuba.
-	array(
-		'code'    => '54',
-		'pattern' => null,
-	), // Argentina.
-	array(
-		'code'    => '55',
-		'pattern' => null,
-	), // Brazil.
-	array(
-		'code'    => '56',
-		'pattern' => null,
-	), // Chile.
-	array(
-		'code'    => '57',
-		'pattern' => null,
-	), // Colombia.
-	array(
-		'code'    => '58',
-		'pattern' => null,
-	), // Venezuela.
-	array(
-		'code'    => '60',
-		'pattern' => null,
-	), // Malaysia.
-	array(
-		'code'    => '61',
-		'pattern' => null,
-	), // Australia.
-	array(
-		'code'    => '62',
-		'pattern' => null,
-	), // Indonesia.
-	array(
-		'code'    => '63',
-		'pattern' => null,
-	), // Philippines.
-	array(
-		'code'    => '64',
-		'pattern' => null,
-	), // New Zealand.
-	array(
-		'code'    => '65',
-		'pattern' => null,
-	), // Singapore.
-	array(
-		'code'    => '81',
-		'pattern' => null,
-	), // Japan.
-	array(
-		'code'    => '82',
-		'pattern' => null,
-	), // South Korea.
-	array(
-		'code'    => '84',
-		'pattern' => null,
-	), // Vietnam.
-	array(
-		'code'    => '86',
-		'pattern' => null,
-	), // China.
-	array(
-		'code'    => '93',
-		'pattern' => null,
-	), // Afghanistan.
-	array(
 		'code'    => '94',
 		'pattern' => null,
 	), // Sri Lanka.
@@ -292,10 +497,6 @@ const PHONE_COUNTRY_CONFIGS = array(
 		'code'    => '95',
 		'pattern' => null,
 	), // Myanmar.
-	array(
-		'code'    => '98',
-		'pattern' => null,
-	), // Iran.
 	array(
 		'code'    => '211',
 		'pattern' => null,
@@ -533,49 +734,9 @@ const PHONE_COUNTRY_CONFIGS = array(
 		'pattern' => null,
 	), // Greenland.
 	array(
-		'code'    => '350',
-		'pattern' => null,
-	), // Gibraltar.
-	array(
-		'code'    => '352',
-		'pattern' => null,
-	), // Luxembourg.
-	array(
-		'code'    => '353',
-		'pattern' => null,
-	), // Ireland.
-	array(
-		'code'    => '354',
-		'pattern' => null,
-	), // Iceland.
-	array(
-		'code'    => '355',
-		'pattern' => null,
-	), // Albania.
-	array(
-		'code'    => '356',
-		'pattern' => null,
-	), // Malta.
-	array(
-		'code'    => '357',
-		'pattern' => null,
-	), // Cyprus.
-	array(
-		'code'    => '358',
-		'pattern' => null,
-	), // Finland.
-	array(
-		'code'    => '359',
-		'pattern' => null,
-	), // Bulgaria.
-	array(
 		'code'    => '370',
 		'pattern' => null,
 	), // Lithuania.
-	array(
-		'code'    => '372',
-		'pattern' => null,
-	), // Estonia.
 	array(
 		'code'    => '373',
 		'pattern' => null,
@@ -809,10 +970,6 @@ const PHONE_COUNTRY_CONFIGS = array(
 		'pattern' => null,
 	), // North Korea.
 	array(
-		'code'    => '852',
-		'pattern' => null,
-	), // Hong Kong.
-	array(
 		'code'    => '853',
 		'pattern' => null,
 	), // Macau.
@@ -849,10 +1006,6 @@ const PHONE_COUNTRY_CONFIGS = array(
 		'pattern' => null,
 	), // International Networks.
 	array(
-		'code'    => '886',
-		'pattern' => null,
-	), // Taiwan.
-	array(
 		'code'    => '960',
 		'pattern' => null,
 	), // Maldives.
@@ -877,17 +1030,9 @@ const PHONE_COUNTRY_CONFIGS = array(
 		'pattern' => null,
 	), // Kuwait.
 	array(
-		'code'    => '967',
-		'pattern' => null,
-	), // Yemen.
-	array(
 		'code'    => '968',
 		'pattern' => null,
 	), // Oman.
-	array(
-		'code'    => '970',
-		'pattern' => null,
-	), // Palestine.
 	array(
 		'code'    => '972',
 		'pattern' => null,
@@ -921,6 +1066,7 @@ const PHONE_COUNTRY_CONFIGS = array(
 		'pattern' => null,
 	), // Turkmenistan.
 );
+
 
 // Standard telephone keypad, for optional vanity-number conversion.
 // (1-800-FLOWERS -> 1-800-3569377).
