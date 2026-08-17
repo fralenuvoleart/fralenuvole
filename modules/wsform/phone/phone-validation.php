@@ -73,6 +73,19 @@ function frl_phone_number_sanitize(
 		$code = $result['code'];
 	}
 
+	// Default-country fallback for unrecognized bare numbers.
+	if ( ! $leading_plus && null === $code && '' !== PHONE_DEFAULT_COUNTRY_CODE ) {
+		$default_code = PHONE_DEFAULT_COUNTRY_CODE;
+		$national     = frl_phone_strip_trunk( $digits );
+		$candidate    = $default_code . $national;
+		if ( frl_phone_valid_length( $candidate, $default_code ) ) {
+			$digits       = $candidate;
+			$code         = $default_code;
+			$leading_plus = true;
+			$invalid      = false;
+		}
+	}
+
 	// For explicit international numbers, extract the country code from
 	// the leading digits so the caller knows which country was identified.
 	if ( null === $code && $leading_plus ) {

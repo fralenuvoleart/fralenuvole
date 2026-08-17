@@ -39,6 +39,13 @@ const PHONE_MIN_LOCAL_DIGITS = 8;
 const PHONE_MIN_LOCAL_DIGITS_SHORT = 6;
 
 /**
+ * Default country code used as a fallback for bare national numbers
+ * that could not be matched to any country pattern. Set to empty
+ * string to disable the fallback.
+ */
+const PHONE_DEFAULT_COUNTRY_CODE = '995';
+
+/**
  * Country detection configs for bare national numbers (no '+', no
  * detected international prefix). Matched in order; first pattern that
  * matches wins — so list more-specific patterns first.

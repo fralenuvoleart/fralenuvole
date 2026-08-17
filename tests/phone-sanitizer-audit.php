@@ -262,6 +262,19 @@ function frl_phone_number_sanitize(
 		$code = $result['code'];
 	}
 
+	// Default-country fallback for unrecognized bare numbers.
+	if ( ! $leading_plus && null === $code && '' !== PHONE_DEFAULT_COUNTRY_CODE ) {
+		$default_code = PHONE_DEFAULT_COUNTRY_CODE;
+		$national     = frl_phone_strip_trunk( $digits );
+		$candidate    = $default_code . $national;
+		if ( frl_phone_valid_length( $candidate, $default_code ) ) {
+			$digits       = $candidate;
+			$code         = $default_code;
+			$leading_plus = true;
+			$invalid      = false;
+		}
+	}
+
 	// For explicit international numbers, extract the country code.
 	if ( $code === null && $leading_plus ) {
 		$code = frl_phone_find_country_code( $digits );
@@ -360,7 +373,7 @@ function assert_false( string $label, bool $condition ): void {
 echo "\n=== 1. CONSTANT STRUCTURE AUDIT ===\n";
 
 assert_true( 'PHONE_COUNTRY_CONFIGS is defined', defined( 'PHONE_COUNTRY_CONFIGS' ) );
-assert_false( 'PHONE_DEFAULT_COUNTRY_CODE is removed', defined( 'PHONE_DEFAULT_COUNTRY_CODE' ) );
+assert_true( 'PHONE_DEFAULT_COUNTRY_CODE is defined', defined( 'PHONE_DEFAULT_COUNTRY_CODE' ) );
 assert_false( 'PHONE_PATTERN_GEORGIA is removed', defined( 'PHONE_PATTERN_GEORGIA' ) );
 assert_false( 'PHONE_PATTERN_SOUTHAFRICA is removed', defined( 'PHONE_PATTERN_SOUTHAFRICA' ) );
 
