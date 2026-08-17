@@ -204,7 +204,7 @@ function frl_wsf_submit_webhook( $submit ) {
 			// Keys like 'Phone Raw' must stay unsanitized to preserve the
 			// original user input from the same underlying field.
 			if ( 'Phone' === $key && ! empty( $post_data[ $key ] ) ) {
-				$phone_result      = frl_wsf_sanitize_phone_number( $post_data[ $key ] );
+				$phone_result      = frl_phone_number_sanitize( $post_data[ $key ] );
 				$post_data[ $key ] = $phone_result['clean'];
 			}
 		}
