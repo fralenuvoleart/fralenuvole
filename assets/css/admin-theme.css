@@ -50,6 +50,14 @@ body a {
     height: 32px;
 }
 
+:root #wpadminbar #wp-admin-bar-site-name>.ab-item .site-icon {
+    border-radius: 999px;
+}
+
+:root #wpadminbar #wp-admin-bar-site-name>.ab-item .site-icon picture {
+    display: inline-flex;
+}
+
 .components-button.is-primary:focus:not(:disabled),
 .components-button.is-primary[aria-disabled=true]:enabled:focus:enabled,
 .components-button.is-primary[aria-disabled=true]:focus:enabled,
