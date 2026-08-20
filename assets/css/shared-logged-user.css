@@ -32,9 +32,9 @@
     overflow: hidden;
 }
 #wpadminbar .frl-menu-secondary > .ab-item:before {
-    content: "\f103";
-    font-size: 19px;
-    top: 2px;
+    content: "\f226";
+    font-size: 23px;
+    margin-left: 6px;
 }
 
 #wpadminbar:not(.mobile) .ab-top-menu>li:hover>.ab-item .frl-plugin-logo,
