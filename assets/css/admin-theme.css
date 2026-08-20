@@ -54,7 +54,7 @@ body a {
     border-radius: 999px;
 }
 
-:root #wpadminbar #wp-admin-bar-site-name>.ab-item .site-icon picture {
+:root #wpadminbar #wp-admin-bar-site-name>.ab-item picture {
     display: inline-flex;
 }
 
