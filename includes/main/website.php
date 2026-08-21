@@ -264,31 +264,37 @@ function frl_alter_query( WP_Query $query ): void {
 		return;
 	}
 
-	$query->set( 'update_post_meta_cache', false );
-	$query->set( 'update_post_term_cache', false );
-	$query->set( 'no_found_rows', true );
-	$query->set( 'ignore_sticky_posts', true );
-	$query->set( 'post_status', 'publish' );
-	$query->set( 'has_password', false );
-
-	static $cached_cpts = null;
-	if ( $cached_cpts === null ) {
-		$cached_cpts = frl_textlist_to_array( frl_get_option( 'custom_wp_query' ) );
+	// Optimise secondary queries
+	if ( frl_get_option( 'custom_wp_query_opt' ) ) {
+		$query->set( 'update_post_meta_cache', false );
+		$query->set( 'update_post_term_cache', false );
+		$query->set( 'no_found_rows', true );
+		$query->set( 'ignore_sticky_posts', true );
+		$query->set( 'post_status', 'publish' );
+		$query->set( 'has_password', false );
 	}
 
-	if ( empty( $cached_cpts ) ) {
-		return;
-	}
+	// Enforce menu_order for specific CPTs
+	if ( frl_get_option( 'custom_wp_query_cpt' ) ) {
+		static $cached_cpts = null;
+		if ( $cached_cpts === null ) {
+			$cached_cpts = frl_textlist_to_array( frl_get_option( 'custom_wp_query_cpt' ) );
+		}
 
-	// Flatten the array to get just the CPT names (first element of each sub-array)
-	$cpts_list = array_column( $cached_cpts, 0 );
+		if ( empty( $cached_cpts ) ) {
+			return;
+		}
 
-	// Add post type check for any custom post type
-	$post_type = $query->get( 'post_type' );
+		// Flatten the array to get just the CPT names (first element of each sub-array)
+		$cpts_list = array_column( $cached_cpts, 0 );
 
-	if ( $post_type && in_array( $post_type, $cpts_list, true ) ) {
-		$query->set( 'orderby', 'menu_order' );
-		$query->set( 'order', 'ASC' );
+		// Add post type check for any custom post type
+		$post_type = $query->get( 'post_type' );
+
+		if ( $post_type && in_array( $post_type, $cpts_list, true ) ) {
+			$query->set( 'orderby', 'menu_order' );
+			$query->set( 'order', 'ASC' );
+		}
 	}
 }
 

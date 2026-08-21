@@ -244,9 +244,16 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'custom_wp_query'                     => array(
-				'label'             => 'Custom WP Query',
-				'description'       => 'Optimize secondary queries and order post types by ascending menu_order. One post type per line.',
+			'custom_wp_query_opt'                 => array(
+				'label'             => 'Optimize WP Query',
+				'description'       => 'Optimize secondary queries. One post type per line.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'custom_wp_query_cpt'                 => array(
+				'label'             => 'Order WP Query by menu_order',
+				'description'       => 'Order CPTs by menu_order. One post type per line.',
 				'type'              => 'textlist',
 				'default'           => '
 					service
