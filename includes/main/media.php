@@ -92,12 +92,11 @@ function frl_add_image_size_names_choice( $sizes ) {
 				// Note: $image_size[3] is arbitrary admin-authored text from the
 				// 'image_sizes_list' textarea option, not a developer-defined
 				// literal string, so it is intentionally not passed through __().
-				return array_map(
-					function ( $image_size ) {
-						return array( $image_size[0] => $image_size[3] );
-					},
-					$valid_sizes
-				);
+				$result = array();
+				foreach ( $valid_sizes as $image_size ) {
+					$result[ $image_size[0] ] = $image_size[3];
+				}
+				return $result;
 			}
 
 			return array();
