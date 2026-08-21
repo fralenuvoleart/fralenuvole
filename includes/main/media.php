@@ -15,6 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Priority 12: after environment enforcement (10), before rewriter (15).
 add_action( 'init', 'frl_add_image_sizes', 12, 0 );
 add_action( 'init', 'frl_enable_custom_avatar', 12, 0 );
+add_filter( 'image_size_names_choose', 'frl_add_image_size_names_choice', 10, 1 );
 
 /**
  * Register custom image sizes based on plugin options.
