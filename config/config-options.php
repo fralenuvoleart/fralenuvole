@@ -323,7 +323,7 @@ const FRL_DEFAULT_FIELDS = array(
 			),
 			'image_sizes'                         => array(
 				'label'             => 'Add Media Image Sizes',
-				'description'       => 'Add custom image sizes to media library',
+				'description'       => 'Add custom image sizes to post edit screen',
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
