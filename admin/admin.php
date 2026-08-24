@@ -540,10 +540,11 @@ function frl_custom_dashboard_widgets() {
 			'refresh_button'  => true,
 		),
 		'user_visits'   => array(
-			'title'           => __( 'User Visits', FRL_PREFIX ),
-			'cap'             => '',
-			'render_file'     => FRL_DIR_PATH . 'admin/widgets/widget-user-visits.php',
-			'render_callback' => 'frl_render_user_visits_widget',
+			'title'              => __( 'User Visits', FRL_PREFIX ),
+			'cap'                => '',
+			'render_file'        => FRL_DIR_PATH . 'admin/widgets/widget-user-visits.php',
+			'render_callback'    => 'frl_render_user_visits_widget',
+			'enabled_option_key' => 'logged_user_visits',
 			'refresh_button'  => true,
 		),
 		'custom_html_1' => array(

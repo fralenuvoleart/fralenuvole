@@ -721,13 +721,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'absint',
 				'autoload'          => 'no',
 			),
-			'dash_widget_user_visits'              => array(
-				'label'       => 'Logged users Widget',
-				'description' => 'Show recent user activity on the dashboard',
-				'type'        => 'checkbox',
-				'default'     => '1',
-				'autoload'    => 'no',
-			),
 			'remove_dash_widg'                     => array(
 				'label'             => 'Remove dashboard widgets',
 				'description'       => 'Remove core and plugin dashboard widgets',
