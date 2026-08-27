@@ -36,10 +36,10 @@
 }
 
 .frl-form-select-parent.frl-parent-contact-method:has(select option:nth-last-child(2):checked)~.frl-form-select-child.frl-child-telegram {
-    height: 48px;
+    height: 40px;
     overflow: visible;
     opacity: 1;
-    margin-bottom: var(--wsf-form-grid-gap) !important;
+    margin-bottom: 40px !important;
 }
 
 .frl-form-select-parent.frl-parent-countries:has(select option:checked)~.frl-form-select-child.frl-child-countries{
