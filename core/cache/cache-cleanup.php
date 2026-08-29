@@ -52,6 +52,33 @@ function frl_clear_post_cache( $post_id ) {
 		return;
 	}
 
+	// Skip types whose data this plugin never caches under post keys
+	// (media uploads and menu edits would otherwise trigger a full purge).
+	$post_type = get_post_type( $post_id );
+	if ( in_array( $post_type, array( 'attachment', 'nav_menu_item', 'customize_changeset' ), true ) ) {
+		return;
+	}
+
+	// Bump the post cache version on every real save (each Polylang sibling
+	// needs its own bump) BEFORE the dedup guard below.
+	update_post_meta( $post_id, '_frl_post_version', time() );
+
+	// Polylang meta sync fires save_post once per translation sibling in the
+	// same request. Purge once per translation group; skipping repeats is safe
+	// because cache clears are idempotent (keys are already absent).
+	static $purged_groups = array();
+	$group_id = 'solo_' . $post_id;
+	if ( function_exists( 'pll_get_post_translations' ) ) {
+		$translations = pll_get_post_translations( $post_id );
+		if ( is_array( $translations ) && count( $translations ) > 1 ) {
+			$group_id = 'pll_' . md5( (string) wp_json_encode( $translations ) );
+		}
+	}
+	if ( isset( $purged_groups[ $group_id ] ) ) {
+		return;
+	}
+	$purged_groups[ $group_id ] = true;
+
 	frl_cache_clear( 'postdata', frl_generate_cache_key( 'post', (string) $post_id, 'translations' ) );
 	frl_cache_clear( 'postdata', frl_generate_cache_key( 'post', (string) $post_id, 'schema' ) );
 
@@ -65,9 +92,6 @@ function frl_clear_post_cache( $post_id ) {
 	// Clear both dropdown and flag-list langswitcher variants
 	frl_cache_clear( 'shortcodes', frl_generate_cache_key( 'langswitcher_dd', 'post', (string) $post_id ) );
 	frl_cache_clear( 'shortcodes', frl_generate_cache_key( 'langswitcher_fl', 'post', (string) $post_id ) );
-
-	// Bump post cache version to auto-invalidate all post-specific shortcode caches
-	update_post_meta( $post_id, '_frl_post_version', time() );
 
 	// Clear featured image cache. Desktop+mobile share one entry per (variant, mobile_size)
 	// combo (see frl_preload_featured_image()) — clear both mobile_size states since
@@ -95,9 +119,9 @@ function frl_clear_option_cache( $option_name ) {
 		return; // Not our option – leave caches intact
 	}
 
-	// If the translator system was not loaded, there are no translated option
-	// caches to clear — return early to avoid calling into an unloaded class.
-	if ( ! class_exists( 'Frl_Translation_Service' ) ) {
+	// No translated option caches exist when the translator is disabled —
+	// return early to avoid per-language cache clears (one per active language).
+	if ( ! frl_translator_is_enabled() ) {
 		return;
 	}
 
@@ -136,6 +160,12 @@ function frl_clear_option_transient( $option ) {
 	$prefix = frl_prefix( '' );
 	if ( str_starts_with( $option, $prefix ) ) {
 		$unprefixed = substr( $option, strlen( $prefix ) );
+
+		// Skip the delete round-trip when the transient was never set this request
+		$cache = &frl_transients_static_cache();
+		if ( ! isset( $cache[ $unprefixed ] ) ) {
+			return;
+		}
 
 		// Delete any transient with the same name as the option
 		frl_delete_transient( $unprefixed );

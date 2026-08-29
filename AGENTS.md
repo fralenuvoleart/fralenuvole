@@ -45,7 +45,7 @@ Do not guess, speculate, extrapolate, or assume.
 
 ## Enforced Execution Limits
 - **`switch_mode` LIMIT:** Maximum 1 per task.
-- **File Read LIMIT:** Maximum 10 unique files per investigation. Do not re-read files already in context.
+- **File Read LIMIT:** Do not re-read files already in context.
 - **E-Stop:** If the user says "STOP" or indicates frustration, deliver the best available answer immediately with **zero** tool calls.
 
 ---
