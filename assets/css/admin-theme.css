@@ -66,6 +66,10 @@ body a {
     box-shadow: inset 0 0 0 1px #ffffff, 0 0 0 var(--wp-admin-border-width-focus) var(--admin-accent-color);
 }
 
+.components-button:focus:not(:active) {
+    outline-color: var(--admin-accent-color);
+}
+
 .components-button.is-primary:active:not(:disabled),
 .wp-core-ui .button-primary.focus,
 .wp-core-ui .button-primary.hover,
