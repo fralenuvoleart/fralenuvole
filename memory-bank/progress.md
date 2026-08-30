@@ -56,7 +56,7 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 |---|---|
 | `thirdparty` | SASWP schema property injection, Greenshift REST schema fixes, third-party plugin admin asset conditionals. |
 | `wsform` | WS Form language pre-fill, form-submission webhook dispatch (async via WP-Cron by default; all envs now use `use_cron: true`), spam filter, submission stats widget. Dedup key includes webhook URL (multi-destination safe). Channel-tracking and CTA click handling fully extracted to shared `public/channel-tracking.php` infra and standalone `call_to_actions` module respectively. |
-| `call_to_actions` | WhatsApp, Telegram, Email CTA click handling with marketing webhook dispatch. Uses shared `public/channel-tracking.php` and `includes/helpers/functions-webhook.php`. |
+| `call_to_actions` | WhatsApp, Telegram, Email CTA click handling with marketing webhook dispatch. Uses shared `public/channel-tracking.php` and `includes/helpers/functions-webhook.php`. Dedup-blocked dispatches (duplicate inside lock window) are an expected condition — suppressed silently, no log or email. |
 | `pbnova`, `pbs`, `pbproperty` | Brand-specific custom post types, config constants, and third-party integrations (GeoDirectory query/translation filters) for individual deployments. |
 | `acf`| ACF shortcode helpers; standalone ACPT → SCF/ACF field migration toolset (parser, importer, repeater transformer, compat shim, WP-CLI commands). |
 | `frl` | House brand module: menu sitemap shortcode. |

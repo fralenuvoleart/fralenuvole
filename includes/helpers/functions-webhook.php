@@ -37,7 +37,7 @@ function frl_is_duplicate_operation( string $key, int $interval = 60 ): bool {
  */
 function frl_send_webhook_async( string $url, array $data, ?string $dedup_key = null, int $dedup_interval = 60 ): bool {
 	if ( $dedup_key !== null && frl_is_duplicate_operation( $dedup_key, $dedup_interval ) ) {
-		frl_log( 'WEBHOOK DEDUP: Async dispatch blocked for key {key}', array( 'key' => $dedup_key ) );
+		// Expected condition (duplicate fire inside lock window) — intentionally silent, no log/email.
 		return true; // Treat as success to avoid triggering error flows
 	}
 
@@ -144,7 +144,7 @@ function frl_webhook_dispatch_handler( array $args ): void {
  */
 function frl_send_webhook( string $url, array $data, ?string $dedup_key = null, int $dedup_interval = 60 ): array {
 	if ( $dedup_key !== null && frl_is_duplicate_operation( $dedup_key, $dedup_interval ) ) {
-		frl_log( 'WEBHOOK DEDUP: Sync dispatch blocked for key {key}', array( 'key' => $dedup_key ) );
+		// Expected condition (duplicate fire inside lock window) — intentionally silent, no log/email.
 		return array(
 			'success'   => true, // Treat as success to avoid triggering error flows
 			'http_code' => 200,
