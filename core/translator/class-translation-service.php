@@ -661,7 +661,11 @@ final class Frl_Translation_Service {
 		}
 		return frl_cache_remember(
 			'postdata',
-			frl_generate_cache_key( 'post', (string) $post_id, 'translations' ),
+			// Versioned key (Post Cache Versioning Pattern): the admin-side purge cannot
+			// target this key because generate_key() prefixes language groups with the
+			// admin's default language, not each frontend language. The _frl_post_version
+			// bump on save invalidates it across all languages instead.
+			frl_generate_cache_key( 'post', (string) $post_id, 'translations', 'v' . frl_get_post_cache_version( $post_id ) ),
 			function () use ( $post_id ) {
 				$translations = $this->adapter->get_post_translations( $post_id );
 				return $translations;

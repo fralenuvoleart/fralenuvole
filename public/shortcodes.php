@@ -290,7 +290,9 @@ function frl_shortcode_langswitcher( $atts = array() ) {
 	$dropdown_enabled = $a['dropdown'] !== ''
 		? (bool) $a['dropdown']
 		: (bool) ( $args['dropdown'] ?? frl_get_option( 'langswitcher_dropdown' ) );
-	$cache_key        = frl_generate_cache_key( 'langswitcher_' . ( $dropdown_enabled ? 'dd' : 'fl' ), 'post', (string) $post_id );
+	// Versioned key (Post Cache Versioning Pattern): invalidated by the _frl_post_version bump
+	// on save — which fires for every Polylang sibling.
+	$cache_key = frl_generate_cache_key( 'langswitcher_' . ( $dropdown_enabled ? 'dd' : 'fl' ), 'post', (string) $post_id, 'v' . frl_get_post_cache_version( $post_id ) );
 
 	// show_flags=0 avoids Polylang rendering unused base64 PNGs.
 	$raw_args = array_merge(

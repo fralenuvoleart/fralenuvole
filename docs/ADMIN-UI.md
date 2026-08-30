@@ -266,8 +266,6 @@ add_filter('frl_admin_dashboard_links', function($links) {
 | `admin-import-export.js` | Import/export AJAX | Footer, deferred |
 | `admin-tag-validator.js` | Tag validation AJAX | Footer, deferred |
 | `admin-log-manager.js` | Log viewer AJAX | Footer, deferred |
-| `admin-bulk-resave.js` | Bulk post re-save AJAX | Footer, deferred |
-| `admin-avatar.js` | Custom avatar upload | Footer, deferred |
 | `prism.min.js` | Syntax highlighting | Footer, deferred |
 | `prism-markup.min.js` | HTML syntax | Footer, deferred |
 

@@ -33,7 +33,12 @@ function frl_register_hooks_rewrite_flush(): void {
 }
 
 /**
- * Clear all post-related caches (permalinks, meta, language switcher, featured image).
+ * Bump the post cache version and clear tracked translated meta caches.
+ *
+ * Post-data key families (translations, schema, langswitcher, featured image) are
+ * versioned via `_frl_post_version` — the bump below invalidates them in every
+ * language, replacing the old key-level purge that only reached the admin's
+ * default-language copy (Frl_Cache_Manager::generate_key() language prefix).
  *
  * @param int $post_id Post ID.
  * @return void
@@ -67,7 +72,7 @@ function frl_clear_post_cache( $post_id ) {
 	// same request. Purge once per translation group; skipping repeats is safe
 	// because cache clears are idempotent (keys are already absent).
 	static $purged_groups = array();
-	$group_id = 'solo_' . $post_id;
+	$group_id             = 'solo_' . $post_id;
 	if ( function_exists( 'pll_get_post_translations' ) ) {
 		$translations = pll_get_post_translations( $post_id );
 		if ( is_array( $translations ) && count( $translations ) > 1 ) {
@@ -79,31 +84,11 @@ function frl_clear_post_cache( $post_id ) {
 	}
 	$purged_groups[ $group_id ] = true;
 
-	frl_cache_clear( 'postdata', frl_generate_cache_key( 'post', (string) $post_id, 'translations' ) );
-	frl_cache_clear( 'postdata', frl_generate_cache_key( 'post', (string) $post_id, 'schema' ) );
-
-	// Clear all tracked translated meta fields for this post
+	// Clear all tracked translated meta fields for this post.
+	// The translations/schema/langswitcher/featured_img key families are intentionally
+	// NOT purged here: they carry the '_v{version}' suffix and the bump above already invalidated
+	// them across all languages. Old entries expire via group TTL.
 	frl_clear_tracked_meta_cache( 'post', $post_id );
-
-	// Clear Language switcher for post
-	$type           = frl_get_option( 'langswitcher_dropdown' ) ? 'dd' : 'fl';
-	$langswitch_key = 'langswitcher_' . $type . '_post_' . $post_id;
-
-	// Clear both dropdown and flag-list langswitcher variants
-	frl_cache_clear( 'shortcodes', frl_generate_cache_key( 'langswitcher_dd', 'post', (string) $post_id ) );
-	frl_cache_clear( 'shortcodes', frl_generate_cache_key( 'langswitcher_fl', 'post', (string) $post_id ) );
-
-	// Clear featured image cache. Desktop+mobile share one entry per (variant, mobile_size)
-	// combo (see frl_preload_featured_image()) — clear both mobile_size states since
-	// eligibility depends on frontend-only context (is_front_page()) not available here.
-	$image_size  = frl_get_featured_image_size( $post_id );
-	$mobile_size = (string) apply_filters( 'frl_hero_mobile_image_size', FRL_PRELOAD_IMAGE_MOBILE_SIZE, get_post( $post_id ) );
-	foreach ( array( 'responsive', 'single' ) as $variant ) {
-		foreach ( array( '', $mobile_size ) as $m_size ) {
-			$cache_key = frl_generate_cache_key( 'featured_img', (string) $post_id, $image_size, $variant, $m_size );
-			frl_cache_clear( 'postdata', $cache_key );
-		}
-	}
 }
 
 /**

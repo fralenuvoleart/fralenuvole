@@ -222,7 +222,9 @@ function frl_preload_featured_image() {
 	// Desktop + mobile in one cache entry — one object-cache round-trip per page view
 	// instead of two, on every visit (this is the hot path; cache-miss cost below only
 	// happens once per post per cache-invalidation cycle).
-	$cache_key = frl_generate_cache_key( 'featured_img', (string) $post->ID, $image_size, $responsive ? 'responsive' : 'single', $mobile_size );
+	// Versioned key (Post Cache Versioning Pattern): the _frl_post_version bump on save
+	// invalidates all variants/languages at once;
+	$cache_key = frl_generate_cache_key( 'featured_img', (string) $post->ID, $image_size, $responsive ? 'responsive' : 'single', $mobile_size, 'v' . frl_get_post_cache_version( $post->ID ) );
 
 	$data = frl_cache_remember(
 		'postdata',

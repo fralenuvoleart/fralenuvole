@@ -66,7 +66,9 @@ function frl_schema_generator_output(): void {
 function frl_schema_generator_get( int $post_id ): array {
 	return frl_cache_remember(
 		'postdata',
-		frl_generate_cache_key( 'post', (string) $post_id, 'schema' ),
+		// Versioned key: invalidated by the _frl_post_version bump on save (see Post Cache
+		// Versioning Pattern) — the admin-side key purge misses non-default languages.
+		frl_generate_cache_key( 'post', (string) $post_id, 'schema', 'v' . frl_get_post_cache_version( $post_id ) ),
 		function () use ( $post_id ) {
 			$schemas     = array();
 			$definitions = frl_schema_generator_get_definitions( $post_id );
