@@ -55,6 +55,10 @@ function frl_phone_number_sanitize(
 	$digits       = $extracted['digits'];
 	$leading_plus = $extracted['leading_plus'];
 
+	// Explicit international assertion ('+', '00', '011') — captured before
+	// bare-number detection can flip $leading_plus.
+	$explicit_intl = $leading_plus;
+
 	$code = null;
 	// True when the country could not be confidently determined (either a
 	// recognised prefix had a malformed national part, or no pattern
@@ -90,6 +94,14 @@ function frl_phone_number_sanitize(
 	// the leading digits so the caller knows which country was identified.
 	if ( null === $code && $leading_plus ) {
 		$code = frl_phone_find_country_code( $digits );
+	}
+
+	// Pattern gate for explicit international input: a number whose country
+	// code has patterns must match one of them, so junk that respond.io would
+	// reject is blanked here (the raw value survives in 'Phone Raw') instead
+	// of killing the whole lead downstream.
+	if ( $explicit_intl && null !== $code && ! frl_phone_intl_pattern_valid( $digits, $code ) ) {
+		$invalid = true;
 	}
 
 	$clean       = $leading_plus ? ( '+' . $digits ) : $digits;
@@ -251,6 +263,35 @@ function frl_phone_find_country_code( string $digits ): ?string {
 }
 
 /**
+ * Pattern gate for explicit international numbers ('+', '00', '011').
+ *
+ * When the resolved country code has at least one patterned config, the
+ * national part must match one of their patterns (union — e.g. Russia and
+ * Kazakhstan share code 7). Codes with no patterned config keep the
+ * length-only behaviour.
+ *
+ * @param string $digits Digit string including the country code (no '+').
+ * @param string $code   Resolved country code.
+ * @return bool True when the national part passes the gate or none applies.
+ */
+function frl_phone_intl_pattern_valid( string $digits, string $code ): bool {
+	$national  = substr( $digits, strlen( $code ) );
+	$patterned = false;
+
+	foreach ( PHONE_COUNTRY_CONFIGS as $config ) {
+		if ( $config['code'] !== $code || null === $config['pattern'] ) {
+			continue;
+		}
+		$patterned = true;
+		if ( preg_match( $config['pattern'], $national ) ) {
+			return true;
+		}
+	}
+
+	return ! $patterned;
+}
+
+/**
  * Get the configured national-number length range for a country code.
  *
  * @param string $code Country calling code.
@@ -292,6 +333,8 @@ function frl_phone_valid_length( string $digits, ?string $code ): bool {
  *
  * Confidence-tiered detection over PHONE_COUNTRY_CONFIGS (first-match-wins):
  *   1. Validated patterns — matched by country-code prefix OR bare pattern.
+ *      All configs sharing a recognised code prefix are tried before the
+ *      national part is declared malformed (e.g. Kazakhstan under code 7).
  *   2. Prefix-only entries — matched by country-code prefix, with a length
  *      guard that is stricter for short (1-2 digit) codes.
  *
@@ -309,6 +352,11 @@ function frl_phone_maybe_prepend_country_code( string $digits ): array {
 			'valid'     => false,
 		);
 	}
+
+	// First code whose prefix matched but whose pattern failed — remembered
+	// so the number is still declared malformed if no same-code candidate
+	// matches later in the loop.
+	$pending_code = null;
 
 	// Tier 1: validated patterns (high confidence) — checked first.
 	foreach ( PHONE_COUNTRY_CONFIGS as $config ) {
@@ -334,13 +382,10 @@ function frl_phone_maybe_prepend_country_code( string $digits ): array {
 				);
 			}
 
-			// Country code recognised but national part is malformed.
-			return array(
-				'digits'    => $digits,
-				'prepended' => false,
-				'code'      => $code,
-				'valid'     => false,
-			);
+			if ( null === $pending_code ) {
+				$pending_code = $code;
+			}
+			continue;
 		}
 
 		// Bare national number matching the country pattern.
@@ -354,6 +399,16 @@ function frl_phone_maybe_prepend_country_code( string $digits ): array {
 				'valid'     => true,
 			);
 		}
+	}
+
+	if ( null !== $pending_code ) {
+		// Country code recognised but no patterned config for it matched.
+		return array(
+			'digits'    => $digits,
+			'prepended' => false,
+			'code'      => $pending_code,
+			'valid'     => false,
+		);
 	}
 
 	// Tier 2/3: prefix-only entries (no pattern) — matched by code prefix.

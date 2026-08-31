@@ -30,6 +30,14 @@ $frl_wsform_default_fields = array(
 		'sanitize_callback' => 'absint',
 		'restricted'        => true,
 	),
+	'wsform_phone_invalid_notify' => array(
+		'label'             => 'Notify on Invalid Phone',
+		'description'       => 'Email the plugin admin when a phone number fails validation and is blanked (raw value kept in Phone Raw).',
+		'type'              => 'checkbox',
+		'default'           => 0,
+		'sanitize_callback' => 'absint',
+		'restricted'        => true,
+	),
 	'wsform_webhook'          => array(
 		'label'             => 'Enable WS Form Webhook',
 		'description'       => 'Enable WS Form Webhook to send form data to your server',

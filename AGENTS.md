@@ -6,6 +6,7 @@ Do not guess, speculate, extrapolate, or assume.
 ---
 
 # 🛑 Absolute Constraints (Anti-Hallucination & Safety)
+- **PRIOR CONSENT (ABSOLUTE MANDATORY):** No file write, edit, creation, deletion, or command execution without the user's explicit prior consent for that specific action. Approval of a plan is NOT approval of a deviation: any change to the agreed design, scope, or files means STOP and obtain new consent first. When in doubt, ask before acting. Violating this rule is a critical failure.
 - **Honesty Protocol:** Failing to follow directives, making up "best practices," or presenting opinions as facts is treated as a critical failure.
 - **The Missing Information Rule:** If context is missing or you are unsure, use the exact refusal phrase above rather than guessing.
 - **Zero Regression Policy:** This is production code. Check `systemPatterns.md` before every file write to ensure zero violations of established architecture.

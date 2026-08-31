@@ -199,18 +199,11 @@ function frl_wsf_submit_webhook( $submit ) {
 			} else {
 				$post_data[ $key ] = '';
 			}
-
-			// Sanitize only the exact 'Phone' key before webhook dispatch.
-			// Keys like 'Phone Raw' must stay unsanitized to preserve the
-			// original user input from the same underlying field.
-			// Phone validation is gated behind the wsform_phone_validation option.
-			if ( 'Phone' === $key && ! empty( $post_data[ $key ] ) && frl_get_option( 'wsform_phone_validation' ) ) {
-				$phone_result = frl_phone_number_sanitize( $post_data[ $key ] );
-
-				// Only expose the clean number when it is valid; otherwise blank it.
-				$post_data[ $key ] = $phone_result['valid'] ? $phone_result['clean'] : '';
-			}
 		}
+
+		// Phone validation/blanking/notification — after the loop so the
+		// complete payload (Email) is available. 'Phone Raw' stays unsanitized.
+		$post_data = frl_wsf_apply_phone_validation( $post_data );
 
 		if ( array_key_exists( 'Service', $fields_map ) && empty( $post_data['Service'] ) ) {
 			$post_data['Service'] = 'Webpage';
@@ -243,6 +236,76 @@ function frl_wsf_submit_webhook( $submit ) {
 			frl_send_webhook( $webhook_url, $post_data, $dedup_key, $dedup_interval );
 		}
 	}
+}
+
+/**
+ * Validate/blank the Phone field on a built payload; notify when blanked.
+ *
+ * Runs after the field loop so $post_data['Email'] is complete regardless of
+ * fields_map order. The option gate lives here because the sanitizer is only
+ * loaded when wsform_phone_validation is enabled.
+ *
+ * @param array $post_data Built payload.
+ * @return array Payload with Phone cleaned or blanked.
+ */
+function frl_wsf_apply_phone_validation( array $post_data ): array {
+	// function_exists first: the sanitizer only loads when the option is on
+	// at module init — immune to any load/call skew (no undefined-function fatal).
+	if ( ! function_exists( 'frl_phone_number_sanitize' ) || ! frl_get_option( 'wsform_phone_validation' ) || empty( $post_data['Phone'] ) ) {
+		return $post_data;
+	}
+
+	$raw          = $post_data['Phone'];
+	$phone_result = frl_phone_number_sanitize( $raw );
+
+	if ( ! $phone_result['valid'] ) {
+		$post_data['Phone'] = '';
+		frl_wsf_notify_phone_blanked(
+			array(
+				'raw'    => $raw,
+				'code'   => $phone_result['code'],
+				'digits' => $phone_result['digit_count'],
+			),
+			$post_data['Email'] ?? ''
+		);
+	} else {
+		$post_data['Phone'] = $phone_result['clean'];
+	}
+
+	return $post_data;
+}
+
+/**
+ * Email-only admin notification for a blanked phone number (no error_log).
+ *
+ * Gated behind 'wsform_phone_invalid_notify'; per-request dedup because the
+ * payload is built once per webhook destination.
+ *
+ * @param array  $blanked    Blanked phone info: raw, code, digits.
+ * @param string $user_email Submitter email from the payload, if mapped.
+ */
+function frl_wsf_notify_phone_blanked( array $blanked, string $user_email ): void {
+	static $notified = array();
+
+	if ( ! frl_get_option( 'wsform_phone_invalid_notify' ) ) {
+		return;
+	}
+
+	$dedup = $blanked['raw'] . '|' . $user_email;
+	if ( isset( $notified[ $dedup ] ) ) {
+		return;
+	}
+	$notified[ $dedup ] = true;
+
+	frl_email_error_notification(
+		sprintf(
+			'WSFORM PHONE BLANKED: email=%s raw=%s code=%s digits=%d',
+			( '' !== $user_email ) ? $user_email : 'unknown',
+			str_replace( array( "\r", "\n" ), ' ', (string) $blanked['raw'] ),
+			$blanked['code'] ?? 'none',
+			(int) $blanked['digits']
+		)
+	);
 }
 
 /**
