@@ -35,7 +35,7 @@
     <custom-field action="translate">service-prices_title</custom-field>
     <custom-field action="translate">service-prices_description</custom-field>
     <custom-field action="translate">service-prices_price-options</custom-field>
-    <custom-field action="copy">service-testimonials_service-testimonial</custom-field>
+    <custom-field action="copy-once">service-testimonials_service-testimonial</custom-field>
   </custom-fields>
   <admin-texts>
     <key name="website-options_general-settings_phone" action="copy-once"/>
