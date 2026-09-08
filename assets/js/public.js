@@ -3,24 +3,21 @@
  *
  * Patches WordPress core navigation submenu aria-expanded on mobile.
  *
- * Two problems exist in core's Interactivity API:
- * 1. When the hamburger overlay opens, core sets aria-expanded="true" on ALL
- *    submenu toggles even though submenus are hidden.
- * 2. When a submenu toggle is clicked, core does NOT toggle aria-expanded at
- *    all — the data-wp-bind binding is broken/non-reactive on mobile.
+ * Core's Interactivity API (data-wp-bind--aria-expanded) has two bugs:
+ * 1. Hamburger-open sets aria-expanded="true" on ALL toggles, even hidden ones.
+ * 2. Clicking a toggle does not flip aria-expanded at all.
  *
- * Solution:
- * - A MutationObserver catches case 1 and reverts false positives.
- * - A delegated click handler catches case 2 and syncs aria-expanded to the
- *   actual submenu visibility after core's handlers run.
+ * A MutationObserver corrects case 1 by reverting false positives (submenu
+ * hidden but aria-expanded="true"). A delegated click handler handles case 2
+ * by directly flipping the attribute. Only one submenu is open at a time
+ * (accordion behaviour).
  */
 
 (() => {
-	// ---- MutationObserver: prevent hamburger-open from setting all toggles to true ----
-	let correcting = false;
+	let skipObserver = false;
 
 	const observer = new MutationObserver((mutations) => {
-		if (correcting) return;
+		if (skipObserver) { skipObserver = false; return; }
 
 		for (const mutation of mutations) {
 			const toggle = mutation.target;
@@ -35,9 +32,7 @@
 				submenu.getAttribute('aria-hidden') === 'false';
 
 			if (!isOpen) {
-				correcting = true;
 				toggle.setAttribute('aria-expanded', 'false');
-				correcting = false;
 			}
 		}
 	});
@@ -48,27 +43,25 @@
 		subtree: true,
 	});
 
-	// ---- Click handler: toggle aria-expanded when submenu toggle is clicked ----
-	// Core does not modify the DOM at all when the toggle is clicked on mobile
-	// (the Interactivity API binding is broken), so we flip the attribute directly.
-	// Only one submenu is open at a time — clicking a toggle closes all others.
-	// The correcting flag is held true via setTimeout(0) so the MutationObserver
-	// (which fires as a microtask after this handler) sees it and skips correction.
+	// Click handler: directly flips aria-expanded on the clicked toggle.
+	// Core does not modify the DOM at all on mobile toggle clicks (the
+	// Interactivity API binding is broken), so there is nothing to defer
+	// for — we flip the attribute ourselves. skipObserver prevents the
+	// MutationObserver from reverting our writes.
 	document.addEventListener('click', (e) => {
 		const toggle = e.target.closest('.wp-block-navigation-submenu__toggle');
 		if (!toggle) return;
 
 		const current = toggle.getAttribute('aria-expanded') === 'true';
-		correcting = true;
+		skipObserver = true;
 
-		// Close all other submenu toggles
-		document.querySelectorAll('.wp-block-navigation-submenu__toggle').forEach((t) => {
+		// Close all other open toggles — only touch those already "true"
+		document.querySelectorAll('.wp-block-navigation-submenu__toggle[aria-expanded="true"]').forEach((t) => {
 			if (t !== toggle) {
 				t.setAttribute('aria-expanded', 'false');
 			}
 		});
 
 		toggle.setAttribute('aria-expanded', String(!current));
-		setTimeout(() => { correcting = false; }, 0);
 	});
 })();
