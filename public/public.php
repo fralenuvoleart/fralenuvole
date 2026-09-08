@@ -35,7 +35,11 @@ function frl_public_scripts() {
 		return;
 	}
 
-	// Skip if the public scroll-state script is disabled in settings.
+	// Always enqueue public.js (core patches, aria-expanded fix, etc.)
+	$public_assets = array( 'public-js' => 'assets/js/public.js' );
+	frl_enqueue_scripts( $public_assets, 'public_assets' );
+
+	// Optionally enqueue scroll-listener assets when enabled in settings.
 	if ( frl_get_option( 'scroll_listener' ) ) {
 		$scroll_assets = array(
 			'scroll-listener-js'  => 'assets/js/scroll-listener.js',
@@ -43,14 +47,6 @@ function frl_public_scripts() {
 		);
 
 		frl_enqueue_scripts( $scroll_assets, 'scroll_listener_assets' );
-		return;
-	}
-
-	// Fail gracefully if the asset file has been removed.
-	if ( FRL_PUBLIC_JS && file_exists( FRL_DIR_PATH . 'assets/js/public.js' ) ) {
-		$public_assets = array( 'public-js' => 'assets/js/public.js' );
-
-		frl_enqueue_scripts( $public_assets, 'public_assets' );
 	}
 }
 
