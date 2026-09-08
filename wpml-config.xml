@@ -23,15 +23,13 @@
     <custom-field action="copy-once">service-usecases_usecase</custom-field>
     <custom-field action="translate">service-faqs_service-faq</custom-field>
     <custom-field action="translate">team-settings_team-role</custom-field>
+  <custom-field action="copy-once">team-settings_team-education</custom-field>
     <custom-field action="copy">team-settings_team-email</custom-field>
     <custom-field action="copy">team-settings_team-linkedin</custom-field>
-    <custom-field action="translate">team-settings_team-linkedin_label</custom-field>
     <custom-field action="copy">team-settings_team-whatsapp</custom-field>
-    <custom-field action="translate">team-settings_team-whatsapp_label</custom-field>
     <custom-field action="copy">team-settings_team-facebook</custom-field>
-    <custom-field action="translate">team-settings_team-facebook_label</custom-field>
+    <custom-field action="copy">team-settings_team-instagram</custom-field>
     <custom-field action="copy">team-settings_team-website</custom-field>
-    <custom-field action="translate">team-settings_team-website_label</custom-field>
     <custom-field action="translate">service-prices_title</custom-field>
     <custom-field action="translate">service-prices_description</custom-field>
     <custom-field action="translate">service-prices_price-options</custom-field>
