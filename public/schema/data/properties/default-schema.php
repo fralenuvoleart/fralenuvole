@@ -127,15 +127,26 @@ return array(
 		),
 	),
 	'ProfilePage'  => array(
+		'@type'      => 'ProfilePage',
 		'@id'        => '{{post_permalink}}#ProfilePage',
 		'name'       => '{{post_title}}',
 		'url'        => '{{post_permalink}}',
 		'mainEntity' => array(
+			'@type'    => 'Person',
 			'@id'      => '{{post_permalink}}#Person',
 			'url'      => '{{post_permalink}}',
 			'worksFor' => array(
-				'@id' => '{{schema_organization_url}}#Organization',
-				'url' => '{{schema_organization_url}}',
+				'@type' => 'Organization',
+				'@id'   => '{{schema_organization_url}}#Organization',
+				'url'   => '{{schema_organization_url}}',
+			),
+			'image'    => array(
+				'@type'   => 'ImageObject',
+				'@id'     => '{{post_permalink}}#primaryimage',
+				'url'     => '/wp-content/uploads/2022/06/rati-abashmadze.jpg',
+				'width'   => 1282,
+				'height'  => 1920,
+				'caption' => '{{post_title}}',
 			),
 		),
 	),
