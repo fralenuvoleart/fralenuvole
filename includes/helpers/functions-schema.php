@@ -109,8 +109,14 @@ function frl_schema_get_placeholders( ?int $post_id = null ): array {
 	);
 
 	if ( $post_id !== null ) {
-		$map['{{post_title}}']    = get_the_title( $post_id );
-		$map['{{post_permalink}}'] = get_permalink( $post_id );
+		$map['{{post_title}}']           = get_the_title( $post_id );
+		$map['{{post_permalink}}']        = get_permalink( $post_id );
+		$thumb_id                        = get_post_thumbnail_id( $post_id );
+		$size                            = apply_filters( 'frl_schema_thumbnail_size', 'large' );
+		$thumb                           = $thumb_id ? wp_get_attachment_image_src( $thumb_id, $size ) : false;
+		$map['{{post_thumbnail_url}}']    = $thumb[0] ?? '';
+		$map['{{post_thumbnail_width}}']  = $thumb[1] ?? '';
+		$map['{{post_thumbnail_height}}'] = $thumb[2] ?? '';
 	}
 
 	return $map;
