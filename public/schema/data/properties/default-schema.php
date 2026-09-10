@@ -127,6 +127,7 @@ return array(
 		),
 	),
 	'ProfilePage'  => array(
+		'image'      => '_remove',
 		'@type'      => 'ProfilePage',
 		'@id'        => '{{post_permalink}}#ProfilePage',
 		'name'       => '{{post_title}}',
