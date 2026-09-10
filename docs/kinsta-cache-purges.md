@@ -5,6 +5,9 @@
 
 ---
 
+## Manual single URL purges
+https:/pbservices.ge/kinsta-clear-cache/my-page/
+
 ## Cache Purge Types
 
 | Type | Mechanism | Endpoint / Method |
