@@ -315,3 +315,23 @@ if (!function_exists('acf_select_input')) {
      */
     function acf_select_input($field, $echo = true) {}
 }
+
+if (!function_exists('the_row')) {
+    /**
+     * @return bool
+     */
+    function the_row() {
+        return false;
+    }
+}
+
+if (!function_exists('get_sub_field')) {
+    /**
+     * @param string $selector
+     * @param bool   $format_value
+     * @return mixed
+     */
+    function get_sub_field($selector, $format_value = true) {
+        return null;
+    }
+}
