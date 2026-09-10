@@ -48,7 +48,12 @@ return array(
 		'contactPoint'     => array(
 			'availableLanguage' => array( 'en', 'ru', 'ka', 'ar', 'zh' ),
 		),
-		'founder'          => '{{schema_founder_name}}',
+		'founder'          => array(
+			'@type' => 'Person',
+			'@id'   => '{{schema_founder_url}}#person',
+			'url'   => '{{schema_founder_url}}',
+			'name'  => '{{schema_founder_name}}',
+		),
 		'foundingDate'     => '2017',
 		'foundingLocation' => array(
 			'@type'  => 'Place',
@@ -60,10 +65,8 @@ return array(
 			'https://en.wikipedia.org/wiki/Sole_proprietorship',
 			'https://en.wikipedia.org/wiki/Small_business',
 			'https://en.wikipedia.org/wiki/Corporation',
-			'https://en.wikipedia.org/wiki/Special_economic_zone',
 			'https://en.wikipedia.org/wiki/Bank_account',
 			'https://en.wikipedia.org/wiki/Corporate_tax',
-			'https://en.wikipedia.org/wiki/Tax_incentive',
 			'https://en.wikipedia.org/wiki/Tax_residence',
 			'https://en.wikipedia.org/wiki/Accounting',
 			'https://en.wikipedia.org/wiki/Outsourcing',
@@ -74,7 +77,6 @@ return array(
 			'https://en.wikipedia.org/wiki/Work_permit',
 			'https://en.wikipedia.org/wiki/Residence_permit',
 			'https://en.wikipedia.org/wiki/Taxation_in_Georgia_(country)',
-			'https://en.wikipedia.org/wiki/Expatriate',
 		),
 	),
 	'Service'      => array(

@@ -280,8 +280,12 @@ function frl_schema_builder_build_person_from_ref( int $ref_id, array $field_def
 
 		// Single convention: 'post_' prefix = WP-native functionality
 		if ( str_starts_with( $source, 'post_' ) ) {
-			if ( $source === 'post_permalink' ) {
+			if ( str_starts_with( $source, 'post_permalink' ) ) {
 				$value = get_permalink( $ref_id );
+				$fragment = strstr( $source, '#' );
+				if ( $fragment !== false ) {
+					$value .= $fragment;
+				}
 			} elseif ( $source === 'post_thumbnail' ) {
 				$id = get_post_thumbnail_id( $ref_id );
 				if ( $id ) {

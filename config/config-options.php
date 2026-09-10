@@ -173,6 +173,12 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'text',
 				'default'     => '',
 			),
+			'schema_founder_url'                => array(
+				'label'       => 'Founder URL',
+				'description' => 'Founder URL for Schema generation',
+				'type'        => 'text',
+				'default'     => '',
+			),
 			'schema_properties'                 => array(
 				'label'             => 'Enable Schema Properties',
 				'description'       => 'Master toggle for Schema properties injection.',

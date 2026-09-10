@@ -29,6 +29,7 @@ return array(
 		'author' => array(
 			'_ref'      => 'post-settings_post-authors', // ACF field on current post → ref IDs
 			'_fallback' => FRL_DEFAULT_AUTHOR_CPT_ID, // fallback CPT post ID when ACF is empty
+			'@id'       => 'post_permalink#person', // Person.@id from ref post permalink
 			'name'      => 'post_title', // Person.name from ref post title
 			'url'       => 'post_permalink', // Person.url from ref post permalink
 			'image'     => 'post_thumbnail', // Person.image ImageObject
@@ -37,11 +38,13 @@ return array(
 				'team-settings_team-linkedin',
 				'team-settings_team-facebook',
 				'team-settings_team-website',
+				'team-settings_team-email',
 				'team-settings_team-whatsapp',
 			),
 		),
 		'editor' => array(
 			'_force'   => FRL_DEFAULT_EDITOR_CPT_ID, // always use this CPT post ID
+			'@id'      => 'post_permalink#person', // Person.@id from ref post permalink
 			'name'     => 'post_title', // Person.name from ref post title
 			'url'      => 'post_permalink', // Person.url from ref post permalink
 			'image'    => 'post_thumbnail', // Person.image ImageObject
@@ -50,6 +53,7 @@ return array(
 				'team-settings_team-linkedin',
 				'team-settings_team-facebook',
 				'team-settings_team-website',
+				'team-settings_team-email',
 				'team-settings_team-whatsapp',
 			),
 		),
