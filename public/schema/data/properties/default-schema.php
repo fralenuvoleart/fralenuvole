@@ -126,6 +126,12 @@ return array(
 			'@id'   => '{{schema_organization_url}}#Organization',
 		),
 	),
+	'Article'      => array(
+		'publisher' => array(
+			'@type' => 'Organization',
+			'@id'   => '{{schema_organization_url}}#Organization',
+		),
+	),
 	'ProfilePage'  => array(
 		'image'      => '_remove',
 		'@type'      => 'ProfilePage',
