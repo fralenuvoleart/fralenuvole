@@ -105,6 +105,7 @@ function frl_schema_get_placeholders( ?int $post_id = null ): array {
 		'{{schema_organization_url}}'  => frl_get_option( 'schema_organization_url' ) ?: site_url(),
 		'{{schema_organization_name}}' => frl_get_option( 'schema_organization_name' ) ?: get_bloginfo( 'name' ),
 		'{{schema_founder_name}}'      => frl_get_option( 'schema_founder_name' ) ?: '',
+		'{{schema_founder_url}}'       => frl_get_option( 'schema_founder_url' ) ?: '',
 	);
 
 	if ( $post_id !== null ) {
