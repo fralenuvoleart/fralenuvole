@@ -109,7 +109,8 @@ function frl_schema_get_placeholders( ?int $post_id = null ): array {
 	);
 
 	if ( $post_id !== null ) {
-		$map['{{post_title}}'] = get_the_title( $post_id );
+		$map['{{post_title}}']    = get_the_title( $post_id );
+		$map['{{post_permalink}}'] = get_permalink( $post_id );
 	}
 
 	return $map;

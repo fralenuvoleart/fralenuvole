@@ -50,7 +50,7 @@ return array(
 		),
 		'founder'          => array(
 			'@type' => 'Person',
-			'@id'   => '{{schema_founder_url}}#person',
+			'@id'   => '{{schema_founder_url}}#Person',
 			'url'   => '{{schema_founder_url}}',
 			'name'  => '{{schema_founder_name}}',
 		),
@@ -125,5 +125,9 @@ return array(
 			'@type' => 'Organization',
 			'@id'   => '{{schema_organization_url}}#Organization',
 		),
+	),
+	'ProfilePage'  => array(
+		'@id' => '{{post_permalink}}#ProfilePage',
+		'url' => '{{post_permalink}}',
 	),
 );
