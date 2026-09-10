@@ -289,11 +289,16 @@ function frl_thirdparty_sanitize_schemas( array $schemas ): array {
 
 	$done = true;
 
-	// Single trim pass on the final output — catches all contaminated keys
-	// from any source (SASWP bugs, nested schemas, etc.) in one O(n) walk.
+	// Single trim + empty-strip pass on the final output — catches all
+	// contaminated keys and unpopulated SASWP template placeholders in one O(n) walk.
 	return array_map(
 		function ( $s ) {
-			return is_array( $s ) ? frl_trim_schema_keys( $s ) : $s;
+			if ( ! is_array( $s ) ) {
+				return $s;
+			}
+			$s = frl_trim_schema_keys( $s );
+			$s = frl_thirdparty_strip_empty_properties( $s );
+			return $s;
 		},
 		$deduplicated
 	);
@@ -338,4 +343,44 @@ function frl_thirdparty_inject_schema_properties( array $schema, array $props ):
 	}
 
 	return $schema;
+}
+
+/**
+	* Recursively remove empty properties from a schema array.
+	*
+	* Strips empty strings, nulls, and empties cleared by the recursion itself.
+	* List arrays (numeric, zero-indexed) are re-indexed to preserve JSON [] output.
+	* Never removes @type — required for Schema.org validity.
+	* Preserves falsy-but-valid values (0, false, "0").
+	*
+	* @param array $schema The schema array or sub-array.
+	* @return array Schema with empty properties stripped.
+	*/
+function frl_thirdparty_strip_empty_properties( array $schema ): array {
+	$result = array();
+
+	foreach ( $schema as $key => $value ) {
+		if ( is_array( $value ) ) {
+			// Recurse first, then re-index lists so JSON stays as [] not {}
+			$cleaned = frl_thirdparty_strip_empty_properties( $value );
+			$is_list = $value !== array() && array_key_first( $value ) === 0;
+			if ( $is_list ) {
+				$cleaned = array_values( $cleaned );
+			}
+
+			if ( ! empty( $cleaned ) ) {
+				$result[ $key ] = $cleaned;
+			}
+			continue;
+		}
+
+		// Drop empty strings and nulls; keep 0, false, "0"
+		if ( $value === '' || $value === null ) {
+			continue;
+		}
+
+		$result[ $key ] = $value;
+	}
+
+	return $result;
 }

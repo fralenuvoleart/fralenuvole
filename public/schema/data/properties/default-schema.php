@@ -127,7 +127,16 @@ return array(
 		),
 	),
 	'ProfilePage'  => array(
-		'@id' => '{{post_permalink}}#ProfilePage',
-		'url' => '{{post_permalink}}',
+		'@id'        => '{{post_permalink}}#ProfilePage',
+		'name'       => '{{post_title}}',
+		'url'        => '{{post_permalink}}',
+		'mainEntity' => array(
+			'@id'      => '{{post_permalink}}#Person',
+			'url'      => '{{post_permalink}}',
+			'worksFor' => array(
+				'@id' => '{{schema_organization_url}}#Organization',
+				'url' => '{{schema_organization_url}}',
+			),
+		),
 	),
 );
