@@ -132,6 +132,9 @@ return array(
 		'@id'        => '{{post_permalink}}#ProfilePage',
 		'name'       => '{{post_title}}',
 		'url'        => '{{post_permalink}}',
+		'isPartOf'   => array(
+			'@id' => '{{schema_organization_url}}#Website',
+		),
 		'mainEntity' => array(
 			'@type'    => 'Person',
 			'@id'      => '{{post_permalink}}#Person',
