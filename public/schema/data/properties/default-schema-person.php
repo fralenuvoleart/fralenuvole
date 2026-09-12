@@ -33,6 +33,7 @@ return array(
 			'name'          => 'post_title', // Person.name from ref post title
 			'url'           => 'post_permalink', // Person.url from ref post permalink
 			'image'         => 'post_thumbnail', // Person.image ImageObject
+			'description'   => 'post_excerpt', // Person.description from ref post excerpt
 			'jobTitle'      => 'team-settings_team-role', // Person.jobTitle from ref post ACF
 			'hasCredential' => array(
 				'@type' => 'EducationalOccupationalCredential',
@@ -51,6 +52,7 @@ return array(
 			'name'          => 'post_title', // Person.name from ref post title
 			'url'           => 'post_permalink', // Person.url from ref post permalink
 			'image'         => 'post_thumbnail', // Person.image ImageObject
+			'description'   => 'post_excerpt', // Person.description from ref post excerpt
 			'jobTitle'      => 'team-settings_team-role', // Person.jobTitle from ref post ACF
 			'hasCredential' => array(
 				'@type' => 'EducationalOccupationalCredential',
