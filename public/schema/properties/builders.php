@@ -261,17 +261,26 @@ function frl_schema_builder_build_person_from_ref( int $ref_id, array $field_def
 			continue;
 		}
 
-		// Array of meta keys → resolve each, collect non-empty values (e.g. sameAs)
+		// Array: list = meta keys (e.g. sameAs), associative = nested object (e.g. hasCredential)
 		if ( is_array( $source ) ) {
-			$values = array();
-			foreach ( $source as $meta_key ) {
-				$v = frl_schema_extract_scalar_value( frl_get_post_meta( $ref_id, (string) $meta_key, true ) );
-				if ( $v !== null ) {
-					$values[] = $v;
+			if ( ! array_is_list( $source ) ) {
+				// Associative: nested sub-object — recurse with no hardcoded @type
+				$nested = frl_schema_builder_build_person_nested( $ref_id, $source, $post );
+				if ( $nested !== null ) {
+					$person[ $sub_field ] = $nested;
 				}
-			}
-			if ( ! empty( $values ) ) {
-				$person[ $sub_field ] = count( $values ) === 1 ? $values[0] : $values;
+			} else {
+				// List: resolve each meta key, collect non-empty values
+				$values = array();
+				foreach ( $source as $meta_key ) {
+					$v = frl_schema_extract_scalar_value( frl_get_post_meta( $ref_id, (string) $meta_key, true ) );
+					if ( $v !== null ) {
+						$values[] = $v;
+					}
+				}
+				if ( ! empty( $values ) ) {
+					$person[ $sub_field ] = count( $values ) === 1 ? $values[0] : $values;
+				}
 			}
 			continue;
 		}
@@ -324,4 +333,82 @@ function frl_schema_builder_build_person_from_ref( int $ref_id, array $field_def
 	 * @param int   $ref_id Referenced post ID.
 	 */
 	return apply_filters( 'frl_schema_person_fields', $person, $ref_id );
+}
+
+/**
+	* Resolve a nested sub-object definition for a Person (e.g. hasCredential).
+	*
+	* Unlike frl_schema_builder_build_person_from_ref() which injects @type => Person,
+	* this resolver builds the object from its definition with no hardcoded @type
+	* — the data file controls the @type key. Supports recursive nesting.
+	*
+	* @param int     $ref_id CPT post ID for meta lookups.
+	* @param array   $def    Sub-object field definition (associative array).
+	* @param \WP_Post $post  Pre-fetched post object (avoid redundant get_post).
+	* @return array|null Resolved array or null if empty.
+	*/
+function frl_schema_builder_build_person_nested( int $ref_id, array $def, \WP_Post $post ): ?array {
+	$result = array();
+
+	foreach ( $def as $key => $source ) {
+		// Nested associative array → recurse
+		if ( is_array( $source ) && ! array_is_list( $source ) ) {
+			$nested = frl_schema_builder_build_person_nested( $ref_id, $source, $post );
+			if ( $nested !== null ) {
+				$result[ $key ] = $nested;
+			}
+			continue;
+		}
+
+		// Skip non-string sources at this level
+		if ( ! is_string( $source ) ) {
+			continue;
+		}
+
+		// @type values are literal Schema.org type names — pass through as-is
+		if ( $key === '@type' ) {
+			$result[ $key ] = $source;
+			continue;
+		}
+
+		$value = null;
+
+		if ( str_starts_with( $source, 'post_' ) ) {
+			if ( str_starts_with( $source, 'post_permalink' ) ) {
+				$value = get_permalink( $ref_id );
+				$fragment = strstr( $source, '#' );
+				if ( $fragment !== false ) {
+					$value .= $fragment;
+				}
+			} elseif ( $source === 'post_thumbnail' ) {
+				$id = get_post_thumbnail_id( $ref_id );
+				if ( $id ) {
+					$size  = apply_filters( 'frl_schema_thumbnail_size', 'medium' );
+					$url   = wp_get_attachment_image_url( $id, $size );
+					$data  = wp_get_attachment_image_src( $id, $size );
+					$value = array(
+						'@type'  => 'ImageObject',
+						'url'    => $url ?: '',
+						'height' => $data[2] ?? 0,
+						'width'  => $data[1] ?? 0,
+					);
+				}
+			} elseif ( $source === 'post_thumbnail_url' ) {
+				$value = get_the_post_thumbnail_url( $ref_id, 'full' );
+			} else {
+				$value = $post->{$source} ?? null;
+			}
+		} else {
+			$value = frl_get_post_meta( $ref_id, $source, true );
+		}
+
+		$scalar = frl_schema_extract_scalar_value( $value );
+		if ( $scalar !== null ) {
+			$result[ $key ] = $scalar;
+		} elseif ( is_array( $value ) && ! empty( $value ) ) {
+			$result[ $key ] = $value;
+		}
+	}
+
+	return ! empty( $result ) ? $result : null;
 }

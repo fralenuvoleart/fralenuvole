@@ -1,4 +1,4 @@
-# Project Progress — Current Feature Inventory
+# Project Progress — Current Feature Inventory | Last updated: 2026-09-12
 
 This file is a **snapshot of what is implemented today**, organized by subsystem. It is not a changelog — for historical change history, use `git log`. When a feature changes, update its entry in place; do not append a dated narrative.
 
@@ -35,7 +35,7 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 |---|---|---|
 | Public Hooks | `public/public.php` | Critical CSS injection, deferred CSS, featured-image preload (responsive srcset + mobile hero variant), header/footer HTML+scripts, REST endpoint pruning, secondary-query optimization, login page branding. |
 | Shortcodes | `public/shortcodes.php` | `[frl]`, `[frl_lang]`, `[frl_meta]`, `[frl_repeater]`, `[frl_meta_rel]`, `[frl_permalink]`, `[frl_slug]`, `[frl_user_meta]`, `[frl_category_link]`, `[frl_breadcrumbs]`, `[frl_langswitcher]`, `[frl_readtime]`, `[frl_featured]`, `[frl_year]`, `[frl_excerpt]`. |
-| Schema | `public/schema/` | Two independent JSON-LD subsystems: static property injection (SASWP integration) and dynamic `wp_head` generator driven by config-mapped post types. |
+| Schema | `public/schema/` | Two independent JSON-LD subsystems: static property injection (SASWP integration, with custom-field `{{placeholder}}` resolution + nested-object Person builder) and dynamic `wp_head` generator driven by config-mapped post types. |
 | Website Features | `includes/shared/website.php` | Disable comments/oEmbed/emojis, critical CSS caching, Dashicons removal for logged-out frontend. |
 | Logged-User Features | `includes/shared/logged-user.php` | Admin bar customization (plugin menu, cache actions, CPT quick-links), admin notices display, plugin action dispatch (`frl_process_plugin_actions`), user-visit tracking. |
 | Navigation | `includes/shared/navigation.php` | `wp_navigation` block translation support, custom URL transforms for nav menu items (extensible via `frl_nav_menu_url_transforms` filter). |

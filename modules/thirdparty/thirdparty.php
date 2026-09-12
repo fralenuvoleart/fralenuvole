@@ -262,6 +262,7 @@ function frl_thirdparty_sanitize_schemas( array $schemas ): array {
 		if ( ! isset( $seen_ids[ $id ] ) ) {
 			if ( ! empty( $props ) ) {
 				$props  = frl_schema_resolve_post_placeholders( $props, $post_id );
+				$props  = frl_schema_resolve_remaining_placeholders( $props, $post_id );
 				$schema = frl_thirdparty_inject_schema_properties( $schema, $props );
 			}
 

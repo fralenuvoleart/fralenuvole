@@ -309,3 +309,51 @@ function frl_schema_should_translate_key( string $key, string $current_path, arr
 function frl_schema_resolve_post_placeholders( array $props, int $post_id ): array {
 	return frl_schema_replace_placeholders( $props, frl_schema_get_placeholders( $post_id ) );
 }
+
+/**
+ * Resolve any remaining {{field_name}} tokens via post meta.
+ *
+ * After all known placeholders are resolved, this catches custom-field
+ * tokens (e.g. {{team-settings_team-whatsapp}}) that are not in the
+ * standard placeholder map. Each token between {{…}} is resolved via
+ * get_post_meta(). Tokens that resolve to empty/null are replaced with
+ * an empty string to avoid literal {{…}} in the output.
+ *
+ * @param array $props   Schema properties array.
+ * @param int   $post_id Post ID for meta lookups.
+ * @return array Props with remaining {{…}} tokens resolved.
+ */
+function frl_schema_resolve_remaining_placeholders( array $props, int $post_id ): array {
+	$callback = static function ( array $matches ) use ( $post_id ): string {
+		$token = $matches[1];
+		$value = frl_schema_extract_scalar_value( frl_get_post_meta( $post_id, $token, true ) );
+		return $value ?? '';
+	};
+
+	return frl_schema_replace_placeholders_callback( $props, $callback );
+}
+
+/**
+ * Walk schema props and apply a callback to any {{token}} in string values.
+ *
+ * @param array    $props    Schema properties array.
+ * @param callable $callback Callable(string $token): string.
+ * @return array Props with {{…}} tokens replaced.
+ */
+function frl_schema_replace_placeholders_callback( array $props, callable $callback ): array {
+	$result = array();
+	foreach ( $props as $key => $value ) {
+		if ( is_array( $value ) ) {
+			$result[ $key ] = frl_schema_replace_placeholders_callback( $value, $callback );
+		} elseif ( is_string( $value ) && str_contains( $value, '{{' ) ) {
+			$result[ $key ] = preg_replace_callback(
+				'/\{\{([^}]+)\}\}/',
+				$callback,
+				$value
+			);
+		} else {
+			$result[ $key ] = $value;
+		}
+	}
+	return $result;
+}

@@ -27,14 +27,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 return array(
 	'Article' => array(
 		'author' => array(
-			'_ref'      => 'post-settings_post-authors', // ACF field on current post → ref IDs
-			'_fallback' => FRL_DEFAULT_AUTHOR_CPT_ID, // fallback CPT post ID when ACF is empty
-			'@id'       => 'post_permalink#Person', // Person.@id from ref post permalink
-			'name'      => 'post_title', // Person.name from ref post title
-			'url'       => 'post_permalink', // Person.url from ref post permalink
-			'image'     => 'post_thumbnail', // Person.image ImageObject
-			'jobTitle'  => 'team-settings_team-role', // Person.jobTitle from ref post ACF
-			'sameAs'    => array(
+			'_ref'          => 'post-settings_post-authors', // ACF field on current post → ref IDs
+			'_fallback'     => FRL_DEFAULT_AUTHOR_CPT_ID, // fallback CPT post ID when ACF is empty
+			'@id'           => 'post_permalink#Person', // Person.@id from ref post permalink
+			'name'          => 'post_title', // Person.name from ref post title
+			'url'           => 'post_permalink', // Person.url from ref post permalink
+			'image'         => 'post_thumbnail', // Person.image ImageObject
+			'jobTitle'      => 'team-settings_team-role', // Person.jobTitle from ref post ACF
+			'hasCredential' => array(
+				'@type' => 'EducationalOccupationalCredential',
+				'name'  => 'team-settings_team-education',
+			),
+			'sameAs'        => array(
 				'team-settings_team-linkedin',
 				'team-settings_team-facebook',
 				'team-settings_team-website',
@@ -42,13 +46,17 @@ return array(
 			),
 		),
 		'editor' => array(
-			'_force'   => FRL_DEFAULT_EDITOR_CPT_ID, // always use this CPT post ID
-			'@id'      => 'post_permalink#Person', // Person.@id from ref post permalink
-			'name'     => 'post_title', // Person.name from ref post title
-			'url'      => 'post_permalink', // Person.url from ref post permalink
-			'image'    => 'post_thumbnail', // Person.image ImageObject
-			'jobTitle' => 'team-settings_team-role', // Person.jobTitle from ref post ACF
-			'sameAs'   => array(
+			'_force'        => FRL_DEFAULT_EDITOR_CPT_ID, // always use this CPT post ID
+			'@id'           => 'post_permalink#Person', // Person.@id from ref post permalink
+			'name'          => 'post_title', // Person.name from ref post title
+			'url'           => 'post_permalink', // Person.url from ref post permalink
+			'image'         => 'post_thumbnail', // Person.image ImageObject
+			'jobTitle'      => 'team-settings_team-role', // Person.jobTitle from ref post ACF
+			'hasCredential' => array(
+				'@type' => 'EducationalOccupationalCredential',
+				'name'  => 'team-settings_team-education',
+			),
+			'sameAs'        => array(
 				'team-settings_team-linkedin',
 				'team-settings_team-facebook',
 				'team-settings_team-website',

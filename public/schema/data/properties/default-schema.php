@@ -142,15 +142,19 @@ return array(
 			'@id' => '{{schema_organization_url}}#Website',
 		),
 		'mainEntity' => array(
-			'@type'    => 'Person',
-			'@id'      => '{{post_permalink}}#Person',
-			'url'      => '{{post_permalink}}',
-			'worksFor' => array(
+			'@type'         => 'Person',
+			'@id'           => '{{post_permalink}}#Person',
+			'url'           => '{{post_permalink}}',
+			'worksFor'      => array(
 				'@type' => 'Organization',
 				'@id'   => '{{schema_organization_url}}#Organization',
 				'url'   => '{{schema_organization_url}}',
 			),
-			'image'    => array(
+			'hasCredential' => array(
+				'@type' => 'EducationalOccupationalCredential',
+				'name'  => '{{team-settings_team-education}}',
+			),
+			'image'         => array(
 				'@type'   => 'ImageObject',
 				'@id'     => '{{post_permalink}}#primaryimage',
 				'url'     => '{{post_thumbnail_url}}',
