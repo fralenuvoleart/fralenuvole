@@ -29,6 +29,49 @@ function frl_schema_extract_scalar_value( $value ): ?string {
 }
 
 /**
+ * Resolve a post_*-prefixed source string to its WordPress value.
+ *
+ * Centralizes the post_* resolution logic shared by Person builders.
+ * - 'post_permalink' / 'post_permalink#fragment' → get_permalink()
+ * - 'post_thumbnail' → ImageObject via frl_schema_build_image_object()
+ * - 'post_thumbnail_url' → get_the_post_thumbnail_url()
+ * - 'post_{field}' → $post->{field}
+ * - anything else → frl_get_post_meta()
+ *
+ * @param int     $post_id Post ID.
+ * @param string  $source  Source string (e.g. 'post_title', 'post_permalink#Person').
+ * @param \WP_Post $post   Pre-fetched post object.
+ * @return mixed Resolved value (string, array, or null).
+ */
+function frl_schema_resolve_post_source( int $post_id, string $source, \WP_Post $post ): mixed {
+	if ( str_starts_with( $source, 'post_' ) ) {
+		if ( str_starts_with( $source, 'post_permalink' ) ) {
+			$value    = get_permalink( $post_id );
+			$fragment = strstr( $source, '#' );
+			if ( $fragment !== false ) {
+				$value .= $fragment;
+			}
+			return $value;
+		}
+
+		if ( $source === 'post_thumbnail' ) {
+			$id = get_post_thumbnail_id( $post_id );
+			return $id ? frl_schema_build_image_object( $id ) : null;
+		}
+
+		if ( $source === 'post_thumbnail_url' ) {
+			return get_the_post_thumbnail_url( $post_id, 'full' );
+		}
+
+		// Native WP field: $post->{field}
+		return $post->{$source} ?? null;
+	}
+
+	// Meta field fallback
+	return frl_get_post_meta( $post_id, $source, true );
+}
+
+/**
  * Get the contact page URL.
  *
  * Looks up the page with slug 'contact' and returns its permalink.

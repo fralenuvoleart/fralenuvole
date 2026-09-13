@@ -263,6 +263,17 @@ class Frl_Schema_Orchestrator {
 		$file = frl_schema_get_data_file( "{$type}.php", 'definitions' );
 
 		if ( ! file_exists( $file ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_trigger_error
+				trigger_error(
+					sprintf(
+						'Fralenuvole Schema: Definition file not found for type "%s" at %s',
+						esc_html( $type ),
+						esc_html( $file )
+					),
+					E_USER_WARNING
+				);
+			}
 			return null;
 		}
 
