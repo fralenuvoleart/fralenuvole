@@ -213,15 +213,15 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 		}
 
 		return array(
-			'@type'            => 'ItemList',
-			'itemListElement'  => $headings,
-			'itemListOrder'    => 'https://schema.org/ItemListOrderAscending',
-			'name'             => get_the_title( $post_id ),
+			'@type'           => 'ItemList',
+			'itemListElement' => $headings,
+			'itemListOrder'   => 'https://schema.org/ItemListOrderAscending',
+			'name'            => get_the_title( $post_id ),
 		);
 	}
 
 	if ( $source === 'breadcrumb' ) {
-		$items   = array();
+		$items    = array();
 		$position = 1;
 
 		// Home
@@ -284,7 +284,7 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 
 	if ( $source === 'archive_posts' ) {
 		global $wp_query;
-		$items  = array();
+		$items    = array();
 		$position = 1;
 		while ( have_posts() ) {
 			the_post();

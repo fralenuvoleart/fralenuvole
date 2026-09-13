@@ -34,7 +34,7 @@ function frl_schema_resolver_resolve( array $props, string $path = '', array $re
 	if ( empty( $replacements ) ) {
 		$replacements = frl_schema_get_placeholders();
 	}
-	$result         = array();
+	$result = array();
 
 	foreach ( $props as $key => $value ) {
 		$current_path = $path ? "{$path}.{$key}" : $key;
