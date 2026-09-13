@@ -108,9 +108,26 @@ class Frl_Schema_Orchestrator {
 
 		if ( $context === 'singular' ) {
 			$schemas = array_merge( $schemas, $this->build_singular() );
+		} elseif ( $context === 'archive' ) {
+			$schemas = array_merge( $schemas, $this->build_archive() );
 		}
 
 		return $schemas;
+	}
+
+	/**
+	 * Build schemas for archive pages.
+	 *
+	 * @return array
+	 */
+	private function build_archive(): array {
+		$def = $this->load_definition( 'ItemList' );
+		if ( $def === null ) {
+			return array();
+		}
+
+		$built = $this->build_single( $def, null );
+		return $built !== null ? array( $built ) : array();
 	}
 
 	/**
@@ -225,6 +242,7 @@ class Frl_Schema_Orchestrator {
 			'schema_aboutpage',
 			'schema_contactpage',
 			'schema_howto',
+			'schema_itemlist',
 		);
 
 		$values = array();

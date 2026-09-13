@@ -15,6 +15,7 @@ return array(
 	'@id'             => '{{schema_org_url}}#Website',
 	'url'             => '{{schema_org_url}}',
 	'name'            => '{{schema_org_name}}',
+	'inLanguage'      => '{{language}}',
 	'description'     => '{{schema_org_description}}',
 	'publisher'       => array(
 		'@type' => 'Organization',

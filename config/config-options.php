@@ -231,7 +231,14 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'schema_howto'                       => array(
+			'schema_itemlist'                       => array(
+				'label'             => 'ItemList',
+				'description'       => 'Output ItemList schema on archive pages.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'schema_howto'                          => array(
 				'label'             => 'HowTo',
 				'description'       => 'Output HowTo schema from ACF/ACPT repeater data on blog posts.',
 				'type'              => 'checkbox',
