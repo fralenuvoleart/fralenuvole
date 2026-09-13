@@ -178,11 +178,70 @@ function frl_schema_build_image_object( int $attachment_id, string $size = 'medi
 		return null;
 	}
 
+	$width  = $data[1] ?? 0;
+	$height = $data[2] ?? 0;
+
+	// SVG images: wp_get_attachment_image_src returns 0 or 1 — read from file
+	if ( ( $width <= 1 || $height <= 1 ) && str_ends_with( strtolower( $url ), '.svg' ) ) {
+		$svg_dims = frl_schema_get_svg_dimensions( $attachment_id );
+		if ( $svg_dims ) {
+			$width  = $svg_dims[0];
+			$height = $svg_dims[1];
+		}
+	}
+
 	return array(
 		'@type'  => 'ImageObject',
 		'url'    => $url,
-		'width'  => $data[1] ?? 0,
-		'height' => $data[2] ?? 0,
+		'width'  => $width,
+		'height' => $height,
+	);
+}
+
+/**
+ * Read width and height from an SVG file.
+ *
+ * Parses width/height attributes or viewBox from the SVG source.
+ * Result is cached per attachment ID for the request lifetime.
+ *
+ * @param int $attachment_id Attachment ID.
+ * @return array{int, int}|null [width, height] or null if unreadable.
+ */
+function frl_schema_get_svg_dimensions( int $attachment_id ): ?array {
+	return frl_cache_remember(
+		'html',
+		'svg_dims_' . $attachment_id,
+		function () use ( $attachment_id ) {
+			$file = get_attached_file( $attachment_id );
+			if ( ! $file || ! file_exists( $file ) ) {
+				return null;
+			}
+
+			// Read first 4KB — enough for the <svg> tag
+			$handle = fopen( $file, 'r' );
+			if ( ! $handle ) {
+				return null;
+			}
+			$head = fread( $handle, 4096 );
+			fclose( $handle );
+
+			if ( ! $head ) {
+				return null;
+			}
+
+			// Try width/height attributes
+			if ( preg_match( '/<svg[^>]*\bwidth\s*=\s*["\']?(\d+(?:\.\d+)?)(?:px)?["\']?/i', $head, $w_match )
+				&& preg_match( '/<svg[^>]*\bheight\s*=\s*["\']?(\d+(?:\.\d+)?)(?:px)?["\']?/i', $head, $h_match ) ) {
+				return array( (int) $w_match[1], (int) $h_match[1] );
+			}
+
+			// Fallback: viewBox="min-x min-y width height"
+			if ( preg_match( '/<svg[^>]*\bviewBox\s*=\s*["\']?\d+(?:\.\d+)?\s+\d+(?:\.\d+)?\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)["\']?/i', $head, $vb_match ) ) {
+				return array( (int) $vb_match[1], (int) $vb_match[2] );
+			}
+
+			return null;
+		}
 	);
 }
 
