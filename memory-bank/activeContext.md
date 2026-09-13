@@ -1,5 +1,33 @@
 # Active Context
 
+## Latest: Schema Module Refactor (2026-09-13)
+
+Complete rewrite of the JSON-LD schema subsystem. Removed SASWP dependency entirely — all schemas now generated from local definition files via a unified orchestrator.
+
+**Architecture:** [`public/schema/`](public/schema/)
+- `class-schema-orchestrator.php` — single output point, context → build → enrich → output
+- `class-context.php` — request context detection (global, singular, archive, etc.)
+- `class-builder.php` — recursive schema builder from definition arrays
+- `class-resolver.php` — translation pass (FRL_SCHEMA_TRANSLATE_KEYS)
+- `class-enricher.php` — term + Person property builders from WP data
+- `definitions/` — one file per Schema.org type (Organization.php, Article.php, etc.)
+- `mappings/` — dynamic WP-data-to-schema mappings (terms.php, persons.php)
+
+**Key changes:**
+- `schema_generator` option → `schema_enabled` (master toggle)
+- `schema_organization_*` options → `schema_org_*` (brevity)
+- `schema_org_name`/`schema_org_url` removed — auto-retrieved from site
+- `schema_org_description` removed — uses `get_bloginfo('description')`
+- `schema_contact_url` removed — auto-resolved via `frl_get_contact_page_url()`
+- Individual `schema_social_*` → single `schema_org_sameas` textlist
+- All hardcoded values (address, areaServed, founder, knowsAbout, etc.) → configurable options
+- `_if` toggle system: each definition gated on its option (e.g., `schema_organization`, `schema_article`)
+- `@source` system for textlist-based arrays (sameAs, availableLanguage, knowsAbout)
+- `frl_schema_strip_empty()` drops sub-objects with only `@type` (empty contactPoint, address, etc.)
+- Performance: memoized placeholders, fast-path for non-`{{` strings, static option maps, skip translation when no keys configured
+
+**Legacy preserved** in `public/schema-legacy/` for reference during cutover.
+
 ## Current Focus
 
 Post-save performance audit (2026-08, remediation applied 2026-08-30): full report + change log in `plans/PERFORMANCE-AUDIT-post-save.md` §7. APPLIED: (1) language-mismatch fix — the 4 unversioned key families (`post_*_translations`, `post_*_schema`, `langswitcher_*`, `featured_img_*`) are now version-suffixed `_v{frl_get_post_cache_version()}` at their writers (`class-translation-service.php`, `generator.php`, `shortcodes.php`, `performance.php`); `frl_clear_post_cache()` no longer key-purges them (the admin-side purge could only reach the default-language copy — `generate_key()` language prefix) — the `_frl_post_version` bump invalidates all 4 languages; `frl_clear_tracked_meta_cache()` retained. php -l + phpstan clean. DEPLOY: flush plugin caches once after deploy (key shapes changed). (2) Dead assets `admin-bulk-resave.js` + `admin-avatar.js` deleted (+ `docs/ADMIN-UI.md` rows); `admin.js` KEPT intentionally (maintainer: will be used later — do not flag as dead). (3) Permalinks-writer audit COMPLETE → `edited_term` group purge RETAINED (not replaced): `pattern_*`/`cf_terms_*`/`post_{id}_{lang}` keys are not enumerable from a term ID; group clears are already deduped per request and hit `wp_cache_flush_group()` (no DB scan) when the object cache is functional. (4) RETRACTED finding: `ui-asset-loader.php` assets (Prism/CodeMirror/asset loader) ARE already gated — the file is only required via `frl_load_plugin_ui()` behind `frl_is_plugin_context()`; never loaded on edit screens. Plugin save path now ~10–14 SQL queries. Verified negatives: no plugin JS auto-fires admin-ajax on edit screens; no synchronous CDN/external purge anywhere; Heartbeat only throttled (60/120 s); ACF module inert on post saves.

@@ -28,8 +28,6 @@ const FRL_ENV_PBS_TEMPLATE = array(
 	'plugin_options' => array(
 		'cta_webhook'              => true,
 		'editor_metabox'           => true,
-		'schema_organization_name' => 'PB Services Georgia',
-		'schema_organization_url'  => 'https://pbservices.ge/',
 		'schema_founder_name'      => 'Rati (Iese) Abashmadze',
 	),
 );
@@ -55,8 +53,6 @@ const FRL_ENV_PBP_TEMPLATE = array(
 		'header_html'              => 'file',
 		'header_html_php'          => true,
 		'editor_metabox'           => true,
-		'schema_organization_name' => 'PB Property Georgia',
-		'schema_organization_url'  => 'https://pbproperty.ge/',
 	),
 );
 
@@ -81,8 +77,6 @@ const FRL_ENV_PBNOVA_TEMPLATE = array(
 		'blog_public' => 0,
 	),
 	'plugin_options' => array(
-		'schema_organization_name' => 'PB Nova',
-		'schema_organization_url'  => 'https://pbnova.com/',
 		'schema_founder_name'      => 'Francesco Castronovo',
 	),
 );
@@ -107,8 +101,6 @@ const FRL_ENV_FRALENUVOLE_PRODUCTION = array(
 		'frl' => true,
 	),
 	'plugin_options' => array(
-		'schema_organization_name' => 'Fralenuvole',
-		'schema_organization_url'  => 'https://fralenuvole.art/',
 		'schema_founder_name'      => 'Francesco Castronovo',
 	),
 );

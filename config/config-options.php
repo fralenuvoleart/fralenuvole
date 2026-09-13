@@ -40,33 +40,33 @@ const FRL_DEFAULT_FIELDS = array(
 	'seo'            => array(
 		'title'  => 'SEO & Schema',
 		'fields' => array(
-			'section_title_performance'         => array(
+			'section_title_performance'          => array(
 				'label'       => 'Performance',
 				'description' => 'Performance settings',
 				'type'        => 'section_title',
 			),
-			'critical_css'                      => array(
+			'critical_css'                       => array(
 				'label'             => 'Preload critical Theme CSS',
 				'description'       => 'Preload critical CSS from "critical.css" file in current theme directory',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'deferred_css'                      => array(
+			'deferred_css'                       => array(
 				'label'             => 'Defer non-critical Theme CSS',
 				'description'       => 'Load non-critical styles from "deferred.css" in the current theme directory as non-render-blocking in the footer',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'defer_css'                         => array(
+			'defer_css'                          => array(
 				'label'             => 'Defer other CSS Styles',
 				'description'       => 'Defer other non-critical CSS Styles by handle',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'defer_css_handles'                 => array(
+			'defer_css_handles'                  => array(
 				'label'             => 'Deferred CSS Styles Handles',
 				'description'       => 'One handle per line, also plugin names can be used. The string is matched partially against the full URL of the style.',
 				'type'              => 'textlist',
@@ -78,71 +78,71 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'section_title_image_optimization'  => array(
+			'section_title_image_optimization'   => array(
 				'label'       => 'Image Optimization',
 				'description' => 'Image Optimization Settings',
 				'type'        => 'section_title',
 			),
-			'image_preload_featured'            => array(
+			'image_preload_featured'             => array(
 				'label'             => 'Preload featured images',
 				'description'       => 'Master switch for featured image preloading.',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'image_preload_featured_responsive' => array(
+			'image_preload_featured_responsive'  => array(
 				'label'             => 'Preload Link with Responsive Images',
 				'description'       => 'On: Preload responsive srcset + mobile-hero override. Off: Preload single image, All other post-types are always responsive, with no mobile override, regardless of this setting.',
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'section_title_debloat'             => array(
+			'section_title_debloat'              => array(
 				'label'       => 'Debloat HTML',
 				'description' => 'Clean the HTML source from unnecessary tags',
 				'type'        => 'section_title',
 			),
-			'remove_jquery_mig'                 => array(
+			'remove_jquery_mig'                  => array(
 				'label'             => 'Remove jQuery Migrate',
 				'description'       => 'Remove jQuery Migrate compatibility script',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'disable_rest'                      => array(
+			'disable_rest'                       => array(
 				'label'             => 'Disable REST',
 				'description'       => 'Disable REST API for selected endpoints',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'disable_oembed'                    => array(
+			'disable_oembed'                     => array(
 				'label'             => 'Disable oEmbeds',
 				'description'       => 'Disable oEmbeds support',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'disable_emojis'                    => array(
+			'disable_emojis'                     => array(
 				'label'             => 'Disable Emojis',
 				'description'       => 'Disable emojis sitewide',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'section_title_robots'              => array(
+			'section_title_robots'               => array(
 				'label'       => 'Robots.txt',
 				'description' => 'Custom robots.txt directives appended to the default output',
 				'type'        => 'section_title',
 			),
-			'enable_custom_robots'              => array(
+			'enable_custom_robots'               => array(
 				'label'             => 'Enable Custom Robots.txt',
 				'description'       => 'Append custom rules to the default robots.txt output',
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'custom_robots_txt'                 => array(
+			'custom_robots_txt'                  => array(
 				'label'             => 'Robots.txt Content',
 				'description'       => 'Raw content appended to robots.txt. One directive per line (e.g., Disallow: /private/).',
 				'type'              => 'textarea',
@@ -150,50 +150,217 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'autoload'          => 'no',
 			),
-			'section_title_schema'              => array(
+			'section_title_schema'               => array(
 				'label'       => 'Schema Settings',
 				'description' => 'Sitewide settings for structured data',
 				'type'        => 'section_title',
 			),
-			'schema_organization_name'          => array(
-				'label'       => 'Organization name',
-				'description' => 'Organization name for Schema generation',
-				'type'        => 'text',
-				'default'     => '',
+			'schema_enabled'                     => array(
+				'label'             => 'Enable Schema Output',
+				'description'       => 'Master toggle for all JSON-LD structured data. Disable to suppress all schema output.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+				'restricted'        => true,
 			),
-			'schema_organization_url'           => array(
-				'label'       => 'Organization URL',
-				'description' => 'Organization URL for Schema generation',
-				'type'        => 'text',
-				'default'     => '',
+			'section_title_schema_toggles'       => array(
+				'label'       => 'Schema Type Toggles',
+				'description' => 'Enable/disable individual schema types. Disable types already handled by third-party plugins (e.g., The SEO Framework).',
+				'type'        => 'section_title',
 			),
-			'schema_founder_name'               => array(
+			'schema_organization'                => array(
+				'label'             => 'Organization',
+				'description'       => 'Output Organization schema on all pages.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'schema_website'                     => array(
+				'label'             => 'WebSite',
+				'description'       => 'Output WebSite schema on all pages.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'schema_webpage'                     => array(
+				'label'             => 'WebPage',
+				'description'       => 'Output WebPage schema on singular pages.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'schema_article'                     => array(
+				'label'             => 'Article',
+				'description'       => 'Output Article schema on blog posts.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'schema_breadcrumb'                  => array(
+				'label'             => 'BreadcrumbList',
+				'description'       => 'Output BreadcrumbList schema on posts and pages.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'schema_service'                     => array(
+				'label'             => 'Service',
+				'description'       => 'Output Service schema on service CPT pages.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'schema_profilepage'                 => array(
+				'label'             => 'ProfilePage',
+				'description'       => 'Output ProfilePage schema on team CPT pages.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'schema_aboutpage'                   => array(
+				'label'             => 'AboutPage',
+				'description'       => 'Output AboutPage schema on the About page.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'schema_contactpage'                 => array(
+				'label'             => 'ContactPage',
+				'description'       => 'Output ContactPage schema on the Contact page.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'schema_howto'                       => array(
+				'label'             => 'HowTo',
+				'description'       => 'Output HowTo schema from ACF/ACPT repeater data on blog posts.',
+				'type'              => 'checkbox',
+				'default'           => 1,
+				'sanitize_callback' => 'absint',
+			),
+			'section_title_schema_identity'      => array(
+				'label'       => 'Organization Identity',
+				'description' => 'Fields used in Organization, WebSite, and other schemas.',
+				'type'        => 'section_title',
+			),
+			'schema_founder_name'                => array(
 				'label'       => 'Founder Name',
 				'description' => 'Founder Name for Schema generation',
 				'type'        => 'text',
 				'default'     => '',
 			),
-			'schema_founder_url'                => array(
+			'schema_founder_url'                 => array(
 				'label'       => 'Founder URL',
 				'description' => 'Founder URL for Schema generation',
 				'type'        => 'text',
 				'default'     => '',
 			),
-			'schema_properties'                 => array(
-				'label'             => 'Enable Schema Properties',
-				'description'       => 'Master toggle for Schema properties injection.',
-				'type'              => 'checkbox',
-				'default'           => 1,
-				'sanitize_callback' => 'absint',
-				'restricted'        => true,
+			'schema_org_sameas'                  => array(
+				'label'       => 'Organization sameAs',
+				'description' => 'social links for Organization sameAs. One link per line',
+				'type'        => 'textlist',
+				'default'     => '
+					https://www.facebook.com/PBservices.georgia
+					https://www.instagram.com/pbservices.ge
+					https://www.linkedin.com/company/pbservices/
+				',
 			),
-			'schema_generator'                  => array(
-				'label'             => 'Enable Schema Generator',
-				'description'       => 'Master toggle for dynamic schema generator (HowTo, FAQ, etc. from ACF/ACPT data).',
-				'type'              => 'checkbox',
-				'default'           => 1,
-				'sanitize_callback' => 'absint',
-				'restricted'        => true,
+			'schema_org_areaserved'              => array(
+				'label'       => 'Area Served',
+				'description' => 'Name of the area served by the Organization.',
+				'type'        => 'text',
+				'default'     => 'Worldwide',
+			),
+			'schema_org_areaserved_sameas'       => array(
+				'label'       => 'Area Served sameAs',
+				'description' => 'Wikidata or Wikipedia URL for the area served.',
+				'type'        => 'text',
+				'default'     => 'https://www.wikidata.org/wiki/Q2',
+			),
+			'schema_org_availablelanguage'       => array(
+				'label'       => 'Available Languages',
+				'description' => 'Language codes for contactPoint. One per line.',
+				'type'        => 'textlist',
+				'default'     => '
+					en
+					ru
+					ka
+					ar
+				',
+			),
+			'schema_org_foundingdate'            => array(
+				'label'       => 'Founding Date',
+				'description' => 'Year the organization was founded.',
+				'type'        => 'text',
+				'default'     => '2017',
+			),
+			'schema_org_foundinglocation'        => array(
+				'label'       => 'Founding Location',
+				'description' => 'Name of the place where the organization was founded.',
+				'type'        => 'text',
+				'default'     => 'Georgia',
+			),
+			'schema_org_foundinglocation_sameas' => array(
+				'label'       => 'Founding Location sameAs',
+				'description' => 'Wikidata or Wikipedia URL for the founding location.',
+				'type'        => 'text',
+				'default'     => 'https://www.wikidata.org/wiki/Q230',
+			),
+			'schema_org_knowsabout'              => array(
+				'label'       => 'Knows About',
+				'description' => 'Wikipedia URLs for topics the organization knows about. One per line.',
+				'type'        => 'textlist',
+				'default'     => 'https://en.wikipedia.org/wiki/Company_formation
+				https://en.wikipedia.org/wiki/Sole_proprietorship
+				https://en.wikipedia.org/wiki/Small_business
+				https://en.wikipedia.org/wiki/Corporation
+				https://en.wikipedia.org/wiki/Bank_account
+				https://en.wikipedia.org/wiki/Corporate_tax
+				https://en.wikipedia.org/wiki/Tax_residence
+				https://en.wikipedia.org/wiki/Accounting
+				https://en.wikipedia.org/wiki/Outsourcing
+				https://en.wikipedia.org/wiki/Legal_services
+				https://en.wikipedia.org/wiki/Notary_public
+				https://en.wikipedia.org/wiki/Apostille_Convention
+				https://en.wikipedia.org/wiki/Travel_visa
+				https://en.wikipedia.org/wiki/Work_permit
+				https://en.wikipedia.org/wiki/Residence_permit
+				https://en.wikipedia.org/wiki/Taxation_in_Georgia_(country)',
+			),
+			'section_title_schema_contact'       => array(
+				'label'       => 'Contact Information',
+				'description' => 'Contact details for Organization schema.',
+				'type'        => 'section_title',
+			),
+			'schema_org_telephone'               => array(
+				'label'       => 'Contact Telephone',
+				'description' => 'Phone number for Organization contactPoint.',
+				'type'        => 'text',
+				'default'     => '+995 (599) 65 44 54',
+			),
+			'schema_org_addresscountry'          => array(
+				'label'       => 'Address Country',
+				'description' => 'ISO 3166-1 alpha-2 country code for the Organization address.',
+				'type'        => 'text',
+				'default'     => 'GE',
+			),
+			'schema_org_streetaddress'           => array(
+				'label'       => 'Street Address',
+				'description' => 'Street address for the Organization.',
+				'type'        => 'text',
+				'default'     => 'Zakaria Paliashvili Street 26',
+			),
+			'schema_org_addresslocality'         => array(
+				'label'       => 'Address Locality',
+				'description' => 'City or locality for the Organization address.',
+				'type'        => 'text',
+				'default'     => 'Tbilisi',
+			),
+			'schema_org_postalcode'              => array(
+				'label'       => 'Postal Code',
+				'description' => 'Postal code for the Organization address.',
+				'type'        => 'text',
+				'default'     => '0179',
 			),
 		),
 	),

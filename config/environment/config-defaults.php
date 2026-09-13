@@ -62,8 +62,6 @@ const FRL_ENV_DEFAULT = array(
 		'error_reporting_notice'     => true,
 		'error_reporting_warning'    => true,
 		'error_reporting_deprecated' => true,
-		'schema_organization_name'   => 'PB Services Georgia',
-		'schema_organization_url'    => 'https://pbservices.ge/',
 		'schema_founder_name'        => 'Rati (Iese) Abashmadze',
 	),
 );

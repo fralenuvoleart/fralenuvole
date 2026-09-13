@@ -2,49 +2,14 @@
 /**
  * Schema Resolver
  *
- * Loads schema data files, resolves {{placeholder}} tokens, and translates
- * configurable keys. Cached per-language.
+ * Translates schema keys matching FRL_SCHEMA_TRANSLATE_KEYS and handles
+ * the '_remove' sentinel. Called as a post-build pass by the orchestrator.
  *
  * @package Fralenuvole
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
-}
-
-/**
- * Get resolved schema properties.
- *
- * Loads raw data, resolves placeholders and translations, caches per-language,
- * and applies the 'frl_schema_properties' filter for extensibility.
- *
- * @return array Resolved schema properties array.
- */
-function frl_schema_resolver_get(): array {
-	if ( ! frl_get_option( 'schema_properties' ) ) {
-		return array();
-	}
-
-	$language  = frl_get_language();
-	$version   = frl_get_option( 'translation_version' ) ?: 1;
-	$cache_key = "schema_properties_{$language}_{$version}";
-
-	return frl_cache_remember(
-		'html',
-		$cache_key,
-		function () {
-			$file     = frl_schema_get_data_file( 'default-schema.php' );
-			$raw      = file_exists( $file ) ? include $file : array();
-			$resolved = frl_schema_resolver_resolve( $raw, '', frl_schema_get_placeholders() );
-
-			/**
-			 * Filter the resolved schema properties.
-			 *
-			 * @param array $resolved Resolved schema properties.
-			 */
-			return apply_filters( 'frl_schema_properties', $resolved );
-		}
-	);
 }
 
 /**
@@ -59,10 +24,16 @@ function frl_schema_resolver_get(): array {
  * @return array Resolved schema properties array.
  */
 function frl_schema_resolver_resolve( array $props, string $path = '', array $replacements = array() ): array {
+	$translate_keys = defined( 'FRL_SCHEMA_TRANSLATE_KEYS' ) ? FRL_SCHEMA_TRANSLATE_KEYS : array();
+
+	// Fast path: no translation keys configured, nothing to do
+	if ( empty( $translate_keys ) ) {
+		return $props;
+	}
+
 	if ( empty( $replacements ) ) {
 		$replacements = frl_schema_get_placeholders();
 	}
-	$translate_keys = defined( 'FRL_SCHEMA_TRANSLATE_KEYS' ) ? FRL_SCHEMA_TRANSLATE_KEYS : array();
 	$result         = array();
 
 	foreach ( $props as $key => $value ) {

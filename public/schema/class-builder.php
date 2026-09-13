@@ -10,120 +10,14 @@
  * Arrays with a 'repeater' key expand into repeated item arrays.
  * Arrays without 'repeater' are treated as nested sub-objects.
  *
+ * NOTE: Output is handled by Frl_Schema_Orchestrator, not by a direct wp_head hook.
+ * The functions below are pure builders — no side effects, no output.
+ *
  * @package Fralenuvole
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
-}
-
-add_action( 'wp_head', 'frl_schema_generator_output', 10, 0 );
-
-/**
- * Output all generated schema blocks as a single <script> tag.
- */
-function frl_schema_generator_output(): void {
-	if ( ! frl_get_option( 'schema_generator' ) ) {
-		return;
-	}
-
-	if ( ! is_singular() ) {
-		return;
-	}
-
-	if ( frl_is_admin() || frl_is_rest_api_request() || is_preview() || frl_is_cron_job_request() ) {
-		return;
-	}
-
-	if ( function_exists( 'frl_is_already_running' ) && frl_is_already_running( __FUNCTION__ ) ) {
-		return;
-	}
-
-	$post_id = get_the_ID();
-	if ( ! $post_id ) {
-		return;
-	}
-
-	$schemas = frl_schema_generator_get( $post_id );
-	if ( empty( $schemas ) ) {
-		return;
-	}
-
-	$output             = count( $schemas ) === 1 ? $schemas[0] : array( '@graph' => $schemas );
-	$output['@context'] = 'https://schema.org';
-
-	echo "\n" . '<script id="frl-schema" type="application/ld+json">' . "\n"
-		. wp_json_encode( $output, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
-		. "\n" . '</script>' . "\n";
-}
-
-/**
- * Get all generated schema blocks for a post, cached per-post.
- *
- * @param int $post_id Post ID.
- * @return array Array of schema arrays (each with @type).
- */
-function frl_schema_generator_get( int $post_id ): array {
-	return frl_cache_remember(
-		'postdata',
-		// Versioned key: invalidated by the _frl_post_version bump on save (see Post Cache
-		// Versioning Pattern) — the admin-side key purge misses non-default languages.
-		frl_generate_cache_key( 'post', (string) $post_id, 'schema', 'v' . frl_get_post_cache_version( $post_id ) ),
-		function () use ( $post_id ) {
-			$schemas     = array();
-			$definitions = frl_schema_generator_get_definitions( $post_id );
-
-			foreach ( $definitions as $def ) {
-				try {
-					$schema = frl_schema_generator_build( $post_id, $def );
-				} catch ( \Throwable $e ) {
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && function_exists( 'frl_log' ) ) {
-						frl_log( 'Schema generator threw: {msg}', array( 'msg' => $e->getMessage() ) );
-					}
-					continue;
-				}
-
-				if ( is_array( $schema ) && ! empty( $schema ) ) {
-					$schemas[] = $schema;
-				}
-			}
-
-			return $schemas;
-		}
-	);
-}
-
-/**
- * Build the definition registry for a given post.
- *
- * @param int $post_id Post ID.
- * @return array List of schema definition arrays.
- */
-function frl_schema_generator_get_definitions( int $post_id ): array {
-	$post_type = get_post_type( $post_id );
-	if ( ! $post_type ) {
-		return array();
-	}
-
-	static $raw_map = null;
-	if ( $raw_map === null ) {
-		$file    = frl_schema_get_data_file( 'default-schema.php', 'generators' );
-		$raw_map = file_exists( $file ) ? include $file : array();
-		if ( ! is_array( $raw_map ) ) {
-			$raw_map = array();
-		}
-	}
-
-	$definitions = $raw_map[ $post_type ] ?? array();
-
-	/**
-	 * Filter the schema generator definitions for a post.
-	 *
-	 * @param array  $definitions Schema definition arrays.
-	 * @param int    $post_id     Post ID.
-	 * @param string $post_type   Post type.
-	 */
-	return apply_filters( 'frl_schema_generators', $definitions, $post_id, $post_type );
 }
 
 // ─── Generic Recursive Builder ───────────────────────────────────
@@ -154,7 +48,7 @@ function frl_schema_generator_build( int $post_id, array $def, ?array $placehold
 
 	foreach ( $def as $key => $value ) {
 		// Skip structural keys
-		if ( $key === 'source' ) {
+		if ( $key === 'source' || $key === '_if' ) {
 			continue;
 		}
 
@@ -219,7 +113,7 @@ function frl_schema_generator_build_repeater( int $post_id, array $def, array $p
 	// Build field map from non-structural keys
 	$field_map = array();
 	foreach ( $def as $key => $field_name ) {
-		if ( in_array( $key, array( 'repeater', 'source', '@type' ), true ) ) {
+		if ( in_array( $key, array( 'repeater', 'source', '@type', '_if' ), true ) ) {
 			continue;
 		}
 		$field_map[ $key ] = $field_name;
@@ -272,6 +166,27 @@ function frl_schema_generator_build_repeater( int $post_id, array $def, array $p
 function frl_schema_generator_build_sourced( int $post_id, array $def, array $placeholders ): ?array {
 	$source = $def['@source'] ?? '';
 
+	if ( $source === 'organization_sameas' || $source === 'organization_availablelanguage' || $source === 'organization_knowsabout' ) {
+		static $option_map = null;
+		if ( $option_map === null ) {
+			$option_map = array(
+				'organization_sameas'             => 'schema_org_sameas',
+				'organization_availablelanguage'  => 'schema_org_availablelanguage',
+				'organization_knowsabout'         => 'schema_org_knowsabout',
+			);
+		}
+		$raw  = frl_get_option( $option_map[ $source ] );
+		$list = frl_textlist_to_array( $raw );
+		// Flatten: frl_textlist_to_array returns array of arrays
+		$values = array();
+		foreach ( $list as $item ) {
+			if ( ! empty( $item[0] ) ) {
+				$values[] = $item[0];
+			}
+		}
+		return ! empty( $values ) ? $values : null;
+	}
+
 	if ( $source === 'featured_image' ) {
 		$image_id = get_post_thumbnail_id( $post_id );
 		if ( ! $image_id ) {
@@ -283,7 +198,7 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 		}
 		// Merge any additional properties from config
 		foreach ( $def as $key => $value ) {
-			if ( $key === '@source' ) {
+			if ( $key === '@source' || $key === '_if' ) {
 				continue;
 			}
 			if ( is_string( $value ) ) {

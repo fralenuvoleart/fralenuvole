@@ -26,3 +26,49 @@ const FRL_SCHEMA_TRANSLATE_KEYS = array(
 	'foundingLocation',
 	'audienceType',
 );
+
+/**
+ * Post-type-to-schema-data-file mapping.
+ *
+ * Maps WordPress post type slugs to their schema definition file names
+ * (without .php extension). The orchestrator loads {value}.php from
+ * the data/generators/ directory for each matching post type.
+ *
+ * Special contexts (_global, _home, _search) are handled separately.
+ * Special page types (AboutPage, ContactPage) are detected by slug
+ * via frl_schema_get_page_type().
+ *
+ * Add entries here when creating schema definitions for custom post types.
+ */
+/**
+ * Global schema types loaded on every page.
+ */
+const FRL_SCHEMA_GLOBAL_TYPES = array(
+	'Organization',
+	'WebSite',
+);
+
+/**
+ * Post-type-to-schema-type mapping.
+ *
+ * Maps WordPress post type slugs to the Schema.org types to output
+ * when viewing a singular post of that type. Each value is a Schema.org
+ * type name matching a definition file in definitions/.
+ */
+const FRL_SCHEMA_POST_TYPE_MAP = array(
+	'post'        => array( 'Article', 'BreadcrumbList', 'HowTo' ),
+	'page'        => array( 'WebPage', 'BreadcrumbList' ),
+	'service'     => array( 'Service', 'BreadcrumbList' ),
+	'team-member' => array( 'ProfilePage', 'BreadcrumbList' ),
+);
+
+/**
+ * Page-slug-to-schema-type mapping for special pages.
+ *
+ * When a page slug matches a key, the corresponding schema types
+ * are loaded in addition to the regular page schemas.
+ */
+const FRL_SCHEMA_SPECIAL_PAGES = array(
+	'about'   => array( 'AboutPage' ),
+	'contact' => array( 'ContactPage' ),
+);

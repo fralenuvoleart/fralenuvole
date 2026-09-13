@@ -20,11 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return array Filterable map of schema @type => field definitions.
  */
 function frl_schema_builder_get_term_map(): array {
-	if ( ! frl_get_option( 'schema_properties' ) ) {
-		return array();
-	}
-
-	$file = frl_schema_get_data_file( 'default-schema-terms.php' );
+	$file = frl_schema_get_data_file( 'terms.php', 'mappings' );
 	$raw  = file_exists( $file ) ? include $file : array();
 	$map  = array();
 	foreach ( $raw as $type => $pairs ) {
@@ -128,11 +124,7 @@ function frl_schema_builder_build_term_properties( int $post_id, array $type_map
  * @return array Filterable map of schema @type => person field defs.
  */
 function frl_schema_builder_get_person_map(): array {
-	if ( ! frl_get_option( 'schema_properties' ) ) {
-		return array();
-	}
-
-	$file = frl_schema_get_data_file( 'default-schema-person.php' );
+	$file = frl_schema_get_data_file( 'persons.php', 'mappings' );
 	$map  = file_exists( $file ) ? include $file : array();
 
 	/**
@@ -290,7 +282,7 @@ function frl_schema_builder_build_person_from_ref( int $ref_id, array $field_def
 		// Single convention: 'post_' prefix = WP-native functionality
 		if ( str_starts_with( $source, 'post_' ) ) {
 			if ( str_starts_with( $source, 'post_permalink' ) ) {
-				$value = get_permalink( $ref_id );
+				$value    = get_permalink( $ref_id );
 				$fragment = strstr( $source, '#' );
 				if ( $fragment !== false ) {
 					$value .= $fragment;
@@ -375,7 +367,7 @@ function frl_schema_builder_build_person_nested( int $ref_id, array $def, \WP_Po
 
 		if ( str_starts_with( $source, 'post_' ) ) {
 			if ( str_starts_with( $source, 'post_permalink' ) ) {
-				$value = get_permalink( $ref_id );
+				$value    = get_permalink( $ref_id );
 				$fragment = strstr( $source, '#' );
 				if ( $fragment !== false ) {
 					$value .= $fragment;

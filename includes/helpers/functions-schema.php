@@ -29,6 +29,22 @@ function frl_schema_extract_scalar_value( $value ): ?string {
 }
 
 /**
+ * Get the contact page URL.
+ *
+ * Looks up the page with slug 'contact' and returns its permalink.
+ * Falls back to site_url/contact/ if no page found.
+ *
+ * @return string Contact page URL.
+ */
+function frl_get_contact_page_url(): string {
+	$page = get_page_by_path( 'contact' );
+	if ( $page ) {
+		return get_permalink( $page );
+	}
+	return frl_get_home_url() . '/contact/';
+}
+
+/**
  * Resolve the file path for a schema data file, supporting per-brand overrides.
  *
  * Tries {prefix}-variant first; falls back to the default filename.
@@ -37,14 +53,14 @@ function frl_schema_extract_scalar_value( $value ): ?string {
  * @param string $subdir           Data subdirectory: 'properties' or 'generators'.
  * @return string Resolved file path.
  */
-function frl_schema_get_data_file( string $default_filename, string $subdir = 'properties' ): string {
+function frl_schema_get_data_file( string $default_filename, string $subdir = 'definitions' ): string {
 	$prefix = '';
 	if ( function_exists( 'frl_environment_get_config' ) ) {
 		$env_config = frl_environment_get_config();
 		$prefix     = $env_config['prefix'] ?? '';
 	}
 
-	$base = FRL_DIR_PATH . 'public/schema/data/' . $subdir . '/';
+	$base = FRL_DIR_PATH . 'public/schema/' . $subdir . '/';
 
 	$file = $base . $default_filename;
 	if ( $prefix ) {
@@ -96,29 +112,53 @@ function frl_schema_replace_placeholders( string|array $data, array $replacement
  * @return array Map of {{placeholder}} => replacement string.
  */
 function frl_schema_get_placeholders( ?int $post_id = null ): array {
+	static $cache = array();
+	$cache_key = $post_id ?? '_global';
+
+	if ( isset( $cache[ $cache_key ] ) ) {
+		return $cache[ $cache_key ];
+	}
+
 	$logo = wp_get_attachment_image_src( get_theme_mod( 'custom_logo' ), 'full' );
 
 	$map = array(
-		'{{site_url}}'                 => site_url(),
-		'{{site_url_local}}'           => frl_get_home_url(),
-		'{{custom_logo}}'              => $logo[0] ?? '',
-		'{{schema_organization_url}}'  => frl_get_option( 'schema_organization_url' ) ?: site_url(),
-		'{{schema_organization_name}}' => frl_get_option( 'schema_organization_name' ) ?: get_bloginfo( 'name' ),
-		'{{schema_founder_name}}'      => frl_get_option( 'schema_founder_name' ) ?: '',
-		'{{schema_founder_url}}'       => frl_get_option( 'schema_founder_url' ) ?: '',
+		'{{site_url}}'                                  => site_url(),
+		'{{site_url_local}}'                            => frl_get_home_url(),
+		'{{language}}'                                  => frl_get_language(),
+		'{{custom_logo}}'                               => $logo[0] ?? '',
+		'{{schema_org_url}}'                            => trailingslashit( site_url() ),
+		'{{schema_org_name}}'                           => get_bloginfo( 'name' ),
+		'{{schema_org_description}}'                    => get_bloginfo( 'description' ),
+		'{{schema_org_addresscountry}}'        => frl_get_option( 'schema_org_addresscountry' ) ?: '',
+		'{{schema_org_streetaddress}}'         => frl_get_option( 'schema_org_streetaddress' ) ?: '',
+		'{{schema_org_addresslocality}}'       => frl_get_option( 'schema_org_addresslocality' ) ?: '',
+		'{{schema_org_postalcode}}'            => frl_get_option( 'schema_org_postalcode' ) ?: '',
+		'{{schema_org_areaserved}}'            => frl_get_option( 'schema_org_areaserved' ) ?: '',
+		'{{schema_org_areaserved_sameas}}'     => frl_get_option( 'schema_org_areaserved_sameas' ) ?: '',
+		'{{schema_org_foundingdate}}'          => frl_get_option( 'schema_org_foundingdate' ) ?: '',
+		'{{schema_org_foundinglocation}}'      => frl_get_option( 'schema_org_foundinglocation' ) ?: '',
+		'{{schema_org_foundinglocation_sameas}}' => frl_get_option( 'schema_org_foundinglocation_sameas' ) ?: '',
+		'{{schema_founder_name}}'                       => frl_get_option( 'schema_founder_name' ) ?: '',
+		'{{schema_founder_url}}'                        => frl_get_option( 'schema_founder_url' ) ?: '',
+		'{{schema_org_telephone}}'                  => frl_get_option( 'schema_org_telephone' ) ?: '',
+		'{{schema_contact_url}}'                        => frl_get_contact_page_url(),
 	);
 
 	if ( $post_id !== null ) {
-		$map['{{post_title}}']           = get_the_title( $post_id );
+		$map['{{post_title}}']            = get_the_title( $post_id );
 		$map['{{post_permalink}}']        = get_permalink( $post_id );
-		$thumb_id                        = get_post_thumbnail_id( $post_id );
-		$size                            = apply_filters( 'frl_schema_thumbnail_size', 'large' );
-		$thumb                           = $thumb_id ? wp_get_attachment_image_src( $thumb_id, $size ) : false;
+		$map['{{post_date_published}}']   = get_the_date( 'c', $post_id );
+		$map['{{post_date_modified}}']    = get_the_modified_date( 'c', $post_id );
+		$map['{{post_excerpt}}']          = get_the_excerpt( $post_id ) ?: '';
+		$thumb_id                         = get_post_thumbnail_id( $post_id );
+		$size                             = apply_filters( 'frl_schema_thumbnail_size', 'large' );
+		$thumb                            = $thumb_id ? wp_get_attachment_image_src( $thumb_id, $size ) : false;
 		$map['{{post_thumbnail_url}}']    = $thumb[0] ?? '';
 		$map['{{post_thumbnail_width}}']  = $thumb[1] ?? '';
 		$map['{{post_thumbnail_height}}'] = $thumb[2] ?? '';
 	}
 
+	$cache[ $cache_key ] = $map;
 	return $map;
 }
 
@@ -184,10 +224,12 @@ function frl_schema_get_repeater_rows_acf( int $post_id, string $repeater, array
 	}
 
 	while ( have_rows( $repeater, $post_id ) ) {
-		the_row();
+		if ( function_exists( 'the_row' ) ) {
+			the_row();
+		}
 		$row = array();
 		foreach ( $field_map as $out_key => $field_name ) {
-			$val = get_sub_field( $field_name );
+			$val = function_exists( 'get_sub_field' ) ? get_sub_field( $field_name ) : null;
 			if ( $val !== null && $val !== false && $val !== '' ) {
 				$row[ $out_key ] = is_string( $val ) ? $val : '';
 			}
@@ -258,6 +300,11 @@ function frl_schema_get_repeater_rows_acpt( int $post_id, string $repeater, arra
  * @return string|null Resolved value, or null if unresolvable.
  */
 function frl_schema_resolve_value( int $post_id, string $raw, array $placeholders ): ?string {
+	// Fast path: no {{placeholder}} syntax → treat as field name directly
+	if ( ! str_contains( $raw, '{{' ) ) {
+		return frl_schema_extract_scalar_value( frl_get_post_meta( $post_id, $raw, true ) );
+	}
+
 	$resolved = frl_schema_replace_placeholders( $raw, $placeholders );
 
 	// Placeholder was replaced → use directly
@@ -300,40 +347,6 @@ function frl_schema_should_translate_key( string $key, string $current_path, arr
 }
 
 /**
- * Replace post-aware placeholders in resolved schema props.
- *
- * @param array $props   Resolved schema properties array.
- * @param int   $post_id Current post ID.
- * @return array Props with post placeholders resolved.
- */
-function frl_schema_resolve_post_placeholders( array $props, int $post_id ): array {
-	return frl_schema_replace_placeholders( $props, frl_schema_get_placeholders( $post_id ) );
-}
-
-/**
- * Resolve any remaining {{field_name}} tokens via post meta.
- *
- * After all known placeholders are resolved, this catches custom-field
- * tokens (e.g. {{team-settings_team-whatsapp}}) that are not in the
- * standard placeholder map. Each token between {{…}} is resolved via
- * get_post_meta(). Tokens that resolve to empty/null are replaced with
- * an empty string to avoid literal {{…}} in the output.
- *
- * @param array $props   Schema properties array.
- * @param int   $post_id Post ID for meta lookups.
- * @return array Props with remaining {{…}} tokens resolved.
- */
-function frl_schema_resolve_remaining_placeholders( array $props, int $post_id ): array {
-	$callback = static function ( array $matches ) use ( $post_id ): string {
-		$token = $matches[1];
-		$value = frl_schema_extract_scalar_value( frl_get_post_meta( $post_id, $token, true ) );
-		return $value ?? '';
-	};
-
-	return frl_schema_replace_placeholders_callback( $props, $callback );
-}
-
-/**
  * Walk schema props and apply a callback to any {{token}} in string values.
  *
  * @param array    $props    Schema properties array.
@@ -355,5 +368,120 @@ function frl_schema_replace_placeholders_callback( array $props, callable $callb
 			$result[ $key ] = $value;
 		}
 	}
+	return $result;
+}
+
+/**
+ * Merge properties into a schema array.
+ *
+ * Array values are deep-merged via array_replace_recursive to preserve
+ * unset sub-keys from the source. Scalar values overwrite unconditionally.
+ * Null sentinel removes the property from the schema.
+ *
+ * @param array $schema The schema array.
+ * @param array $props  Properties to inject (property key => value).
+ * @return array Modified schema array.
+ */
+function frl_schema_merge_properties( array $schema, array $props ): array {
+	if ( empty( $props ) ) {
+		return $schema;
+	}
+
+	foreach ( $props as $key => $value ) {
+		// Sentinel: null means remove the property
+		if ( $value === null ) {
+			unset( $schema[ $key ] );
+			continue;
+		}
+
+		if ( is_array( $value ) ) {
+			if ( ! isset( $schema[ $key ] ) || ! is_array( $schema[ $key ] ) ) {
+				$schema[ $key ] = $value;
+			} else {
+				$schema[ $key ] = array_replace_recursive( $schema[ $key ], $value );
+			}
+			continue;
+		}
+
+		// Scalar property: overwrite unconditionally
+		$schema[ $key ] = $value;
+	}
+
+	return $schema;
+}
+
+/**
+ * Recursively trim whitespace-contaminated keys in a schema array.
+ *
+ * Only processes keys that contain leading/trailing whitespace.
+ * Targeted fix for third-party bugs (e.g., SASWP's 'name ' key).
+ *
+ * @param array $array_value The schema array to process.
+ * @return array Array with trimmed keys (only where needed).
+ */
+function frl_schema_trim_keys( array $array_value ): array {
+	$result        = array();
+	$needs_rebuild = false;
+
+	foreach ( $array_value as $key => $value ) {
+		$trimmed_key = trim( $key );
+		if ( $key !== '' && $key !== $trimmed_key ) {
+			$needs_rebuild = true;
+		}
+		if ( is_array( $value ) ) {
+			$trimmed_value = frl_schema_trim_keys( $value );
+			if ( $trimmed_value !== $value ) {
+				$needs_rebuild = true;
+			}
+			$result[ $trimmed_key ] = $trimmed_value;
+		} else {
+			$result[ $trimmed_key ] = $value;
+		}
+	}
+
+	return $needs_rebuild ? $result : $array_value;
+}
+
+/**
+ * Recursively remove empty properties from a schema array.
+ *
+ * Strips empty strings, nulls, and empties cleared by the recursion itself.
+ * List arrays (numeric, zero-indexed) are re-indexed to preserve JSON [] output.
+ * Never removes @type — required for Schema.org validity.
+ * Preserves falsy-but-valid values (0, false, "0").
+ *
+ * @param array $schema The schema array or sub-array.
+ * @return array Schema with empty properties stripped.
+ */
+function frl_schema_strip_empty( array $schema ): array {
+	$result = array();
+
+	foreach ( $schema as $key => $value ) {
+		if ( is_array( $value ) ) {
+			$cleaned = frl_schema_strip_empty( $value );
+			$is_list = $value !== array() && array_key_first( $value ) === 0;
+			if ( $is_list ) {
+				$cleaned = array_values( $cleaned );
+			}
+
+			// Drop sub-objects that only have @type (no meaningful properties)
+			if ( ! $is_list && isset( $cleaned['@type'] ) && count( $cleaned ) === 1 ) {
+				continue;
+			}
+
+			if ( ! empty( $cleaned ) ) {
+				$result[ $key ] = $cleaned;
+			}
+			continue;
+		}
+
+		// Drop empty strings and nulls; keep 0, false, "0"
+		if ( $value === '' || $value === null ) {
+			continue;
+		}
+
+		$result[ $key ] = $value;
+	}
+
 	return $result;
 }

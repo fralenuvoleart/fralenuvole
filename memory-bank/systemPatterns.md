@@ -57,6 +57,39 @@
 
 **Deliberately immune to cache-clear operations:** `_frl_post_version` is postmeta, not cache — `Frl_Cache_Manager` never touches `wp_postmeta`, and adding it to `purge_all()`/"Clear Cache" would be pure overhead (a full-group purge already invalidates every versioned key regardless of the version number) plus DB cost scaling with total post count. Only cleaned up on full uninstall (`frl_uninstall_plugin()`), never on routine cache clears or plugin resets.
 
+## 📋 Schema Module Patterns
+
+### Definition File Convention
+- One file per Schema.org type in `definitions/`, named exactly after the `@type` value (PascalCase: `Organization.php`, `Article.php`)
+- Each file returns a single definition array with `_if` toggle, `@type`, and all properties
+- Scalars: `{{placeholder}}` for known values, bare string for custom field names — both resolved via `frl_schema_resolve_value()`
+- Arrays with `@source` → resolved by `frl_schema_generator_build_sourced()` (textlist flattening, featured_image)
+- Arrays with `repeater` → expanded from ACF/ACPT data via `frl_schema_generator_build_repeater()`
+- Nested arrays → recursed as sub-objects
+
+### Context → Type Mapping
+- `FRL_SCHEMA_GLOBAL_TYPES` — loaded on every page (Organization, WebSite)
+- `FRL_SCHEMA_POST_TYPE_MAP` — post_type → array of Schema.org types
+- `FRL_SCHEMA_SPECIAL_PAGES` — page_slug → array of Schema.org types (about → AboutPage, contact → ContactPage)
+
+### Build Pipeline (per schema)
+1. `_if` gate check
+2. `frl_schema_generator_build()` — recursive builder with placeholder + field resolution
+3. `frl_schema_resolver_resolve()` — translation pass (FRL_SCHEMA_TRANSLATE_KEYS)
+4. `frl_schema_builder_build_term_properties()` — taxonomy term enrichment
+5. `frl_schema_builder_build_person_properties()` — Person reference enrichment
+6. `frl_schema_strip_empty()` — removes empty values + sub-objects with only @type
+
+### Caching Strategy
+- Global schemas: `schema_global_{lang}_{version}_{toggle_hash}` in `html` group
+- Post schemas: `post_{id}_schema_v{version}` in `postdata` group (Post Cache Versioning Pattern)
+- Placeholder map: memoized per `$post_id` via static cache in `frl_schema_get_placeholders()`
+
+### Option Naming Convention
+- Type toggles: `schema_{typename}` (e.g., `schema_organization`, `schema_article`)
+- Data fields: `schema_org_{field}` (e.g., `schema_org_sameas`, `schema_org_telephone`)
+- Master toggle: `schema_enabled`
+
 ## 🛠️ Developer Working Method
 - **Standard:** Modular, elegant, SEO-performant.
 - **Verification:** Trace every claim through the full call chain before asserting a pattern is followed or a regression is avoided — use `search_files`/grep, never assume from a function name or comment alone.
