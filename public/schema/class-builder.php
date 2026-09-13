@@ -48,7 +48,7 @@ function frl_schema_generator_build( int $post_id, array $def, ?array $placehold
 
 	foreach ( $def as $key => $value ) {
 		// Skip structural keys
-		if ( $key === 'source' || $key === '_if' ) {
+		if ( $key === 'source' || $key === '_if' || $key === '_requires' ) {
 			continue;
 		}
 
@@ -93,6 +93,11 @@ function frl_schema_generator_build( int $post_id, array $def, ?array $placehold
 			}
 			continue;
 		}
+	}
+
+	// _requires check: if specified field is empty, skip entire schema
+	if ( ! empty( $def['_requires'] ) && empty( $result[ $def['_requires'] ] ) ) {
+		return null;
 	}
 
 	return ! empty( $result ) ? $result : null;

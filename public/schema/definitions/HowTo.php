@@ -10,8 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 return array(
-	'_if'           => 'schema_howto',
-	'@type'         => 'HowTo',
+	'_if'       => 'schema_howto',
+	'_requires' => 'name',
+	'@type'     => 'HowTo',
 	'name'          => '@field:service-howtos_title',
 	'description'   => '@field:service-howtos_description',
 	'about'         => '{{post_title}}',
