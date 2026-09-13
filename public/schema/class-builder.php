@@ -116,6 +116,10 @@ function frl_schema_generator_build_repeater( int $post_id, array $def, array $p
 		if ( in_array( $key, array( 'repeater', 'source', '@type', '_if' ), true ) ) {
 			continue;
 		}
+		// Strip @field: prefix from field names
+		if ( is_string( $field_name ) && str_starts_with( $field_name, '@field:' ) ) {
+			$field_name = substr( $field_name, 7 );
+		}
 		$field_map[ $key ] = $field_name;
 	}
 
@@ -170,9 +174,9 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 		static $option_map = null;
 		if ( $option_map === null ) {
 			$option_map = array(
-				'organization_sameas'             => 'schema_org_sameas',
-				'organization_availablelanguage'  => 'schema_org_availablelanguage',
-				'organization_knowsabout'         => 'schema_org_knowsabout',
+				'organization_sameas'            => 'schema_org_sameas',
+				'organization_availablelanguage' => 'schema_org_availablelanguage',
+				'organization_knowsabout'        => 'schema_org_knowsabout',
 			);
 		}
 		$raw  = frl_get_option( $option_map[ $source ] );
@@ -185,6 +189,14 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 			}
 		}
 		return ! empty( $values ) ? $values : null;
+	}
+
+	if ( $source === 'site_logo' ) {
+		$logo_id = get_theme_mod( 'custom_logo' );
+		if ( ! $logo_id ) {
+			return null;
+		}
+		return frl_schema_build_image_object( (int) $logo_id );
 	}
 
 	if ( $source === 'featured_image' ) {

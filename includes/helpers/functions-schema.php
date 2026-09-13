@@ -113,7 +113,7 @@ function frl_schema_replace_placeholders( string|array $data, array $replacement
  */
 function frl_schema_get_placeholders( ?int $post_id = null ): array {
 	static $cache = array();
-	$cache_key = $post_id ?? '_global';
+	$cache_key    = $post_id ?? '_global';
 
 	if ( isset( $cache[ $cache_key ] ) ) {
 		return $cache[ $cache_key ];
@@ -122,26 +122,26 @@ function frl_schema_get_placeholders( ?int $post_id = null ): array {
 	$logo = wp_get_attachment_image_src( get_theme_mod( 'custom_logo' ), 'full' );
 
 	$map = array(
-		'{{site_url}}'                                  => site_url(),
-		'{{site_url_local}}'                            => frl_get_home_url(),
-		'{{language}}'                                  => frl_get_language(),
-		'{{custom_logo}}'                               => $logo[0] ?? '',
-		'{{schema_org_url}}'                            => trailingslashit( site_url() ),
-		'{{schema_org_name}}'                           => get_bloginfo( 'name' ),
-		'{{schema_org_description}}'                    => get_bloginfo( 'description' ),
-		'{{schema_org_addresscountry}}'        => frl_get_option( 'schema_org_addresscountry' ) ?: '',
-		'{{schema_org_streetaddress}}'         => frl_get_option( 'schema_org_streetaddress' ) ?: '',
-		'{{schema_org_addresslocality}}'       => frl_get_option( 'schema_org_addresslocality' ) ?: '',
-		'{{schema_org_postalcode}}'            => frl_get_option( 'schema_org_postalcode' ) ?: '',
-		'{{schema_org_areaserved}}'            => frl_get_option( 'schema_org_areaserved' ) ?: '',
-		'{{schema_org_areaserved_sameas}}'     => frl_get_option( 'schema_org_areaserved_sameas' ) ?: '',
-		'{{schema_org_foundingdate}}'          => frl_get_option( 'schema_org_foundingdate' ) ?: '',
-		'{{schema_org_foundinglocation}}'      => frl_get_option( 'schema_org_foundinglocation' ) ?: '',
+		'{{site_url}}'                           => site_url(),
+		'{{site_url_local}}'                     => frl_get_home_url(),
+		'{{language}}'                           => frl_get_language(),
+		'{{custom_logo}}'                        => $logo[0] ?? '',
+		'{{schema_org_url}}'                     => trailingslashit( site_url() ),
+		'{{schema_org_name}}'                    => get_bloginfo( 'name' ),
+		'{{schema_org_description}}'             => get_bloginfo( 'description' ),
+		'{{schema_org_addresscountry}}'          => frl_get_option( 'schema_org_addresscountry' ) ?: '',
+		'{{schema_org_streetaddress}}'           => frl_get_option( 'schema_org_streetaddress' ) ?: '',
+		'{{schema_org_addresslocality}}'         => frl_get_option( 'schema_org_addresslocality' ) ?: '',
+		'{{schema_org_postalcode}}'              => frl_get_option( 'schema_org_postalcode' ) ?: '',
+		'{{schema_org_areaserved}}'              => frl_get_option( 'schema_org_areaserved' ) ?: '',
+		'{{schema_org_areaserved_sameas}}'       => frl_get_option( 'schema_org_areaserved_sameas' ) ?: '',
+		'{{schema_org_foundingdate}}'            => frl_get_option( 'schema_org_foundingdate' ) ?: '',
+		'{{schema_org_foundinglocation}}'        => frl_get_option( 'schema_org_foundinglocation' ) ?: '',
 		'{{schema_org_foundinglocation_sameas}}' => frl_get_option( 'schema_org_foundinglocation_sameas' ) ?: '',
-		'{{schema_founder_name}}'                       => frl_get_option( 'schema_founder_name' ) ?: '',
-		'{{schema_founder_url}}'                        => frl_get_option( 'schema_founder_url' ) ?: '',
-		'{{schema_org_telephone}}'                  => frl_get_option( 'schema_org_telephone' ) ?: '',
-		'{{schema_contact_url}}'                        => frl_get_contact_page_url(),
+		'{{schema_founder_name}}'                => frl_get_option( 'schema_founder_name' ) ?: '',
+		'{{schema_founder_url}}'                 => frl_get_option( 'schema_founder_url' ) ?: '',
+		'{{schema_org_telephone}}'               => frl_get_option( 'schema_org_telephone' ) ?: '',
+		'{{schema_contact_url}}'                 => frl_get_contact_page_url(),
 	);
 
 	if ( $post_id !== null ) {
@@ -300,9 +300,14 @@ function frl_schema_get_repeater_rows_acpt( int $post_id, string $repeater, arra
  * @return string|null Resolved value, or null if unresolvable.
  */
 function frl_schema_resolve_value( int $post_id, string $raw, array $placeholders ): ?string {
-	// Fast path: no {{placeholder}} syntax → treat as field name directly
+	// Fast path: no {{placeholder}} syntax
 	if ( ! str_contains( $raw, '{{' ) ) {
-		return frl_schema_extract_scalar_value( frl_get_post_meta( $post_id, $raw, true ) );
+		// @field: prefix → explicit field name, resolve via post meta
+		if ( str_starts_with( $raw, '@field:' ) ) {
+			return frl_schema_extract_scalar_value( frl_get_post_meta( $post_id, substr( $raw, 7 ), true ) );
+		}
+		// Bare string → literal value
+		return $raw;
 	}
 
 	$resolved = frl_schema_replace_placeholders( $raw, $placeholders );

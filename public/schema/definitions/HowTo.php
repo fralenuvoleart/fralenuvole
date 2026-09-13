@@ -12,17 +12,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 return array(
 	'_if'           => 'schema_howto',
 	'@type'         => 'HowTo',
-	'name'          => 'service-howtos_title',
-	'description'   => 'service-howtos_description',
+	'name'          => '@field:service-howtos_title',
+	'description'   => '@field:service-howtos_description',
 	'about'         => '{{post_title}}',
-	'totalTime'     => 'service-howtos_time',
-	'estimatedCost' => 'service-howtos_cost',
+	'totalTime'     => '@field:service-howtos_time',
+	'estimatedCost' => '@field:service-howtos_cost',
 	'step'          => array(
 		'@type'    => 'HowToStep',
 		'repeater' => 'service-howtos_howto',
 		'source'   => 'acpt',
 		'position' => '{{index}}',
-		'name'     => 'title',
-		'text'     => 'answer',
+		'name'     => '@field:title',
+		'text'     => '@field:answer',
 	),
 );

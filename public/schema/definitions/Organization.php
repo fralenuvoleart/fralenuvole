@@ -21,10 +21,7 @@ return array(
 		'@source' => 'organization_sameas',
 	),
 	'logo'             => array(
-		'@type'  => 'ImageObject',
-		'url'    => '{{custom_logo}}',
-		'width'  => '150',
-		'height' => '40',
+		'@source' => 'site_logo',
 	),
 	'address'          => array(
 		'@type'           => 'PostalAddress',
