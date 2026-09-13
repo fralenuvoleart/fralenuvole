@@ -17,8 +17,18 @@ return array(
 	'description' => '{{post_excerpt}}',
 	'url'         => '{{post_permalink}}',
 	'provider'    => array(
-		'@type' => 'Organization',
-		'@id'   => '{{schema_org_url}}#Organization',
+		'@type'         => 'Organization',
+		'@id'           => '{{schema_org_url}}#Organization',
+		'name'          => '{{schema_org_name}}',
+		'address'       => array(
+			'@type'           => 'PostalAddress',
+			'streetAddress'   => '{{schema_org_streetaddress}}',
+			'addressCountry'  => array(
+				'@type' => 'Country',
+				'name'  => '{{schema_org_addresscountry}}',
+			),
+			'telephone'      => '{{schema_org_telephone}}',
+		),
 	),
 	'audience'    => array(
 		'@type'        => 'Audience',
@@ -27,4 +37,5 @@ return array(
 	'image'       => array(
 		'@source' => 'featured_image',
 	),
+	'hasOfferCatalog' => '{{post_title}}',
 );

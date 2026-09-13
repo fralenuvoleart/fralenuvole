@@ -18,10 +18,16 @@ return array(
 	'isPartOf'   => array(
 		'@id' => '{{schema_org_url}}#Website',
 	),
+	'image'      => array(
+		'@source' => 'featured_image',
+	),
 	'mainEntity' => array(
 		'@type'         => 'Person',
 		'@id'           => '{{post_permalink}}#Person',
+		'name'          => '{{post_title}}',
 		'url'           => '{{post_permalink}}',
+		'description'   => '{{post_excerpt}}',
+		'jobTitle'      => '@field:team-settings_team-role',
 		'worksFor'      => array(
 			'@type' => 'Organization',
 			'@id'   => '{{schema_org_url}}#Organization',
@@ -29,7 +35,13 @@ return array(
 		),
 		'hasCredential' => array(
 			'@type' => 'EducationalOccupationalCredential',
-			'name'  => '{{team-settings_team-education}}',
+			'name'  => '@field:team-settings_team-education',
+		),
+		'sameAs'        => array(
+			'@field:team-settings_team-linkedin',
+			'@field:team-settings_team-facebook',
+			'@field:team-settings_team-website',
+			'@field:team-settings_team-whatsapp',
 		),
 		'image'         => array(
 			'@source' => 'featured_image',

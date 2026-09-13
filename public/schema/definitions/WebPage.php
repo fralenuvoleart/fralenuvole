@@ -30,6 +30,16 @@ return array(
 		'@type' => 'Organization',
 		'@id'   => '{{schema_org_url}}#Organization',
 	),
+	'about'           => array(
+		'@id' => '{{schema_org_url}}#Organization',
+	),
+	'speakable'       => array(
+		'@type'  => 'SpeakableSpecification',
+		'xpath'  => array(
+			'/html/head/title',
+			'/html/head/meta[@name=\'description\']/@content',
+		),
+	),
 	'potentialAction' => array(
 		'@type'  => 'ReadAction',
 		'target' => '{{post_permalink}}',

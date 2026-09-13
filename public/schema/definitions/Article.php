@@ -31,4 +31,14 @@ return array(
 		'@type' => 'Organization',
 		'@id'   => '{{schema_org_url}}#Organization',
 	),
+	'mainEntity'       => array(
+		'@source' => 'article_headings',
+	),
+	'speakable'        => array(
+		'@type' => 'SpeakableSpecification',
+		'xpath' => array(
+			'/html/head/title',
+			'/html/head/meta[@name=\'description\']/@content',
+		),
+	),
 );

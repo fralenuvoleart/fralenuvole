@@ -191,6 +191,97 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 		return ! empty( $values ) ? $values : null;
 	}
 
+	if ( $source === 'article_headings' ) {
+		if ( $post_id <= 0 ) {
+			return null;
+		}
+		$post    = get_post( $post_id );
+		$content = $post ? $post->post_content : '';
+		if ( empty( $content ) ) {
+			return null;
+		}
+
+		// Extract h2/h3 headings
+		preg_match_all( '/<h([23])[^>]*>(.*?)<\/h[23]>/i', $content, $matches, PREG_SET_ORDER );
+		if ( empty( $matches ) ) {
+			return null;
+		}
+
+		$headings = array();
+		foreach ( $matches as $match ) {
+			$headings[] = wp_strip_all_tags( $match[2] );
+		}
+
+		return array(
+			'@type'            => 'ItemList',
+			'itemListElement'  => $headings,
+			'itemListOrder'    => 'https://schema.org/ItemListOrderAscending',
+			'name'             => get_the_title( $post_id ),
+		);
+	}
+
+	if ( $source === 'breadcrumb' ) {
+		$items   = array();
+		$position = 1;
+
+		// Home
+		$items[] = array(
+			'@type'    => 'ListItem',
+			'position' => $position,
+			'item'     => array(
+				'@id'  => trailingslashit( site_url() ),
+				'name' => get_bloginfo( 'name' ),
+			),
+		);
+		++$position;
+
+		// Primary category/term (if exists)
+		if ( $post_id > 0 ) {
+			$post_type = get_post_type( $post_id );
+			$taxonomy  = $post_type === 'post' ? 'category' : null;
+
+			// Try to find a suitable taxonomy for CPTs
+			if ( ! $taxonomy && $post_type ) {
+				$taxonomies = get_object_taxonomies( $post_type, 'objects' );
+				foreach ( $taxonomies as $tax ) {
+					if ( $tax->hierarchical && $tax->public ) {
+						$taxonomy = $tax->name;
+						break;
+					}
+				}
+			}
+
+			if ( $taxonomy ) {
+				$terms = get_the_terms( $post_id, $taxonomy );
+				if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
+					$items[] = array(
+						'@type'    => 'ListItem',
+						'position' => $position,
+						'item'     => array(
+							'@id'  => get_term_link( $terms[0] ),
+							'name' => $terms[0]->name,
+						),
+					);
+					++$position;
+				}
+			}
+		}
+
+		// Current post
+		if ( $post_id > 0 ) {
+			$items[] = array(
+				'@type'    => 'ListItem',
+				'position' => $position,
+				'item'     => array(
+					'@id'  => get_permalink( $post_id ),
+					'name' => get_the_title( $post_id ),
+				),
+			);
+		}
+
+		return $items;
+	}
+
 	if ( $source === 'archive_posts' ) {
 		global $wp_query;
 		$items  = array();

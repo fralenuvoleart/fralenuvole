@@ -108,7 +108,7 @@ class Frl_Schema_Orchestrator {
 
 		if ( $context === 'singular' ) {
 			$schemas = array_merge( $schemas, $this->build_singular() );
-		} elseif ( $context === 'archive' ) {
+		} elseif ( $context === 'archive' || $context === 'home' ) {
 			$schemas = array_merge( $schemas, $this->build_archive() );
 		}
 

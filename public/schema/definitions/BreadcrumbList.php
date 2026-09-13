@@ -2,6 +2,8 @@
 /**
  * BreadcrumbList Schema
  *
+ * Dynamically built from WordPress categories + current post.
+ *
  * @package Fralenuvole
  */
 
@@ -14,21 +16,6 @@ return array(
 	'@type'           => 'BreadcrumbList',
 	'@id'             => '{{post_permalink}}#BreadcrumbList',
 	'itemListElement' => array(
-		array(
-			'@type'    => 'ListItem',
-			'position' => '1',
-			'item'     => array(
-				'@id'  => '{{site_url}}',
-				'name' => '{{schema_org_name}}',
-			),
-		),
-		array(
-			'@type'    => 'ListItem',
-			'position' => '2',
-			'item'     => array(
-				'@id'  => '{{post_permalink}}',
-				'name' => '{{post_title}}',
-			),
-		),
+		'@source' => 'breadcrumb',
 	),
 );
