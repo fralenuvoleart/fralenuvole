@@ -24,6 +24,7 @@ add_filter(
 function frl_pbs_register_custom_post_types() {
 	// Register custom post types
 	frl_pbs_custom_post_type_service();
+	frl_pbs_custom_post_type_lp();
 	frl_pbs_custom_post_type_team_member();
 	frl_pbs_custom_post_type_university();
 
@@ -167,6 +168,67 @@ function frl_pbs_service_taxonomy() {
 	register_taxonomy( 'service_tag', 'service', $args_tag );
 }
 
+// Register Service Post Type
+function frl_pbs_custom_post_type_lp() {
+	$labels  = array(
+		'name'                  => _x( 'Landing Pages', 'Post Type General Name', PBS_PREFIX ),
+		'singular_name'         => _x( 'Landing Page', 'Post Type Singular Name', PBS_PREFIX ),
+		'menu_name'             => __( 'Landing Pages', PBS_PREFIX ),
+		'name_admin_bar'        => __( 'Landing Page', PBS_PREFIX ),
+		'archives'              => __( 'Landing Page Archives', PBS_PREFIX ),
+		'attributes'            => __( 'Landing Page Attributes', PBS_PREFIX ),
+		'parent_item_colon'     => __( 'Parent Landing Page', PBS_PREFIX ),
+		'all_items'             => __( 'All Landing Pages', PBS_PREFIX ),
+		'add_new_item'          => __( 'Add New Landing Page', PBS_PREFIX ),
+		'add_new'               => __( 'Add New', PBS_PREFIX ),
+		'new_item'              => __( 'New Landing Page', PBS_PREFIX ),
+		'edit_item'             => __( 'Edit Landing Page', PBS_PREFIX ),
+		'update_item'           => __( 'Update Landing Page', PBS_PREFIX ),
+		'view_item'             => __( 'View Landing Page', PBS_PREFIX ),
+		'view_items'            => __( 'View Landing Pages', PBS_PREFIX ),
+		'search_items'          => __( 'Search Landing Pages', PBS_PREFIX ),
+		'not_found'             => __( 'No landing pages found.', PBS_PREFIX ),
+		'not_found_in_trash'    => __( 'No landing pages found in Trash.', PBS_PREFIX ),
+		'featured_image'        => __( 'Featured Image', PBS_PREFIX ),
+		'set_featured_image'    => __( 'Set featured image', PBS_PREFIX ),
+		'remove_featured_image' => __( 'Remove featured image', PBS_PREFIX ),
+		'use_featured_image'    => __( 'Use as featured image', PBS_PREFIX ),
+		'insert_into_item'      => __( 'Insert into landing page', PBS_PREFIX ),
+		'uploaded_to_this_item' => __( 'Uploaded to this landing page', PBS_PREFIX ),
+		'items_list'            => __( 'Landing Pages list', PBS_PREFIX ),
+		'items_list_navigation' => __( 'Landing Pages list navigation', PBS_PREFIX ),
+		'filter_items_list'     => __( 'Filter landing pages list', PBS_PREFIX ),
+	);
+	$rewrite = array(
+		'with_front' => false,
+		'pages'      => true,
+		'feeds'      => false,
+	);
+	$args    = array(
+		'label'               => __( 'Landing Page', PBS_PREFIX ),
+		'description'         => __( 'Post Type Description', PBS_PREFIX ),
+		'labels'              => $labels,
+		'supports'            => array( 'title', 'editor', 'thumbnail', 'revisions', 'custom-fields', 'page-attributes', 'excerpt' ),
+		'taxonomies'          => array( 'service_category', 'service_tag' ),
+		'hierarchical'        => false,
+		'public'              => true,
+		'show_ui'             => true,
+		'show_in_menu'        => false,
+		'menu_position'       => 21,
+		'menu_icon'           => 'dashicons-star-empty',
+		'show_in_admin_bar'   => true,
+		'show_in_nav_menus'   => true,
+		'can_export'          => true,
+		'has_archive'         => false,
+		'exclude_from_search' => true,
+		'publicly_queryable'  => true,
+		'rewrite'             => $rewrite,
+		'capability_type'     => 'page',
+		'show_in_rest'        => true,
+	);
+
+	register_post_type( 'lp', $args );
+}
 
 // Register Team member Post Type
 function frl_pbs_custom_post_type_team_member() {
