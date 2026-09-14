@@ -231,16 +231,16 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'schema_itemlist'                    => array(
-				'label'             => 'ItemList',
-				'description'       => 'Output ItemList schema on archive pages.',
+			'schema_howto'                       => array(
+				'label'             => 'HowTo',
+				'description'       => 'Output HowTo schema from ACF/ACPT repeater data on blog posts.',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'schema_howto'                       => array(
-				'label'             => 'HowTo',
-				'description'       => 'Output HowTo schema from ACF/ACPT repeater data on blog posts.',
+			'schema_collectionpage'              => array(
+				'label'             => 'CollectionPage',
+				'description'       => 'Output CollectionPage schema on archive pages, wrapping ItemList with page context and taxonomy information.',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',

@@ -118,16 +118,117 @@ class Frl_Schema_Orchestrator {
 	/**
 	 * Build schemas for archive pages.
 	 *
+	 * Single feature gated by schema_collectionpage toggle.
+	 * Builds an ItemList from the current query and wraps it in a
+	 * CollectionPage with taxonomy context (DefinedTerm for
+	 * category/tag archives).
+	 *
 	 * @return array
 	 */
 	private function build_archive(): array {
-		$def = $this->load_definition( 'ItemList' );
+		$def = $this->load_definition( 'CollectionPage' );
 		if ( $def === null ) {
 			return array();
 		}
 
-		$built = $this->build_single( $def, null );
-		return $built !== null ? array( $built ) : array();
+		if ( ! empty( $def['_if'] ) && ! frl_get_option( $def['_if'] ) ) {
+			return array();
+		}
+
+		// Build ItemList inline from archive posts
+		$item_list = $this->build_archive_item_list();
+		if ( $item_list === null ) {
+			return array();
+		}
+
+		$page = $this->build_collection_page( $item_list );
+		return $page !== null ? array( $page ) : array();
+	}
+
+	/**
+	 * Build an ItemList from the current archive query.
+	 *
+	 * @return array|null ItemList schema array, or null if no posts.
+	 */
+	private function build_archive_item_list(): ?array {
+		global $wp_query;
+		$items    = array();
+		$position = 1;
+
+		while ( have_posts() ) {
+			the_post();
+			$items[] = array(
+				'@type'    => 'ListItem',
+				'position' => $position,
+				'url'      => get_permalink(),
+			);
+			++$position;
+		}
+		rewind_posts();
+
+		if ( empty( $items ) ) {
+			return null;
+		}
+
+		return array(
+			'@type'           => 'ItemList',
+			'itemListElement' => $items,
+		);
+	}
+
+	/**
+	 * Build a CollectionPage wrapping the ItemList with archive context.
+	 *
+	 * Injects dynamic properties based on archive type:
+	 * - Taxonomy archives: about → DefinedTerm with term name/URL
+	 * - Post type archives: name from post type label
+	 * - Blog index: name from page title or site name
+	 *
+	 * @param array $item_list Built ItemList schema.
+	 * @return array CollectionPage schema array.
+	 */
+	private function build_collection_page( array $item_list ): array {
+		$url   = frl_get_request_url();
+		$name  = '';
+		$about = null;
+
+		if ( is_category() || is_tag() || is_tax() ) {
+			$term = get_queried_object();
+			if ( $term instanceof \WP_Term ) {
+				$name  = $term->name;
+				$about = array(
+					'@type'            => 'DefinedTerm',
+					'name'             => $term->name,
+					'url'              => get_term_link( $term ),
+					'inDefinedTermSet' => array(
+						'@type' => 'DefinedTermSet',
+						'name'  => get_taxonomy( $term->taxonomy )->labels->name,
+					),
+				);
+			}
+		} elseif ( is_post_type_archive() ) {
+			$obj  = get_queried_object();
+			$name = $obj instanceof \WP_Post_Type ? $obj->labels->name : '';
+		} elseif ( is_home() ) {
+			$page_id = get_option( 'page_for_posts' );
+			$name    = $page_id ? get_the_title( $page_id ) : get_bloginfo( 'name' );
+		} else {
+			$name = wp_get_document_title();
+		}
+
+		$page = array(
+			'@type'      => 'CollectionPage',
+			'@id'        => $url . '#CollectionPage',
+			'url'        => $url,
+			'name'       => $name,
+			'mainEntity' => $item_list,
+		);
+
+		if ( $about !== null ) {
+			$page['about'] = $about;
+		}
+
+		return $page;
 	}
 
 	/**

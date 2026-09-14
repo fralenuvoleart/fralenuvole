@@ -287,23 +287,6 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 		return $items;
 	}
 
-	if ( $source === 'archive_posts' ) {
-		global $wp_query;
-		$items    = array();
-		$position = 1;
-		while ( have_posts() ) {
-			the_post();
-			$items[] = array(
-				'@type'    => 'ListItem',
-				'position' => $position,
-				'url'      => get_permalink(),
-			);
-			++$position;
-		}
-		rewind_posts();
-		return ! empty( $items ) ? $items : null;
-	}
-
 	if ( $source === 'site_logo' ) {
 		$logo_id = get_theme_mod( 'custom_logo' );
 		if ( ! $logo_id ) {
