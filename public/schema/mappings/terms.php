@@ -22,7 +22,7 @@ return array(
 	'Service' => array(
 		'serviceType' => 'service_category',
 	),
-	'Article' => array(
+	'BlogPosting' => array(
 		'articleSection' => 'category',
 	),
 );

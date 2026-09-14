@@ -1,6 +1,6 @@
 <?php
 /**
- * Article Schema
+ * BlogPosting Schema
  *
  * @package Fralenuvole
  */
@@ -10,9 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 return array(
-	'_if'              => 'schema_article',
-	'@type'            => 'Article',
-	'@id'              => '{{post_permalink}}#Article',
+	'_if'              => 'schema_blogposting',
+	'@type'            => 'BlogPosting',
+	'@id'              => '{{post_permalink}}#BlogPosting',
 	'url'              => '{{post_permalink}}',
 	'inLanguage'       => '{{language}}',
 	'headline'         => '{{post_title}}',

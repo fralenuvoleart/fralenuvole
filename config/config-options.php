@@ -189,9 +189,9 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'schema_article'                     => array(
-				'label'             => 'Article',
-				'description'       => 'Output Article schema on blog posts.',
+			'schema_blogposting'                 => array(
+				'label'             => 'BlogPosting',
+				'description'       => 'Output BlogPosting schema on blog posts.',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',

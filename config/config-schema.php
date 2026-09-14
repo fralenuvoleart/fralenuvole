@@ -56,7 +56,7 @@ const FRL_SCHEMA_GLOBAL_TYPES = array(
  * type name matching a definition file in definitions/.
  */
 const FRL_SCHEMA_POST_TYPE_MAP = array(
-	'post'        => array( 'Article', 'BreadcrumbList' ),
+	'post'        => array( 'BlogPosting', 'BreadcrumbList' ),
 	'page'        => array( 'WebPage', 'BreadcrumbList' ),
 	'service'     => array( 'Service', 'BreadcrumbList', 'HowTo' ),
 	'team-member' => array( 'ProfilePage', 'BreadcrumbList' ),

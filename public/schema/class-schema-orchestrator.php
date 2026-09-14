@@ -160,6 +160,7 @@ class Frl_Schema_Orchestrator {
 			$items[] = array(
 				'@type'    => 'ListItem',
 				'position' => $position,
+				'name'     => get_the_title(),
 				'url'      => get_permalink(),
 			);
 			++$position;

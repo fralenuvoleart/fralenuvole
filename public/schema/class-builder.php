@@ -213,8 +213,14 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 		}
 
 		$headings = array();
+		$position = 1;
 		foreach ( $matches as $match ) {
-			$headings[] = wp_strip_all_tags( $match[2] );
+			$headings[] = array(
+				'@type'    => 'ListItem',
+				'position' => $position,
+				'name'     => wp_strip_all_tags( $match[2] ),
+			);
+			++$position;
 		}
 
 		return array(

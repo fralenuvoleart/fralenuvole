@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 return array(
-	'Article' => array(
+	'BlogPosting' => array(
 		'author' => array(
 			'_ref'          => 'post-settings_post-authors', // ACF field on current post → ref IDs
 			'_fallback'     => FRL_DEFAULT_AUTHOR_CPT_ID, // fallback CPT post ID when ACF is empty
