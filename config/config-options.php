@@ -231,14 +231,14 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'schema_itemlist'                       => array(
+			'schema_itemlist'                    => array(
 				'label'             => 'ItemList',
 				'description'       => 'Output ItemList schema on archive pages.',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'schema_howto'                          => array(
+			'schema_howto'                       => array(
 				'label'             => 'HowTo',
 				'description'       => 'Output HowTo schema from ACF/ACPT repeater data on blog posts.',
 				'type'              => 'checkbox',
@@ -333,6 +333,12 @@ const FRL_DEFAULT_FIELDS = array(
 				https://en.wikipedia.org/wiki/Work_permit
 				https://en.wikipedia.org/wiki/Residence_permit
 				https://en.wikipedia.org/wiki/Taxation_in_Georgia_(country)',
+			),
+			'schema_service_audiencetype'        => array(
+				'label'       => 'Service Audience Type',
+				'description' => 'audienceType value for Service schema.',
+				'type'        => 'text',
+				'default'     => 'Foreign investors, offshore companies, international entrepreneurs and expats',
 			),
 			'section_title_schema_contact'       => array(
 				'label'       => 'Contact Information',

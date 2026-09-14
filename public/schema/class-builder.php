@@ -235,7 +235,7 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 			'position' => $position,
 			'item'     => array(
 				'@id'  => trailingslashit( site_url() ),
-				'name' => get_bloginfo( 'name' ),
+				'name' => apply_filters( 'frl_schema_breadcrumb_home_label', 'Home' ),
 			),
 		);
 		++$position;

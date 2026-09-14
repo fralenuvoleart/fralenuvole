@@ -185,6 +185,7 @@ function frl_schema_get_placeholders( ?int $post_id = null ): array {
 		'{{schema_founder_url}}'                 => frl_get_option( 'schema_founder_url' ) ?: '',
 		'{{schema_org_telephone}}'               => frl_get_option( 'schema_org_telephone' ) ?: '',
 		'{{schema_contact_url}}'                 => frl_get_contact_page_url(),
+		'{{schema_service_audiencetype}}'        => frl_get_option( 'schema_service_audiencetype' ) ?: 'Foreign investors, offshore companies, international entrepreneurs and expats',
 	);
 
 	if ( $post_id !== null ) {
@@ -194,8 +195,7 @@ function frl_schema_get_placeholders( ?int $post_id = null ): array {
 		$map['{{post_date_modified}}']    = get_the_modified_date( 'c', $post_id );
 		$map['{{post_excerpt}}']          = get_the_excerpt( $post_id ) ?: '';
 		$thumb_id                         = get_post_thumbnail_id( $post_id );
-		$size                             = apply_filters( 'frl_schema_thumbnail_size', 'large' );
-		$thumb                            = $thumb_id ? wp_get_attachment_image_src( $thumb_id, $size ) : false;
+		$thumb                            = $thumb_id ? wp_get_attachment_image_src( $thumb_id, 'large' ) : false;
 		$map['{{post_thumbnail_url}}']    = $thumb[0] ?? '';
 		$map['{{post_thumbnail_width}}']  = $thumb[1] ?? '';
 		$map['{{post_thumbnail_height}}'] = $thumb[2] ?? '';
@@ -321,14 +321,8 @@ function frl_schema_get_repeater_rows_acf( int $post_id, string $repeater, array
 	}
 
 	$rows = array();
-	if ( ! have_rows( $repeater, $post_id ) ) {
-		return array();
-	}
 
 	while ( have_rows( $repeater, $post_id ) ) {
-		if ( function_exists( 'the_row' ) ) {
-			the_row();
-		}
 		$row = array();
 		foreach ( $field_map as $out_key => $field_name ) {
 			$val = function_exists( 'get_sub_field' ) ? get_sub_field( $field_name ) : null;

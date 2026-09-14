@@ -226,31 +226,85 @@ class Frl_Schema_Orchestrator {
 	}
 
 	/**
-	 * Build a short hash of all schema toggle option values.
+	 * Build a short hash of all schema toggle and data option values.
 	 *
-	 * @return string Hash of current toggle states.
+	 * Combines boolean toggles (discovered from definition files) with
+	 * data-bearing org options so the global cache auto-invalidates
+	 * when any schema-related setting changes.
+	 *
+	 * @return string Hash of current toggle + data states.
 	 */
 	private function get_toggle_hash(): string {
-		$keys = array(
-			'schema_organization',
-			'schema_website',
-			'schema_webpage',
-			'schema_article',
-			'schema_breadcrumb',
-			'schema_service',
-			'schema_profilepage',
-			'schema_aboutpage',
-			'schema_contactpage',
-			'schema_howto',
-			'schema_itemlist',
-		);
+		static $hash = null;
+
+		if ( $hash !== null ) {
+			return $hash;
+		}
+
+		// Discover toggle keys from definition files
+		$toggle_keys = $this->get_schema_toggle_keys();
 
 		$values = array();
-		foreach ( $keys as $key ) {
+		foreach ( $toggle_keys as $key ) {
 			$values[ $key ] = frl_get_option( $key ) ? '1' : '0';
 		}
 
-		return md5( implode( ',', $values ) );
+		// Include data-bearing org options so cache busts on content changes
+		$data_keys = array(
+			'schema_org_sameas',
+			'schema_org_telephone',
+			'schema_org_addresscountry',
+			'schema_org_streetaddress',
+			'schema_org_addresslocality',
+			'schema_org_postalcode',
+			'schema_org_areaserved',
+			'schema_org_areaserved_sameas',
+			'schema_org_foundingdate',
+			'schema_org_foundinglocation',
+			'schema_org_foundinglocation_sameas',
+			'schema_founder_name',
+			'schema_founder_url',
+			'schema_org_availablelanguage',
+			'schema_org_knowsabout',
+			'schema_service_audiencetype',
+		);
+
+		foreach ( $data_keys as $key ) {
+			$values[ $key ] = frl_get_option( $key ) ?: '';
+		}
+
+		$hash = md5( implode( ',', $values ) );
+		return $hash;
+	}
+
+	/**
+	 * Discover all schema toggle keys from definition files.
+	 *
+	 * Scans definitions/ for _if values so new schema types
+	 * are automatically included without updating a hardcoded list.
+	 *
+	 * @return array Toggle option keys (e.g., 'schema_organization').
+	 */
+	private function get_schema_toggle_keys(): array {
+		static $keys = null;
+
+		if ( $keys !== null ) {
+			return $keys;
+		}
+
+		$keys  = array();
+		$dir   = frl_schema_get_data_file( 'Organization.php', 'definitions' );
+		$dir   = dirname( $dir );
+		$files = glob( $dir . '/*.php' ) ?: array();
+
+		foreach ( $files as $file ) {
+			$def = include $file;
+			if ( is_array( $def ) && ! empty( $def['_if'] ) ) {
+				$keys[] = $def['_if'];
+			}
+		}
+
+		return $keys;
 	}
 
 	/**

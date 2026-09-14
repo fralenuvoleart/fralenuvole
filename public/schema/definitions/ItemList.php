@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 return array(
 	'_if'             => 'schema_itemlist',
 	'@type'           => 'ItemList',
+	'@id'             => '{{site_url}}#ItemList',
 	'itemListElement' => array(
 		'@source' => 'archive_posts',
 	),
