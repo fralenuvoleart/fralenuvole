@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 return array(
-	'Service' => array(
+	'Service'     => array(
 		'serviceType' => 'service_category',
 	),
 	'BlogPosting' => array(
