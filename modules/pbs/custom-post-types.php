@@ -130,7 +130,7 @@ function frl_pbs_service_taxonomy() {
 		'show_in_rest'      => true,
 	);
 
-	register_taxonomy( 'service_category', 'service', $arg_category );
+	register_taxonomy( 'service_category', array( 'service', 'lp' ), $arg_category );
 
 	$labels_tag = array(
 		'name'                       => _x( 'Service Tags', 'Taxonomy General Name', PBS_PREFIX ),
@@ -165,10 +165,10 @@ function frl_pbs_service_taxonomy() {
 		'show_in_rest'      => true,
 	);
 
-	register_taxonomy( 'service_tag', 'service', $args_tag );
+	register_taxonomy( 'service_tag', array( 'service', 'lp' ), $args_tag );
 }
 
-// Register Service Post Type
+// Register Landing Page Post Type
 function frl_pbs_custom_post_type_lp() {
 	$labels  = array(
 		'name'                  => _x( 'Landing Pages', 'Post Type General Name', PBS_PREFIX ),
@@ -213,7 +213,7 @@ function frl_pbs_custom_post_type_lp() {
 		'hierarchical'        => false,
 		'public'              => true,
 		'show_ui'             => true,
-		'show_in_menu'        => false,
+		'show_in_menu'        => true,
 		'menu_position'       => 21,
 		'menu_icon'           => 'dashicons-star-empty',
 		'show_in_admin_bar'   => true,
