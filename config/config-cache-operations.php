@@ -127,7 +127,7 @@ const FRL_CACHE_OPERATIONS = array(
 			array(
 				'fn'   => 'frl_flush_rewrite_rules',
 				'args' => array(),
-				'note' => 'Mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ clear_rewriter_caches() clears options→rewriter→permalinks + deletes exclusion patterns transient + flush_rewrite_rules(true) + notifies Litespeed; → Polylang cleans language cache) + fires permalink_structure_changed',
+				'note' => 'Mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ clear_rewriter_caches() clears options→rewriter→permalinks + deletes exclusion patterns transient + flush_rewrite_rules(true); → Polylang cleans language cache) + fires permalink_structure_changed',
 			),
 		),
 		'hooks' => array(
@@ -142,7 +142,7 @@ const FRL_CACHE_OPERATIONS = array(
 			array(
 				'fn'   => 'frl_flush_rewrite_rules',
 				'args' => array(),
-				'note' => 'Immediately mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ clear_rewriter_caches() clears options→rewriter→permalinks + deletes exclusion patterns transient + flush_rewrite_rules(true) + notifies Litespeed; → Polylang cleans language cache) + fires permalink_structure_changed',
+				'note' => 'Immediately mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ clear_rewriter_caches() clears options→rewriter→permalinks + deletes exclusion patterns transient + flush_rewrite_rules(true); → Polylang cleans language cache) + fires permalink_structure_changed',
 			),
 		),
 		'hooks' => array(
@@ -166,7 +166,7 @@ const FRL_CACHE_OPERATIONS = array(
 			array(
 				'fn'   => 'frl_flush_rewrite_rules',
 				'args' => array(),
-				'note' => 'Mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ clear_rewriter_caches() clears options→rewriter→permalinks + deletes exclusion patterns transient + flush_rewrite_rules(true) + notifies Litespeed; → Polylang cleans language cache) + fires permalink_structure_changed',
+				'note' => 'Mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ clear_rewriter_caches() clears options→rewriter→permalinks + deletes exclusion patterns transient + flush_rewrite_rules(true); → Polylang cleans language cache) + fires permalink_structure_changed',
 			),
 		),
 		'hooks' => array(

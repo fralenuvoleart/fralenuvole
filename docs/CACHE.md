@@ -408,7 +408,6 @@ The before hook receives `(string $operation)`. The after hook receives `(string
 
 | Hook | Priority | Args | Function | What It Clears |
 |---|---|---|---|---|
-| `init` | 10 | 0 | [`frl_register_hooks_rewrite_flush()`](core/cache/cache-cleanup.php:28) | Registers `created_/edited_/deleted_category/post_tag` hooks → rewrite flush |
 | `update_option` | 10 | 1 | [`frl_clear_option_transient()`](core/cache/cache-cleanup.php:164) | Plugin transient matching option name |
 | `pll_save_strings_translations` | 10 | 0 | [`frl_clear_translation_cache()`](core/cache/cache-cleanup.php:192) | Bumps `translation_version`, clears `translations` group (→ cascades to `metafields`) |
 | `edited_term` | 10 | 1 | [`frl_clear_term_permalink_cache()`](core/cache/cache-cleanup.php:238) | `permalinks` group + tracked meta for term |
@@ -419,6 +418,22 @@ The before hook receives `(string $operation)`. The after hook receives `(string
 | `updated_option` | 10 | 1 | [`frl_clear_option_cache()`](core/cache/cache-cleanup.php:108) | Translated option caches for all languages (plugin-owned options only) |
 | `activated_plugin` | 10 | 2 | [`frl_purge_mu_plugin_exclusion_cache()`](core/cache/cache-cleanup.php:296) | MU plugin exclusion cache keys |
 | `deactivated_plugin` | 10 | 2 | `frl_purge_mu_plugin_exclusion_cache()` | MU plugin exclusion cache keys |
+
+> **Note on category/post_tag rewrite handling (changed, and moved):** previously, `cache-cleanup.php`
+> scheduled a full `frl_flush_rewrite_rules()` cron on every create/edit/delete of a `category` or
+> `post_tag`. This was removed because `Frl_Taxonomy_Base_Removal_Feature` is catch-all + config-option
+> driven and has no per-term static rewrite rules — a full `flush_rewrite_rules(true)` was unnecessary
+> and increased exposure to the `wp_loaded`-timing race described in `docs/REWRITER.md`
+> (§ "Programmatic flush (`frl_flush_rewrite_rules`)") that can strip Polylang's language-prefixed
+> rules from the `rewrite_rules` option.
+>
+> The only genuine per-term need — keeping the catch-all exclusion-pattern transient fresh — is now
+> handled entirely inside [`Frl_Rewriter::register_cache_invalidation_hooks()`](core/rewriter/class-rewriter.php)
+> (see `docs/REWRITER.md` § "Cache invalidation hooks"), via the generic `created_term`/`deleted_term`
+> hooks (already present) plus a new generic `edited_term` hook (added to cover renames, which core has
+> no `created_term`/`deleted_term`-style generic equivalent for). Nothing in `cache-cleanup.php`
+> registers rewrite-related invalidation anymore — it all lives alongside its siblings in the rewriter
+> class, using that class's existing `wp_loaded`-deferred registration.
 
 ### Navigation Cache — Key Namespace Separation
 

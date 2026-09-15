@@ -181,42 +181,55 @@ function frl_uninstall_plugin(): void {
  *
  * For before-init contexts (plugin activation/deactivation), use frl_schedule_rewrite_flush() instead.
  *
- * Action chain:
+ * Action chain (once wp_loaded has fired):
  *   1. update_option_permalink_structure → triggers:
- *        - Fralenuvole: clear_rewriter_caches() [class-rewriter.php:471]
+ *        - Fralenuvole: clear_rewriter_caches() [class-rewriter.php]
  *          → clears options cache (→ rewriter → permalinks)
  *          → deletes exclusion patterns transient
  *          → calls flush_rewrite_rules(true)
- *        - Polylang: clean_languages_cache() [polylang/src/model.php:119]
+ *        - Polylang: clean_languages_cache() [polylang/src/model.php]
  *          → ensures fresh language data during rule regeneration
  *   2. permalink_structure_changed → notifies any other plugins
  *
- * NOTE: Frl_Rewriter::register_cache_invalidation_hooks() defers hook
- * registration to wp_loaded, so when this function is called before
- * wp_loaded (e.g. admin action button at init:10), the action chain
- * silently does nothing. The did_action('wp_loaded') fallback below
- * ensures essential operations execute regardless of hook timing.
+ * TIMING — why this defers instead of flushing immediately when called early:
+ * Both Frl_Rewriter::register_cache_invalidation_hooks() (this plugin) AND
+ * Polylang's own rewrite-rule filters (PLL_Links_Permalinks::do_prepare_rewrite_rules(),
+ * hooked at wp_loaded priority 9 — see polylang/src/links-permalinks.php and
+ * polylang/src/links-directory.php::prepare_rewrite_rules(), which explicitly
+ * checks did_action('wp_loaded') and returns early otherwise) are deferred
+ * until wp_loaded. If this function is called before wp_loaded (e.g. an admin
+ * action button, or Frl_Environment_Manager's env_enforce_full, both of which
+ * run on 'init') and used to call flush_rewrite_rules(true) directly at that
+ * point, WordPress would regenerate the `rewrite_rules` option with NEITHER
+ * set of filters registered — silently stripping Polylang's language-prefixed
+ * page/post rules and producing 404s on non-default-language Pages (CPTs are
+ * unaffected: they resolve via this plugin's own request-filter/catch-all
+ * mechanisms, independent of the cached `rewrite_rules` option).
+ *
+ * Fix: when called too early, defer the entire flush to wp_loaded priority 20
+ * (after Polylang's priority-9 callback) instead of flushing immediately.
+ * add_action() with the same callback/hook/priority is idempotent, so multiple
+ * early calls within one request only result in a single deferred execution.
  *
  * @return void
  */
 function frl_flush_rewrite_rules(): void {
-	// Delete Docket's cached alloptions BEFORE regenerating rewrite rules.
-	// Docket defers alloptions invalidation to shutdown (cache.php:2065),
-	// so the cached file survives the current request. Without this,
-	// wp_load_alloptions() returns stale rewrite_rules during flush,
-	// causing 404 errors on secondary-language permalinks.
+	// Clear the cached 'alloptions' bucket BEFORE regenerating rewrite rules,
+	// so wp_load_alloptions() can't return a stale rewrite_rules value during
+	// the flush. Safe/cheap to run on every call, including the deferred
+	// re-entry at wp_loaded/20 below.
 	wp_cache_delete( 'alloptions', 'options' );
+
+	if ( ! did_action( 'wp_loaded' ) ) {
+		// Too early: neither this plugin's nor Polylang's rewrite-rule filters
+		// are registered yet. Defer the actual flush instead of running it now.
+		add_action( 'wp_loaded', 'frl_flush_rewrite_rules', 20, 0 );
+		return;
+	}
 
 	$permastruct = get_option( 'permalink_structure' );
 	do_action( 'update_option_permalink_structure', $permastruct, $permastruct );
 	do_action( 'permalink_structure_changed', $permastruct, $permastruct );
-
-	// When called before wp_loaded, the rewriter's deferred cache invalidation
-	// hooks (registered in register_cache_invalidation_hooks()) are not yet set
-	// up. Run flush_rewrite_rules(true) directly.
-	if ( ! did_action( 'wp_loaded' ) ) {
-		flush_rewrite_rules( true );
-	}
 }
 
 /**

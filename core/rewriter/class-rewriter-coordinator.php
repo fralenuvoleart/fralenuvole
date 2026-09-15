@@ -285,8 +285,8 @@ class Frl_Rewriter_Coordinator {
 	 * frl_flush_rewrite_rules() which mirrors WP_Rewrite::set_permalink_structure():
 	 * fires update_option_permalink_structure (→ clear_rewriter_caches() clears
 	 * options→rewriter→permalinks + deletes exclusion patterns transient +
-	 * flush_rewrite_rules(true) + notifies Litespeed; → Polylang cleans language
-	 * cache) + fires permalink_structure_changed.
+	 * flush_rewrite_rules(true); → Polylang cleans language cache) + fires
+	 * permalink_structure_changed.
 	 *
 	 * @return void
 	 */

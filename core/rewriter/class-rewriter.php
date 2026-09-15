@@ -511,6 +511,19 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 					10,
 					3
 				);
+				// Term renames: WP has no generic 'created_term'/'deleted_term' equivalent
+				// for edits, but 'edited_term' fires for ANY taxonomy (category, post_tag,
+				// custom) whenever a term's slug or other properties change. A renamed
+				// slug must be added to the exclusion list so catch-all rules don't hijack
+				// it. Language term renames are already handled by 'pll_update_language'
+				// above (a full clear_rewriter_caches()), so no special-casing is needed
+				// here — a redundant transient delete for that case is harmless.
+				add_action(
+					'edited_term',
+					function () {
+						frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
+					}
+				);
 
 				// Repair absent rewrite_rules (normal WP state during any flush cycle).
 				// Exponential backoff prevents log flooding on persistent failure.

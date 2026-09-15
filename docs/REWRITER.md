@@ -240,6 +240,19 @@ When an external object cache (Memcached, Redis) is active, the transient path i
 
 All of the above call `Frl_Rewriter::clear_rewriter_caches()`.
 
+Exclusion-pattern-only invalidation (deletes `EXCLUSION_PATTERNS_TRANSIENT`, no rewrite flush):
+
+- `pll_add_language` / `pll_update_language` / `pll_update_default_lang` → full `clear_rewriter_caches()` (language changes affect the rule set itself, not just exclusions)
+- `save_post` (real saves only, via `frl_is_post_save_action()`)
+- `created_term` (any taxonomy)
+- `deleted_term` (any taxonomy — `language` taxonomy triggers full `clear_rewriter_caches()` instead)
+- `edited_term` (any taxonomy — covers slug renames; core has no generic create/delete-style hook for edits, so this is the only path that catches renamed category/post_tag/custom-taxonomy slugs)
+
+Note: `category`/`post_tag` do **not** get a dedicated full rewrite flush on create/edit/delete.
+`Frl_Taxonomy_Base_Removal_Feature` is catch-all + config-option driven with no per-term static
+rules, so routine term CRUD never requires WordPress to regenerate `rewrite_rules` — only the
+exclusion-pattern list needs refreshing, which the generic `*_term` hooks above already cover.
+
 ### Full cache flush (`clear_rewriter_caches`)
 
 Triggered automatically by `update_option_*` hooks (permalink structure, category base, tag base, rewriter options). Also called indirectly via `frl_flush_rewrite_rules()` which fires `update_option_permalink_structure`.
@@ -259,12 +272,30 @@ For flush operations not triggered by a settings change (button press, admin res
 
 ```php
 frl_flush_rewrite_rules();
+// If wp_loaded has already fired:
 // 1. do_action('update_option_permalink_structure', $p, $p)
 //    → triggers clear_rewriter_caches() + Polylang clean_languages_cache()
 // 2. do_action('permalink_structure_changed', $p, $p)
+//
+// If called before wp_loaded (e.g. from an admin action or
+// Frl_Environment_Manager::enforce_environment_settings(), both on 'init'):
+// defers itself via add_action('wp_loaded', 'frl_flush_rewrite_rules', 20) instead
+// of flushing immediately.
 ```
 
-Synchronous, no cron, no deferred execution. Callers must ensure this runs after `init` (post types registered). For before-init contexts (activation/deactivation), use `frl_schedule_rewrite_flush()` which schedules a 15-second cron.
+**Timing (important):** this function used to flush immediately even when called
+before `wp_loaded`. That was unsafe: Polylang's own rewrite-rule filters
+(`PLL_Links_Permalinks::do_prepare_rewrite_rules()`, hooked at `wp_loaded` priority 9)
+are *also* deferred until `wp_loaded`, so an immediate `flush_rewrite_rules(true)` at,
+e.g., `init` priority 10–12 would regenerate the `rewrite_rules` option with Polylang's
+language-prefixed rules **not yet registered**, silently producing 404s on
+non-default-language Pages on the next request. The function now defers to `wp_loaded`
+priority 20 (after Polylang's priority-9 callback and after this plugin's own priority-10
+`register_cache_invalidation_hooks()` callback) whenever called too early. `add_action()`
+with an identical callback/hook/priority is idempotent, so multiple early calls in the
+same request still result in exactly one deferred flush.
+
+For before-init contexts (activation/deactivation), use `frl_schedule_rewrite_flush()` which schedules a 15-second cron — that path is unaffected by the change above.
 
 `force_rules_refresh()` additionally calls `coordinator->invalidate_config_hash()` before delegating to `frl_flush_rewrite_rules()`.
 

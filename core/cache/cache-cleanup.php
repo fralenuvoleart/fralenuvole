@@ -6,10 +6,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Cache cleanup hooks for posts, terms, users, options, and translations.
+ *
+ * NOTE: category/post_tag rewrite-related invalidation (exclusion-pattern
+ * transient on term rename, create/delete via generic created_term/deleted_term)
+ * lives in Frl_Rewriter::register_cache_invalidation_hooks() (core/rewriter/class-rewriter.php),
+ * not here — that class already owns every other rewriter-cache-invalidation
+ * hook, so keeping this one alongside its siblings avoids a split source of
+ * truth and reuses the class's existing wp_loaded-deferred registration and
+ * frl_rewriter_is_loaded() gating instead of a duplicate, ad-hoc guard here.
  */
 
-// On init, register term-change hooks that trigger rewrite flush
-add_action( 'init', 'frl_register_hooks_rewrite_flush', 10, 0 );
 add_action( 'update_option', 'frl_clear_option_transient', 10, 1 );
 add_action( 'pll_save_strings_translations', 'frl_clear_translation_cache', 10, 0 );
 add_action( 'edited_term', 'frl_clear_term_permalink_cache', 10, 1 );
@@ -18,19 +24,6 @@ add_action( 'save_post_wp_navigation', 'frl_clear_navigation_cache', 10, 1 );
 add_action( 'wp_update_nav_menu', 'frl_clear_menu_cache', 10, 1 );
 add_action( 'profile_update', 'frl_clear_user_cache', 10, 1 );
 add_action( 'updated_option', 'frl_clear_option_cache', 10, 1 );
-
-/**
- * Register term-change hooks that require a rewrite flush.
- *
- * @return void
- */
-function frl_register_hooks_rewrite_flush(): void {
-	foreach ( array( 'category', 'post_tag' ) as $taxonomy ) {
-		add_action( "created_{$taxonomy}", 'frl_schedule_rewrite_flush', 10, 0 );
-		add_action( "edited_{$taxonomy}", 'frl_schedule_rewrite_flush', 10, 0 );
-		add_action( "deleted_{$taxonomy}", 'frl_schedule_rewrite_flush', 10, 0 );
-	}
-}
 
 /**
  * Bump the post cache version and clear tracked translated meta caches.
