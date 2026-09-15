@@ -212,11 +212,11 @@ final class Frl_Translation_Service {
 
 		$this->queue_string_registration( array( $str ) );
 		$version = $this->get_translation_version();
-		// Use the full hash (no truncation): this is the highest-cardinality cache
-		// group in the plugin (every unique translatable string x every version),
-		// and a truncated 48-bit key raises collision risk for no benefit — the key
-		// is already opaque, so shortening it saves nothing but correctness.
-		$cache_key = md5( $str . '_' . $version );
+		// Include $language in the cache key: the cache manager's automatic
+		// language prefix (generate_key) uses frl_get_language() which returns
+		// the request language — during REST API requests (e.g. WS Form submit)
+		// this may differ from the explicit target language passed by the caller.
+		$cache_key = md5( $str . '_' . $language . '_' . $version );
 
 		return frl_cache_remember(
 			'translations',
