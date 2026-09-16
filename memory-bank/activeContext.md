@@ -1,6 +1,20 @@
 # Active Context
 
-## Latest: Schema Module Refactor (2026-09-13)
+## Latest: Rewriter — Lang-prefixed CPT exclusion + cache invalidation fix (2026-09-16)
+
+**Bug:** `/ru/about/rati-iese-abashmadze/` returned 404. The Taxonomy Base Removal catch-all rule hijacked the URL before the team-member CPT's native rewrite rule could match.
+
+**Root cause:** [`compute_exclusion_patterns()`](core/rewriter/class-rewriter-path-utils.php:297-318) added CPT rewrite slugs (e.g., `about`) to the catch-all exclusion list but NOT their lang-prefixed variants (`ru/about`, `ar/about`, `zh/about`). The catch-all's negative lookahead grouped exclusions by language prefix — `ru/about` was missing from the `ru/` group, so `/ru/about/...` URLs were captured.
+
+**Fix 1 — Exclusion patterns:** CPT rewrite slugs now get lang-prefixed variants, matching the pattern already used for pages.
+
+**Fix 2 — Cache invalidation:** `clear_rewriter_caches()` was hooked only to `update_option_permalink_structure`, which WordPress fires only when the option value actually changes. A no-op Save on Settings → Permalinks flushes rewrite rules (via `$wp_rewrite->flush_rules()`) but never triggers the cache clear, leaving stale exclusion patterns in Redis. New `invalidate_rewriter_caches()` method (cache-only, no recursive flush) hooked to `flush_rewrite_rules` action. Redundant `update_option_permalink_structure`, `update_option_category_base`, and `update_option_tag_base` hooks removed — `flush_rewrite_rules` always fires after those options are updated on the permalink page.
+
+**Files changed:**
+- [`core/rewriter/class-rewriter-path-utils.php`](core/rewriter/class-rewriter-path-utils.php:297-318) — lang-prefixed CPT slugs
+- [`core/rewriter/class-rewriter.php`](core/rewriter/class-rewriter.php:397-454) — new `invalidate_rewriter_caches()`, refactored `clear_rewriter_caches()`, new `flush_rewrite_rules` hook, removed 3 redundant hooks
+
+## Schema Module Refactor (2026-09-13)
 
 Complete rewrite of the JSON-LD schema subsystem. Removed SASWP dependency entirely — all schemas now generated from local definition files via a unified orchestrator.
 

@@ -230,15 +230,21 @@ When an external object cache (Memcached, Redis) is active, the transient path i
 
 ### Cache invalidation hooks (registered on `wp_loaded`)
 
-- `update_option_permalink_structure`
-- `update_option_category_base`
-- `update_option_tag_base`
+**Primary — fires on every rewrite rules flush:**
+- `flush_rewrite_rules` → `Frl_Rewriter::invalidate_rewriter_caches()` (cache-only, no recursive flush)
+
+Covers permalink saves (including no-op), WP-CLI `wp rewrite flush`, plugin activation, theme switch. WordPress always calls `$wp_rewrite->flush_rules()` after updating `permalink_structure`, `category_base`, and `tag_base` on the Permalink Settings page, so those three `update_option_*` hooks are redundant and removed.
+
+**Plugin option changes (trigger `flush_rewrite_rules` indirectly via `clear_rewriter_caches()`):**
 - `update_option_remove_cpt_base`
 - `update_option_remove_tax_base`
 - `update_option_translate_post_base`
 - `update_option_translate_cpt_slugs_{cpt}` (one per CPT in `FRL_REWRITER_MULTILINGUAL_CPT`)
 
-All of the above call `Frl_Rewriter::clear_rewriter_caches()`.
+All of the above call `Frl_Rewriter::clear_rewriter_caches()` (cache clear + hard flush).
+
+**Polylang language changes:**
+- `pll_add_language` / `pll_update_language` / `pll_update_default_lang` → `clear_rewriter_caches()`
 
 Exclusion-pattern-only invalidation (deletes `EXCLUSION_PATTERNS_TRANSIENT`, no rewrite flush):
 
@@ -253,15 +259,24 @@ Note: `category`/`post_tag` do **not** get a dedicated full rewrite flush on cre
 rules, so routine term CRUD never requires WordPress to regenerate `rewrite_rules` — only the
 exclusion-pattern list needs refreshing, which the generic `*_term` hooks above already cover.
 
+### Cache-only invalidation (`invalidate_rewriter_caches`)
+
+Hooked to `flush_rewrite_rules`. Clears cached exclusion patterns and option-derived config hashes without calling `flush_rewrite_rules()` (avoids recursion). Has its own `frl_is_already_running` guard.
+
+```php
+Frl_Rewriter::invalidate_rewriter_caches();
+// 1. frl_cache_clear('options')          // → cascades to rewriter → permalinks
+// 2. frl_delete_transient(EXCLUSION_PATTERNS_TRANSIENT)
+```
+
 ### Full cache flush (`clear_rewriter_caches`)
 
-Triggered automatically by `update_option_*` hooks (permalink structure, category base, tag base, rewriter options). Also called indirectly via `frl_flush_rewrite_rules()` which fires `update_option_permalink_structure`.
+Triggered by plugin option changes (`update_option_remove_cpt_base`, etc.) and Polylang language hooks. Calls `invalidate_rewriter_caches()` first, then `flush_rewrite_rules(true)`. When the flush triggers the `flush_rewrite_rules` hook → `invalidate_rewriter_caches()` fires again → guard blocks duplicate work.
 
 ```php
 Frl_Rewriter::clear_rewriter_caches();
-// 1. frl_cache_clear('options')          // → cascades to rewriter → permalinks
-// 2. frl_delete_transient(EXCLUSION_PATTERNS_TRANSIENT)
-// 3. flush_rewrite_rules(true)           // hard flush, rewrites .htaccess
+// 1. self::invalidate_rewriter_caches()  // clear cache (guard prevents double run)
+// 2. flush_rewrite_rules(true)           // hard flush, rewrites .htaccess
 ```
 
 Re-entrancy guard via `frl_is_already_running(__METHOD__)` ensures it runs once per request even if multiple `update_option_*` hooks fire.

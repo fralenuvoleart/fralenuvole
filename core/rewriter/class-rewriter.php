@@ -386,6 +386,26 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 	}
 
 	/**
+	 * Invalidate rewriter caches only — no rewrite rules flush.
+	 *
+	 * Hooked to 'flush_rewrite_rules' so cached exclusion patterns and option-derived
+	 * config hashes are cleared whenever rules are rebuilt, even when the permalink
+	 * structure itself hasn't changed (e.g., no-op Save on Settings → Permalinks).
+	 *
+	 * @return void
+	 */
+	public static function invalidate_rewriter_caches(): void {
+		if ( frl_is_already_running( __METHOD__ ) ) {
+			return;
+		}
+
+		// Clearing 'options' cascades into 'rewriter' via FRL_CACHE_DEPENDENCIES,
+		// so an explicit frl_cache_clear('rewriter') call is not needed here.
+		frl_cache_clear( 'options' );
+		frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
+	}
+
+	/**
 	 * Clear all rewriter-related caches including plugin option caches, then flush rules.
 	 *
 	 * Called when plugin settings have changed (hooked to update_option_* actions).
@@ -407,13 +427,11 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 			return;
 		}
 
-		// Clearing 'options' cascades into 'rewriter' via FRL_CACHE_DEPENDENCIES,
-		// so an explicit frl_cache_clear('rewriter') call is not needed here.
-		// Note: frl_cache_clear('options') internally calls reset_options_caches()
-		// which handles wp_cache_delete('alloptions', 'options') and frl_get_option('__reset__'),
-		// so alloptions clearing is already covered by the cache manager.
-		frl_cache_clear( 'options' );
-		frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
+		// Invalidate caches first so the subsequent flush_rewrite_rules() call
+		// regenerates rules with fresh exclusion patterns. When flush_rewrite_rules
+		// fires the 'flush_rewrite_rules' hook, invalidate_rewriter_caches() runs
+		// again but its own frl_is_already_running guard blocks the duplicate work.
+		self::invalidate_rewriter_caches();
 
 		flush_rewrite_rules( true );
 	}
@@ -450,9 +468,14 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 		add_action(
 			'wp_loaded',
 			function () {
-				add_action( 'update_option_permalink_structure', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
-				add_action( 'update_option_category_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
-				add_action( 'update_option_tag_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
+				// Invalidate cached exclusion patterns whenever rewrite rules are flushed,
+				// even when the permalink structure hasn't changed (e.g., no-op Save).
+				// Uses invalidate_rewriter_caches() — cache-only, no recursive flush.
+				// Covers permalink_structure, category_base, and tag_base changes too,
+				// since WordPress always calls $wp_rewrite->flush_rules() after updating
+				// those options on the Permalink Settings page.
+				add_action( 'flush_rewrite_rules', array( self::class, 'invalidate_rewriter_caches' ), 10, 1 );
+
 				add_action( 'update_option_remove_cpt_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
 				add_action( 'update_option_remove_tax_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
 				// Post base translation affects get_post_base_mappings(), taxonomy rules, and catch-all exclusions.

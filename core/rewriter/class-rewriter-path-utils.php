@@ -295,6 +295,8 @@ final class Frl_Rewriter_Path_Utils {
 		}
 
 		// All registered public CPT base slugs (prevents catch-all from hijacking CPT archives).
+		// Include lang-prefixed variants so multilingual URLs like /ru/about/slug/ are
+		// excluded from catch-all rules, not just the bare /about/slug/ form.
 		$cpts = get_post_types(
 			array(
 				'public'   => true,
@@ -303,9 +305,14 @@ final class Frl_Rewriter_Path_Utils {
 			'objects'
 		);
 		if ( is_array( $cpts ) ) {
+			$langs = self::get_active_languages_safe();
 			foreach ( $cpts as $cpt_obj ) {
 				if ( is_object( $cpt_obj ) && isset( $cpt_obj->rewrite['slug'] ) && $cpt_obj->rewrite['slug'] !== '' ) {
-					$patterns[] = self::escape_for_regex( $cpt_obj->rewrite['slug'] );
+					$slug       = $cpt_obj->rewrite['slug'];
+					$patterns[] = self::escape_for_regex( $slug );
+					foreach ( $langs as $lang ) {
+						$patterns[] = self::escape_for_regex( "{$lang}/{$slug}" );
+					}
 				}
 			}
 		}

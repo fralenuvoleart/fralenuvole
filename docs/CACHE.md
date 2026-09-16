@@ -533,10 +533,10 @@ frl_handle_action_clear_cache_hard()
               • do_action(FRL_PREFIX . '_after_hard_cache_reset')
      1b. frl_flush_rewrite_rules()
          → do_action('update_option_permalink_structure')
-         → clear_rewriter_caches() (clears options→rewriter→permalinks + flush_rewrite_rules(true);
-            the 'options' clear here is a no-op in practice — clear_hard already
-            cleared it in step 1a, and the $groups_cleared de-dup guard in
-            clear_group_with_dependencies() prevents a second pass)
+         → do_action('flush_rewrite_rules')
+         → invalidate_rewriter_caches() (cache-only clear; the 'options' clear
+            here is a no-op in practice — clear_hard already cleared it in step
+            1a, and the $groups_cleared de-dup guard prevents a second pass)
          → Polylang clean_languages_cache()
          → do_action('permalink_structure_changed')
 ```

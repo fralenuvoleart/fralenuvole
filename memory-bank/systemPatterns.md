@@ -95,6 +95,16 @@
 - **Verification:** Trace every claim through the full call chain before asserting a pattern is followed or a regression is avoided — use `search_files`/grep, never assume from a function name or comment alone.
 - **Zero Regression Policy:** Check this file before every file write to ensure changes don't violate an established architectural invariant above.
 
+## 🔄 Rewriter Cache Invalidation Pattern
+
+**Pattern:** Rewriter caches (exclusion patterns, feature config hashes) are invalidated on `flush_rewrite_rules`, not on `update_option_permalink_structure`. WordPress fires `update_option_{$option}` only when the value changes — a no-op Save on Settings → Permalinks flushes rules but never triggers the option hook. `flush_rewrite_rules` fires unconditionally on every permalink save.
+
+**Implementation:**
+- [`invalidate_rewriter_caches()`](core/rewriter/class-rewriter.php:397) — cache-only clear (`frl_cache_clear('options')` + transient delete), hooked to `flush_rewrite_rules`. No recursive `flush_rewrite_rules()` call. Has its own `frl_is_already_running` guard.
+- [`clear_rewriter_caches()`](core/rewriter/class-rewriter.php:425) — full clear + hard flush. Calls `invalidate_rewriter_caches()` first, then `flush_rewrite_rules(true)`. When the flush triggers the `flush_rewrite_rules` hook → `invalidate_rewriter_caches()` fires again → guard blocks duplicate work.
+- `update_option_permalink_structure`, `update_option_category_base`, `update_option_tag_base` hooks removed — fully redundant with `flush_rewrite_rules` on the permalink page.
+- Plugin-specific option hooks (`remove_cpt_base`, `remove_tax_base`, `translate_post_base`, `translate_cpt_slugs_*`) and Polylang hooks (`pll_add_language`, etc.) remain — these change without triggering `flush_rewrite_rules`.
+
 ---
 
 *This file describes durable architectural rules, not a changelog. When a pattern changes, update the entry in place.*
