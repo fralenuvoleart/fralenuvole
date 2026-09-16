@@ -12,6 +12,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/performance.php';
 
+// TEMPORARY DEBUG: Diagnose 404 for team-member CPT URL — REMOVE AFTER DEBUGGING
+require_once FRL_DIR_PATH . 'debug-rewrite-404.php';
+
 add_action( 'wp_head', 'frl_add_header_html', 0, 0 );
 add_action( 'wp_head', 'frl_add_header_scripts', 0, 0 );
 add_action( 'wp_footer', 'frl_add_footer_html', 10, 0 );
