@@ -54,7 +54,6 @@ if ( ! defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) ) {
 		'FRL_REWRITER_MULTILINGUAL_CPT',
 		array(
 			'service',
-			'lp',
 		)
 	);
 }
