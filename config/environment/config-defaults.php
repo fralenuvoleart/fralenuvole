@@ -27,10 +27,7 @@ const FRL_ENV_DEFAULT = array(
 	'prefix'         => 'default',
 	'type'           => 'production',        // Base type
 	'plugins'        => array(
-		'active'   => array(
-			'litespeed-cache/litespeed-cache.php',
-			'docket-cache/docket-cache.php',
-		),
+		'active'   => array(),
 		'inactive' => array(
 			'query-monitor/query-monitor.php',
 			'better-search-replace/better-search-replace.php',
@@ -79,10 +76,7 @@ const FRL_ENV_DEFAULT_STAGING = array(
 			'query-monitor/query-monitor.php',
 			'better-search-replace/better-search-replace.php',
 		),
-		'inactive' => array(
-			'litespeed-cache/litespeed-cache.php',
-			'docket-cache/docket-cache.php',
-		),
+		'inactive' => array(),
 	),
 	'wp_options'     => array(
 		'blog_public' => 0,

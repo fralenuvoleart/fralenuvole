@@ -26,9 +26,9 @@ const FRL_ENV_PBS_TEMPLATE = array(
 		'call_to_actions' => true,
 	),
 	'plugin_options' => array(
-		'cta_webhook'              => true,
-		'editor_metabox'           => true,
-		'schema_founder_name'      => 'Rati (Iese) Abashmadze',
+		'cta_webhook'         => true,
+		'editor_metabox'      => true,
+		'schema_founder_name' => 'Rati (Iese) Abashmadze',
 	),
 );
 
@@ -50,9 +50,9 @@ const FRL_ENV_PBP_TEMPLATE = array(
 		'pbproperty' => true,
 	),
 	'plugin_options' => array(
-		'header_html'              => 'file',
-		'header_html_php'          => true,
-		'editor_metabox'           => true,
+		'header_html'     => 'file',
+		'header_html_php' => true,
+		'editor_metabox'  => true,
 	),
 );
 
@@ -77,7 +77,7 @@ const FRL_ENV_PBNOVA_TEMPLATE = array(
 		'blog_public' => 0,
 	),
 	'plugin_options' => array(
-		'schema_founder_name'      => 'Francesco Castronovo',
+		'schema_founder_name' => 'Francesco Castronovo',
 	),
 );
 
@@ -101,6 +101,6 @@ const FRL_ENV_FRALENUVOLE_PRODUCTION = array(
 		'frl' => true,
 	),
 	'plugin_options' => array(
-		'schema_founder_name'      => 'Francesco Castronovo',
+		'schema_founder_name' => 'Francesco Castronovo',
 	),
 );
