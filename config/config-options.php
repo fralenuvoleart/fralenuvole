@@ -109,6 +109,13 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
+			'dedupe_css'                         => array(
+				'label'             => 'Deduplicate CSS',
+				'description'       => 'Remove duplicate <style> tags from the final HTML output to reduce page size.',
+				'type'              => 'checkbox',
+				'default'           => 0,
+				'sanitize_callback' => 'absint',
+			),
 			'disable_rest'                       => array(
 				'label'             => 'Disable REST',
 				'description'       => 'Disable REST API for selected endpoints',

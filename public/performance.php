@@ -16,6 +16,7 @@ add_filter( 'style_loader_tag', 'frl_defer_css', 10, 4 );
 
 add_action( 'wp_head', 'frl_preload_featured_image', 0, 0 );
 add_action( 'wp_default_scripts', 'frl_remove_jquery_migrate', 10, 1 );
+add_action( 'template_redirect', 'frl_dedupe_css', -999, 0 );
 
 
 /**
@@ -440,5 +441,70 @@ function frl_build_responsive_featured_image_preload( int $thumbnail_id, string 
 	return array(
 		'srcset' => $srcset,
 		'sizes'  => $sizes,
+	);
+}
+
+/**
+ * Start output buffering to deduplicate <style> tags in the final HTML.
+ *
+ * When enabled via the "dedupe_css" option, captures the full page output and
+ * strips duplicate <style> blocks — keeping only the first occurrence of each
+ * unique CSS body (and attributes, when present). Empty/whitespace-only tags
+ * are removed entirely.
+ *
+ * @hook template_redirect
+ * @priority -999
+ */
+function frl_dedupe_css(): void {
+	if ( ! frl_get_option( 'dedupe_css' ) ) {
+		return;
+	}
+
+	if ( is_admin() || wp_doing_ajax() || is_feed()
+		|| ( defined( 'REST_REQUEST' ) && REST_REQUEST )
+		|| ( defined( 'WP_CLI' ) && WP_CLI )
+		|| ( defined( 'DOING_CRON' ) && DOING_CRON )
+		|| isset( $_GET['pbs_nodedupe'] ) ) {
+		return;
+	}
+
+	ob_start(
+		function ( $html ) {
+			if ( ! is_string( $html ) || substr_count( $html, '<style' ) < 2 ) {
+				return $html;
+			}
+
+			$seen = array();
+
+			$out = preg_replace_callback(
+				'#<style\b([^>]*)>(.*?)</style>#is',
+				function ( $m ) use ( &$seen ) {
+					$css = trim( $m[2] );
+
+					if ( '' === $css ) {
+						return '';
+					}
+
+					$attr = trim( $m[1] );
+
+					if ( '' === $attr ) {
+						$key = $css;
+					} else {
+						$attr = strtolower( preg_replace( '/\s+/', ' ', $attr ) );
+						$key  = $attr . "\0" . $css;
+					}
+
+					if ( isset( $seen[ $key ] ) ) {
+						return '';
+					}
+					$seen[ $key ] = true;
+
+					return $m[0];
+				},
+				$html
+			);
+
+			return is_string( $out ) ? $out : $html;
+		}
 	);
 }
