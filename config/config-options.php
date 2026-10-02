@@ -1203,6 +1203,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'label'       => 'Disable Rewriter',
 				'description' => 'Disable rewriter features.',
 				'default'     => '0',
+				'restricted'  => true,
 			),
 			'disable_plugin'                    => array(
 				'label'       => 'Disable Plugin',

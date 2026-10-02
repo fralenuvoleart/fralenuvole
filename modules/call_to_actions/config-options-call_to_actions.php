@@ -1,6 +1,10 @@
 <?php
 /**
  * Call-to-Actions Module — Options
+ *
+ * Layer 2 (Link processing): per-channel enable/disable.
+ * Layer 3 (Webhooks): global webhook dispatch toggle.
+ * Layer 4 (Async): sync vs WP-Cron dispatch.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -14,23 +18,49 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return array Modified settings fields.
  */
 $frl_call_to_actions_default_fields = array(
-	// Add a section title to the modules tab
-	'cta_section_title' => array(
+	'cta_section_title'    => array(
 		'label'       => 'Call to Actions Module',
 		'type'        => 'section_title',
-		'description' => 'WhatsApp, Telegram, and Email CTA click tracking + webhooks',
+		'description' => 'WhatsApp, Telegram, and Email CTA click handling',
 	),
-	'cta_webhook'       => array(
-		'label'             => 'Enable CTA Webhooks',
-		'description'       => 'Fire marketing webhooks on CTA clicks (WhatsApp, Telegram, Email)',
+	// Layer 2 — Per-channel toggles
+	'cta_whatsapp_enabled' => array(
+		'label'             => 'WhatsApp CTA',
+		'description'       => 'Enable WhatsApp click-to-chat link processing',
 		'type'              => 'checkbox',
 		'default'           => 1,
 		'sanitize_callback' => 'absint',
 		'restricted'        => true,
 	),
-	'cta_use_cron'      => array(
-		'label'             => 'Use Cron for CTA Webhooks',
-		'description'       => 'Send CTA webhooks via WP-Cron (async). Disable for sync dispatch.',
+	'cta_telegram_enabled' => array(
+		'label'             => 'Telegram CTA',
+		'description'       => 'Enable Telegram click-to-chat link',
+		'type'              => 'checkbox',
+		'default'           => 0,
+		'sanitize_callback' => 'absint',
+		'restricted'        => true,
+	),
+	'cta_email_enabled'    => array(
+		'label'             => 'Email CTA',
+		'description'       => 'Enable mailto link processing',
+		'type'              => 'checkbox',
+		'default'           => 1,
+		'sanitize_callback' => 'absint',
+		'restricted'        => true,
+	),
+	// Layer 3 — Webhook dispatch
+	'cta_webhook'          => array(
+		'label'             => 'Fire webhook on CTA click',
+		'description'       => 'Send marketing webhook when a CTA is clicked',
+		'type'              => 'checkbox',
+		'default'           => 0,
+		'sanitize_callback' => 'absint',
+		'restricted'        => true,
+	),
+	// Layer 4 — Async dispatch
+	'cta_use_cron'         => array(
+		'label'             => 'Use Cron for webhooks',
+		'description'       => 'Send webhooks via WP-Cron (async). Disable for sync dispatch.',
 		'type'              => 'checkbox',
 		'default'           => 0,
 		'sanitize_callback' => 'absint',

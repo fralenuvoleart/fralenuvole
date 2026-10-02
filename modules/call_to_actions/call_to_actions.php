@@ -22,7 +22,8 @@ function frl_cta_init() {
 	frl_channel_tracking_init();
 
 	// Register CTA actions for the shared tracking config.
-	// Extracts the 'actions' list from CTA_WEBHOOK_CONFIG for the current environment.
+	// Extracts the 'actions' list from CTA_WEBHOOK_CONFIG for the current environment,
+	// applies per-channel admin toggles (Layer 2) and webhook flag (Layer 3).
 	add_filter(
 		'frl_channel_tracking_cta_actions',
 		function ( array $actions ): array {
@@ -37,6 +38,26 @@ function frl_cta_init() {
 			}
 
 			$env_actions = CTA_WEBHOOK_CONFIG[ $env_prefix ]['actions'] ?? array();
+
+			// Layer 2 — Per-channel admin toggles: strip disabled channels entirely
+			$channel_option_map = array(
+				'whatsapp' => 'cta_whatsapp_enabled',
+				'telegram' => 'cta_telegram_enabled',
+				'email'    => 'cta_email_enabled',
+			);
+			$env_actions        = array_values(
+				array_filter(
+					$env_actions,
+					function ( array $action ) use ( $channel_option_map ): bool {
+						$option = $channel_option_map[ $action['action_id'] ] ?? null;
+						return $option ? (bool) frl_get_option( $option ) : true;
+					}
+				)
+			);
+
+			if ( empty( $env_actions ) ) {
+				return $actions;
+			}
 
 			// Cache translations to avoid running frl_get_translation on every request
 			$lang          = frl_get_language();
@@ -64,18 +85,16 @@ function frl_cta_init() {
 				DAY_IN_SECONDS
 			);
 
-			// If webhook dispatch is disabled, strip webhook flag so JS doesn't fire sendBeacon.
-			// Use array_map to avoid reference-mutation of the cached array.
-			if ( ! frl_get_option( 'cta_webhook' ) ) {
-				$translated_actions = array_map(
-					function ( array $action ): array {
-						$action['send_webhook'] = false;
-						return $action;
-					},
-					$translated_actions
-				);
-			}
-			$env_actions = $translated_actions;
+			// Layer 3 — Webhook flag: set send_webhook based on admin toggle
+			$webhook_enabled    = (bool) frl_get_option( 'cta_webhook' );
+			$translated_actions = array_map(
+				function ( array $action ) use ( $webhook_enabled ): array {
+					$action['send_webhook'] = $webhook_enabled;
+					return $action;
+				},
+				$translated_actions
+			);
+			$env_actions        = $translated_actions;
 
 			return array_merge( $actions, $env_actions );
 		}

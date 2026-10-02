@@ -26,9 +26,9 @@ const FRL_ENV_PBS_TEMPLATE = array(
 		'call_to_actions' => true,
 	),
 	'plugin_options' => array(
-		'cta_webhook'         => true,
 		'editor_metabox'      => true,
 		'schema_founder_name' => 'Rati (Iese) Abashmadze',
+		'cta_webhook'         => true,
 	),
 );
 
@@ -47,12 +47,14 @@ const FRL_ENV_PBS_STAGING = array(
 const FRL_ENV_PBP_TEMPLATE = array(
 	'prefix'         => 'pbp',
 	'modules'        => array(
-		'pbproperty' => true,
+		'pbproperty'      => true,
+		'call_to_actions' => false,
 	),
 	'plugin_options' => array(
 		'header_html'     => 'file',
 		'header_html_php' => true,
 		'editor_metabox'  => true,
+		'cta_webhook'     => true,
 	),
 );
 

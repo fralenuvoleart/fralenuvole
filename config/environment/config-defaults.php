@@ -48,7 +48,6 @@ const FRL_ENV_DEFAULT = array(
 		'blog_public' => 1,
 	),
 	'plugin_options' => array(
-		'cta_webhook'                => false,
 		'header_html'                => '',
 		'header_html_php'            => false,
 		'footer_html'                => 'file',
@@ -59,7 +58,8 @@ const FRL_ENV_DEFAULT = array(
 		'error_reporting_notice'     => true,
 		'error_reporting_warning'    => true,
 		'error_reporting_deprecated' => true,
-		'schema_founder_name'        => 'Rati (Iese) Abashmadze',
+		'schema_founder_name' => 'Rati (Iese) Abashmadze',
+		'cta_webhook'         => false,
 	),
 );
 

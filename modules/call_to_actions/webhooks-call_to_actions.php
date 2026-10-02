@@ -65,12 +65,8 @@ function frl_cta_webhook_handler() {
 
 	$env_entry   = CTA_WEBHOOK_CONFIG[ $env_prefix ];
 	$webhook_url = $env_entry['webhook_url'] ?? '';
-	// Admin option wins if explicitly saved. Falls back to per-env constant, then true.
-	// Using raw get_option(null) to distinguish "never saved" from "saved as false."
-	$db_value = get_option( frl_prefix( 'cta_use_cron' ), null );
-	$use_cron = ( null !== $db_value )
-		? filter_var( $db_value, FILTER_VALIDATE_BOOLEAN )
-		: ( $env_entry['use_cron'] ?? true );
+	// Layer 4 — Admin option only, no constant fallback.
+	$use_cron = (bool) frl_get_option( 'cta_use_cron' );
 
 	if ( empty( $webhook_url ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );
