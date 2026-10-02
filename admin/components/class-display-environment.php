@@ -165,9 +165,9 @@ class Frl_Environment_Display {
 			$mu_plugins_status = $this->get_mu_plugins_status();
 
 			// Add MU Plugins action buttons
-			$delete_mu_plugins_button = frl_render_action_button( 'delete_mu_plugins', 'button-small', 'Delete MU Plugins', '', '', 'delete_plugins' );
+			$delete_mu_plugins_button = frl_render_action_button( 'delete_mu_plugins', 'button-small', 'Delete MU Plugins', '', '', FRL_PLUGIN_ACCESS );
 
-			$sync_mu_plugins_button = frl_render_action_button( 'sync_mu_plugins', 'button-small', 'Syncronise MU Plugins', '', '', 'delete_plugins' );
+			$sync_mu_plugins_button = frl_render_action_button( 'sync_mu_plugins', 'button-small', 'Syncronise MU Plugins', '', '', FRL_PLUGIN_ACCESS );
 
 			$mu_plugins_action_rows = frl_ui_render_table_row(
 				$delete_mu_plugins_button,
@@ -742,7 +742,7 @@ class Frl_Environment_Display {
 
 		// --- Process Backend (Capability-based) Exclusion List ---
 		$cap_enabled  = frl_get_option( 'excluded_plugins_bycap_enabled' );
-		$required_cap = frl_get_option( 'excluded_plugins_bycap_cap' ) ?: 'delete_plugins';
+		$required_cap = frl_get_option( 'excluded_plugins_bycap_cap' ) ?: FRL_PLUGIN_ACCESS;
 
 		if ( $cap_enabled ) {
 			$cap_list = frl_textlist_to_array( frl_get_option( 'excluded_plugins_bycap' ) );

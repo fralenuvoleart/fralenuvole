@@ -269,7 +269,7 @@ function frl_filter_plugin_exclusions(): void {
 	// CAPABILITY EXCLUSION: applies in non-frontend contexts (admin, REST, cron) when user lacks cap
 	// In frontend context, cap check is skipped (frontend exclusion takes precedence)
 	if ( $cap_enabled && ! $is_frontend_context ) {
-		$required_cap = frl_get_option( 'excluded_plugins_bycap_cap' ) ?: 'delete_plugins';
+		$required_cap = frl_get_option( 'excluded_plugins_bycap_cap' ) ?: FRL_PLUGIN_ACCESS;
 		if ( ! frl_mu_check_access( $required_cap ) ) {
 			$cap_list = frl_textlist_to_array( frl_get_option( 'excluded_plugins_bycap' ) );
 			if ( ! empty( $cap_list ) ) {

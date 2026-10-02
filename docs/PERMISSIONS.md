@@ -62,7 +62,7 @@ CACHE & RESET BUTTONS
 ---------------------
 How it works: frl_render_action_button() passes $cap to frl_has_access()
 - Default cap: 'manage_options' (Administrators)
-- Empty string '': falls back to 'delete_plugins' (Plugin Admin)
+- Empty string '': falls back to FRL_PLUGIN_ACCESS (Plugin Admin)
 
 Plugin Admin only (delete_plugins):
 - Clear Caches (All)
