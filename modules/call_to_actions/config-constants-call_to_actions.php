@@ -29,7 +29,8 @@ const CTA_WEBHOOK_CONFIG = array(
 			),
 			array(
 				'action_id' => 'telegram',
-				'url'       => 'https://t.me/PBSERVICES_bot?start={template}',
+				// 'url'       => 'https://t.me/PBSERVICES_bot?start={template}',
+				'url'       => 'https://t.me/pbservicesGeorgia',
 				'template'  => '{reference_id}',
 			),
 			array(
@@ -45,19 +46,19 @@ const CTA_WEBHOOK_CONFIG = array(
 		'actions'     => array(
 			array(
 				'action_id' => 'whatsapp',
-				'url'       => 'https://wa.me/995599654454?text={template}',
-				'template'  => "Support number: PIN-{reference_id}-PBP (please do not delete)\r\n---\r\nHello, please type your message below.{br}{br}",
+				'url'       => 'https://wa.me/995511290408?text={template}',
+				'template'  => "Support number: PIN-{reference_id}-PBS (please do not delete)\r\n---\r\nHello, please type your message below.{br}{br}",
 			),
 			array(
 				'action_id' => 'telegram',
-				'url'       => 'https://t.me/PBSERVICES_bot?start={template}',
+				'url'       => 'https://t.me/PBPropertyGeorgia',
 				'template'  => '{reference_id}',
 			),
 			array(
 				'action_id' => 'email',
 				'url'       => 'mailto:info@pbservices.ge?subject={subject}&body={template}',
-				'subject'   => 'PB Services Enquiry',
-				'template'  => "Hello,\r\nI'd like to enquire about your services.\r\n\r\n\r\n---\r\nSupport number: PIN-{reference_id}-PBP",
+				'subject'   => 'PB Property Enquiry',
+				'template'  => "Hello,\r\nI'd like to enquire about your services.\r\n\r\n\r\n---\r\nSupport number: PIN-{reference_id}-PBS",
 			),
 		),
 	),

@@ -36,7 +36,7 @@ $frl_call_to_actions_default_fields = array(
 		'label'             => 'Telegram CTA',
 		'description'       => 'Enable Telegram click-to-chat link',
 		'type'              => 'checkbox',
-		'default'           => 0,
+		'default'           => 1,
 		'sanitize_callback' => 'absint',
 		'restricted'        => true,
 	),
