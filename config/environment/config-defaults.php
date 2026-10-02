@@ -58,8 +58,8 @@ const FRL_ENV_DEFAULT = array(
 		'error_reporting_notice'     => true,
 		'error_reporting_warning'    => true,
 		'error_reporting_deprecated' => true,
-		'schema_founder_name' => 'Rati (Iese) Abashmadze',
-		'cta_webhook'         => false,
+		'schema_founder_name'        => 'Rati (Iese) Abashmadze',
+		'cta_webhook'                => false,
 	),
 );
 
