@@ -520,6 +520,14 @@ function frl_update_image_metadata( $attachment_id ) {
 function frl_custom_dashboard_widgets() {
 	// Define widget configurations including render_file and render_callback
 	$widgets = array(
+		'user_visits'   => array(
+			'title'              => __( 'User Visits', FRL_PREFIX ),
+			'cap'                => 'superadmin',
+			'render_file'        => FRL_DIR_PATH . 'admin/widgets/widget-user-visits.php',
+			'render_callback'    => 'frl_render_user_visits_widget',
+			'enabled_option_key' => 'logged_user_visits',
+			'refresh_button'     => true,
+		),
 		'editor'        => array(
 			'title'           => __( 'Editor Panel' ),
 			'cap'             => 'edit_posts',
@@ -528,24 +536,16 @@ function frl_custom_dashboard_widgets() {
 		),
 		'administrator' => array(
 			'title'           => __( 'Admin Panel' ),
-			'cap'             => 'manage_options',
+			'cap'             => FRL_PLUGIN_ACCESS,
 			'render_file'     => FRL_DIR_PATH . 'admin/widgets/widget-administrator.php',
 			'render_callback' => 'frl_render_administrator_widget', // Assumes this function exists/will be created in the file
 		),
 		'last_posts'    => array(
 			'title'           => __( 'Last updates' ),
-			'cap'             => 'edit_posts',
+			'cap'             => FRL_PLUGIN_ACCESS,
 			'render_file'     => FRL_DIR_PATH . 'admin/widgets/widget-last-posts.php',
 			'render_callback' => 'frl_render_last_posts_widget',
 			'refresh_button'  => true,
-		),
-		'user_visits'   => array(
-			'title'              => __( 'User Visits', FRL_PREFIX ),
-			'cap'                => '',
-			'render_file'        => FRL_DIR_PATH . 'admin/widgets/widget-user-visits.php',
-			'render_callback'    => 'frl_render_user_visits_widget',
-			'enabled_option_key' => 'logged_user_visits',
-			'refresh_button'     => true,
 		),
 		'custom_html_1' => array(
 			'title'              => frl_get_option( 'dash_widget_custom_html_label_1' ) ?: __( 'Custom Widget 1', FRL_PREFIX ),
