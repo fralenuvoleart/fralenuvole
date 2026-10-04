@@ -388,7 +388,10 @@ function frl_handle_action_flush_rewrite_rules() {
 /**
 	* Handle the 'trigger_cache_warmer' action.
 	*
-	* Fires the external cache warmer URL asynchronously via WP-Cron.
+	* Pings the cache warmer URL via a synchronous GET request. The URL is
+	* self-contained (token in query string), so no POST body is needed.
+	* Synchronous so we can report the actual HTTP response to the user.
+	*
 	* Gated by FRL_CACHE_WARMER_URL constant — if not defined or empty, the
 	* admin bar entry is hidden and this handler is unreachable.
 	*
@@ -411,11 +414,52 @@ function frl_handle_action_trigger_cache_warmer() {
 		);
 	}
 
-	frl_send_webhook_async( FRL_CACHE_WARMER_URL, array( 'token' => 'warmup' ) );
+	$response = wp_remote_get(
+		FRL_CACHE_WARMER_URL,
+		array(
+			'timeout'    => 10,
+			'user-agent' => 'Fralenuvole Cache Warmer',
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		frl_log( 'CACHE WARMER ERROR: {error}', array( 'error' => $response->get_error_message() ) );
+		return array(
+			'success'       => false,
+			'message_parts' => array(
+				sprintf(
+					__( 'Cache warmer request failed: %s', FRL_PREFIX ),
+					$response->get_error_message()
+				),
+			),
+			'notice_type'   => 'error',
+		);
+	}
+
+	$http_code = wp_remote_retrieve_response_code( $response );
+
+	if ( $http_code < 200 || $http_code >= 300 ) {
+		frl_log( 'CACHE WARMER ERROR: HTTP {code}', array( 'code' => $http_code ) );
+		return array(
+			'success'       => false,
+			'message_parts' => array(
+				sprintf(
+					__( 'Cache warmer returned HTTP %d.', FRL_PREFIX ),
+					$http_code
+				),
+			),
+			'notice_type'   => 'error',
+		);
+	}
 
 	return array(
 		'success'       => true,
-		'message_parts' => array( __( 'Cache warmer triggered successfully.', FRL_PREFIX ) ),
+		'message_parts' => array(
+			sprintf(
+				__( 'Cache warmer triggered (HTTP %d).', FRL_PREFIX ),
+				$http_code
+			),
+		),
 		'notice_type'   => 'success',
 	);
 }
