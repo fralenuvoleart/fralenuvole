@@ -224,7 +224,7 @@ function frl_admin_bar_add_menu_primary( $data ) {
 	);
 
 	// Separator
-	$data['menu_primary']['separator'] = array(
+	$data['menu_primary']['warmer_separator'] = array(
 		'id'     => FRL_PREFIX . '-warmer-separator',
 		'parent' => $parent_id,
 		'title'  => '',
