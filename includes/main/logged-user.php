@@ -223,22 +223,6 @@ function frl_admin_bar_add_menu_primary( $data ) {
 		),
 	);
 
-	// Separator
-	$data['menu_primary']['warmer_separator'] = array(
-		'id'     => FRL_PREFIX . '-warmer-separator',
-		'parent' => $parent_id,
-		'title'  => '',
-		'meta'   => array( 'class' => FRL_PREFIX . '-ab-separator' ),
-	);
-
-	if ( defined( 'FRL_CACHE_WARMER_URL' ) && FRL_CACHE_WARMER_URL !== '' ) {
-		$cache_links['trigger_cache_warmer'] = array(
-			'title' => __( 'Warm Server Cache', FRL_PREFIX ),
-			'alt'   => 'Trigger the external cache warmer',
-			'caps'  => '',
-		);
-	}
-
 	foreach ( $cache_links as $action => $args ) {
 		if ( ! frl_has_access( $args['caps'] ) ) {
 			continue;
@@ -256,6 +240,29 @@ function frl_admin_bar_add_menu_primary( $data ) {
 				'title' => $alt,
 			),
 		);
+	}
+
+	if ( defined( 'FRL_CACHE_WARMER_URL' ) && FRL_CACHE_WARMER_URL !== '' ) {
+		// Separator between cache-clearing actions and warmer actions
+		$data['menu_primary']['warmer_separator'] = array(
+			'id'     => FRL_PREFIX . '-warmer-separator',
+			'parent' => $parent_id,
+			'title'  => '',
+			'meta'   => array( 'class' => FRL_PREFIX . '-ab-separator' ),
+		);
+
+		if ( frl_has_access( '' ) ) {
+			$data['menu_primary']['cache_trigger_cache_warmer'] = array(
+				'id'     => FRL_PREFIX . '-menu-child-trigger_cache_warmer',
+				'title'  => __( 'Warm Server Cache', FRL_PREFIX ),
+				'href'   => add_query_arg( FRL_PREFIX . '_action', 'trigger_cache_warmer' ),
+				'parent' => $parent_id,
+				'meta'   => array(
+					'class' => FRL_PREFIX . '-ab-trigger_cache_warmer',
+					'title' => 'Trigger the external cache warmer',
+				),
+			);
+		}
 	}
 
 	if ( defined( 'FRL_CACHE_WARMER_STATUS_URL' ) && FRL_CACHE_WARMER_STATUS_URL !== '' ) {
