@@ -223,9 +223,17 @@ function frl_admin_bar_add_menu_primary( $data ) {
 		),
 	);
 
+	// Separator
+	$data['menu_primary']['separator'] = array(
+		'id'     => FRL_PREFIX . '-warmer-separator',
+		'parent' => $parent_id,
+		'title'  => '',
+		'meta'   => array( 'class' => FRL_PREFIX . '-ab-separator' ),
+	);
+
 	if ( defined( 'FRL_CACHE_WARMER_URL' ) && FRL_CACHE_WARMER_URL !== '' ) {
 		$cache_links['trigger_cache_warmer'] = array(
-			'title' => __( 'Warm Cache', FRL_PREFIX ),
+			'title' => __( 'Warm Server Cache', FRL_PREFIX ),
 			'alt'   => 'Trigger the external cache warmer',
 			'caps'  => '',
 		);
@@ -250,11 +258,21 @@ function frl_admin_bar_add_menu_primary( $data ) {
 		);
 	}
 
+	if ( defined( 'FRL_CACHE_WARMER_STATUS_URL' ) && FRL_CACHE_WARMER_STATUS_URL !== '' ) {
+		$data['menu_primary']['warmer_status'] = array(
+			'id'     => FRL_PREFIX . '-menu-child-warmer-status',
+			'title'  => __( 'Warmer Status', FRL_PREFIX ),
+			'href'   => FRL_CACHE_WARMER_STATUS_URL,
+			'parent' => $parent_id,
+			'meta'   => array( 'target' => '_blank' ),
+		);
+	}
+
 	return $data;
 }
 
 /**
- * Prepare secondary admin bar menu items.
+	* Prepare secondary admin bar menu items.
  *
  * @param array $data Data array to populate with menu items.
  * @return array Updated data array containing secondary menu configuration.
