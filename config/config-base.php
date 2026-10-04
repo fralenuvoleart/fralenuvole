@@ -130,3 +130,7 @@ const FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES = array( 'home', 'service' );
 
 // Next-gen format variants tried (in order) for preloaded featured images, before falling back to the original file.
 const FRL_PRELOAD_IMAGE_EXT_CANDIDATES = array( '.avif', '.webp' );
+
+// External cache warmer URL. If empty/undefined, the "Warm Cache" admin bar action is hidden.
+// Triggered manually after clearing Kinsta server/CDN/edge caches from the Kinsta dashboard.
+const FRL_CACHE_WARMER_URL = 'https://pbs-telegram-k3rlz.sevalla.app/warmer/trigger?token=warmup';

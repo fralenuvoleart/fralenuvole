@@ -32,7 +32,7 @@ function frl_process_plugin_actions() {
 
 	// Check capability and if action parameter exists
 	$cap_check = ! empty( $action ) && (
-		frl_has_access( 'manage_options' ) ||
+		frl_has_access() ||
 		( in_array( $action, FRL_PUBLIC_ACTIONS, true ) && is_user_logged_in() )
 	);
 
@@ -61,6 +61,7 @@ function frl_process_plugin_actions() {
 		'delete_orphan_options'     => 'frl_handle_action_delete_orphan_options',
 		'sync_mu_plugins'           => 'frl_handle_action_sync_mu_plugins',
 		'flush_rewrite_rules'       => 'frl_handle_action_flush_rewrite_rules',
+		'trigger_cache_warmer'      => 'frl_handle_action_trigger_cache_warmer',
 		// Add other static actions here if needed
 	);
 
@@ -380,6 +381,41 @@ function frl_handle_action_flush_rewrite_rules() {
 	return array(
 		'success'       => true,
 		'message_parts' => array( __( 'Rewrite rules flushed successfully. All caches cleared and third-party cache plugins notified.', FRL_PREFIX ) ),
+		'notice_type'   => 'success',
+	);
+}
+
+/**
+	* Handle the 'trigger_cache_warmer' action.
+	*
+	* Fires the external cache warmer URL asynchronously via WP-Cron.
+	* Gated by FRL_CACHE_WARMER_URL constant — if not defined or empty, the
+	* admin bar entry is hidden and this handler is unreachable.
+	*
+	* @return array{success: bool, message_parts: string[], notice_type: string} Result array.
+	*/
+function frl_handle_action_trigger_cache_warmer() {
+	if ( ! defined( 'FRL_CACHE_WARMER_URL' ) || FRL_CACHE_WARMER_URL === '' ) {
+		return array(
+			'success'       => false,
+			'message_parts' => array( __( 'Cache warmer URL not configured.', FRL_PREFIX ) ),
+			'notice_type'   => 'error',
+		);
+	}
+
+	if ( frl_is_already_running( __FUNCTION__ ) ) {
+		return array(
+			'success'       => true,
+			'message_parts' => array( __( 'Cache warmer already triggered in this request.', FRL_PREFIX ) ),
+			'notice_type'   => 'info',
+		);
+	}
+
+	frl_send_webhook_async( FRL_CACHE_WARMER_URL, array( 'token' => 'warmup' ) );
+
+	return array(
+		'success'       => true,
+		'message_parts' => array( __( 'Cache warmer triggered successfully.', FRL_PREFIX ) ),
 		'notice_type'   => 'success',
 	);
 }

@@ -43,7 +43,7 @@ function frl_load_logged_user_scripts() {
  * @return void
  */
 function frl_admin_bar_menu_render() {
-	if ( ! frl_get_option( 'custom_ab_menu' ) || ! frl_has_access( 'install_plugins' ) ) {
+	if ( ! frl_get_option( 'custom_ab_menu' ) || ! frl_has_access() ) {
 		return;
 	}
 
@@ -204,24 +204,32 @@ function frl_admin_bar_add_menu_primary( $data ) {
 		'clear_scripts_tags' => array(
 			'title' => __( 'Clear CSS/JS Caches', FRL_PREFIX ),
 			'alt'   => 'Clear Critical CSS and all Scripts Tags Caches',
-			'caps'  => 'manage_options',
+			'caps'  => '',
 		),
 		'clear_shortcodes'   => array(
 			'title' => __( 'Clear Shortcodes Caches', FRL_PREFIX ),
 			'alt'   => 'Clear all Shortcodes Caches',
-			'caps'  => 'manage_options',
+			'caps'  => '',
 		),
 		'clear_cache_light'  => array(
 			'title' => __( 'Clear Caches (Light)', FRL_PREFIX ),
 			'alt'   => 'Clear all plugin caches except Heavy Groups',
-			'caps'  => 'manage_options',
+			'caps'  => 'superadmin',
 		),
 		'clear_cache_all'    => array(
 			'title' => __( 'Clear Caches (All)', FRL_PREFIX ),
 			'alt'   => 'Clear all plugin caches including: ' . implode( ', ', array_map( 'ucfirst', FRL_CACHE_HEAVY_GROUPS ) ),
-			'caps'  => '',
+			'caps'  => 'superadmin',
 		),
 	);
+
+	if ( defined( 'FRL_CACHE_WARMER_URL' ) && FRL_CACHE_WARMER_URL !== '' ) {
+		$cache_links['trigger_cache_warmer'] = array(
+			'title' => __( 'Warm Cache', FRL_PREFIX ),
+			'alt'   => 'Trigger the external cache warmer',
+			'caps'  => '',
+		);
+	}
 
 	foreach ( $cache_links as $action => $args ) {
 		if ( ! frl_has_access( $args['caps'] ) ) {

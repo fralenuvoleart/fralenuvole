@@ -160,7 +160,7 @@ function frl_set_custom_admin_menu() {
 function frl_add_plugin_menu() {
 	$page_title = frl_name( 'Plugin' );
 	$menu_title = frl_name();
-	$capability = 'manage_options';
+	$capability = FRL_PLUGIN_ACCESS;
 	$slug       = FRL_NAME;
 	$callback   = 'frl_render_admin_ui';
 

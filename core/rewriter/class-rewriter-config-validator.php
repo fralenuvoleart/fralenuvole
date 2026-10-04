@@ -233,7 +233,7 @@ class Frl_Rewriter_Config_Validator {
 	 * Display validation warnings in admin
 	 */
 	public static function display_admin_warnings(): void {
-		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+		if ( ! is_admin() || ! current_user_can( FRL_PLUGIN_ACCESS ) ) {
 			return;
 		}
 

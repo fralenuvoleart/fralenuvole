@@ -396,7 +396,7 @@ class Frl_Environment_Manager {
 	 * @param WP_Admin_Bar $wp_admin_bar
 	 */
 	public static function add_environment_switcher( $wp_admin_bar ) {
-		if ( ! frl_has_access( 'manage_options' ) ) {
+		if ( ! frl_has_access() ) {
 			return;
 		}
 

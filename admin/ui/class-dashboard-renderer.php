@@ -125,7 +125,7 @@ class Frl_Dashboard_Renderer {
 	 * @return string HTML for the button form, or empty string if user lacks permissions.
 	 */
 	private static function _render_refresh_button( string $group, string $key, string $button_class = 'button-small frl-widget-refresh' ) {
-		if ( ! frl_has_access( 'manage_options' ) ) { // Capability check
+		if ( ! frl_has_access() ) { // Capability check
 			return '';
 		}
 

@@ -180,7 +180,7 @@ function frl_wsf_render_dashboard_widget( $form_id = null, $grouped_counts = nul
 		echo '</tbody>';
 		echo '</table>';
 	}
-	if ( frl_has_access( 'manage_options' ) ) {
+	if ( frl_has_access() ) {
 		$link = $form_id !== null
 			? '/wp-admin/admin.php?page=ws-form-submit&id=' . (int) $form_id . '&paged=1'
 			: '/wp-admin/admin.php?page=ws-form-submit';

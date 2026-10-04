@@ -416,7 +416,7 @@ class Frl_Log_Manager {
 	public function clear_debug_log() {
 		check_ajax_referer( 'log_manager_nonce', 'nonce' );
 
-		if ( ! frl_has_access( 'manage_options' ) ) {
+		if ( ! frl_has_access() ) {
 			wp_send_json_error( array( 'message' => 'You do not have sufficient permissions to perform this action.' ) );
 			return;
 		}
@@ -454,7 +454,7 @@ class Frl_Log_Manager {
 	public function download_debug_log() {
 		check_ajax_referer( 'log_manager_nonce', 'nonce' );
 
-		if ( ! frl_has_access( 'manage_options' ) ) {
+		if ( ! frl_has_access() ) {
 			wp_send_json_error( array( 'message' => 'You do not have sufficient permissions to perform this action.' ) );
 			return;
 		}
@@ -485,7 +485,7 @@ class Frl_Log_Manager {
 	public function ajax_get_log_entries() {
 		check_ajax_referer( 'log_manager_nonce', 'nonce' );
 
-		if ( ! frl_has_access( 'manage_options' ) ) {
+		if ( ! frl_has_access() ) {
 			wp_send_json_error( array( 'message' => 'You do not have sufficient permissions to perform this action.' ) );
 			return;
 		}

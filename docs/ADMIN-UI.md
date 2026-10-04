@@ -207,7 +207,7 @@ $widgets = [
     ],
     'administrator' => [
         'title' => __('Admin Panel'),
-        'cap' => 'manage_options',
+        'cap' => FRL_PLUGIN_ACCESS,
         'render_file' => FRL_DIR_PATH . 'admin/widgets/widget-administrator.php',
         'render_callback' => 'frl_render_administrator_widget',
     ],
@@ -231,7 +231,7 @@ $widgets = apply_filters('frl_add_dashboard_widgets', $widgets);
 add_filter('frl_add_dashboard_widgets', function($widgets) {
     $widgets['my_widget'] = [
         'title' => 'My Widget',
-        'cap' => 'manage_options',
+        'cap' => FRL_PLUGIN_ACCESS,
         'render_callback' => 'my_render_function',
         'cache_ttl' => 30 * MINUTE_IN_SECONDS,
     ];

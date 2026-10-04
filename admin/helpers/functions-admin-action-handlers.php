@@ -97,7 +97,7 @@ function frl_post_action_dashboard_widgets() {
 		),
 		'_wpnonce',
 		'REQUEST',
-		'manage_options'
+		FRL_PLUGIN_ACCESS
 	);
 
 	// 2. Determine the specific action
@@ -808,7 +808,7 @@ function frl_handle_action_delete_orphan_options() {
  * Verify the nonce for a specific plugin action.
  *
  * This function checks if the action is a public action (requiring only 'read' capability)
- * or a restricted admin action (requiring 'manage_options').
+ * or a restricted admin action (requiring FRL_PLUGIN_ACCESS).
  *
  * @param string $action_name The action name to verify the nonce for.
  * @return bool True if the nonce is valid or verification is skipped for public actions, false otherwise.
@@ -817,9 +817,9 @@ function frl_verify_plugin_action_nonce( $action_name ) {
 	// Check if this action is registered as a low-security/public action
 	// Ideally this registry would be shared, but for now we define the logic here:
 	// If the action is known to be allowed for 'read' users in the dispatcher, we can skip strict nonce checks.
-	// However, frl_verify_simple_nonce defaults to 'manage_options'.
+	// However, frl_verify_simple_nonce defaults to FRL_PLUGIN_ACCESS.
 
-	$capability              = 'manage_options';
+	$capability              = FRL_PLUGIN_ACCESS;
 	$skip_nonce_verification = false;
 
 	// Modular check: If action is meant for logged-in users (emergency access), adjust cap and skip nonce
@@ -958,12 +958,12 @@ function _frl_verify_nonce_core( $nonce_action, $nonce_field, $source, $cap, $sh
  * @param string $action Action name (will be prefixed with the plugin prefix unless $raw_action is true).
  * @param string $nonce_field Field name containing the nonce (default: 'nonce').
  * @param string $source Data source: 'GET', 'POST', or 'REQUEST' (default: 'GET').
- * @param string|null $cap Required capability for access (default: 'manage_options').
+ * @param string|null $cap Required capability for access (default: FRL_PLUGIN_ACCESS).
  * @param bool $should_die Whether to call wp_die() on failure (default: true).
  * @param bool $raw_action Whether to use $action as-is without prefixing (default: false).
  * @return bool True if verified, false if $should_die is false and verification failed.
  */
-function frl_verify_simple_nonce( $action, $nonce_field = 'nonce', $source = 'GET', $cap = 'manage_options', $should_die = true, $raw_action = false ) {
+function frl_verify_simple_nonce( $action, $nonce_field = 'nonce', $source = 'GET', $cap = FRL_PLUGIN_ACCESS, $should_die = true, $raw_action = false ) {
 	$nonce_action = $raw_action ? $action : frl_prefix( $action );
 
 	return _frl_verify_nonce_core(

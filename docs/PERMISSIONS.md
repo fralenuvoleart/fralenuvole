@@ -33,7 +33,7 @@ if (frl_has_access()) {
 }
 
 // Administrators only (settings pages, environment switcher)
-if (frl_has_access('manage_options')) {
+if (frl_has_access()) {
     // Admin-level features
 }
 
@@ -55,13 +55,13 @@ Adding delete_plugins to a custom role makes those users equivalent to standard 
 
 ADMIN BAR ACCESS
 --------------
-Superadmin (User ID 1) + Plugin admins (Administrators 'manage_options') see plugin link and Environment Button in adminbar.
+Superadmin (User ID 1) + Plugin admins (Administrators FRL_PLUGIN_ACCESS) see plugin link and Environment Button in adminbar.
 Superadmin (User ID 1) additionally sees FRL_NAME links.
 
 CACHE & RESET BUTTONS
 ---------------------
 How it works: frl_render_action_button() passes $cap to frl_has_access()
-- Default cap: 'manage_options' (Administrators)
+- Default cap: FRL_PLUGIN_ACCESS (Administrators)
 - Empty string '': falls back to FRL_PLUGIN_ACCESS (Plugin Admin)
 
 Plugin Admin only (delete_plugins):

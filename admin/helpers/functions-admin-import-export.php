@@ -21,7 +21,7 @@ function frl_post_ajax_import_translations() {
 	}
 
 	// Verify capability - this writes term meta / polylang_wpml_strings option, restricted to admins.
-	if ( ! frl_has_access( 'manage_options' ) ) {
+	if ( ! frl_has_access() ) {
 		wp_send_json_error( array( 'message' => __( 'You do not have sufficient permissions to perform this action.', FRL_PREFIX ) ) );
 	}
 
@@ -130,7 +130,7 @@ function frl_post_export_settings() {
 	}
 
 	// Make sure user has correct permissions
-	if ( ! frl_has_access( 'manage_options' ) ) {
+	if ( ! frl_has_access() ) {
 		wp_die( __( 'You do not have sufficient permissions to access this page.', FRL_PREFIX ) );
 	}
 
@@ -169,7 +169,7 @@ function frl_post_export_translations() {
 	}
 
 	// Make sure user has correct permissions
-	if ( ! frl_has_access( 'manage_options' ) ) {
+	if ( ! frl_has_access() ) {
 		wp_die( __( 'You do not have sufficient permissions to access this page.', FRL_PREFIX ) );
 	}
 
@@ -208,7 +208,7 @@ function frl_post_ajax_import_settings() {
 
 	// Verify capability - this writes arbitrary frl_-prefixed options (including raw-echoed
 	// header_html/footer_html), so it must be restricted to admins, same as the export handlers.
-	if ( ! frl_has_access( 'manage_options' ) ) {
+	if ( ! frl_has_access() ) {
 		wp_send_json_error( array( 'message' => __( 'You do not have sufficient permissions to perform this action.', FRL_PREFIX ) ) );
 	}
 

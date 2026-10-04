@@ -62,7 +62,7 @@ function frl_render_action_button(
 	$label = '',
 	$description = '',
 	$url = '',
-	$cap = 'manage_options',
+	$cap = FRL_PLUGIN_ACCESS,
 ) {
 	// If cap is 'skip_nonce', we assume it's for logged-in users (basic check)
 	// Otherwise check the specific capability
