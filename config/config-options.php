@@ -853,7 +853,7 @@ const FRL_DEFAULT_FIELDS = array(
 			),
 			'cache_warmer_url'                     => array(
 				'label'             => 'Cache Warmer URL',
-				'description'       => 'External cache warmer endpoint. If empty, the "Warm Server Cache" admin bar action is hidden. Triggered manually after clearing Kinsta server/CDN/edge caches.',
+				'description'       => 'External cache warmer endpoint. If empty, the "Warm Server Cache" admin bar action is hidden.',
 				'type'              => 'text',
 				'default'           => '',
 				'sanitize_callback' => 'esc_url_raw',
