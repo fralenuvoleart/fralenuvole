@@ -851,6 +851,14 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'autoload'          => 'no',
 			),
+			'cache_warmer_url'                     => array(
+				'label'             => 'Cache Warmer URL',
+				'description'       => 'External cache warmer endpoint. If empty, the "Warm Server Cache" admin bar action is hidden. Triggered manually after clearing Kinsta server/CDN/edge caches.',
+				'type'              => 'text',
+				'default'           => '',
+				'sanitize_callback' => 'esc_url_raw',
+				'autoload'          => 'no',
+			),
 			'section_title_admin_menu'             => array(
 				'label'       => 'Admin menu',
 				'description' => 'Customise left admin menu items',

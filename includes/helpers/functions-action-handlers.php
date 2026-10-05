@@ -392,13 +392,14 @@ function frl_handle_action_flush_rewrite_rules() {
 	* self-contained (token in query string), so no POST body is needed.
 	* Synchronous so we can report the actual HTTP response to the user.
 	*
-	* Gated by FRL_CACHE_WARMER_URL constant — if not defined or empty, the
-	* admin bar entry is hidden and this handler is unreachable.
+	* Gated by cache_warmer_url option — if empty, the admin bar entry is
+	* hidden and this handler is unreachable.
 	*
 	* @return array{success: bool, message_parts: string[], notice_type: string} Result array.
 	*/
 function frl_handle_action_trigger_cache_warmer() {
-	if ( ! defined( 'FRL_CACHE_WARMER_URL' ) || FRL_CACHE_WARMER_URL === '' ) {
+	$cache_warmer_url = frl_get_option( 'cache_warmer_url' );
+	if ( empty( $cache_warmer_url ) ) {
 		return array(
 			'success'       => false,
 			'message_parts' => array( __( 'Cache warmer URL not configured.', FRL_PREFIX ) ),
@@ -415,7 +416,7 @@ function frl_handle_action_trigger_cache_warmer() {
 	}
 
 	$response = wp_remote_get(
-		FRL_CACHE_WARMER_URL,
+		$cache_warmer_url,
 		array(
 			'timeout'    => 10,
 			'user-agent' => 'Fralenuvole Cache Warmer',

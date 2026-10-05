@@ -242,7 +242,8 @@ function frl_admin_bar_add_menu_primary( $data ) {
 		);
 	}
 
-	if ( defined( 'FRL_CACHE_WARMER_URL' ) && FRL_CACHE_WARMER_URL !== '' ) {
+	$cache_warmer_url = frl_get_option( 'cache_warmer_url' );
+	if ( ! empty( $cache_warmer_url ) ) {
 		// Separator between cache-clearing actions and warmer actions
 		$data['menu_primary']['warmer_separator'] = array(
 			'id'     => FRL_PREFIX . '-warmer-separator',
@@ -263,16 +264,6 @@ function frl_admin_bar_add_menu_primary( $data ) {
 				),
 			);
 		}
-	}
-
-	if ( defined( 'FRL_CACHE_WARMER_STATUS_URL' ) && FRL_CACHE_WARMER_STATUS_URL !== '' ) {
-		$data['menu_primary']['warmer_status'] = array(
-			'id'     => FRL_PREFIX . '-menu-child-warmer-status',
-			'title'  => __( 'Warmer Status', FRL_PREFIX ),
-			'href'   => FRL_CACHE_WARMER_STATUS_URL,
-			'parent' => $parent_id,
-			'meta'   => array( 'target' => '_blank' ),
-		);
 	}
 
 	return $data;
