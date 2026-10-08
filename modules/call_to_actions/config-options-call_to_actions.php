@@ -26,7 +26,7 @@ $frl_call_to_actions_default_fields = array(
 	// Layer 2 — Per-channel toggles
 	'cta_whatsapp_enabled' => array(
 		'label'             => 'WhatsApp CTA',
-		'description'       => 'Enable WhatsApp click-to-chat link processing',
+		'description'       => 'Enable WhatsApp click-to-chat custom link',
 		'type'              => 'checkbox',
 		'default'           => 1,
 		'sanitize_callback' => 'absint',
@@ -34,7 +34,7 @@ $frl_call_to_actions_default_fields = array(
 	),
 	'cta_telegram_enabled' => array(
 		'label'             => 'Telegram CTA',
-		'description'       => 'Enable Telegram click-to-chat link',
+		'description'       => 'Enable Telegram click-to-chat custom link',
 		'type'              => 'checkbox',
 		'default'           => 1,
 		'sanitize_callback' => 'absint',
@@ -42,7 +42,7 @@ $frl_call_to_actions_default_fields = array(
 	),
 	'cta_email_enabled'    => array(
 		'label'             => 'Email CTA',
-		'description'       => 'Enable mailto link processing',
+		'description'       => 'Enable mailto click-to-email custom link',
 		'type'              => 'checkbox',
 		'default'           => 1,
 		'sanitize_callback' => 'absint',
