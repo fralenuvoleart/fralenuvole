@@ -29,7 +29,7 @@ const CTA_WEBHOOK_CONFIG = array(
 			),
 			array(
 				'action_id' => 'telegram',
-				'url'       => 'https://t.me/pbservicesGeorgia?start={template}',
+				'url'       => 'https://t.me/pbservicesGeorgia?text={template}',
 				'template'  => 'Support number: PIN-{reference_id}-PBS (please do not delete)\r\n---\r\nHello, please type your message below.{br}{br}',
 			),
 			array(
