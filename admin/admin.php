@@ -527,6 +527,10 @@ function frl_custom_dashboard_widgets() {
 			'render_callback'    => 'frl_render_user_visits_widget',
 			'enabled_option_key' => 'logged_user_visits',
 			'refresh_button'     => true,
+			'cache_key_suffix'   => function () {
+				$uid = isset( $_GET['frl_visit_user'] ) ? (int) $_GET['frl_visit_user'] : 0;
+				return $uid > 0 ? 'user_' . $uid : '';
+			},
 		),
 		'editor'        => array(
 			'title'           => __( 'Editor Panel' ),

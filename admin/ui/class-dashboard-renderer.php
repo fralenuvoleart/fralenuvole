@@ -54,7 +54,16 @@ class Frl_Dashboard_Renderer {
 	public static function render_widget( array $widget_config ) {
 		$id = $widget_config['key'] ?? 'unknown_' . uniqid();
 
-		$cache_key      = 'widget_' . $id;
+		$cache_key = 'widget_' . $id;
+		// Allow widgets to append a dynamic suffix (e.g. for query-param-based views)
+		if ( ! empty( $widget_config['cache_key_suffix'] ) ) {
+			$suffix = is_callable( $widget_config['cache_key_suffix'] )
+				? call_user_func( $widget_config['cache_key_suffix'] )
+				: (string) $widget_config['cache_key_suffix'];
+			if ( $suffix !== '' ) {
+				$cache_key .= '_' . $suffix;
+			}
+		}
 		$refresh_button = $widget_config['refresh_button'] ?? false;
 		$cache_ttl      = $widget_config['cache_ttl'] ?? 15 * MINUTE_IN_SECONDS;
 
