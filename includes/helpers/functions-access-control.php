@@ -344,8 +344,11 @@ function frl_is_valid_frontend_page_request(): bool {
 /**
  * Checks if the current request is an administrator action.
  *
- * Covers admin-post.php, admin pages with an 'action' parameter, and
- * AJAX requests with an 'action' parameter, provided the user has FRL_PLUGIN_ACCESS.
+ * Covers admin-post.php requests and AJAX requests with an 'action'
+ * parameter, provided the user has FRL_PLUGIN_ACCESS.
+ *
+ * Note: regular admin page loads with ?action=edit (e.g. post.php) are
+ * NOT administrator actions — only admin-post.php and AJAX qualify.
  *
  * @return bool True if the request is an administrator action, false otherwise.
  */
@@ -362,14 +365,16 @@ function frl_is_administrator_action() {
 		return $is_action;
 	}
 
-	// Check for 'action' parameter (AJAX or admin pages)
-	$action_param = frl_prefix( 'action' );
-	if ( isset( $_REQUEST['action'] ) || isset( $_REQUEST[ $action_param ] ) ) {
-
-		// Check for administrator access
-		if ( frl_has_access() ) {
-			$is_action = true;
-			return $is_action;
+	// Check for 'action' parameter in AJAX requests only.
+	// Regular page loads with ?action= (e.g. post.php?action=edit) are
+	// normal page views, not administrator actions.
+	if ( frl_is_doing_ajax() ) {
+		$action_param = frl_prefix( 'action' );
+		if ( isset( $_REQUEST['action'] ) || isset( $_REQUEST[ $action_param ] ) ) {
+			if ( frl_has_access() ) {
+				$is_action = true;
+				return $is_action;
+			}
 		}
 	}
 
