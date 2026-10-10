@@ -365,16 +365,21 @@ function frl_is_administrator_action() {
 		return $is_action;
 	}
 
-	// Check for 'action' parameter in AJAX requests only.
+	// Plugin's own prefixed actions (?frl_action=...) are administrator
+	// actions even on normal page loads (adminbar cache/rewrite links).
+	$action_param = frl_prefix( 'action' );
+	if ( isset( $_REQUEST[ $action_param ] ) && frl_has_access() ) {
+		$is_action = true;
+		return $is_action;
+	}
+
+	// Check for core's generic 'action' parameter in AJAX requests only.
 	// Regular page loads with ?action= (e.g. post.php?action=edit) are
 	// normal page views, not administrator actions.
 	if ( frl_is_doing_ajax() ) {
-		$action_param = frl_prefix( 'action' );
-		if ( isset( $_REQUEST['action'] ) || isset( $_REQUEST[ $action_param ] ) ) {
-			if ( frl_has_access() ) {
-				$is_action = true;
-				return $is_action;
-			}
+		if ( isset( $_REQUEST['action'] ) && frl_has_access() ) {
+			$is_action = true;
+			return $is_action;
 		}
 	}
 

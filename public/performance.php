@@ -460,11 +460,7 @@ function frl_dedupe_css(): void {
 		return;
 	}
 
-	if ( is_admin() || wp_doing_ajax() || is_feed()
-		|| ( defined( 'REST_REQUEST' ) && REST_REQUEST )
-		|| ( defined( 'WP_CLI' ) && WP_CLI )
-		|| ( defined( 'DOING_CRON' ) && DOING_CRON )
-		|| isset( $_GET['pbs_nodedupe'] ) ) {
+	if ( ! frl_is_valid_frontend_page_request() || is_feed() || isset( $_GET['pbs_nodedupe'] ) ) {
 		return;
 	}
 
