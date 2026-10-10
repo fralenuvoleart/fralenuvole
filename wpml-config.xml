@@ -13,27 +13,23 @@
     <taxonomy translate="0">team_tag</taxonomy>
   </taxonomies>
   <custom-fields>
-
-    <custom-field action="copy">post-settings_post-authors</custom-field>
-    <custom-field action="copy-once">service-settings_service-type</custom-field>
-    <custom-field action="translate">service-settings_service-prices</custom-field>
-    <custom-field action="copy-once">service-settings_service-partners</custom-field>
-    <custom-field action="copy-once">service-usecases_section-title</custom-field>
-    <custom-field action="copy-once">service-usecases_section-description</custom-field>
-    <custom-field action="copy-once">service-usecases_usecase</custom-field>
+    <custom-field action="copy">service-settings_service-type</custom-field>
+    <custom-field action="translate">service-settings_service-disclaimer</custom-field>
+    <custom-field action="copy">service-settings_service-partners</custom-field>
     <custom-field action="translate">service-faqs_service-faq</custom-field>
+    <custom-field action="copy-once">service-testimonials_service-testimonial</custom-field>
+    <custom-field action="translate">service-prices_title</custom-field>
+    <custom-field action="translate">service-prices_description</custom-field>
+    <custom-field action="translate">service-prices_price-options</custom-field>
+    <custom-field action="copy">post-settings_post-authors</custom-field>
     <custom-field action="translate">team-settings_team-role</custom-field>
-  <custom-field action="copy-once">team-settings_team-education</custom-field>
+    <custom-field action="copy-once">team-settings_team-education</custom-field>
     <custom-field action="copy">team-settings_team-email</custom-field>
     <custom-field action="copy">team-settings_team-linkedin</custom-field>
     <custom-field action="copy">team-settings_team-whatsapp</custom-field>
     <custom-field action="copy">team-settings_team-facebook</custom-field>
     <custom-field action="copy">team-settings_team-instagram</custom-field>
     <custom-field action="copy">team-settings_team-website</custom-field>
-    <custom-field action="translate">service-prices_title</custom-field>
-    <custom-field action="translate">service-prices_description</custom-field>
-    <custom-field action="translate">service-prices_price-options</custom-field>
-    <custom-field action="copy-once">service-testimonials_service-testimonial</custom-field>
   </custom-fields>
   <admin-texts>
     <key name="website-options_general-settings_phone" action="copy-once"/>
