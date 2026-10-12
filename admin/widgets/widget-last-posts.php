@@ -48,9 +48,18 @@ function frl_render_last_posts_widget() {
 			$modified_time  = get_the_modified_time( 'U' );
 			// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Intentional: get_the_modified_time('U') returns a "local-time-as-fake-UTC" timestamp (WP core's mysql2date() treats 'U'/'G' formats as UTC-interpreted regardless of $gmt), matching current_time('timestamp')'s basis exactly. Using time() here would introduce an offset bug equal to the site's GMT offset.
 			$time_ago    = human_time_diff( $modified_time, current_time( 'timestamp' ) ) . ' ' . __( 'ago', FRL_PREFIX );
-			$author_id   = (int) get_the_author_meta( 'ID' );
-			$author_name = get_the_author_meta( 'display_name', $author_id );
-			$author_link = '/wp-admin/user-edit.php?user_id=' . $author_id;
+			// Use _edit_last to show the actual last editor, not the original author.
+			// _edit_last is WordPress core post meta, set automatically on every post save.
+			$last_editor_id = (int) get_post_meta( $post_id, '_edit_last', true );
+			if ( $last_editor_id && get_userdata( $last_editor_id ) ) {
+				$author_name = get_the_author_meta( 'display_name', $last_editor_id );
+				$author_link = '/wp-admin/user-edit.php?user_id=' . $last_editor_id;
+			} else {
+				// Fallback to original author if _edit_last is empty or user no longer exists.
+				$author_id   = (int) get_the_author_meta( 'ID' );
+				$author_name = get_the_author_meta( 'display_name', $author_id );
+				$author_link = '/wp-admin/user-edit.php?user_id=' . $author_id;
+			}
 
 			$output .= sprintf(
 				'<article class="post-item">
