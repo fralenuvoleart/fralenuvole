@@ -35,7 +35,7 @@ const CTA_WEBHOOK_CONFIG = array(
 			array(
 				'action_id' => 'email',
 				'url'       => 'mailto:info@pbservices.ge?subject={subject}&body={template}',
-				'subject'   => 'PB Services Enquiry',
+				'subject'   => 'PB Services Enquiry from Website',
 				'template'  => "Hello,\r\nI'd like to enquire about your services.\r\n\r\n\r\n---\r\nSupport number: PIN-{reference_id}-PBS",
 			),
 		),
