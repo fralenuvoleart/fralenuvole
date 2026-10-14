@@ -7,11 +7,12 @@
  * @package Fralenuvole
  * @since  1.0.0
  */
- 
- #tabs-docs {
+
+#tabs-docs {
 	padding-left: 7px;
- }
-#tabs-docs > h2 {
+}
+
+#tabs-docs>h2 {
 	margin-bottom: 10px;
 	margin-left: -10px;
 }
@@ -44,7 +45,7 @@
 
 .frl-docs-index a {
 	display: block;
-	padding: 6.5px;
+	padding: 7px;
 	border-radius: 4px;
 	color: #2271b1;
 	text-decoration: none;
@@ -66,7 +67,8 @@
 
 .frl-docs-content {
 	flex: 1;
-	min-width: 0; /* Prevent flex overflow */
+	min-width: 0;
+	/* Prevent flex overflow */
 	max-width: 562px;
 	font-size: 14px;
 	line-height: 1.7;
