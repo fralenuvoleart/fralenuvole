@@ -1,4 +1,4 @@
-# Kinsta MU-Plugin Reference
+# Kinsta MU-Plugin
 
 > **Source:** `/wp-content/mu-plugins/kinsta-mu-plugins/` — Version 3.7.0
 > **Generated:** 2026-09-09

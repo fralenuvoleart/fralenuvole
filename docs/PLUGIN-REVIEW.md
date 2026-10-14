@@ -1,4 +1,4 @@
-# Fralenuvole Plugin Review
+# Plugin Review
 
 **Date:** 2026-07-11 | **Version:** 5.7.4.5 | **PHP:** 8.3+ | **License:** GPL2+
 

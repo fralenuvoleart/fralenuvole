@@ -1,4 +1,4 @@
-# Plugins Exclusions
+# Thirdparty Plugins Exclusions
 
 ## Overview
 

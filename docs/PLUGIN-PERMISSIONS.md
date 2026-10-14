@@ -1,6 +1,6 @@
 # Plugin Permissions
 
-FRL_HAS_ACCESS - WHO CAN ACCESS WHAT
+FRL_HAS_ACCESS: Who can access what
 ====================
 
 SUPERADMIN (User ID 1 only)
