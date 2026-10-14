@@ -51,7 +51,7 @@ Please note that October 14 is a non-working day. Feel free to leave your messag
 ```
 ---
 
-## WHhatsApp - respond.io Workflow messages
+## WhatsApp - respond.io Workflow messages
 
 ### Weekday EN
 Thank you! 🟢
@@ -122,13 +122,3 @@ Thanks for reaching out! We’re offline until [day, time, time zone], and we’
 
 PB Services Team
 --Contacts--
-
-
-https://webhooks.integrately.com/a/webhooks/839136d98af44e57abc857c4899c8301
-
-
-
-
-https://webhooks.integrately.com/a/webhooks/839136d98af44e57abc857c4899c8301
-
-
