@@ -29,13 +29,16 @@ function frl_docs_get_documents() {
 	// Build a cache-key signature from the latest filemtime + file count.
 	$sig = frl_docs_build_signature( $docs_dir );
 
+	error_log( 'FRL_DOCS_DEBUG get_documents: dir=' . $docs_dir . ' sig=' . $sig );
+
 	$docs = frl_cache_remember(
 		'staticdata',
 		'docs_index_' . $sig,
 		function () use ( $docs_dir ) {
 			$files = glob( $docs_dir . '*.md', GLOB_NOSORT );
-			$docs  = array();
+			error_log( 'FRL_DOCS_DEBUG get_documents callback: glob found=' . count( $files ) . ' files' );
 
+			$docs = array();
 			if ( empty( $files ) ) {
 				return $docs;
 			}
@@ -59,13 +62,19 @@ function frl_docs_get_documents() {
 		}
 	);
 
+	error_log( 'FRL_DOCS_DEBUG get_documents: first remember returned ' . ( empty( $docs ) ? 'EMPTY' : 'count=' . count( $docs ) ) );
+
 	// Guard against stale/polluted cache: if the persistent cache returned
 	// an empty array but the directory actually contains .md files, purge
 	// the cache entry and rebuild it eagerly.
 	if ( empty( $docs ) ) {
 		$on_disk = glob( $docs_dir . '*.md', GLOB_NOSORT );
+		error_log( 'FRL_DOCS_DEBUG get_documents: empty result, on_disk=' . count( $on_disk ) . ' files' );
+
 		if ( ! empty( $on_disk ) ) {
 			frl_cache_clear( 'staticdata', 'docs_index_' . $sig );
+			error_log( 'FRL_DOCS_DEBUG get_documents: purged stale key, rebuilding' );
+
 			$docs = frl_cache_remember(
 				'staticdata',
 				'docs_index_' . $sig,
@@ -92,6 +101,8 @@ function frl_docs_get_documents() {
 			);
 		}
 	}
+
+	error_log( 'FRL_DOCS_DEBUG get_documents: final count=' . count( $docs ) );
 
 	return $docs;
 }
@@ -213,7 +224,6 @@ function frl_docs_render_document( $slug ) {
  * Rewrite links in rendered doc HTML.
  *
  * - Relative *.md links → data-frl-doc attributes for in-viewer navigation.
- * - Source-file links (plugin .php paths) → plain <code> text (unlink).
  * - External http(s) links → target="_blank" rel="noopener".
  *
  * @param string $html Rendered HTML.
@@ -261,6 +271,8 @@ function frl_docs_rewrite_links( $html ) {
  * @return void
  */
 function frl_docs_content_render() {
+	error_log( 'FRL_DOCS_DEBUG content_render called' );
+
 	$documents = frl_docs_get_documents();
 
 	if ( empty( $documents ) ) {
