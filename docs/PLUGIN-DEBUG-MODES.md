@@ -1,4 +1,4 @@
-# Debug Modes
+# Plugin Debug Modes
 
 The plugin supports debug/troubleshooting modes via URL parameter or constant.
 

@@ -1,4 +1,4 @@
-# Plugin Caching
+# Cache Manager
 
 > Multi-backend caching layer with language awareness, dependency cascading, and orchestrated operations.
 

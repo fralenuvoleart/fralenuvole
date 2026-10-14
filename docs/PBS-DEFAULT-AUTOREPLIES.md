@@ -1,4 +1,4 @@
-# Default Auto-replies for PBS
+# PBS - Default Auto-replies
 
 ## Webform - Confirmation Messages (Polylang String Translations)
 
