@@ -1,6 +1,24 @@
 # Active Context
 
-## Latest: Rewriter — Lang-prefixed CPT exclusion + cache invalidation fix (2026-09-16)
+## Latest: Docs Viewer — Admin interface documentation browser (2026-10-14)
+
+New Documentation tab on the plugin settings page: 15 `docs/*.md` files are now browsable via AJAX within the admin UI. Server-side Parsedown Extra rendering, cached in `staticdata` (persistent heavy group, `WEEK_IN_SECONDS` TTL) keyed by `filemtime`. No extra permission gating — page access (`FRL_PLUGIN_ACCESS` = `delete_plugins`) equals docs access. Uses the existing Prism.js + `frl_content_loaded` event for code highlighting. Link rewriting: doc→doc `.md` links become in-viewer navigation (`data-frl-doc`); source-file links become plain `<code>` text.
+
+**Files created:**
+- [`admin/components/class-display-docs.php`](admin/components/class-display-docs.php) — discovery (`frl_docs_get_documents()`), rendering (`frl_docs_render_document()`), tab shell callback, AJAX handler `frl_post_ajax_docs_content()` (auto-discovered via `frl_autodiscover_admin_actions()`)
+- [`assets/lib/parsedown/Parsedown.php` + `ParsedownExtra.php`](assets/lib/parsedown/) — vendored MIT Markdown renderer (lazy-required only on cache miss)
+- [`assets/js/admin-docs.js`](assets/js/admin-docs.js) — AJAX fetch + `frl_content_loaded` event trigger for Prism
+- [`assets/css/admin-docs.css`](assets/css/admin-docs.css) — reader typography (tables, code blocks, index sidebar)
+
+**Files changed:**
+- [`admin/ui/ui-admin-settings.php`](admin/ui/ui-admin-settings.php) — `require_once class-display-docs.php`, `frl_tab_register_tab('docs', …)` at `POSITION_LAST`, `add_action('frl_docs_content', …)`
+- [`admin/ui/ui-asset-loader.php`](admin/ui/ui-asset-loader.php) — registered `docs-css`/`docs-js` assets, localized `frlDocsData`
+- [`docs/ADMIN-UI.md`](docs/ADMIN-UI.md) — directory tree, asset tables, localized scripts updated
+- [`memory-bank/progress.md`](memory-bank/progress.md) — new Docs Viewer row in Admin Subsystems
+
+**Plan:** [`plans/ADMIN-DOCS-VIEWER.md`](plans/ADMIN-DOCS-VIEWER.md)
+
+## Prior: Rewriter — Lang-prefixed CPT exclusion + cache invalidation fix (2026-09-16)
 
 **Bug:** `/ru/about/rati-iese-abashmadze/` returned 404. The Taxonomy Base Removal catch-all rule hijacked the URL before the team-member CPT's native rewrite rule could match.
 

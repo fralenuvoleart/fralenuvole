@@ -31,6 +31,7 @@ require_once FRL_DIR_PATH . 'admin/components/class-settings-fields.php';
 require_once FRL_DIR_PATH . 'admin/components/class-display-log.php';
 require_once FRL_DIR_PATH . 'admin/components/class-display-debug.php';
 require_once FRL_DIR_PATH . 'admin/components/class-import-export.php';
+require_once FRL_DIR_PATH . 'admin/components/class-display-docs.php';
 
 // Preload admin caches immediately
 //before any hooks or components are initialized
@@ -43,6 +44,16 @@ frl_tab_register_tab(
 		'title'       => 'Dashboard',
 		'description' => '',
 		'position'    => 'POSITION_FIRST',
+	)
+);
+
+// Register documentation tab
+frl_tab_register_tab(
+	'docs',
+	array(
+		'title'       => __( 'Documentation', FRL_PREFIX ),
+		'description' => '',
+		'position'    => 'POSITION_LAST',
 	)
 );
 
@@ -74,6 +85,13 @@ add_action(
 add_action(
 	'frl_after_section_developer_content',
 	'frl_after_developer_content_render',
+	10,
+	0
+);
+
+add_action(
+	'frl_docs_content',
+	'frl_docs_content_render',
 	10,
 	0
 );

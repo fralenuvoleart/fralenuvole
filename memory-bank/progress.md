@@ -1,4 +1,4 @@
-# Project Progress — Current Feature Inventory | Last updated: 2026-09-12
+# Project Progress — Current Feature Inventory | Last updated: 2026-10-14
 
 This file is a **snapshot of what is implemented today**, organized by subsystem. It is not a changelog — for historical change history, use `git log`. When a feature changes, update its entry in place; do not append a dated narrative.
 
@@ -27,6 +27,7 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 | Tag Validator | `admin/components/class-tag-validator.php` | On-demand HTML tag presence checker for any URL (via cURL fetch + regex extraction), used to verify critical-CSS/preload/schema tags render correctly. Result cached 5 minutes per URL+tag-set. |
 | Import/Export | `admin/components/class-import-export.php`, `admin/helpers/functions-admin-import-export.php` | JSON export/import of plugin settings and Polylang string translations. |
 | Metaboxes | `admin/metaboxes/` | "Guidelines" metabox on post/page/service edit screens (opt-in via `editor_metabox` option). |
+| Docs Viewer | `admin/components/class-display-docs.php` + `assets/lib/parsedown/` | Documentation tab on the settings page: 15 `docs/*.md` files browsable via AJAX. Server-side Parsedown Extra rendering, `staticdata`-cached by `filemtime`. Uses existing Prism.js (`frl_content_loaded` event). No extra permission gating (page access = docs access). |
 | Action Handler Auto-Discovery | `admin/helpers/functions-admin-action-handlers.php` | Any `frl_post_*` function is auto-registered as an `admin_post_frl_post_*` handler (and `wp_ajax_*` if prefixed `frl_post_ajax_*`). |
 
 ## Frontend/Shared Subsystems

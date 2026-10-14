@@ -12,6 +12,7 @@ admin/
 │   ├── class-display-cache.php        ← Cache statistics display
 │   ├── class-display-debug.php        ← Debug configuration display
 │   ├── class-display-environment.php  ← Environment information display
+│   ├── class-display-docs.php         ← Documentation files browser (AJAX + Markdown)
 │   ├── class-display-log.php          ← Log manager (AJAX + UI)
 │   ├── class-import-export.php        ← Import/Export UI
 │   ├── class-settings-fields.php      ← Settings form handling
@@ -36,6 +37,9 @@ admin/
 │   ├── widget-editor.php              ← Editor dashboard widget
 │   ├── widget-last-posts.php          ← Recent posts widget
 │   └── widget-user-visits.php         ← User visits widget
+├── assets/lib/parsedown/              ← Vendored Markdown → HTML renderer (Parsedown Extra)
+├── assets/js/admin-docs.js            ← Docs tab AJAX viewer
+├── assets/css/admin-docs.css          ← Docs tab reader typography
 ```
 
 ---
@@ -57,7 +61,7 @@ admin/admin.php (loaded via plugin bootstrap)
 ```
 admin/ui/ui-admin-settings.php
   → Load helpers (functions-admin-ui.php, functions-admin-class-helpers-ui.php)
-  → Load UI components (ui-asset-loader.php, class-tab-*.php, class-ui-renderer.php)
+  → Load UI components (ui-asset-loader.php, class-tab-*.php, class-ui-renderer.php, class-display-docs.php)
   → Load display components (class-dashboard.php, class-display-*.php)
   → Load import/export helpers
   → Preload caches: frl_cache_preload_groups(['staticdata', 'adminui'])
@@ -154,7 +158,7 @@ Frl_Dashboard_Renderer::render_widget([
 
 | Function | Description |
 |----------|-------------|
-| `frl_tab_register_tab($id, $args)` | Register a tab |
+| `frl_tab_register_tab($id, $args)` | Register a tab (see the `docs` tab at `POSITION_LAST` as example) |
 | `frl_tab_hide_tabs_by_capability($tabs, $has_access)` | Hide tabs by capability |
 | `frl_tab_get_active_tab()` | Get active tab index |
 | `frl_tab_save_active_tab($index)` | Save active tab to transient |
@@ -266,6 +270,7 @@ add_filter('frl_admin_dashboard_links', function($links) {
 | `admin-import-export.js` | Import/export AJAX | Footer, deferred |
 | `admin-tag-validator.js` | Tag validation AJAX | Footer, deferred |
 | `admin-log-manager.js` | Log viewer AJAX | Footer, deferred |
+| `admin-docs.js` | Docs viewer AJAX | Footer, deferred |
 | `prism.min.js` | Syntax highlighting | Footer, deferred |
 | `prism-markup.min.js` | HTML syntax | Footer, deferred |
 
@@ -277,6 +282,7 @@ add_filter('frl_admin_dashboard_links', function($links) {
 | `admin-ui.css` | Tab UI, widgets |
 | `admin-dashboard.css` | Dashboard widgets |
 | `admin-log-manager.css` | Log viewer styles |
+| `admin-docs.css` | Docs tab reader typography |
 | `prism.min.css` | Syntax highlighting theme |
 
 ### Localized Scripts
@@ -290,6 +296,9 @@ add_filter('frl_admin_dashboard_links', function($links) {
 
 // frlImportExport
 { ajaxUrl, exportUrl, translationsExportUrl, importNonce, translationNonce, strings }
+
+// frlDocsData
+{ ajaxUrl, nonce, strings: { loading, error } }
 ```
 
 ---

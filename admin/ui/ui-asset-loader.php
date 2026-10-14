@@ -73,6 +73,8 @@ function frl_asset_loader_scripts(): void {
 		'log-manager-css'  => 'assets/css/admin-log-manager.css',
 		'log-manager-js'   => 'assets/js/admin-log-manager.js',
 		'import-export-js' => 'assets/js/admin-import-export.js',
+		'docs-css'         => 'assets/css/admin-docs.css',
+		'docs-js'          => 'assets/js/admin-docs.js',
 	);
 
 	frl_enqueue_scripts(
@@ -96,6 +98,18 @@ function frl_asset_loader_scripts(): void {
 		array(
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'log_manager_nonce' ),
+		)
+	);
+	wp_localize_script(
+		FRL_PREFIX . '-docs',
+		'frlDocsData',
+		array(
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => frl_create_nonce( 'docs_content' ),
+			'strings' => array(
+				'loading' => esc_js( __( 'Loading…', FRL_PREFIX ) ),
+				'error'   => esc_js( __( 'Error loading document.', FRL_PREFIX ) ),
+			),
 		)
 	);
 	// Generate export URLs
