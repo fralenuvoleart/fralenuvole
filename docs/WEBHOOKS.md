@@ -1,4 +1,4 @@
-# Webhook System
+# Webhooks
 
 Generic webhook dispatch infrastructure shared by wsform and call_to_actions modules.
 Lives in [`includes/helpers/functions-webhook.php`](includes/helpers/functions-webhook.php).

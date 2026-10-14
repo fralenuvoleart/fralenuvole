@@ -1,3 +1,5 @@
+# Plugin Permissions
+
 FRL_HAS_ACCESS - WHO CAN ACCESS WHAT
 ====================
 

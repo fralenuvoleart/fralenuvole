@@ -1,4 +1,4 @@
-# FRL Rewriter System — Architecture Reference
+# Rewriter
 
 ## Design Goal
 

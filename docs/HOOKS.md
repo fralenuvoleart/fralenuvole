@@ -1,4 +1,4 @@
-# Fralenuvole Hook Priorities
+# Plugin Hook Priorities
 
 This document defines the critical hook priorities for Fralenuvole. **Violating these priorities can cause critical bugs** including:
 - Environment settings applied AFTER rewriter reads options

@@ -1,4 +1,4 @@
-# Environment Manager — Developer Reference
+# Environment Manager
 
 **Source:** [`core/environment/`](../core/environment/) (9 files)
 **Configuration:** [`config/environment/`](../config/environment/) (constants + snippets)

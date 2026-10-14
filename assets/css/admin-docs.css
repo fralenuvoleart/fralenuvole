@@ -7,11 +7,14 @@
  * @package Fralenuvole
  * @since  1.0.0
  */
+#tabs-docs > h2 {
+	margin-bottom: 0;
+}
 
 .frl-docs-viewer {
 	display: flex;
 	gap: 16px;
-	margin-top: 12px;
+	margin-left: -10px;
 }
 
 .frl-docs-index {
@@ -19,7 +22,7 @@
 	max-width: 180px;
 	min-width: 0;
 	border-right: 1px solid #dcdcde;
-	padding-right: 12px;
+	padding-right: 10px;
 	overflow-y: auto;
 	overflow-x: hidden;
 }
@@ -37,12 +40,12 @@
 
 .frl-docs-index a {
 	display: block;
-	padding: 6px 8px;
+	padding: 5px;
 	border-radius: 4px;
 	color: #2271b1;
 	text-decoration: none;
 	font-size: 13px;
-	line-height: 1.5;
+	line-height: 1.3;
 	overflow-wrap: break-word;
 }
 

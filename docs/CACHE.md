@@ -1,4 +1,4 @@
-# Cache System — Architectural Reference
+# Plugin Caching
 
 > Multi-backend caching layer with language awareness, dependency cascading, and orchestrated operations.
 

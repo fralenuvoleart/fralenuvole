@@ -1,4 +1,4 @@
-# Admin Interface Developer Reference
+# Plugin Admin UI
 
 ---
 

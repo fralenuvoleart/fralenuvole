@@ -1,4 +1,4 @@
-# Fralenuvole — Architecture Reference
+# Architecture
 
 ## Executive Summary
 

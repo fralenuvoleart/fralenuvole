@@ -1,4 +1,4 @@
-# Kinsta MU-Plugins: Cache Purge Trigger Reference
+# Kinsta MU-Plugins: Cache Reference
 
 > **Source:** `/wp-content/mu-plugins/kinsta-mu-plugins/` — Version 3.7.0
 > **Generated:** 2026-09-09

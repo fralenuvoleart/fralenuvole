@@ -1,4 +1,4 @@
-# Translation System Documentation
+# Translator
 
 ## Overview
 The Translation System is designed to handle translation requirements across the entire site, including custom fields, site options, and dynamic block content.
