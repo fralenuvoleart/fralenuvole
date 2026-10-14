@@ -29,7 +29,7 @@ function frl_docs_get_documents() {
 	// Build a cache-key signature from the latest filemtime + file count.
 	$sig = frl_docs_build_signature( $docs_dir );
 
-	return frl_cache_remember(
+	$docs = frl_cache_remember(
 		'staticdata',
 		'docs_index_' . $sig,
 		function () use ( $docs_dir ) {
@@ -58,6 +58,42 @@ function frl_docs_get_documents() {
 			return $docs;
 		}
 	);
+
+	// Guard against stale/polluted cache: if the persistent cache returned
+	// an empty array but the directory actually contains .md files, purge
+	// the cache entry and rebuild it eagerly.
+	if ( empty( $docs ) ) {
+		$on_disk = glob( $docs_dir . '*.md', GLOB_NOSORT );
+		if ( ! empty( $on_disk ) ) {
+			frl_cache_clear( 'staticdata', 'docs_index_' . $sig );
+			$docs = frl_cache_remember(
+				'staticdata',
+				'docs_index_' . $sig,
+				function () use ( $docs_dir ) {
+					$files = glob( $docs_dir . '*.md', GLOB_NOSORT );
+					$docs  = array();
+					if ( empty( $files ) ) {
+						return $docs;
+					}
+					sort( $files );
+					foreach ( $files as $file ) {
+						$slug  = strtolower( basename( $file, '.md' ) );
+						$title = frl_docs_extract_title( $file );
+						$mtime = filemtime( $file );
+						$docs[] = array(
+							'slug'  => $slug,
+							'title' => $title,
+							'file'  => $file,
+							'mtime' => $mtime,
+						);
+					}
+					return $docs;
+				}
+			);
+		}
+	}
+
+	return $docs;
 }
 
 /**
