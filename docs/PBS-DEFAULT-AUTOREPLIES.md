@@ -28,7 +28,7 @@ Please note that October 14 is a non-working day. Feel free to leave your messag
 ---
 
 ## Telegram - Bot Messages (Sevalla messages.json)
-
+```
 {
   "welcome": {
     "default": "Welcome to PB Services! 👋\nSend your message below to connect with our support team.",
@@ -48,7 +48,7 @@ Please note that October 14 is a non-working day. Feel free to leave your messag
     "closed": "🔒 Relay session closed."
   }
 }
-
+```
 ---
 
 ## WHhatsApp - respond.io Workflow messages
