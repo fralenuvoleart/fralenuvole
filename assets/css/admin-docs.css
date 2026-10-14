@@ -10,27 +10,23 @@
 
 .frl-docs-viewer {
 	display: flex;
-	gap: 24px;
+	gap: 16px;
 	margin-top: 12px;
 }
 
 .frl-docs-index {
-	flex: 0 0 220px;
-	max-width: 220px;
+	flex: 0 0 180px;
+	max-width: 180px;
+	min-width: 0;
 	border-right: 1px solid #dcdcde;
-	padding-right: 16px;
+	padding-right: 12px;
 	overflow-y: auto;
-}
-
-.frl-docs-index h2 {
-	margin-top: 0;
-	font-size: 16px;
-	color: #1d2327;
+	overflow-x: hidden;
 }
 
 .frl-docs-index ul {
 	list-style: none;
-	margin: 8px 0 0 0;
+	margin: 0;
 	padding: 0;
 }
 
@@ -47,6 +43,7 @@
 	text-decoration: none;
 	font-size: 13px;
 	line-height: 1.5;
+	overflow-wrap: break-word;
 }
 
 .frl-docs-index a:hover {

@@ -280,7 +280,6 @@ function frl_docs_content_render() {
 	?>
 	<div class="frl-docs-viewer" id="frl-docs-viewer">
 		<div class="frl-docs-index">
-			<h2><?php esc_html_e( 'Documentation', FRL_PREFIX ); ?></h2>
 			<ul>
 				<?php foreach ( $documents as $doc ) : ?>
 					<li>
