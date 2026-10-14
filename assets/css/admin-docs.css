@@ -67,7 +67,7 @@
 .frl-docs-content {
 	flex: 1;
 	min-width: 0; /* Prevent flex overflow */
-	max-width: 760px;
+	max-width: 562px;
 	font-size: 14px;
 	line-height: 1.7;
 	color: #3c434a;
