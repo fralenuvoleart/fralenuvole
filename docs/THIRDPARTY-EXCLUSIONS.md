@@ -1,6 +1,6 @@
-# Thirdparty Plugins Exclusions
+# Thirdparty Exclusions
 
-## Overview
+## Exclude Thirdparty Plugins
 
 Prevents specified plugins from loading without deactivating them. Uses MU plugin to filter `active_plugins` before regular plugins load.
 
