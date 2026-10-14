@@ -123,6 +123,8 @@
 
 .frl-docs-content table {
 	width: 100%;
+	display: block;
+	overflow-x: auto;
 	border-collapse: collapse;
 	margin: 16px 0;
 	font-size: 13px;
