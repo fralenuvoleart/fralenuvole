@@ -38,7 +38,6 @@ EXCLUDES=(
     --exclude='.vscode/'
     --exclude='.idea/'
     --exclude='.roo*'
-    --exclude='docs/'
     --exclude='memory-bank/'
     --exclude='plans/'
     --exclude='vendor/'
@@ -47,6 +46,10 @@ EXCLUDES=(
     --exclude='composer.lock'
     --exclude='AGENTS.md'
     --exclude='phpcs.xml'
+    # Docs are shipped to production (admin "Documentation" tab reads them at runtime).
+    # Re-include docs/ before the broad *.md exclusion below so they survive the mirror.
+    --include='docs/'
+    --include='docs/**'
     --exclude='*.md'
 )
 

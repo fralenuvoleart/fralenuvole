@@ -20,21 +20,24 @@
     gap: 5px;
 }
 
-#log-entries-table .widget-table-row {
+#log-entries .widget-table-row {
     align-items: initial;
 }
 
-#log-entries-table .widget-table-cell-name {
+#log-entries .widget-table-cell-name {
     flex-basis: 125px;
     flex-grow: 0;
     display: flex;
     flex-wrap: nowrap;
     flex-direction: column;
-    gap: 5px;
+    padding-top: 3px;
+    padding-bottom: 3px;
 }
 
-#log-entries-table .widget-table-cell-value {
+#log-entries .widget-table-cell-value {
     align-items: center;
+    padding-top: 3px;
+    padding-bottom: 3px;
 }
 
 /* Controls section */

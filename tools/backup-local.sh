@@ -32,9 +32,10 @@ EXCLUDE_LIST=(
     "vendor"
     "composer*"
     "plans"
+    "memory-bank"
     "phpcs.xml"
     "logs"
-    "*.md"
+    "AGENTS.md"
 )
 
 # --- ZIP & COPY (READ ONLY) ---
@@ -62,9 +63,9 @@ for item in "${EXCLUDE_LIST[@]}"; do
 done
 
 # Run the zip command
-if zip -r "$BACKUP_DIR/$ZIP_NAME" "$FOLDER_NAME" "${ZIP_EXCLUDES[@]}"; then
-    echo "✅ Backup successfully saved to: $BACKUP_DIR/$ZIP_NAME"
-else
+if ! zip -r "$BACKUP_DIR/$ZIP_NAME" "$FOLDER_NAME" "${ZIP_EXCLUDES[@]}"; then
     echo "❌ Error: Failed to create the zip archive."
     exit 1
 fi
+
+echo "✅ Backup successfully saved to: $BACKUP_DIR/$ZIP_NAME"

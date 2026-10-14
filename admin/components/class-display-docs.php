@@ -24,19 +24,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return array[] List of docs with keys: slug, title, file, mtime.
  */
 function frl_docs_get_documents() {
+	static $docs_cache = null;
+
+	if ( $docs_cache !== null ) {
+		return $docs_cache;
+	}
+
 	$docs_dir = FRL_DIR_PATH . 'docs/';
 
 	// Build a cache-key signature from the latest filemtime + file count.
 	$sig = frl_docs_build_signature( $docs_dir );
-
-	error_log( 'FRL_DOCS_DEBUG get_documents: dir=' . $docs_dir . ' sig=' . $sig );
 
 	$docs = frl_cache_remember(
 		'staticdata',
 		'docs_index_' . $sig,
 		function () use ( $docs_dir ) {
 			$files = glob( $docs_dir . '*.md', GLOB_NOSORT );
-			error_log( 'FRL_DOCS_DEBUG get_documents callback: glob found=' . count( $files ) . ' files' );
 
 			$docs = array();
 			if ( empty( $files ) ) {
@@ -62,18 +65,14 @@ function frl_docs_get_documents() {
 		}
 	);
 
-	error_log( 'FRL_DOCS_DEBUG get_documents: first remember returned ' . ( empty( $docs ) ? 'EMPTY' : 'count=' . count( $docs ) ) );
-
 	// Guard against stale/polluted cache: if the persistent cache returned
 	// an empty array but the directory actually contains .md files, purge
 	// the cache entry and rebuild it eagerly.
 	if ( empty( $docs ) ) {
 		$on_disk = glob( $docs_dir . '*.md', GLOB_NOSORT );
-		error_log( 'FRL_DOCS_DEBUG get_documents: empty result, on_disk=' . count( $on_disk ) . ' files' );
 
 		if ( ! empty( $on_disk ) ) {
 			frl_cache_clear( 'staticdata', 'docs_index_' . $sig );
-			error_log( 'FRL_DOCS_DEBUG get_documents: purged stale key, rebuilding' );
 
 			$docs = frl_cache_remember(
 				'staticdata',
@@ -102,9 +101,8 @@ function frl_docs_get_documents() {
 		}
 	}
 
-	error_log( 'FRL_DOCS_DEBUG get_documents: final count=' . count( $docs ) );
-
-	return $docs;
+	$docs_cache = $docs;
+	return $docs_cache;
 }
 
 /**
@@ -271,7 +269,6 @@ function frl_docs_rewrite_links( $html ) {
  * @return void
  */
 function frl_docs_content_render() {
-	error_log( 'FRL_DOCS_DEBUG content_render called' );
 
 	$documents = frl_docs_get_documents();
 
