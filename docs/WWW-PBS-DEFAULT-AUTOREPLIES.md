@@ -78,6 +78,21 @@ Please note that October 14 is a non-working day. Feel free to leave your messag
 
 ## WS Form — Out-of-Office Proposal
 
+1. Add an autoreply by email after form submission.
+2. Message with 2 links (example for weekend):
+
+```
+  Thanks for reaching out! 
+  We're offline until Monday, and we'll reply first thing.
+  - 📅 Want to speak sooner? [Book a meeting] (Calendly)
+  - 🚨 Need help before we reopen? Contact our urgent support line here: [contact link]. This channel is only for urgent issues that can't wait the weekend, and we respond within 12 hours.
+
+The PB Services Team
+```
+
+The second link is optional, it would be nice-to-have, but obviously difficult for lack of dedicated team member.
+
+
 1. **Hot-lead alerts only** — AI scores each message (ready to buy, price check, just browsing) and pushes notifications only for hot leads via Telegram/WhatsApp. Everything else waits for morning digest.
 2. **Autoreply with optional links:**
    - Thanks for reaching out! We're offline until [day, time, time zone], and we'll reply first thing.
