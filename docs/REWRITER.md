@@ -1,452 +1,205 @@
 # Rewriter
 
-## Design Goal
+Feature-based URL rewriting system. Solves the "URL Hijacking" problem — catch-all rules (CPT/taxonomy base removal) must not intercept URLs belonging to higher-priority features or WordPress pages.
 
-The primary goal of the Rewriter is to solve the **"URL Hijacking"** problem. When implementing "catch-all" rules (e.g., removing CPT bases like `/product/`), these rules can intercept requests intended for Pages, Posts, or other CPTs. 
+**Core constraint:** ANY change to one feature must not alter the runtime behavior of any other feature.
 
-The system provides a deterministic, priority-based framework to ensure that specific, high-priority routes (like translated CPT archives) are protected from being hijacked by general, low-priority rules.
+## Architecture
 
-**Core Constraint**: ANY change to the code of one feature must not alter the runtime behaviour of any other feature.
+```
+Frl_Rewriter (Facade, final, singleton)
+  └── Frl_Rewriter_Coordinator (singleton)
+        ├── create_all_features()
+        │     ├── FRL_REWRITER_FEATURES → instantiate + self_register()
+        │     └── FRL_REWRITER_MULTILINGUAL_CPT → Archive + Single per CPT
+        ├── do_action('frl_rewriter_register_features', $this)  ← module extension point
+        └── usort() by priority
+              │
+              ▼
+        Frl_Rewriter_Feature_Base (abstract)
+          ├── Frl_CPT_Archive_Base_Translation_Feature  (priority 15)
+          ├── Frl_CPT_Single_Base_Translation_Feature   (priority 25)
+          ├── Frl_Taxonomy_Base_Removal_Feature         (priority 35)
+          └── Frl_CPT_Base_Removal_Feature              (priority 40)
+```
 
-### How independence is achieved
+**Key files:**
 
-- **Self-registration** — features call `self_register()` which pushes themselves onto the coordinator's list; no central dependency list exists
-- **Isolated configuration** — each feature reads only its own options (via `frl_get_option()`)
-- **Separate rule generation** — each feature calls `add_rewrite_rule()` independently in `register()`
-- **Unique catch-all query vars** — `frl_tax_base_path` vs `frl_cpt_base_path` prevent collisions
-- **No direct class-to-class coupling** — features never call methods or access properties of other features
-- **Filter-based coordination** — the one intentional inter-feature dependency is loose: `Frl_CPT_Archive_Base_Translation_Feature` publishes its translated URL prefixes via the `frl_rewriter_url_prefixes` filter; `Frl_Rewriter_Path_Utils::compute_exclusion_patterns()` consumes it to build correct catch-all exclusion lists. Absence of the CPT archive feature degrades gracefully (incomplete exclusions, no errors).
+| File | Role |
+|------|------|
+| [`core/rewriter/class-rewriter.php`](core/rewriter/class-rewriter.php) | Facade — URL transformation, cache invalidation, `warm_cache_for_posts()` |
+| [`core/rewriter/class-rewriter-coordinator.php`](core/rewriter/class-rewriter-coordinator.php) | Feature lifecycle, priority sort, validation, config hash |
+| [`core/rewriter/class-rewriter-path-utils.php`](core/rewriter/class-rewriter-path-utils.php) | URL parsing, exclusion patterns, transient caching |
+| [`core/rewriter/interface-feature.php`](core/rewriter/interface-feature.php) | Contract: `Frl_Rewriter_Feature_Interface` |
+| [`core/rewriter/interface-rewriter.php`](core/rewriter/interface-rewriter.php) | Contract: `Frl_Rewriter_Interface` |
+| [`core/rewriter/trait-cache-key-generator.php`](core/rewriter/trait-cache-key-generator.php) | CRC32-based cache key generation |
+| [`core/rewriter/features/abstract-base-feature.php`](core/rewriter/features/abstract-base-feature.php) | Base class with final `register()`, `get_priority()` |
+| [`core/rewriter/features/class-cpt-archive-base-translation-feature.php`](core/rewriter/features/class-cpt-archive-base-translation-feature.php) | Priority 15 |
+| [`core/rewriter/features/class-cpt-single-base-translation-feature.php`](core/rewriter/features/class-cpt-single-base-translation-feature.php) | Priority 25 |
+| [`core/rewriter/features/class-taxonomy-base-removal-feature.php`](core/rewriter/features/class-taxonomy-base-removal-feature.php) | Priority 35 |
+| [`core/rewriter/features/class-cpt-base-removal-feature.php`](core/rewriter/features/class-cpt-base-removal-feature.php) | Priority 40 |
+| [`core/rewriter/class-rewriter-config-validator.php`](core/rewriter/class-rewriter-config-validator.php) | Admin-only pattern conflict detection |
+| [`core/rewriter/cli/class-rewriter-cli.php`](core/rewriter/cli/class-rewriter-cli.php) | WP-CLI commands |
+| [`config/config-rewriter.php`](config/config-rewriter.php) | Feature registry, priorities, CPT list, constants |
 
----
+## Configuration
 
-## Architectural Principles
-
-The system follows a **Layered Feature Architecture** to ensure scalability and maintainability.
-
-### 1. Layered Design
-- **Facade (`Frl_Rewriter`)**: The primary entry point. It abstracts the coordinator's complexity and provides a clean API for URL transformation and cache management.
-- **Coordinator (`Frl_Rewriter_Coordinator`)**: The central engine. It handles feature discovery, priority sorting, and cross-feature conflict validation.
-- **Feature Strategy (`Frl_Rewriter_Feature_Base`)**: An abstract base class that enforces a strict contract for every feature (rule generation, request resolution, and URL transformation).
-
-### 2. Modularity & Isolation
-Each feature is a self-contained unit. Adding a new rewrite capability requires creating a new class without modifying the core coordinator or other features.
-
-### 3. Defensive Design
-To prevent a single buggy feature from crashing the entire site, the system employs:
-- **Registration Guards**: `try-catch` blocks during feature instantiation and registration.
-- **Validation**: A pre-registration check to detect pattern conflicts between features.
-- **Strict Typing**: Consistent use of PHP 7.4+ type hinting to prevent runtime type errors.
-
----
-
-## Active Features
-
-Features are created in `Frl_Rewriter_Coordinator::create_all_features()`, sorted by priority, and registered on `init:15`.
-
-| Priority | Class | Config key | Notes |
-|----------|-------|------------|-------|
-| **15** | `Frl_CPT_Archive_Base_Translation_Feature` | `translate_cpt_slugs_{cpt}` | One instance per CPT in `FRL_REWRITER_MULTILINGUAL_CPT` |
-| **25** | `Frl_CPT_Single_Base_Translation_Feature` | `translate_cpt_slugs_{cpt}` | One instance per CPT in `FRL_REWRITER_MULTILINGUAL_CPT` |
-| **35** | `Frl_Taxonomy_Base_Removal_Feature` | `remove_tax_base` | Catch-all using `frl_tax_base_path` |
-| **40** | `Frl_CPT_Base_Removal_Feature` | `remove_cpt_base` | Catch-all using `frl_cpt_base_path` |
-
-> **Note — `translate_post_base`**: this option is NOT handled by a dedicated feature. It is consumed by `Frl_Rewriter_Path_Utils::get_post_base_mappings()` to build exclusion patterns for catch-all rules and to strip the post-base prefix during taxonomy URL resolution. Cache invalidation for `translate_post_base` is wired in `register_cache_invalidation_hooks()`.
-
----
-
-## Feature Registration Config (`config/config-rewriter.php`)
+[`config/config-rewriter.php`](config/config-rewriter.php):
 
 ```php
-// Execution order (lower = higher priority)
 FRL_REWRITER_PRIORITIES = [
     'Frl_CPT_Archive_Base_Translation_Feature' => 15,
     'Frl_CPT_Single_Base_Translation_Feature'  => 25,
     'Frl_Taxonomy_Base_Removal_Feature'        => 35,
     'Frl_CPT_Base_Removal_Feature'             => 40,
 ];
-
-// CPTs that get per-language slug translation
-FRL_REWRITER_MULTILINGUAL_CPT = ['service'];
-
-// Features registered via FRL_REWRITER_FEATURES (CPT translation features are separate)
 FRL_REWRITER_FEATURES = [
     Frl_Taxonomy_Base_Removal_Feature::class,
     Frl_CPT_Base_Removal_Feature::class,
 ];
-
+FRL_REWRITER_MULTILINGUAL_CPT = ['service'];
 FRL_REWRITER_USE_FAST_CONFLICT  = true;   // prefix-based admin conflict detection
 FRL_REWRITER_PAGE_TOPLEVEL_CAP  = 500;    // max top-level pages in exclusion patterns
 FRL_REWRITER_LOG_DUPLICATES     = false;  // suppress duplicate pattern log noise
 ```
 
----
+CPT translation features (Archive + Single) are instantiated per CPT in `FRL_REWRITER_MULTILINGUAL_CPT` — they are NOT listed in `FRL_REWRITER_FEATURES`.
 
-## Configuration Options
+### Admin Options
 
-| Option | Used by | Format | Example |
-|--------|---------|--------|---------|
-| `translate_cpt_slugs_{cpt}` | CPT Archive & Single Translation | `lang\|slug` per line | `en\|services\nit\|servizi` |
-| `remove_tax_base` | Taxonomy Base Removal | one slug per line | `category\ntag` |
-| `remove_cpt_base` | CPT Base Removal | one slug per line | `service\nnews` |
-| `translate_post_base` | Exclusion patterns + taxonomy URL parsing | `lang\|base` per line | `en\|blog\nit\|blog` |
-| `disable_rewriter` | `frl_rewriter_is_loaded()` | boolean | disables entire subsystem |
+| Option | Used by | Format |
+|--------|---------|--------|
+| `translate_cpt_slugs_{cpt}` | CPT Archive & Single Translation | `lang\|slug` per line |
+| `remove_tax_base` | Taxonomy Base Removal | one slug per line |
+| `remove_cpt_base` | CPT Base Removal | one slug per line |
+| `translate_post_base` | Exclusion patterns + taxonomy URL parsing | `lang\|base` per line |
+| `disable_rewriter` | `frl_rewriter_is_loaded()` | boolean |
 
----
-
-## URL Pattern Examples
-
-### CPT with multilingual slugs (`FRL_REWRITER_MULTILINGUAL_CPT`)
+## Bootstrap & Hook Timeline
 
 ```
-translate_cpt_slugs_service: "en|services\nit|servizi"
-
-CPT archive:  /en/services/    →  /it/servizi/
-CPT single:   /en/services/web-design/  →  /it/servizi/web-design/
+fralenuvole.php → frl_load_core_components()
+  → frl_rewriter_init()  [if !disable_rewriter]
+       → Frl_Rewriter::init()  [singleton]
+            → Frl_Rewriter_Coordinator::init()  [singleton]
+                 → create_all_features()  [instantiate + self_register]
+                 → do_action('frl_rewriter_register_features')  [module extension]
+                 → usort() by priority
+            → register_hooks()
+                 → add_filter('post_type_link', filter_post_link, 10, 2)
+                 → add_filter('term_link', filter_term_link, 10, 3)
+                 → register_cache_invalidation_hooks()  [deferred to wp_loaded]
 ```
-
-### CPT base removal
-
-```
-remove_cpt_base: "service\nnews"
-
-Before: /service/my-service/     After: /my-service/
-Before: /news/breaking-story/    After: /breaking-story/
-```
-
-### Taxonomy base removal
-
-```
-remove_tax_base: "category"
-
-Before: /category/tech/    After: /tech/
-```
-
-### Combined (translation + taxonomy removal)
-
-```
-translate_cpt_slugs_service: "en|services\nit|servizi"
-remove_tax_base: "category"
-translate_post_base: "en|blog\nit|blog"
-
-CPT archive:  /en/services/       taxonomy: /tech/
-Exclusion patterns prevent /tech/ from being hijacked by catch-all for /services/.
-```
-
-### Feature priority / conflict resolution
-
-```
-translate_cpt_slugs_product: "en|products\nit|prodotti"
-remove_cpt_base: "product"
-
-Result: Translation (priority 15) wins.
-CPT Base Removal catch-all is excluded from intercepting /en/products/* URLs
-via the frl_rewriter_url_prefixes filter mechanism.
-```
-
----
-
-## System Architecture
-
-### Bootstrap flow
-
-```
-fralenuvole.php
-  └─ frl_rewriter_init()                    (functions-class-helpers.php)
-       ├─ frl_rewriter_is_loaded()          checks disable_rewriter option + class existence
-       └─ Frl_Rewriter::init()              singleton constructor
-            └─ Frl_Rewriter_Coordinator::init()
-                 ├─ create_all_features()   instantiate + self_register() each feature
-                 │    ├─ FRL_REWRITER_FEATURES (Taxonomy + CPT Base Removal)
-                 │    └─ FRL_REWRITER_MULTILINGUAL_CPT (Archive + Single per CPT)
-                 └─ register_hooks()
-                      ├─ plugins_loaded/7: do_action('frl_rewriter_register_features')
-                      │                   + usort() by priority
-                      │                   (fires AFTER module init at plugins_loaded/5)
-                      ├─ init/15: feature->register() for every feature
-                      ├─ add_filter('post_type_link', filter_post_link)
-                      ├─ add_filter('term_link', filter_term_link)
-                      └─ register_cache_invalidation_hooks()   (deferred to wp_loaded)
-```
-
-### WordPress hook timeline
 
 | Hook | Priority | Action |
 |------|----------|--------|
-| `plugins_loaded` | 5 | Coordinator created, built-in features instantiated |
-| `plugins_loaded` | 5 | `frl_modules_init()` — module files loaded (inside `frl_plugins_loaded()`) |
-| `plugins_loaded` | 7 | `do_action('frl_rewriter_register_features')` + features sorted by priority |
+| `plugins_loaded` | 5 | Coordinator created, features instantiated, modules loaded |
+| `plugins_loaded` | 7 | `frl_rewriter_register_features` fires + features sorted |
 | `init` | 15 | `feature->register()` for every feature (adds rewrite rules) |
-| `init` | 20+ | Config option loaders (CPT / taxonomy registration) |
-| `wp_loaded` | 10 | Cache invalidation hooks wired to `update_option_*` actions |
+| `init` | 100+priority | Individual feature `add_rules()` and `filter_request()` |
+| `wp_loaded` | 10 | Cache invalidation hooks wired |
 | `post_type_link` | 10 | `filter_post_link()` → `transform_url()` |
 | `term_link` | 10 | `filter_term_link()` → `transform_url()` |
 
----
+## URL Transformation Pipeline
 
-## URL Transformation Pipeline (`transform_url`)
+`Frl_Rewriter::transform_url(string $url, $obj): string` (private):
 
-The transformation pipeline is optimized for high-frequency calls (e.g., in large menus or ACF relationship fields).
+1. **Object validity guard** — return `$url` if not an object
+2. **REST API guard** — return `$url` (never transform for REST, placed before cache check)
+3. **Preview guard** — return `$url` for preview requests
+4. **Fast-path cache lookup** — `frl_cache_get('permalinks', $cache_key)` → return on hit
+5. **Re-entrancy guard** — `static $processing_urls[]` prevents infinite loops during ACF relationship queries
+6. **Get enabled features** — `$coordinator->get_enabled_features()` (only on cache miss)
+7. **Dispatcher cache** — `static $feature_match_cache[$signature]` maps object type → applicable features (LRU, 1024 entry cap, evicts oldest 10% when full)
+8. **`frl_cache_remember('permalinks', ...)`** — apply features in priority order, store result
 
-```
-transform_url($url, $object)
-  │
-  ├─ 1. Object validity guard       (return $url if not object)
-  ├─ 2. REST API guard              (return $url — never cache/transform for REST)
-  ├─ 3. Fast-path cache lookup      frl_cache_get('permalinks', $cache_key)  → return on hit
-  ├─ 4. Re-entrancy guard           static $processing_urls[]  (prevents infinite loops during recursion)
-  ├─ 5. get_enabled_features()      array_filter — only reached on cache miss
-  ├─ 6. Dispatcher cache            static $feature_match_cache[$signature]
-  │       maps object type → applicable features (LRU pattern, memory guard at 1 024 entries)
-  └─ 7. frl_cache_remember()        apply features in priority order, store result
-```
+Cache key generated by [`Frl_Rewriter_Cache_Key_Trait::generate_cache_key()`](core/rewriter/trait-cache-key-generator.php) using CRC32.
 
-**Incoming requests**: first-match-wins (rewrite rules registered in priority order).
-**Outgoing URLs**: composition — ALL applicable features transform the URL in sequence.
+**Incoming requests:** first-match-wins (rules registered in priority order).
+**Outgoing URLs:** composition — ALL applicable features transform the URL in sequence.
 
----
+## Feature Base Class
 
-## Caching Architecture
+[`Frl_Rewriter_Feature_Base`](core/rewriter/features/abstract-base-feature.php) implements [`Frl_Rewriter_Feature_Interface`](core/rewriter/interface-feature.php):
 
-### Performance Optimizations
-- **Regex Optimization**: Uses non-capturing groups `(?:...)` and **Exclusion Grouping** (combining language-prefixed patterns) to minimize regex complexity and execution time.
-- **Lazy Computation**: Configuration hashes are computed only on first access to minimize bootstrap overhead.
-- **LRU Match Cache**: The dispatcher cache uses a Least Recently Used (LRU) eviction policy to keep memory usage stable while maintaining high hit rates for common object types.
+- `get_priority()` — **final**, reads from `FRL_REWRITER_PRIORITIES`, fallback 99
+- `register()` — **final**, hooks `add_rules()` at `init:100+priority`, `filter_request()` at same priority, catch-all at `100+priority+50`
+- `register_additional_hooks()` — override point for feature-specific hooks (config loaders, canonical redirects)
+- `applies_to($obj)` — default `false` (override for URL transformation)
+- `transform($url, $obj)` — default returns `$url` unchanged
+- `get_catch_all_query_var()` — default `''`
+- `uses_catch_all()` — true if `get_catch_all_query_var()` is non-empty
 
-### Cache groups (WordPress object cache, per-request)
+Abstract methods: `is_enabled()`, `generate_rules()`, `applies_to_request()`, `resolve_request()`, `get_name()`.
 
-| Group | Contents | Cleared by |
-|-------|----------|------------|
-| `permalinks` | Transformed URL results (keyed by URL + object id) | `clear_rewriter_caches()` |
-| `rewriter` | Config mappings, validation result, multilingual CPT list, exclusion patterns (with ext object cache) | `clear_rewriter_caches()` |
-| `options` | `frl_get_option()` results | `clear_rewriter_caches()` |
+## Cache Invalidation
 
-### DB transient (cross-request, no external object cache)
+### `invalidate_rewriter_caches()` (cache-only)
 
-| Key (`frl_` prefix added by helper) | Contents | TTL | Cleared by |
-|--------------------------------------|----------|-----|------------|
-| `frl_rewriter_excl_patterns` | Computed exclusion patterns (slugs, taxonomy bases, CPT bases, page slugs) | 1 hour | `clear_rewriter_caches()` via `frl_delete_transient(EXCLUSION_PATTERNS_TRANSIENT)` |
+Hooked to `flush_rewrite_rules`. Clears `options` cache group (cascades to `rewriter` → `permalinks` via `FRL_CACHE_DEPENDENCIES`) + deletes `frl_rewriter_excl_patterns` transient. Has `frl_is_already_running` guard.
 
-When an external object cache (Memcached, Redis) is active, the transient path is bypassed and results are keyed on `posts:last_changed` instead.
+### `clear_rewriter_caches()` (cache + hard flush)
 
-### Cache invalidation hooks (registered on `wp_loaded`)
+Called by `update_option_*` hooks and Polylang language hooks. Calls `invalidate_rewriter_caches()` then `flush_rewrite_rules(true)`. Guard prevents duplicate work when `flush_rewrite_rules` hook re-fires `invalidate_rewriter_caches()`.
 
-**Primary — fires on every rewrite rules flush:**
-- `flush_rewrite_rules` → `Frl_Rewriter::invalidate_rewriter_caches()` (cache-only, no recursive flush)
+### `force_rules_refresh()`
 
-Covers permalink saves (including no-op), WP-CLI `wp rewrite flush`, plugin activation, theme switch. WordPress always calls `$wp_rewrite->flush_rules()` after updating `permalink_structure`, `category_base`, and `tag_base` on the Permalink Settings page, so those three `update_option_*` hooks are redundant and removed.
+Invalidates coordinator's in-memory config hash, calls `frl_flush_rewrite_rules()`, then `validate_all_features()`.
 
-**Plugin option changes (trigger `flush_rewrite_rules` indirectly via `clear_rewriter_caches()`):**
-- `update_option_remove_cpt_base`
-- `update_option_remove_tax_base`
-- `update_option_translate_post_base`
-- `update_option_translate_cpt_slugs_{cpt}` (one per CPT in `FRL_REWRITER_MULTILINGUAL_CPT`)
+### Registered Hooks (deferred to `wp_loaded`)
 
-All of the above call `Frl_Rewriter::clear_rewriter_caches()` (cache clear + hard flush).
-
-**Polylang language changes:**
-- `pll_add_language` / `pll_update_language` / `pll_update_default_lang` → `clear_rewriter_caches()`
-
-Exclusion-pattern-only invalidation (deletes `EXCLUSION_PATTERNS_TRANSIENT`, no rewrite flush):
-
-- `pll_add_language` / `pll_update_language` / `pll_update_default_lang` → full `clear_rewriter_caches()` (language changes affect the rule set itself, not just exclusions)
-- `save_post` (real saves only, via `frl_is_post_save_action()`)
-- `created_term` (any taxonomy)
-- `deleted_term` (any taxonomy — `language` taxonomy triggers full `clear_rewriter_caches()` instead)
-- `edited_term` (any taxonomy — covers slug renames; core has no generic create/delete-style hook for edits, so this is the only path that catches renamed category/post_tag/custom-taxonomy slugs)
-
-Note: `category`/`post_tag` do **not** get a dedicated full rewrite flush on create/edit/delete.
-`Frl_Taxonomy_Base_Removal_Feature` is catch-all + config-option driven with no per-term static
-rules, so routine term CRUD never requires WordPress to regenerate `rewrite_rules` — only the
-exclusion-pattern list needs refreshing, which the generic `*_term` hooks above already cover.
-
-### Cache-only invalidation (`invalidate_rewriter_caches`)
-
-Hooked to `flush_rewrite_rules`. Clears cached exclusion patterns and option-derived config hashes without calling `flush_rewrite_rules()` (avoids recursion). Has its own `frl_is_already_running` guard.
-
-```php
-Frl_Rewriter::invalidate_rewriter_caches();
-// 1. frl_cache_clear('options')          // → cascades to rewriter → permalinks
-// 2. frl_delete_transient(EXCLUSION_PATTERNS_TRANSIENT)
-```
-
-### Full cache flush (`clear_rewriter_caches`)
-
-Triggered by plugin option changes (`update_option_remove_cpt_base`, etc.) and Polylang language hooks. Calls `invalidate_rewriter_caches()` first, then `flush_rewrite_rules(true)`. When the flush triggers the `flush_rewrite_rules` hook → `invalidate_rewriter_caches()` fires again → guard blocks duplicate work.
-
-```php
-Frl_Rewriter::clear_rewriter_caches();
-// 1. self::invalidate_rewriter_caches()  // clear cache (guard prevents double run)
-// 2. flush_rewrite_rules(true)           // hard flush, rewrites .htaccess
-```
-
-Re-entrancy guard via `frl_is_already_running(__METHOD__)` ensures it runs once per request even if multiple `update_option_*` hooks fire.
-
-### Programmatic flush (`frl_flush_rewrite_rules`)
-
-For flush operations not triggered by a settings change (button press, admin reset, WP-CLI, repair). Mirrors `WP_Rewrite::set_permalink_structure()` by firing the same WordPress core actions:
-
-```php
-frl_flush_rewrite_rules();
-// If wp_loaded has already fired:
-// 1. do_action('update_option_permalink_structure', $p, $p)
-//    → triggers clear_rewriter_caches() + Polylang clean_languages_cache()
-// 2. do_action('permalink_structure_changed', $p, $p)
-//
-// If called before wp_loaded (e.g. from an admin action or
-// Frl_Environment_Manager::enforce_environment_settings(), both on 'init'):
-// defers itself via add_action('wp_loaded', 'frl_flush_rewrite_rules', 20) instead
-// of flushing immediately.
-```
-
-**Timing (important):** this function used to flush immediately even when called
-before `wp_loaded`. That was unsafe: Polylang's own rewrite-rule filters
-(`PLL_Links_Permalinks::do_prepare_rewrite_rules()`, hooked at `wp_loaded` priority 9)
-are *also* deferred until `wp_loaded`, so an immediate `flush_rewrite_rules(true)` at,
-e.g., `init` priority 10–12 would regenerate the `rewrite_rules` option with Polylang's
-language-prefixed rules **not yet registered**, silently producing 404s on
-non-default-language Pages on the next request. The function now defers to `wp_loaded`
-priority 20 (after Polylang's priority-9 callback and after this plugin's own priority-10
-`register_cache_invalidation_hooks()` callback) whenever called too early. `add_action()`
-with an identical callback/hook/priority is idempotent, so multiple early calls in the
-same request still result in exactly one deferred flush.
-
-For before-init contexts (activation/deactivation), use `frl_schedule_rewrite_flush()` which schedules a 15-second cron — that path is unaffected by the change above.
-
-`force_rules_refresh()` additionally calls `coordinator->invalidate_config_hash()` before delegating to `frl_flush_rewrite_rules()`.
-
----
+| Hook | Calls |
+|------|-------|
+| `flush_rewrite_rules` | `invalidate_rewriter_caches()` |
+| `update_option_remove_cpt_base` | `clear_rewriter_caches()` |
+| `update_option_remove_tax_base` | `clear_rewriter_caches()` |
+| `update_option_translate_post_base` | `clear_rewriter_caches()` |
+| `update_option_translate_cpt_slugs_{cpt}` | `clear_rewriter_caches()` |
+| `pll_add_language` | `clear_rewriter_caches()` |
+| `pll_update_language` | `clear_rewriter_caches()` |
+| `pll_update_default_lang` | `clear_rewriter_caches()` |
+| `save_post` (real saves) | Exclusion patterns invalidation |
+| `created_term`, `deleted_term`, `edited_term` | Exclusion patterns invalidation |
 
 ## Exclusion Pattern System
 
-Shared by `Frl_Taxonomy_Base_Removal_Feature` and `Frl_CPT_Base_Removal_Feature` to prevent their catch-all rules from hijacking URLs that belong to higher-priority features.
+[`Frl_Rewriter_Path_Utils::compute_exclusion_patterns()`](core/rewriter/class-rewriter-path-utils.php:280) aggregates:
 
-`Frl_Rewriter_Path_Utils::generate_standard_exclusion_patterns()` aggregates:
-
-1. Post-base prefixes from `translate_post_base` (e.g. `blog`, `en/blog`)
-2. CPT archive translated prefixes via `frl_rewriter_url_prefixes` filter (e.g. `services`, `en/services`)
-3. All public CPT rewrite slugs
+1. Post-base prefixes from `translate_post_base` (e.g., `blog`, `en/blog`)
+2. CPT archive translated prefixes via `frl_rewriter_url_prefixes` filter
+3. All public CPT rewrite slugs (with language-prefixed variants)
 4. All public taxonomy rewrite bases
 5. Top-level published page slugs (capped at `FRL_REWRITER_PAGE_TOPLEVEL_CAP = 500`)
 
----
+**Two-tier caching:**
+- **Object cache active:** keyed by `posts:last_changed` — auto-invalidates on content changes
+- **No object cache:** stored in `frl_rewriter_excl_patterns` transient (1 hour TTL), deleted by `clear_rewriter_caches()`
 
-## Admin: Config Validator (`class-rewriter-config-validator.php`)
+## Module Extension
 
-Loaded only when `is_admin()`. Provides:
-- Pattern conflict detection between feature rule sets
-- Fast prefix-based check when `FRL_REWRITER_USE_FAST_CONFLICT = true`
-- Validation result cached in `rewriter` group keyed by config hash
-
-Config hash (`md5`) is computed lazily on first access (after `init:20` so option-dependent features are fully loaded) and incorporates:
-- Feature names, enabled state, and priority
-- Values of `remove_cpt_base`, `remove_tax_base`, `translate_post_base`, and all `translate_cpt_slugs_*` options
-
----
-
-## WP-CLI Diagnostics
-
-```bash
-wp frl rewriter status        # dump active features and their rules
-wp frl rewriter flush         # force_rules_refresh()
-```
-
-Implemented in `cli/class-rewriter-cli.php`, registered via the plugin's CLI loader.
-
----
-
-## Debugging
+External modules register features at `plugins_loaded/7`:
 
 ```php
-
-// Clear all rewriter caches (object cache groups + transient + flush WP rules)
-Frl_Rewriter::clear_rewriter_caches();
-
-// Full refresh including config-hash reset
-Frl_Rewriter::force_rules_refresh();
-
-// Check if rewriter subsystem is active
-frl_rewriter_is_loaded(); // returns bool
-
-// Pre-warm permalink cache for a set of ACF relationship posts
-Frl_Rewriter::init()->warm_cache_for_posts($posts);
-```
-
-### Common issues
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| 404 on translated/rewritten URLs | WP rewrite rules stale | Settings → Permalinks (save), or `force_rules_refresh()` |
-| Wrong language in URL | Option not saved, or cache stale | Save option; cache clears automatically via `update_option_*` hook |
-| Catch-all hijacking a CPT archive | New CPT added without flushing | Save Permalinks; `clear_rewriter_caches()` regenerates exclusions |
-| REST API returns transformed URLs | REST guard not first in pipeline | REST guard runs before cache check in `transform_url()` |
-
----
-
-## System Files
-
-### Core
-
-| File | Responsibility |
-|------|---------------|
-| `class-rewriter.php` | Facade, URL transformation, cache invalidation hooks, `warm_cache_for_posts()` |
-| `class-rewriter-coordinator.php` | Feature lifecycle, priority sort, validation, `force_refresh()` |
-| `class-rewriter-path-utils.php` | URL parsing, exclusion patterns, transient caching, shared utilities |
-| `trait-cache-key-generator.php` | CRC32-based cache key generation for `transform_url()` |
-| `interface-rewriter.php` | Contract for `Frl_Rewriter` |
-| `interface-feature.php` | Contract for every feature |
-| `class-rewriter-config-validator.php` | Admin-only pattern conflict detection |
-| `cli/class-rewriter-cli.php` | WP-CLI diagnostic and flush commands |
-
-### Features (`features/`)
-
-| File | Priority |
-|------|----------|
-| `abstract-base-feature.php` | — base class |
-| `class-cpt-archive-base-translation-feature.php` | 15 |
-| `class-cpt-single-base-translation-feature.php` | 25 |
-| `class-taxonomy-base-removal-feature.php` | 35 |
-| `class-cpt-base-removal-feature.php` | 40 |
-
-### Helpers (`includes/helpers/functions-class-helpers.php`)
-
-```php
-frl_rewriter_is_loaded(): bool   // static-cached check (disable_rewriter option + class_exists)
-frl_rewriter_init(): void        // guarded init, called from fralenuvole.php
-```
-
----
-
-## Module Plugability
-
-External modules (loaded via the Fralenuvole module system at `plugins_loaded/5`) can register custom rewriter features. The `frl_rewriter_register_features` action and priority sort fire at **`plugins_loaded/7`** — after module files have been loaded — so module-added features participate in priority ordering.
-
-### How to add a rewriter feature from a module
-
-1. **Create a feature class** extending `Frl_Rewriter_Feature_Base` with the required abstract methods.
-2. **In your module entry point** (loaded at `plugins_loaded/5`), call `$coordinator->add_feature()`:
-
-```php
-// modules/my-module/my-module.php
 add_action('frl_rewriter_register_features', function ($coordinator) {
     $coordinator->add_feature(new My_Custom_Rewrite_Feature());
 });
 ```
 
-Or directly, since the coordinator is already instantiated:
+Default priority is 99 for unlisted feature classes. Features must extend [`Frl_Rewriter_Feature_Base`](core/rewriter/features/abstract-base-feature.php).
+
+## WP-CLI
+
+```bash
+wp frl rewriter status   # Dump active features and rules
+wp frl rewriter flush    # force_rules_refresh()
+```
+
+## Debugging
 
 ```php
-$coordinator = Frl_Rewriter_Coordinator::init();
-$coordinator->add_feature(new My_Custom_Rewrite_Feature());
-```
-
-3. **Priority** defaults to **99** (lowest) for any feature class not listed in `FRL_REWRITER_PRIORITIES`. This is suitable for additive features — e.g., a domain-aware module that wraps the final URL with a mirror domain after all built-in features have transformed the path.
-
-### Timing diagram
-
-```
-plugins_loaded/5: Coordinator created, built-in features instantiated
-plugins_loaded/5: frl_modules_init() — module entry points execute
-plugins_loaded/7: do_action('frl_rewriter_register_features') + usort()
-                              ↑ modules' features included in sort
-init/15:          feature->register() for all features (including module ones)
-```
+Frl_Rewriter::clear_rewriter_caches();    // Cache clear + hard flush
+Frl_Rewriter::force_rules_refresh();      // Full refresh + config hash reset + validation
+Frl_Rewriter::init()->warm_cache_for_posts($posts);  // Pre-warm permalink cache
+frl_rewriter_is_loaded();                 // Check if subsystem is active
+Frl_Rewriter::get_multilingual_cpts();    // Get CPTs with translation config

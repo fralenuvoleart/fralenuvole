@@ -1,106 +1,179 @@
 # Architecture
 
-## Executive Summary
+Fralenuvole is a WordPress administration and performance framework combining multi-layer caching, domain-based multi-environment configuration, multilingual URL handling, frontend performance optimizations, and backend tooling into a single modular codebase. Version 5.8.4, PHP 8.3+, zero runtime dependencies.
 
-Fralenuvole is a comprehensive administrator/developer framework built on top of WordPress, engineered around multi-layer caching, domain-based multi-environment configuration, and multilingual URL handling. It combines frontend performance optimizations (critical CSS, image preloading, deferred assets), advanced URL rewriting (multilingual CPT slugs, category/CPT base removal), block-level translation, and backend tooling (log manager, custom error handling, environment switcher, plugin exclusion) into a single, modular codebase that is deployed unmodified across a small portfolio of related brand websites.
+## Bootstrap Sequence
 
----
+Both the main plugin and the MU plugin share the same bootstrap:
 
-## 1. Directory Map
+```
+includes/bootstrap.php
+  ├─ ?frlmode= → defines FRL_MODE constant
+  ├─ FRL_MODE=disable → return (stop loading)
+  ├─ config/config.php → loads all config constants (11 files in order)
+  ├─ includes/helpers/functions.php → loads all helper files (9 files in order)
+  ├─ core/cache/class-cache-manager.php → Frl_Cache_Manager::init()
+  ├─ core/cache/class-cache-operations.php
+  ├─ core/error-handler.php → frl_errors_init()
+  └─ WP-CLI → core/rewriter/cli/class-rewriter-cli.php
+```
+
+Then `fralenuvole.php`:
+```
+fralenuvole.php
+  ├─ FRL_MODE=disable → return (load-bearing: must precede any FRL_DIR_PATH usage)
+  ├─ includes/plugin-lifecycle.php → activation/deactivation/uninstall hooks, auto-backup
+  ├─ Security headers: CSP, X-Content-Type-Options, X-Frame-Options
+  └─ plugins_loaded/5 → frl_plugins_loaded()
+```
+
+## Directory Map
 
 | Directory | Role |
 |---|---|
-| `core/` | Framework subsystems always available regardless of active modules: cache, environment manager, rewriter, translator, themekit, error handler. |
-| `admin/` | WordPress admin UI: settings page, dashboard, widgets, metaboxes, action handlers. |
-| `includes/` | Bootstrap, plugin lifecycle hooks, shared frontend/backend helpers, the MU-plugin's own helper file. |
-| `public/` | Frontend-only hooks, shortcodes, and the JSON-LD schema subsystem. |
-| `modules/` | Opt-in, per-environment feature modules (brand-specific CPTs, third-party integrations, WS Form integration, etc.). |
-| `config/` | All PHP constants: cache groups/TTLs/dependencies, cache operation definitions, default option fields, environment map/templates, rewriter feature registry, translator delimiters. |
-| `assets/mu/` | The single MU-plugin bootstrap file, synced into `wp-content/mu-plugins/` on activation. |
-| `docs/` | This reference set — one file per subsystem. |
+| `core/` | Framework subsystems: cache, environment manager, rewriter, translator, themekit, error handler |
+| `admin/` | WordPress admin UI: settings page, dashboard, widgets, metaboxes, action handlers |
+| `includes/` | Bootstrap, plugin lifecycle, shared helpers, main feature modules (website, media, navigation, logged-user), MU-plugin helpers |
+| `public/` | Frontend-only: hooks (`public.php`), shortcodes (`shortcodes.php`), JSON-LD schema subsystem (`schema/`), channel tracking, performance |
+| `modules/` | Opt-in, per-environment feature modules (brand-specific CPTs, WS Form, third-party integrations, call-to-actions) |
+| `config/` | All PHP constants loaded by `config/config.php` in order: MU, base, options, fields, cache, rewriter, environment, translator, schema, themekit, channel-tracking |
+| `assets/` | Static assets: CSS (`admin.css`, `admin-ui.css`, `public-login.css`, etc.), JS (`admin.js`, `public.js`, `scroll-listener.js`, etc.), lib (`parsedown/`, `prism/`), MU plugin (`mu/frl-mu-plugin.php`) |
+| `docs/` | Reference documentation — one file per subsystem |
+| `memory-bank/` | Architectural invariants (`systemPatterns.md`), product context, active context, progress log |
 
-## 2. Load Order
+## Load Order
 
 ```
-wp-config.php loads (LOGGED_IN_KEY/LOGGED_IN_SALT and other constants become available)
+wp-config.php (LOGGED_IN_KEY/LOGGED_IN_SALT available)
   │
   ▼
 mu-plugins/frl-mu-plugin.php   (muplugins_loaded)
-  ├─ frl_maybe_throttle_user_agent()      — bot rate-limiting, runs before any output
-  └─ frl_filter_plugin_exclusions()       — pre_option_active_plugins filter registration
+  ├─ require includes/bootstrap.php     ← shared bootstrap
+  ├─ require includes/mu/mu.php         ← MU-specific helpers
+  ├─ frl_maybe_throttle_user_agent()    ← bot rate-limiting (429)
+  └─ frl_filter_plugin_exclusions()     ← pre_option_active_plugins filter
   │
   ▼
 fralenuvole.php   (plugins_loaded / 5)
+  ├─ require includes/bootstrap.php     ← shared bootstrap (idempotent via require_once)
+  ├─ FRL_MODE=disable → return         ← load-bearing guard position
+  ├─ require includes/plugin-lifecycle.php
+  ├─ register_activation_hook / register_deactivation_hook / register_uninstall_hook
+  ├─ Security headers: CSP, X-Content-Type-Options, X-Frame-Options
   └─ frl_plugins_loaded()
        ├─ frl_load_core_components()
-       │    ├─ Cache Manager (already loaded in bootstrap.php)
+       │    ├─ Cache Manager (loaded in bootstrap)
+       │    ├─ cache-cleanup.php
        │    ├─ Environment Manager  (unless disable_environment)
-       │    ├─ Translator            (only if a multilingual plugin is active)
+       │    ├─ Translator            (only if multilingual plugin active)
        │    ├─ Rewriter              (unless disable_rewriter)
+       │    ├─ Webhooks              (always)
        │    ├─ ThemeKit              (always)
-       │    └─ includes/main.php, public/shortcodes.php
+       │    ├─ includes/main.php → website.php, media.php, navigation.php, logged-user.php
+       │    └─ public/shortcodes.php
        ├─ frl_load_admin_components()     (admin context only)
-       ├─ frl_load_public_components()    (valid frontend page requests only)
-       └─ frl_modules_init()              — loads enabled modules from config/environment
+       │    └─ admin/admin.php
+       ├─ frl_load_public_components()    (valid frontend only, unless disabled/core mode)
+       │    ├─ public/public.php
+       │    └─ public/schema/schema.php
+       └─ frl_modules_init()              — loads enabled modules from config
   │
   ▼
-init / 10 — frl_environment_enforce_settings()   ← MUST run before anything that reads options
-init / 15 — Rewriter feature registration (add_rewrite_rule per feature)
-init / 20 — ThemeKit init
+init / 10 — frl_environment_enforce_settings()   ← MUST run before anything reads options
+init / 10 — frl_shortcodes_init()
+init / 12 — frl_process_plugin_actions()         ← admin bar cache links
+init / 12 — frl_log_capture()                    ← debug log diagnostics
+init / 15 — Rewriter feature registration
+init / 20 — frl_themekit_init()
+init / 100 — frl_themekit_remove_provider_block_patterns()
+init / 200 — frl_flush_rewrite_rules (deferred)
 ```
 
-See `docs/HOOKS.md` for the full priority table and the reasoning behind each reserved slot.
+See [`docs/PLUGIN-HOOKS.md`](PLUGIN-HOOKS.md) for the full priority table and the reasoning behind each reserved slot.
 
-## 3. Core Subsystems
+## Core Subsystems
 
-| Subsystem | Reference | One-line summary |
+| Subsystem | Reference | Summary |
 |---|---|---|
-| Cache Manager | `docs/CACHE.md` | Unified 5-backend cache (Litespeed/Docket/Redis/Memcached/Transients) with LRU runtime tier, dependency cascading, language-aware keys, and a composite-operation orchestrator. |
-| Environment Manager | `docs/ENVIRONMENT.md` | Domain → environment-profile mapping that auto-applies WP options, plugin options, and plugin/module activation state, with throttled re-enforcement and manual-override tracking. |
-| Rewriter | `docs/REWRITER.md` | Feature-based URL rewriting (multilingual CPT slugs, taxonomy/CPT base removal) with priority-ordered, self-registering, mutually-independent features. |
-| Translator | `docs/TRANSLATOR.md` | Adapter-pattern translation service decoupled from the multilingual plugin (Polylang implemented). Handles block tokens, field translation, and permalink translation with pattern-based caching. |
-| ThemeKit | `docs/THEMEKIT.md` | Theme-independent body classes, base styles, and block-pattern/provider-style removal. |
-| Plugin Exclusion | `docs/PLUGIN-EXCLUSIONS.md` | MU-plugin-based conditional plugin loading (frontend/backend-screen/capability rules) without deactivating the excluded plugin. |
-| Admin UI | `docs/ADMIN-UI.md` | Tabbed settings page, dashboard widgets, log manager, tag validator, import/export. |
-| Access Control | `docs/PERMISSIONS.md` | Capability model (`frl_has_access()`), superadmin/plugin-admin/administrator tiers. |
-| Debug Modes | `docs/DEBUG-MODES.md` | `FRL_MODE` URL parameter / constant for disable/core/nocache/migrate modes. |
+| Cache Manager | [`docs/CACHE.md`](CACHE.md) | Unified multi-backend cache with LRU runtime tier, dependency cascading, language-aware keys, composite operation orchestrator |
+| Environment Manager | [`docs/ENVIRONMENT.md`](ENVIRONMENT.md) | Domain→environment mapping that auto-applies WP options, plugin options, and plugin/module activation state |
+| Rewriter | [`docs/REWRITER.md`](REWRITER.md) | Feature-based URL rewriting (multilingual CPT slugs, taxonomy/CPT base removal) with priority-ordered, self-registering features |
+| Translator | [`docs/TRANSLATOR.md`](TRANSLATOR.md) | Adapter-pattern translation service (Polylang implemented, WPML-ready). Block tokens, field translation, pattern-based caching |
+| ThemeKit | [`docs/THEMEKIT.md`](THEMEKIT.md) | Theme-independent body classes, base styles, block pattern/provider-style removal, font optimization |
+| Plugin Exclusion | [`docs/THIRDPARTY-EXCLUSIONS.md`](THIRDPARTY-EXCLUSIONS.md) | MU-plugin-based conditional plugin loading (frontend/backend-screen/capability rules) with bot throttling |
+| Admin UI | [`docs/PLUGIN-ADMINUI.md`](PLUGIN-ADMINUI.md) | Tabbed settings page, dashboard widgets, log manager, tag validator, import/export, docs browser |
+| Access Control | [`docs/PLUGIN-PERMISSIONS.md`](PLUGIN-PERMISSIONS.md) | Capability model (`frl_has_access()`), superadmin/plugin-admin tiers, nonce system, `FRL_MODE` behavior |
+| Debug Modes | [`docs/PLUGIN-DEBUG-MODES.md`](PLUGIN-DEBUG-MODES.md) | `FRL_MODE` URL parameter / constant for disable/core/nocache/migrate modes |
+| Webhooks | [`docs/WEBHOOKS.md`](WEBHOOKS.md) | Generic webhook dispatch (sync + async via WP-Cron with retry backoff) |
+| Kinsta MU-Plugin | [`docs/KINSTA-MUPLUGIN.md`](KINSTA-MUPLUGIN.md) | Third-party reference for Kinsta's caching behavior |
 
-## 4. Design Conventions Used Throughout
+### Additional Components (no dedicated doc)
 
-- **Re-entrancy guard:** `frl_is_already_running($key)` — a static array keyed by function/method/class name — prevents duplicate execution of a routine within one request. Used pervasively across cache operations, environment enforcement, rewriter cache clearing, and hook registration.
-- **Static-array request cache:** Cheap, request-scoped memoization (`static $cache = null;` inside a function) is used everywhere a value is guaranteed not to change mid-request (current user, current language, resolved environment config).
-- **Cache-aside via `frl_cache_remember()`:** The standard pattern for anything backed by a DB query or external call — check cache, compute on miss under a short lock, store, return.
-- **Adapter pattern for external integrations:** The Translator (`Frl_Translation_Adapter_Interface`) and, informally, the Cache Manager's provider-detection logic both isolate a third-party dependency behind a narrow interface so the concrete implementation (Polylang, a specific object-cache drop-in) can change without touching call sites.
-- **Config as PHP constants, not filterable options:** Cache groups, TTLs, dependencies, environment maps, and rewriter feature registries are all plain PHP constants in `config/`. This is a deliberate choice for audit-friendliness (`grep`-able, diff-able) over runtime flexibility via `apply_filters()`.
-- **Deferred/async side effects:** Where an operation can be safely delayed (rewrite-rule flush before `init`, WS Form webhook dispatch), the codebase prefers `wp_schedule_single_event()` over blocking the current request.
+| Component | Location | Purpose |
+|---|---|---|
+| Error Handler | [`core/error-handler.php`](core/error-handler.php) | Custom error handling initialized in bootstrap via `frl_errors_init()` |
+| Schema / JSON-LD | [`public/schema/`](public/schema/) | Orchestrator-based JSON-LD generation (Organization, WebSite, WebPage, BreadcrumbList, BlogPosting, Service, HowTo, etc.) |
+| Shortcodes | [`public/shortcodes.php`](public/shortcodes.php) | 15+ shortcodes (`[frl]`, `[frl_meta]`, `[frl_permalink]`, `[frl_breadcrumbs]`, etc.) |
+| Website Features | [`includes/main/website.php`](includes/main/website.php) | Disable comments/oEmbed/emojis, critical CSS caching, Dashicons removal, REST endpoint pruning |
+| Media | [`includes/main/media.php`](includes/main/media.php) | Custom image sizes, MIME support (WebP/SVG), attachment metadata auto-fill |
+| Navigation | [`includes/main/navigation.php`](includes/main/navigation.php) | `wp_navigation` block translation, custom URL transforms for nav menu items |
+| Logged-User Features | [`includes/main/logged-user.php`](includes/main/logged-user.php) | Admin bar customization, plugin action dispatch, user-visit tracking, admin notices |
+| Plugin Lifecycle | [`includes/plugin-lifecycle.php`](includes/plugin-lifecycle.php) | Activation (MU sync, translation version, rewrite flush), deactivation, uninstall, auto-backup on version upgrade |
+| Channel Tracking | [`public/channel-tracking.php`](public/channel-tracking.php) | UTM/channel attribution tracking for WS Form submissions |
+| Performance | [`public/performance.php`](public/performance.php) | Critical CSS injection, deferred CSS, featured-image preload, font optimization |
 
-## 5. Performance Profile
+## Module System
 
-**Frontend, warm cache:** Once the persistent cache layer is warm, a frontend page render performs **zero database queries for anything this plugin controls**. This is a direct, verified consequence of the layered caching design — `frl_get_option()`'s static-array tier, `Frl_Cache_Manager`'s runtime LRU layer, `auto_preload()` batching entire cache groups into a single lookup, and the Rewriter's per-request `transform_url()` cache all exist specifically to guarantee this outcome. This is the metric that matters for every normal visitor on every normal page view, and it is the primary basis for the plugin's performance claim.
+Modules live in `modules/{name}/`. Each module has a main entry file (`{name}.php`) and optional config/helper files. Modules are:
 
-**Admin "Hard Reset" cache-flush:** This specific, explicit, rarely-used admin action can take several seconds — and this is the expected cost of what it deliberately does, not a defect. It chains two inherently expensive operations in one click:
-1. A full purge across every cache group, plus a broad sweep of *all* website transients (not just this plugin's own) across the entire `wp_options` table — the "hard" tier is intentionally comprehensive.
-2. A full WordPress rewrite-rule regeneration (`flush_rewrite_rules(true)`), which is one of the slower single operations in WordPress core on any site with multiple custom post types and taxonomies — and the Rewriter subsystem adds further rule volume on top of that baseline (multilingual CPT slug variants, catch-all exclusion patterns capped at `FRL_REWRITER_PAGE_TOPLEVEL_CAP = 500` top-level page slugs).
+1. **Discovered** via `frl_modules_get_keys()` — reads module keys from `FRL_ENV_DEFAULT['modules']`
+2. **Enabled/disabled** per environment via `module_{name}` option (set by Environment Manager)
+3. **Loaded** by `frl_modules_init()` at `plugins_loaded/5` — iterates enabled modules, calls `include_once` on the entry file
 
-This cost is correctly scoped: it is paid only when an admin explicitly requests a full reset, it provides visible feedback while it runs, and it never affects a visitor-facing request. Lighter cache-clear tiers (`light`, targeted single-group clears) do not pay this cost — see `docs/CACHE.md` §5.6 for the three clearing tiers and what each one actually touches.
+Modules are disposable by design — any module can be deleted without affecting core plugin functionality.
 
-## 6. Where to Start Reading
+## Design Conventions
 
-For a new developer, the recommended reading order is:
+- **Re-entrancy guard:** `frl_is_already_running($key)` — static array preventing duplicate execution within one request. Used across cache operations, environment enforcement, rewriter cache clearing, and hook registration.
+- **Static-array request cache:** `static $cache = null` inside functions — used everywhere a value is guaranteed not to change mid-request (current user, current language, resolved environment config).
+- **Cache-aside via `frl_cache_remember()`:** Standard pattern for anything backed by a DB query — check cache, compute on miss under lock, store, return.
+- **Adapter pattern:** Translator (`Frl_Translation_Adapter_Interface`) and Cache Manager's provider detection isolate third-party dependencies behind narrow interfaces.
+- **Config as PHP constants:** Cache groups, TTLs, dependencies, environment maps, rewriter feature registries — `grep`-able and diff-able. Not filterable via `apply_filters()`.
+- **Deferred/async side effects:** Where safe (rewrite-rule flush, WS Form webhook dispatch), prefers `wp_schedule_single_event()` over blocking the current request.
+- **`FRL_MODE=disable` guard position is load-bearing:** Must precede any `FRL_DIR_PATH` usage. The constant is defined in `config/config-base.php`, loaded by `bootstrap.php` AFTER the disable early-return. Placing the guard after a `require_once` that references `FRL_DIR_PATH` causes a fatal error.
 
-1. `includes/bootstrap.php` → `fralenuvole.php` → `includes/main.php` — see exactly what loads and when.
-2. `docs/HOOKS.md` — understand the hook-priority contract before touching any `init`-time code.
-3. `docs/CACHE.md` — nearly every subsystem depends on the cache layer; understand it before reading anything else.
-4. `docs/ENVIRONMENT.md` — understand how option values can differ from what's actually in the database.
-5. The subsystem doc relevant to the area you're changing.
+## Security
 
-## 7. Ecosystem Dependencies
+Security headers added in [`fralenuvole.php:53-66`](fralenuvole.php:53) via `wp_headers` filter on every request:
+
+- `Content-Security-Policy: object-src 'none'; base-uri 'self';`
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: SAMEORIGIN`
+
+All admin actions are capability-gated via [`frl_has_access()`](includes/helpers/functions-access-control.php:25) and nonce-verified. All `$_GET`/`$_POST` access goes through `sanitize_text_field(wp_unslash(...))`. Direct DB queries use `$wpdb->prepare()`.
+
+## Performance Profile
+
+**Frontend, warm cache:** Zero database queries for anything this plugin controls — consequence of layered caching (static array → runtime LRU → persistent cache → batched preload via `auto_preload()`).
+
+**Admin "Hard Reset":** Can take several seconds — expected cost of chaining `purge_all()` + `clear_transients()` + `flush_rewrite_rules(true)`. Paid only on explicit admin request, never on visitor-facing pages.
+
+## Where to Start Reading
+
+1. [`includes/bootstrap.php`](includes/bootstrap.php) → [`fralenuvole.php`](fralenuvole.php) → [`includes/main.php`](includes/main.php) — see exactly what loads and when
+2. [`docs/PLUGIN-HOOKS.md`](PLUGIN-HOOKS.md) — understand the hook-priority contract before touching any `init`-time code
+3. [`docs/CACHE.md`](CACHE.md) — nearly every subsystem depends on the cache layer; understand it before reading anything else
+4. [`docs/ENVIRONMENT.md`](ENVIRONMENT.md) — understand how option values can differ from what's actually in the database
+5. The subsystem doc relevant to the area you're changing
+
+## Ecosystem Dependencies
 
 | Dependency | Role |
 |---|---|
 | Polylang | Primary multilingual plugin (implemented adapter) |
-| WPML | Alternative multilingual plugin (adapter interface is ready; no concrete adapter shipped yet) |
-| ACF / SCF | Custom field translation targets; |
+| WPML | Alternative (adapter interface ready; no concrete adapter shipped) |
+| ACF / SCF | Custom field translation targets |
 | WS Form | Form submission webhook dispatch and channel tracking |
 | GeoDirectory | Property-listing query/translation filters (`pbproperty` module) |
-| Litespeed Cache / Docket Cache / Redis / Memcached | Object-cache backends detected and used by the Cache Manager when active |
+| Litespeed Cache / Docket Cache / Redis / Memcached | Object-cache backends detected by Cache Manager |
+| Kinsta | Hosting platform — MU plugin interacts with Kinsta's cache purge system |

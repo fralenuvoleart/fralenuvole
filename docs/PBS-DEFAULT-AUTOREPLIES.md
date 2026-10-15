@@ -1,34 +1,34 @@
-# PBS - Default Auto-replies
+# PBS Default Auto-replies
 
-## Webform - Confirmation Messages (Polylang String Translations)
+Content reference for PBS brand auto-reply message templates across all channels.
 
-### Weekend Confirmation Message - EN
+## Webform — Confirmation Messages (Polylang String Translations)
+
+### Weekend Confirmation — EN
 Thank you for your inquiry. We will answer you on Monday.
 
-### Weekend Confirmation Message - RU
+### Weekend Confirmation — RU
 Спасибо за ваш запрос. Мы ответим вам в понедельник.
 
-### Weekday Message - EN
+### Weekday — EN
 Thanks for getting in touch! Our consultant will contact you shortly.
 
-### Weekday Message - RU
+### Weekday — RU
 Спасибо за обращение! Наш консультант свяжется с вами в ближайшее время.
 
-### 14 Oct Message EN
+### 14 Oct — EN
 Thank you for your message!
 
-Please note that October 14 is a non-working day. Feel free to leave your message here, and we’ll get back to you on the next business day.
+Please note that October 14 is a non-working day. Feel free to leave your message here, and we'll get back to you on the next business day.
 
-
-### 14 Oct Message RU
+### 14 Oct — RU
 Спасибо за Ваше сообщение!
 
 14 октября — нерабочий день. Пожалуйста, оставьте Ваше сообщение здесь, и мы обязательно свяжемся с Вами в ближайший рабочий день.
 
----
+## Telegram — Bot Messages (Sevalla messages.json)
 
-## Telegram - Bot Messages (Sevalla messages.json)
-```
+```json
 {
   "welcome": {
     "default": "Welcome to PB Services! 👋\nSend your message below to connect with our support team.",
@@ -49,76 +49,37 @@ Please note that October 14 is a non-working day. Feel free to leave your messag
   }
 }
 ```
----
 
-## WhatsApp - respond.io Workflow messages
+## WhatsApp — respond.io Workflow Messages
 
-### Weekday EN
-Thank you! 🟢
-Your message has been received. A human representative from our team will personally contact you shortly.
+### Weekday
 
-### Weekday RU
-Спасибо! 🟢
-Ваше сообщение получено. Наш специалист лично свяжется с вами в ближайшее время.
+**EN:** Thank you! 🟢 Your message has been received. A human representative from our team will personally contact you shortly.
 
-### Weekday GE
-გმადლობთ! 🟢
-თქვენი შეტყობინება მიღებულია. ჩვენი გუნდის წარმომადგენელი მალე პირადად დაგიკავშირდებათ.
+**RU:** Спасибо! 🟢 Ваше сообщение получено. Наш специалист лично свяжется с вами в ближайшее время.
 
----
+**GE:** გმადლობთ! 🟢 თქვენი შეტყობინება მიღებულია. ჩვენი გუნდის წარმომადგენელი მალე პირადად დაგიკავშირდებათ.
 
-### Weekend EN
-Welcome! 🟢
+### Weekend
 
-We’re currently outside of our office hours (Mon–Fri, 10:00–18:00 Tbilisi time).
-Feel free to leave your message below, and our team will follow up with you as soon as business hours resume.
+**EN:** Welcome! 🟢 We're currently outside of our office hours (Mon–Fri, 10:00–18:00 Tbilisi time). Feel free to leave your message below, and our team will follow up with you as soon as business hours resume. Thanks for reaching out!
 
-Thanks for reaching out!
+**RU:** Здравствуйте! 🟢 Сейчас мы вне рабочих часов (пн–пт, 10:00–18:00 по Тбилиси). Пожалуйста, напишите ваш вопрос или сообщение ниже, и наша команда свяжется с вами, как только начнется рабочий день. Спасибо за обращение!
 
-### Weekend RU
-Здравствуйте! 🟢
+**GE:** მოგესალმებით! 🟢 ამჟამად ჩვენს სამუშაო საათებს მიღმა გვიკავშირდებით (ორშ–პარ, 10:00–18:00 თბილისის დროით). გთხოვთ, დაგვიტოვოთ თქვენი შეტყობინება ქვემოთ და ჩვენი გუნდი დაგიკავშირდებათ სამუშაო საათების განახლებისთანავე. გმადლობთ, რომ დაგვიკავშირდით!
 
-Сейчас мы вне рабочих часов (пн–пт, 10:00–18:00 по Тбилиси).
-Пожалуйста, напишите ваш вопрос или сообщение ниже, и наша команда свяжется с вами, как только начнется рабочий день.
+### 14 Oct
 
-Спасибо за обращение!
+**EN:** Thank you for your message! 🟢 Please note that October 14 is a non-working day. Feel free to leave your message here, and we'll get back to you on the next business day.
 
-### Weekend GE
-მოგესალმებით! 🟢
+**RU:** Спасибо за Ваше сообщение! 🟢 14 октября — нерабочий день. Пожалуйста, оставьте Ваше сообщение здесь, и мы обязательно свяжемся с Вами в ближайший рабочий день.
 
-ამჟამად ჩვენს სამუშაო საათებს მიღმა გვიკავშირდებით (ორშ–პარ, 10:00–18:00 თბილისის დროით).
-გთხოვთ, დაგვიტოვოთ თქვენი შეტყობინება ქვემოთ და ჩვენი გუნდი დაგიკავშირდებათ სამუშაო საათების განახლებისთანავე.
+**GE:** გმადლობთ! 🟢 გთხოვთ გაითვალისწინოთ, რომ 14 ოქტომბერი უქმე დღეა. შეგიძლიათ, თქვენი შეტყობინება აქ დატოვოთ, და ჩვენ მომდევნო სამუშაო დღეს დაგიკავშირდებით.
 
-გმადლობთ, რომ დაგვიკავშირდით!
+## WS Form — Out-of-Office Proposal
 
-### 14 Oct Message EN
-Thank you for your message! 🟢
-Please note that October 14 is a non-working day. Feel free to leave your message here, and we’ll get back to you on the next business day.
-
-### 14 Oct Message RU
-Спасибо за Ваше сообщение! 🟢
-14 октября — нерабочий день. Пожалуйста, оставьте Ваше сообщение здесь, и мы обязательно свяжемся с Вами в ближайший рабочий день.
-
-### 14 Oct Message GE
-გმადლობთ! 🟢
-გთხოვთ გაითვალისწინოთ, რომ 14 ოქტომბერი უქმე დღეა. შეგიძლიათ, თქვენი შეტყობინება აქ დატოვოთ, და ჩვენ მომდევნო სამუშაო დღეს დაგიკავშირდებით.
-
-
-
----
-
-## Proposal for WS Form
-
-What about a workflow like this for out-of-office hours?
-
-1. Hot-lead alerts only
-Have the AI score each message (ready to buy, price check, just browsing) and push a notification to your phone, via Telegram or WhatsApp, only for the hot ones. Everything else waits for the morning digest, so you’re not on call 24/7.
-Use a few explicit signals—fit, intent, timing.
-
-2. Autoreply with 2 optional links:
-Thanks for reaching out! We’re offline until [day, time, time zone], and we’ll reply first thing.
-📅 Want to speak sooner? [Book a meeting]
-🚨 Need help before we reopen? Contact our urgent support line here: [urgent contact link]. This channel is for urgent issues that can't wait the weekend, and we respond within 12 hours.
-
-PB Services Team
---Contacts--
+1. **Hot-lead alerts only** — AI scores each message (ready to buy, price check, just browsing) and pushes notifications only for hot leads via Telegram/WhatsApp. Everything else waits for morning digest.
+2. **Autoreply with optional links:**
+   - Thanks for reaching out! We're offline until [day, time, time zone], and we'll reply first thing.
+   - 📅 Want to speak sooner? [Book a meeting]
+   - 🚨 Need help before we reopen? Contact our urgent support line here: [urgent contact link]. This channel is for urgent issues that can't wait the weekend, and we respond within 12 hours.

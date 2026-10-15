@@ -1,67 +1,56 @@
 # ThemeKit
 
-ThemeKit is a Theme Orchestration Layer designed to provide the plugin with fine-grained control over the active theme's behavior, styling, and block patterns without requiring direct modifications to theme files.
+Theme orchestration layer providing theme-independent body classes, base styles, block pattern management, and font optimization.
 
-## 🎯 Purpose
-The primary goal of ThemeKit is to ensure theme independence and provide a mechanism for contextual styling and asset management that persists across theme changes.
+**File:** [`core/themekit/themekit.php`](core/themekit/themekit.php)  
+**Config:** [`config/config-themekit.php`](config/config-themekit.php)
 
-### Problems Solved
-- **Theme Independence:** Injects necessary styles and body classes regardless of the active theme.
-- **Customization Persistence:** Theme-level modifications (like removing provider styles) are configurable via admin options rather than hard-coded.
-- **Context-Aware Styling:** Injects User IDs, Roles, and Page Slugs into the `<body>` tag, enabling precise CSS targeting without complex template overrides.
+## Init
 
-## 🚀 Features
+[`frl_themekit_init()`](core/themekit/themekit.php:18) is called at `init:20`. Uses `frl_is_already_running(__FUNCTION__)` guard. Registers hooks based on admin options:
 
-### 1. Dynamic Body Class Injection
-ThemeKit adds contextual classes to the body tag to facilitate targeted styling.
+| Option | Hook | Priority |
+|--------|------|----------|
+| `themekit_body_classes` | `admin_body_class` → `frl_themekit_admin_body_classes` | 9999 |
+| `themekit_body_classes` | `body_class` → `frl_themekit_frontend_body_classes` | 10 |
+| `themekit_base_css` | `wp_enqueue_scripts` → `frl_themekit_enqueue_base_styles` | `FRL_THEMEKIT_STYLE_PRIORITY['themekit']` (10) |
+| `themekit_font_display_swap` | `wp_theme_json_data_user` → `frl_themekit_font_display_swap_filter` | default |
+| `themekit_remove_wp_patterns` | — → `frl_themekit_remove_core_block_patterns()` | immediate |
+| `themekit_remove_provider_patterns` | `init` → `frl_themekit_remove_provider_block_patterns` | 999 |
+| `themekit_remove_provider_styles` | `wp_enqueue_scripts` → `frl_themekit_remove_provider_styles` | 99999 |
 
-- **Admin Area:** Adds `uid-{id}` and `role-{role}`.
-- **Frontend:** Adds:
-    - `uid-{id}`: Current user ID.
-    - `role-{role}`: User roles (imploded with hyphens).
-    - `slug-{slug}`: Current post/page slug.
-    - `tax-{taxonomy}` and `tax-{slug}`: For archive pages.
-    - `path-{segment}`: Fallback for non-singular/non-archive routes.
-    - `has-{param}`: Added when tracked query parameters (defined in `FRL_THEMEKIT_TRACKED_QUERY_PARAMS`) are present.
+## Features
 
-### 2. Asset & Pattern Management
-- **Base Styles:** Enqueues a base stylesheet with a deterministic priority to ensure correct override behavior.
-- **Provider Blacklisting:** Allows the removal of styles and block patterns from specific third-party providers (themes/plugins) via admin options.
-- **Core Pattern Control:** Can disable all WordPress core block patterns to provide a cleaner editor experience.
+### Dynamic Body Classes
 
-### 3. Theme JSON Manipulation
-- **Font Display Optimization:** Forces `font-display: swap` for fonts uploaded via the WordPress Font Library to improve Core Web Vitals (LCP/CLS).
+**Admin:** `uid-{id}`, `role-{role}` (from `frl_get_current_user()`).
 
-## 🏗️ Architecture
+**Frontend:** `uid-{id}`, `role-{role}`, `slug-{slug}`, `tax-{taxonomy}`, `tax-{slug}`, `path-{segment}`, `has-{param}` (for tracked query params). Cached via `frl_cache_remember('postdata', ...)` with cache key incorporating user ID, object ID, request path, and query signature. Only runs on `frl_is_valid_frontend_page_request()`.
 
-### Design Pattern
-ThemeKit uses a **Procedural, Hook-Driven Registry** pattern. The `frl_themekit_init()` function acts as the central dispatcher, registering filters and actions based on the current configuration.
+### Base Styles
 
-### Key Components
-- **Logic:** `core/themekit/themekit.php`
-- **Configuration:** `config/config-themekit.php` (Constants for priorities, categories, and tracked params).
-- **Settings:** Managed via `frl_get_option` calls throughout the initialization.
+Enqueues [`assets/css/themekit-styles.css`](assets/css/themekit-styles.css) at priority 10 via `frl_enqueue_scripts()`.
 
-## ⚡ Performance
+### Font Display Optimization
 
-Performance is a critical priority for ThemeKit, especially regarding the dynamic body class injection and provider removal.
+Forces `font-display: swap` for all fonts uploaded via the WordPress Font Library by filtering `wp_theme_json_data_user`.
 
-### Identification Caching
-ThemeKit employs a two-phase approach:
+### Pattern & Style Removal
 
-1.  **Identification Phase (Cached):** The "fuzzy search" for handles or patterns matching provider slugs is wrapped in `frl_cache_remember` using the `themekit` cache group. The cache key is based on the MD5 hash of the options value, ensuring automatic invalidation when settings change.
-2.  **Execution Phase (Direct):** The resulting list of handles/names is retrieved from cache and processed via direct calls to `wp_dequeue_style` or `unregister_block_pattern`.
+- **Core patterns:** Removes all WordPress core block patterns when `themekit_remove_wp_patterns` is enabled
+- **Provider patterns:** Removes block patterns matching configured provider slugs (cached via `frl_cache_remember` in `themekit` group, keyed by MD5 of option value)
+- **Provider styles:** Dequeues styles matching configured provider slugs at `wp_enqueue_scripts:99999`
 
-This reduces the complexity to $O(H)$ (where $H$ is the number of items actually being removed) for the vast majority of requests.
+## Configuration
 
-## 🛠️ Developer Reference
+[`config/config-themekit.php`](config/config-themekit.php):
 
-### Adding Tracked Query Parameters
-To add a new query parameter that should trigger a body class, add it to the `FRL_THEMEKIT_TRACKED_QUERY_PARAMS` constant in `config/config-themekit.php`.
-*Example:* Adding `'ref'` will result in a `has-ref` class when `?ref=...` is in the URL.
+```php
+FRL_THEMEKIT_STYLE_PRIORITY = ['themekit' => 10, 'modules' => 15];
+FRL_THEMEKIT_PATTERNS_CATEGORIES = ['sections', 'queries', 'ACF', 'editorial'];
+FRL_THEMEKIT_TRACKED_QUERY_PARAMS = ['frlq'];
+```
 
-### Style Loading Order
-Style priorities are defined in `FRL_THEMEKIT_STYLE_PRIORITY`.
-- `themekit`: Base plugin styles.
-- `modules`: Module-specific styles.
-These are designed to load in a deterministic order relative to the theme's main stylesheet.
+## Extension
+
+Add tracked query parameters to `FRL_THEMEKIT_TRACKED_QUERY_PARAMS`. Example: adding `'ref'` results in a `has-ref` body class when `?ref=...` is in the URL.

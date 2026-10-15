@@ -1,10 +1,7 @@
 # Plugin Permissions
 
-**File:** [`docs/PLUGIN-PERMISSIONS.md`](docs/PLUGIN-PERMISSIONS.md)  
-**Purpose:** Documents the plugin's access control model — capabilities, nonce verification, admin bar gating, action dispatch, and `FRL_MODE` behavior.  
-**Key files:** [`config/config-base.php`](config/config-base.php:40), [`includes/helpers/functions-access-control.php`](includes/helpers/functions-access-control.php:25), [`includes/mu/functions-mu.php`](includes/mu/functions-mu.php:75), [`admin/helpers/functions-admin-action-handlers.php`](admin/helpers/functions-admin-action-handlers.php:816)
+Documents the plugin's access control model — capabilities, nonce verification, admin bar gating, action dispatch, and `FRL_MODE` behavior.
 
----
 
 ## Constants
 
@@ -13,8 +10,21 @@
 | `FRL_PLUGIN_SUPERADMIN_ID` | `1` | [`config/config-base.php:40`](config/config-base.php:40) |
 | `FRL_PLUGIN_ACCESS` | `'delete_plugins'` | [`config/config-base.php:41`](config/config-base.php:41) |
 | `FRL_PUBLIC_ACTIONS` | `['clear_website_transients']` | [`config/config-base.php:99`](config/config-base.php:99) |
+| `FRL_MODE` | `null` / `'disable'` / `'core'` / `'nocache'` / `'migrate'` | URL param `?frlmode=` or `wp-config.php` constant |
 
----
+
+## `FRL_MODE` Behavior
+
+Defined via `?frlmode=<mode>` URL parameter or `define('FRL_MODE', '<mode>')` in `wp-config.php`. URL parameter takes precedence.
+
+| Mode | Effect on Access Control |
+|------|------------------------|
+| *(not set)* | Normal operation — all capability checks enforced |
+| `disable` | Plugin stops loading entirely (early return in [`fralenuvole.php`](fralenuvole.php)) |
+| `core` | Mimics `disable_plugin` option — most features disabled |
+| `nocache` | Bypasses internal cache system; access control unchanged |
+| `migrate` | [`frl_has_access()`](includes/helpers/functions-access-control.php:27) returns **true** for everyone; environment enforcement runs for all users |
+
 
 ## Access Tiers
 
@@ -45,7 +55,6 @@ Actions listed in [`FRL_PUBLIC_ACTIONS`](config/config-base.php:99) are accessib
 
 No access to any plugin features.
 
----
 
 ## Core Function: `frl_has_access()`
 
@@ -74,7 +83,6 @@ frl_has_access( 'manage_options' ) // Specific capability
 frl_has_access( 'publish_pages' )  // CPT-specific (admin bar links)
 ```
 
----
 
 ## Early-Loading Access: `frl_mu_check_access()`
 
@@ -98,7 +106,6 @@ function frl_mu_check_access( string $capability ): bool
 
 **Note:** This function intentionally does **not** check `WP_Session_Tokens` revocation — it's used only for the plugin-exclusion decision, never for real authentication.
 
----
 
 ## Context Detection Functions
 
@@ -114,7 +121,6 @@ All in [`includes/helpers/functions-access-control.php`](includes/helpers/functi
 | [`frl_is_valid_page_request()`](includes/helpers/functions-access-control.php:282) | `bool` | False for CLI, REST, CRON, invalid hosts, heartbeat, log manager, non-HTML |
 | [`frl_is_valid_frontend_page_request()`](includes/helpers/functions-access-control.php:338) | `bool` | `!frl_is_admin() && frl_is_valid_page_request()` |
 
----
 
 ## Nonce System
 
@@ -151,7 +157,6 @@ All verification flows through [`_frl_verify_nonce_core()`](admin/helpers/functi
 
 Actions in [`FRL_PUBLIC_ACTIONS`](config/config-base.php:99) skip nonce verification when the user is logged in. The capability is downgraded to `'read'`. This exists for cache-warming compatibility where nonces would expire.
 
----
 
 ## Action Button Rendering
 
@@ -180,7 +185,6 @@ frl_render_action_button(
 
 Buttons with `button-primary` class get a JavaScript `confirm()` dialog.
 
----
 
 ## Admin Bar
 
@@ -215,7 +219,6 @@ The admin bar menu is gated by **both**:
 
 **Node removals:** When `ab_remove_links` is enabled, non-plugin-admin users get additional nodes removed (configured via `ab_remove_links_handles_user` option).
 
----
 
 ## Action Dispatch
 
@@ -242,20 +245,6 @@ Gated by: `frl_is_admin() && frl_is_administrator_action()`.
 
 Each handler is responsible for its own nonce + capability verification (typically via [`frl_verify_plugin_action_nonce()`](admin/helpers/functions-admin-action-handlers.php:816) or direct [`frl_has_access()`](includes/helpers/functions-access-control.php:25) calls).
 
----
-
-## `FRL_MODE` Behavior
-
-Defined via `?frlmode=<mode>` URL parameter or `define('FRL_MODE', '<mode>')` in `wp-config.php`. URL parameter takes precedence.
-
-| Mode | Effect on Access Control |
-|------|------------------------|
-| `disable` | Plugin stops loading entirely (early return in [`fralenuvole.php`](fralenuvole.php)) |
-| `core` | Mimics `disable_plugin` option — most features disabled |
-| `nocache` | Bypasses internal cache system; access control unchanged |
-| `migrate` | [`frl_has_access()`](includes/helpers/functions-access-control.php:27) returns **true** for everyone; environment enforcement runs for all users |
-
----
 
 ## Extension Points
 
@@ -285,7 +274,6 @@ Add or modify the administrator widget's quick-link sections.
 
 Fires after auto-discovery registers all `frl_post_*` handlers. Use to register additional custom handlers.
 
----
 
 ## Security Notes
 
