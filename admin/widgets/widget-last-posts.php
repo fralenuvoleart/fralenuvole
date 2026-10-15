@@ -20,8 +20,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function frl_render_last_posts_widget() {
 	$args = array(
-		'post_type'      => 'any',
-		'post_status'    => 'publish',
+		'post_type'      => get_post_types( array( 'public' => true ) ),
+		'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
 		'posts_per_page' => 5,
 		'orderby'        => 'modified',
 		'order'          => 'DESC',
@@ -52,12 +52,12 @@ function frl_render_last_posts_widget() {
 			// _edit_last is WordPress core post meta, set automatically on every post save.
 			$last_editor_id = (int) get_post_meta( $post_id, '_edit_last', true );
 			if ( $last_editor_id && get_userdata( $last_editor_id ) ) {
-				$author_name = get_the_author_meta( 'display_name', $last_editor_id );
+				$author_name = get_the_author_meta( 'user_login', $last_editor_id );
 				$author_link = '/wp-admin/user-edit.php?user_id=' . $last_editor_id;
 			} else {
 				// Fallback to original author if _edit_last is empty or user no longer exists.
 				$author_id   = (int) get_the_author_meta( 'ID' );
-				$author_name = get_the_author_meta( 'display_name', $author_id );
+				$author_name = get_the_author_meta( 'user_login', $author_id );
 				$author_link = '/wp-admin/user-edit.php?user_id=' . $author_id;
 			}
 
