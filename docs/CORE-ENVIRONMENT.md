@@ -20,21 +20,21 @@ Frl_Environment_Manager (Facade)
 
 | File | Class/Trait | Responsibility |
 |------|-------------|----------------|
-| [`core/environment/environment-manager.php`](core/environment/environment-manager.php) | — | Bootstrap loader; requires all sub-files |
-| [`core/environment/class-environment-manager.php`](core/environment/class-environment-manager.php) | `Frl_Environment_Manager` | Public facade; init, enforce, config access, admin bar |
-| [`core/environment/class-environment-config.php`](core/environment/class-environment-config.php) | `Frl_Environment_Config` | Domain config builder; merge engine |
-| [`core/environment/class-environment-state.php`](core/environment/class-environment-state.php) | `Frl_Environment_State` | State persistence; host change detection |
-| [`core/environment/class-environment-monitor.php`](core/environment/class-environment-monitor.php) | `Frl_Environment_Monitor` | URL correction; option/plugin change tracking |
-| [`core/environment/class-environment-applier.php`](core/environment/class-environment-applier.php) | `Frl_Environment_Applier` | Applies WP options, plugin options, module states |
-| [`core/environment/class-environment-plugin-manager.php`](core/environment/class-environment-plugin-manager.php) | `Frl_Environment_Plugin_Manager` | Plugin activation/deactivation |
-| [`core/environment/class-environment-files.php`](core/environment/class-environment-files.php) | `Frl_Environment_Files` | File-based option loading |
-| [`core/environment/class-environment-utils.php`](core/environment/class-environment-utils.php) | `Frl_Environment_Utils` + trait | Logging; host normalization |
+| `core/environment/environment-manager.php` | — | Bootstrap loader; requires all sub-files |
+| `core/environment/class-environment-manager.php` | `Frl_Environment_Manager` | Public facade; init, enforce, config access, admin bar |
+| `core/environment/class-environment-config.php` | `Frl_Environment_Config` | Domain config builder; merge engine |
+| `core/environment/class-environment-state.php` | `Frl_Environment_State` | State persistence; host change detection |
+| `core/environment/class-environment-monitor.php` | `Frl_Environment_Monitor` | URL correction; option/plugin change tracking |
+| `core/environment/class-environment-applier.php` | `Frl_Environment_Applier` | Applies WP options, plugin options, module states |
+| `core/environment/class-environment-plugin-manager.php` | `Frl_Environment_Plugin_Manager` | Plugin activation/deactivation |
+| `core/environment/class-environment-files.php` | `Frl_Environment_Files` | File-based option loading |
+| `core/environment/class-environment-utils.php` | `Frl_Environment_Utils` + trait | Logging; host normalization |
 
 ## Configuration System
 
 ### Environment Map
 
-Defined in [`config/environment/config-environment.php`](config/environment/config-environment.php):
+Defined in `config/environment/config-environment.php`:
 
 ```php
 const FRL_ENV_MAP = [
@@ -121,7 +121,7 @@ After all layers resolve, active plugins are removed from the inactive list and 
 
 ### Gatekeeper: `frl_environment_is_loaded()`
 
-Defined in [`includes/helpers/functions-class-helpers.php`](includes/helpers/functions-class-helpers.php). Returns `false` if:
+Defined in `includes/helpers/functions-class-helpers.php`. Returns `false` if:
 - Not a valid page request (CLI, REST, CRON, non-mapped hosts, heartbeat, log-manager, AJAX)
 - `disable_plugin` or `disable_environment` option enabled
 - `FRL_MODE === 'core'`
@@ -165,7 +165,7 @@ Stored state: `{host, siteurl, home, hash, last_updated?}`. Persisted to DB opti
 
 ### Frl_Environment_Files — File-Based Options
 
-Files in [`config/environment/env-snippets/`](config/environment/env-snippets/) named `{prefix}_{option_name}.php`. When config sets an option to `'file'`, the file content is loaded and stored as the option value. PHP syntax is validated via `php -l` (advisory only — content is stored as-is, never executed).
+Files in `config/environment/env-snippets/` named `{prefix}_{option_name}.php`. When config sets an option to `'file'`, the file content is loaded and stored as the option value. PHP syntax is validated via `php -l` (advisory only — content is stored as-is, never executed).
 
 ## Throttle System
 
@@ -232,7 +232,7 @@ All cache clearing is centralized through the orchestrator via `env_*` operation
 
 ### Adding a New Domain
 
-1. Define a brand template in [`config/environment/config-environment.php`](config/environment/config-environment.php) if new
+1. Define a brand template in `config/environment/config-environment.php` if new
 2. Define an instance constant with `'extends' => 'TEMPLATE_NAME'`
 3. Add domain → constant mapping to `FRL_ENV_MAP`
 4. Optionally: create snippet files in `env-snippets/` as `{prefix}_{option}.php`

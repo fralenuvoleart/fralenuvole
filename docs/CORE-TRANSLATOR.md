@@ -1,4 +1,4 @@
-# Translator
+# Core - Translator
 
 Adapter-pattern translation system decoupled from the multilingual plugin. Handles block content tokens, custom field translation, term translation, and option translation.
 
@@ -17,19 +17,19 @@ Frl_Translation_Service  [final, singleton]
 
 | File | Role |
 |------|------|
-| [`core/translator/translator.php`](core/translator/translator.php) | Module entry point — requires loader, service, field-translator |
-| [`core/translator/class-translation-service.php`](core/translator/class-translation-service.php) | Central hub — caching, batching, translation lifecycle |
-| [`core/translator/field-translator.php`](core/translator/field-translator.php) | Hook-based layer intercepting WordPress metadata calls |
-| [`core/translator/adapters/interface.php`](core/translator/adapters/interface.php) | `Frl_Translation_Adapter_Interface` — 14-method contract |
-| [`core/translator/adapters/loader.php`](core/translator/adapters/loader.php) | Detection-to-file mapping — only place that knows adapter filenames |
-| [`core/translator/adapters/polylang.php`](core/translator/adapters/polylang.php) | Polylang adapter implementation |
-| [`core/translator/adapters/polylang-admin-access.php`](core/translator/adapters/polylang-admin-access.php) | Polylang-only `admin_menu` patch |
-| [`includes/helpers/functions-translator-helpers.php`](includes/helpers/functions-translator-helpers.php) | Public API — thin wrappers around `Frl_Translation_Service` |
-| [`config/config-translator.php`](config/config-translator.php) | All translator constants |
+| `core/translator/translator.php` | Module entry point — requires loader, service, field-translator |
+| `core/translator/class-translation-service.php` | Central hub — caching, batching, translation lifecycle |
+| `core/translator/field-translator.php` | Hook-based layer intercepting WordPress metadata calls |
+| `core/translator/adapters/interface.php` | `Frl_Translation_Adapter_Interface` — 14-method contract |
+| `core/translator/adapters/loader.php` | Detection-to-file mapping — only place that knows adapter filenames |
+| `core/translator/adapters/polylang.php` | Polylang adapter implementation |
+| `core/translator/adapters/polylang-admin-access.php` | Polylang-only `admin_menu` patch |
+| `includes/helpers/functions-translator-helpers.php` | Public API — thin wrappers around `Frl_Translation_Service` |
+| `config/config-translator.php` | All translator constants |
 
 ## Adapter Selection
 
-Single source of truth in [`frl_get_translation_adapter_class()`](includes/helpers/functions-translator-helpers.php:52):
+Single source of truth in `frl_get_translation_adapter_class()`:
 
 ```php
 function frl_get_translation_adapter_class(): ?string {
@@ -44,13 +44,13 @@ function frl_get_translation_adapter_class(): ?string {
 - `frl_is_multilingual_plugin_active()` — true iff `frl_get_translation_adapter_class()` returns non-null
 - `frl_translator_is_enabled()` — `frl_is_multilingual_plugin_active() && !frl_get_option('disable_translator')`
 
-[`adapters/loader.php`](core/translator/adapters/loader.php) handles file loading — the only place that maps "which plugin" to "which file."
+`adapters/loader.php` handles file loading — the only place that maps "which plugin" to "which file."
 
 **Adding WPML support (3 changes, 2 files):** write `Frl_Wpml_Adapter` in `adapters/wpml.php`; add `elseif` to `frl_get_translation_adapter_class()`; add `elseif` to `adapters/loader.php`.
 
 ## Frl_Translation_Service
 
-[`Frl_Translation_Service`](core/translator/class-translation-service.php) is a `final` singleton class. Constructor reads delimiter config from [`FRL_TRANSLATOR_DELIMITER_TEXT`](config/config-translator.php:102) (`{{`/`}}`) and [`FRL_TRANSLATOR_DELIMITER_LINK`](config/config-translator.php:107) (`##`/`##`), then instantiates the adapter.
+`Frl_Translation_Service` is a `final` singleton class. Constructor reads delimiter config from `FRL_TRANSLATOR_DELIMITER_TEXT` (`{{`/`}}`) and `FRL_TRANSLATOR_DELIMITER_LINK` (`##`/`##`), then instantiates the adapter.
 
 **Caching strategy:**
 - **Request-immutable values** (language, default language, active languages): stored in instance properties — never change during a request
@@ -67,7 +67,7 @@ function frl_get_translation_adapter_class(): ?string {
 
 ## Field Translation
 
-[`frl_translator_init()`](core/translator/field-translator.php:17) registers hooks only when `frl_translator_is_enabled()` AND `frl_is_valid_frontend_page_request()`:
+`frl_translator_init()` registers hooks only when `frl_translator_is_enabled()` AND `frl_is_valid_frontend_page_request()`:
 
 | Hook | Function | Priority |
 |------|----------|----------|
@@ -94,11 +94,11 @@ Safe Mode uses request-level static dedup only (no persistent cache — block co
 
 ## Deferred String Registration
 
-Strings discovered during the request are queued and processed on WordPress `shutdown` hook. Capped at [`FRL_TRANSLATOR_MAX_QUEUE_SIZE = 500`](config/config-translator.php:113) to prevent memory exhaustion.
+Strings discovered during the request are queued and processed on WordPress `shutdown` hook. Capped at `FRL_TRANSLATOR_MAX_QUEUE_SIZE = 500` to prevent memory exhaustion.
 
 ## Configuration Constants
 
-[`config/config-translator.php`](config/config-translator.php):
+`config/config-translator.php`:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
@@ -120,7 +120,7 @@ Strings discovered during the request are queued and processed on WordPress `shu
 
 ## Public API
 
-All in [`functions-translator-helpers.php`](includes/helpers/functions-translator-helpers.php). Thin wrappers around `Frl_Translation_Service::get_instance()`:
+All in `functions-translator-helpers.php`. Thin wrappers around `Frl_Translation_Service::get_instance()`:
 
 - `frl_get_translation($str, $lang)` — translate a string
 - `frl_get_translation_block($content, $block)` — process block for tokens

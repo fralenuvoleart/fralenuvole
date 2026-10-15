@@ -28,30 +28,30 @@ Helper Functions  ───  Gate-keeper ─── Frl_Cache_Manager
 
 ### Init Sequence
 
-In [`includes/bootstrap.php`](includes/bootstrap.php):
+In `includes/bootstrap.php`:
 
-1. [`Frl_Cache_Manager`](core/cache/class-cache-manager.php) is loaded and `::init()` called — initializes O(1) lookup maps, triggers `auto_preload()` for current context
-2. [`Frl_Cache_Operations`](core/cache/class-cache-operations.php) is loaded after the manager
-3. Cache cleanup hooks ([`cache-cleanup.php`](core/cache/cache-cleanup.php)) register WordPress event listeners for automatic invalidation
-4. Public helper functions in [`functions-class-helpers.php`](includes/helpers/functions-class-helpers.php) provide the gate-keeper API
+1. `Frl_Cache_Manager` is loaded and `::init()` called — initializes O(1) lookup maps, triggers `auto_preload()` for current context
+2. `Frl_Cache_Operations` is loaded after the manager
+3. Cache cleanup hooks (`cache-cleanup.php`) register WordPress event listeners for automatic invalidation
+4. Public helper functions in `functions-class-helpers.php` provide the gate-keeper API
 
 ## File Map
 
 | File | Role |
 |---|---|
-| [`core/cache/class-cache-manager.php`](core/cache/class-cache-manager.php) | Core engine: persistent get/set/delete, dependency cascading, purge operations, atomic clearing. Uses three traits. |
-| [`core/cache/trait-cache-lru.php`](core/cache/trait-cache-lru.php) | Runtime LRU tracking/eviction (`set_runtime()`, `get_runtime()`, `remove_runtime_item()`) |
-| [`core/cache/trait-cache-batch.php`](core/cache/trait-cache-batch.php) | Bulk DB operations (`batch_preload_transients()`, `execute_with_transaction()`, `safe_batch_delete_transients()`) |
-| [`core/cache/trait-cache-diagnostics.php`](core/cache/trait-cache-diagnostics.php) | Object-cache provider detection and config introspection |
-| [`core/cache/class-cache-operations.php`](core/cache/class-cache-operations.php) | Orchestrator: multi-step composite operations with lifecycle hooks |
-| [`core/cache/cache-cleanup.php`](core/cache/cache-cleanup.php) | WordPress event hooks for automatic cache invalidation |
-| [`config/config-cache.php`](config/config-cache.php) | Group definitions, TTLs, dependencies, preload config, browser groups |
-| [`config/config-cache-operations.php`](config/config-cache-operations.php) | Multi-step operation definitions |
-| [`includes/helpers/functions-class-helpers.php`](includes/helpers/functions-class-helpers.php) | Gate-keeper functions (`frl_cache_is_loaded()`, `frl_cache_get/set/remember/clear`) |
+| `core/cache/class-cache-manager.php` | Core engine: persistent get/set/delete, dependency cascading, purge operations, atomic clearing. Uses three traits. |
+| `core/cache/trait-cache-lru.php` | Runtime LRU tracking/eviction (`set_runtime()`, `get_runtime()`, `remove_runtime_item()`) |
+| `core/cache/trait-cache-batch.php` | Bulk DB operations (`batch_preload_transients()`, `execute_with_transaction()`, `safe_batch_delete_transients()`) |
+| `core/cache/trait-cache-diagnostics.php` | Object-cache provider detection and config introspection |
+| `core/cache/class-cache-operations.php` | Orchestrator: multi-step composite operations with lifecycle hooks |
+| `core/cache/cache-cleanup.php` | WordPress event hooks for automatic cache invalidation |
+| `config/config-cache.php` | Group definitions, TTLs, dependencies, preload config, browser groups |
+| `config/config-cache-operations.php` | Multi-step operation definitions |
+| `includes/helpers/functions-class-helpers.php` | Gate-keeper functions (`frl_cache_is_loaded()`, `frl_cache_get/set/remember/clear`) |
 
 ## Cache Groups & Configuration
 
-All defined as PHP constants in [`config/config-cache.php`](config/config-cache.php).
+All defined as PHP constants in `config/config-cache.php`.
 
 ### Persistent Groups
 
@@ -106,13 +106,13 @@ staticdata    → adminui
 
 ## Frl_Cache_Manager — Core
 
-[`Frl_Cache_Manager`](core/cache/class-cache-manager.php) is a fully static class providing all cache operations across three storage tiers.
+`Frl_Cache_Manager` is a fully static class providing all cache operations across three storage tiers.
 
 ### Runtime LRU Cache
 
 Per-request in-memory caching with LRU eviction. When the runtime cache exceeds `$max_runtime_items`, the least recently used item is evicted.
 
-**Key methods** (LRU methods in [`Frl_Cache_Lru_Trait`](core/cache/trait-cache-lru.php)):
+**Key methods** (LRU methods in `Frl_Cache_Lru_Trait`):
 - `set_runtime()` — stores value, updates group index and LRU order, prunes if over limit
 - `get_runtime()` — returns value, moves key to MRU position
 - `remove_runtime_item()` — removes from storage, LRU tracking, and group index
@@ -137,7 +137,7 @@ Groups in `FRL_CACHE_PERSISTENT_GROUPS` use transients when object cache is abse
 
 ### Provider Detection
 
-[`get_provider_details()`](core/cache/trait-cache-diagnostics.php) detects the active object cache provider:
+`get_provider_details()` detects the active object cache provider:
 
 | Provider | Detection |
 |---|---|
@@ -165,7 +165,7 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 
 ### Race Condition Prevention
 
-[`remember()`](core/cache/class-cache-manager.php:622) uses lock-based cache-aside:
+`remember()` uses lock-based cache-aside:
 1. Generates lock key via `wp_cache_add()` with `FRL_CACHE_LOCK_TTL` (2 seconds)
 2. On contention, waits with exponential backoff (50ms → 100ms → 200ms)
 3. Re-checks cache between retries
@@ -173,19 +173,19 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 
 ### Auth Preservation
 
-[`with_auth_preservation()`](core/cache/class-cache-manager.php:835) snapshots and restores the current user's auth cookie around cache operations, preventing unexpected logouts during cache maintenance. Used by `purge_all()`.
+`with_auth_preservation()` snapshots and restores the current user's auth cookie around cache operations, preventing unexpected logouts during cache maintenance. Used by `purge_all()`.
 
 ## Frl_Cache_Operations — Orchestrator
 
-[`Frl_Cache_Operations`](core/cache/class-cache-operations.php) dispatches composite operations defined in [`FRL_CACHE_OPERATIONS`](config/config-cache-operations.php).
+`Frl_Cache_Operations` dispatches composite operations defined in `FRL_CACHE_OPERATIONS`.
 
 ### Operation Tiers
 
 | Tier | Prefix | Purpose | Called By |
 |---|---|---|---|
 | Helper | `clear_*` | Low-level composite clears | `frl_cache_clear('hard'/'all'/'light'/'options'/'rewriter')` |
-| Action | `action_*` | Admin-facing operations | Action handlers in [`functions-action-handlers.php`](includes/helpers/functions-action-handlers.php) |
-| Environment | `env_*` | Environment Manager enforcement | [`Frl_Environment_Manager::enforce_environment_settings()`](core/environment/class-environment-manager.php) |
+| Action | `action_*` | Admin-facing operations | Action handlers in `functions-action-handlers.php` |
+| Environment | `env_*` | Environment Manager enforcement | `Frl_Environment_Manager::enforce_environment_settings()` |
 
 ### Operation Registry
 
@@ -214,7 +214,7 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 
 ## Cache Cleanup Hooks
 
-[`cache-cleanup.php`](core/cache/cache-cleanup.php) registers WordPress event listeners for automatic invalidation:
+`cache-cleanup.php` registers WordPress event listeners for automatic invalidation:
 
 | Hook | What It Clears |
 |---|---|
@@ -230,7 +230,7 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 
 ## Helper Functions API
 
-All in [`functions-class-helpers.php`](includes/helpers/functions-class-helpers.php). Every function checks `frl_cache_is_loaded()` before delegating.
+All in `functions-class-helpers.php`. Every function checks `frl_cache_is_loaded()` before delegating.
 
 | Function | Description |
 |---|---|

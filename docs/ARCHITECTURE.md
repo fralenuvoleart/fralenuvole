@@ -89,38 +89,38 @@ init / 100 — frl_themekit_remove_provider_block_patterns()
 init / 200 — frl_flush_rewrite_rules (deferred)
 ```
 
-See [`docs/PLUGIN-HOOKS.md`](PLUGIN-HOOKS.md) for the full priority table and the reasoning behind each reserved slot.
+See `docs/PLUGIN-HOOKS.md` for the full priority table and the reasoning behind each reserved slot.
 
 ## Core Subsystems
 
 | Subsystem | Reference | Summary |
 |---|---|---|
-| Cache Manager | [`docs/CACHE.md`](CACHE.md) | Unified multi-backend cache with LRU runtime tier, dependency cascading, language-aware keys, composite operation orchestrator |
-| Environment Manager | [`docs/ENVIRONMENT.md`](ENVIRONMENT.md) | Domain→environment mapping that auto-applies WP options, plugin options, and plugin/module activation state |
-| Rewriter | [`docs/REWRITER.md`](REWRITER.md) | Feature-based URL rewriting (multilingual CPT slugs, taxonomy/CPT base removal) with priority-ordered, self-registering features |
-| Translator | [`docs/TRANSLATOR.md`](TRANSLATOR.md) | Adapter-pattern translation service (Polylang implemented, WPML-ready). Block tokens, field translation, pattern-based caching |
-| ThemeKit | [`docs/THEMEKIT.md`](THEMEKIT.md) | Theme-independent body classes, base styles, block pattern/provider-style removal, font optimization |
-| Plugin Exclusion | [`docs/THIRDPARTY-EXCLUSIONS.md`](THIRDPARTY-EXCLUSIONS.md) | MU-plugin-based conditional plugin loading (frontend/backend-screen/capability rules) with bot throttling |
-| Admin UI | [`docs/PLUGIN-ADMINUI.md`](PLUGIN-ADMINUI.md) | Tabbed settings page, dashboard widgets, log manager, tag validator, import/export, docs browser |
-| Access Control | [`docs/PLUGIN-PERMISSIONS.md`](PLUGIN-PERMISSIONS.md) | Capability model (`frl_has_access()`), superadmin/plugin-admin tiers, nonce system, `FRL_MODE` behavior |
-| Debug Modes | [`docs/PLUGIN-DEBUG-MODES.md`](PLUGIN-DEBUG-MODES.md) | `FRL_MODE` URL parameter / constant for disable/core/nocache/migrate modes |
-| Webhooks | [`docs/WEBHOOKS.md`](WEBHOOKS.md) | Generic webhook dispatch (sync + async via WP-Cron with retry backoff) |
-| Kinsta MU-Plugin | [`docs/KINSTA-MUPLUGIN.md`](KINSTA-MUPLUGIN.md) | Third-party reference for Kinsta's caching behavior |
+| Cache Manager | `docs/CACHE.md` | Unified multi-backend cache with LRU runtime tier, dependency cascading, language-aware keys, composite operation orchestrator |
+| Environment Manager | `docs/ENVIRONMENT.md` | Domain→environment mapping that auto-applies WP options, plugin options, and plugin/module activation state |
+| Rewriter | `docs/REWRITER.md` | Feature-based URL rewriting (multilingual CPT slugs, taxonomy/CPT base removal) with priority-ordered, self-registering features |
+| Translator | `docs/TRANSLATOR.md` | Adapter-pattern translation service (Polylang implemented, WPML-ready). Block tokens, field translation, pattern-based caching |
+| ThemeKit | `docs/THEMEKIT.md` | Theme-independent body classes, base styles, block pattern/provider-style removal, font optimization |
+| Plugin Exclusion | `docs/THIRDPARTY-EXCLUSIONS.md` | MU-plugin-based conditional plugin loading (frontend/backend-screen/capability rules) with bot throttling |
+| Admin UI | `docs/PLUGIN-ADMINUI.md` | Tabbed settings page, dashboard widgets, log manager, tag validator, import/export, docs browser |
+| Access Control | `docs/PLUGIN-PERMISSIONS.md` | Capability model (`frl_has_access()`), superadmin/plugin-admin tiers, nonce system, `FRL_MODE` behavior |
+| Debug Modes | `docs/PLUGIN-DEBUG-MODES.md` | `FRL_MODE` URL parameter / constant for disable/core/nocache/migrate modes |
+| Webhooks | `docs/WEBHOOKS.md` | Generic webhook dispatch (sync + async via WP-Cron with retry backoff) |
+| Kinsta MU-Plugin | `docs/KINSTA-MUPLUGIN.md` | Third-party reference for Kinsta's caching behavior |
 
 ### Additional Components (no dedicated doc)
 
 | Component | Location | Purpose |
 |---|---|---|
-| Error Handler | [`core/error-handler.php`](core/error-handler.php) | Custom error handling initialized in bootstrap via `frl_errors_init()` |
-| Schema / JSON-LD | [`public/schema/`](public/schema/) | Orchestrator-based JSON-LD generation (Organization, WebSite, WebPage, BreadcrumbList, BlogPosting, Service, HowTo, etc.) |
-| Shortcodes | [`public/shortcodes.php`](public/shortcodes.php) | 15+ shortcodes (`[frl]`, `[frl_meta]`, `[frl_permalink]`, `[frl_breadcrumbs]`, etc.) |
-| Website Features | [`includes/main/website.php`](includes/main/website.php) | Disable comments/oEmbed/emojis, critical CSS caching, Dashicons removal, REST endpoint pruning |
-| Media | [`includes/main/media.php`](includes/main/media.php) | Custom image sizes, MIME support (WebP/SVG), attachment metadata auto-fill |
-| Navigation | [`includes/main/navigation.php`](includes/main/navigation.php) | `wp_navigation` block translation, custom URL transforms for nav menu items |
-| Logged-User Features | [`includes/main/logged-user.php`](includes/main/logged-user.php) | Admin bar customization, plugin action dispatch, user-visit tracking, admin notices |
-| Plugin Lifecycle | [`includes/plugin-lifecycle.php`](includes/plugin-lifecycle.php) | Activation (MU sync, translation version, rewrite flush), deactivation, uninstall, auto-backup on version upgrade |
-| Channel Tracking | [`public/channel-tracking.php`](public/channel-tracking.php) | UTM/channel attribution tracking for WS Form submissions |
-| Performance | [`public/performance.php`](public/performance.php) | Critical CSS injection, deferred CSS, featured-image preload, font optimization |
+| Error Handler | `core/error-handler.php` | Custom error handling initialized in bootstrap via `frl_errors_init()` |
+| Schema / JSON-LD | `public/schema/` | Orchestrator-based JSON-LD generation (Organization, WebSite, WebPage, BreadcrumbList, BlogPosting, Service, HowTo, etc.) |
+| Shortcodes | `public/shortcodes.php` | 15+ shortcodes (`[frl]`, `[frl_meta]`, `[frl_permalink]`, `[frl_breadcrumbs]`, etc.) |
+| Website Features | `includes/main/website.php` | Disable comments/oEmbed/emojis, critical CSS caching, Dashicons removal, REST endpoint pruning |
+| Media | `includes/main/media.php` | Custom image sizes, MIME support (WebP/SVG), attachment metadata auto-fill |
+| Navigation | `includes/main/navigation.php` | `wp_navigation` block translation, custom URL transforms for nav menu items |
+| Logged-User Features | `includes/main/logged-user.php` | Admin bar customization, plugin action dispatch, user-visit tracking, admin notices |
+| Plugin Lifecycle | `includes/plugin-lifecycle.php` | Activation (MU sync, translation version, rewrite flush), deactivation, uninstall, auto-backup on version upgrade |
+| Channel Tracking | `public/channel-tracking.php` | UTM/channel attribution tracking for WS Form submissions |
+| Performance | `public/performance.php` | Critical CSS injection, deferred CSS, featured-image preload, font optimization |
 
 ## Module System
 
@@ -144,13 +144,13 @@ Modules are disposable by design — any module can be deleted without affecting
 
 ## Security
 
-Security headers added in [`fralenuvole.php:53-66`](fralenuvole.php:53) via `wp_headers` filter on every request:
+Security headers added in `fralenuvole.php:53-66` via `wp_headers` filter on every request:
 
 - `Content-Security-Policy: object-src 'none'; base-uri 'self';`
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: SAMEORIGIN`
 
-All admin actions are capability-gated via [`frl_has_access()`](includes/helpers/functions-access-control.php:25) and nonce-verified. All `$_GET`/`$_POST` access goes through `sanitize_text_field(wp_unslash(...))`. Direct DB queries use `$wpdb->prepare()`.
+All admin actions are capability-gated via `frl_has_access()` and nonce-verified. All `$_GET`/`$_POST` access goes through `sanitize_text_field(wp_unslash(...))`. Direct DB queries use `$wpdb->prepare()`.
 
 ## Performance Profile
 
@@ -160,10 +160,10 @@ All admin actions are capability-gated via [`frl_has_access()`](includes/helpers
 
 ## Where to Start Reading
 
-1. [`includes/bootstrap.php`](includes/bootstrap.php) → [`fralenuvole.php`](fralenuvole.php) → [`includes/main.php`](includes/main.php) — see exactly what loads and when
-2. [`docs/PLUGIN-HOOKS.md`](PLUGIN-HOOKS.md) — understand the hook-priority contract before touching any `init`-time code
-3. [`docs/CACHE.md`](CACHE.md) — nearly every subsystem depends on the cache layer; understand it before reading anything else
-4. [`docs/ENVIRONMENT.md`](ENVIRONMENT.md) — understand how option values can differ from what's actually in the database
+1. `includes/bootstrap.php` → `fralenuvole.php` → `includes/main.php` — see exactly what loads and when
+2. `docs/PLUGIN-HOOKS.md` — understand the hook-priority contract before touching any `init`-time code
+3. `docs/CACHE.md` — nearly every subsystem depends on the cache layer; understand it before reading anything else
+4. `docs/ENVIRONMENT.md` — understand how option values can differ from what's actually in the database
 5. The subsystem doc relevant to the area you're changing
 
 ## Ecosystem Dependencies

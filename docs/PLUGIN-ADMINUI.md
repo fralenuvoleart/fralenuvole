@@ -4,7 +4,7 @@ Tabbed settings page, dashboard widgets, log manager, tag validator, import/expo
 
 ## Loading Flow
 
-[`admin/admin.php`](admin/admin.php) is loaded via plugin bootstrap when `frl_is_admin()` returns true:
+`admin/admin.php` is loaded via plugin bootstrap when `frl_is_admin()` returns true:
 
 ```
 admin/admin.php
@@ -15,7 +15,7 @@ admin/admin.php
     → frl_autodiscover_admin_actions()
 ```
 
-[`admin/ui/ui-admin-settings.php`](admin/ui/ui-admin-settings.php) loads all UI components:
+`admin/ui/ui-admin-settings.php` loads all UI components:
 - Helpers: `functions-admin-ui.php`, `functions-admin-class-helpers-ui.php`, `functions-admin-import-export.php`
 - UI classes: `ui-asset-loader.php`, `class-tab-registry.php`, `class-tab-renderer.php`, `class-tab-manager.php`, `class-ui-renderer.php`
 - Display components: `class-dashboard.php`, `class-display-environment.php`, `class-display-cache.php`, `class-tag-validator.php`, `class-settings-fields.php`, `class-display-log.php`, `class-display-debug.php`, `class-import-export.php`, `class-display-docs.php`
@@ -27,7 +27,7 @@ admin/admin.php
 
 ### Frl_Tab_Manager
 
-[`admin/ui/class-tab-manager.php`](admin/ui/class-tab-manager.php) — singleton facade delegating to `Frl_Tab_Registry` (registration, ordering, sections, fields) and `Frl_Tab_Renderer` (HTML output).
+`admin/ui/class-tab-manager.php` — singleton facade delegating to `Frl_Tab_Registry` (registration, ordering, sections, fields) and `Frl_Tab_Renderer` (HTML output).
 
 Position constants: `POSITION_FIRST = 0`, `POSITION_DEFAULT = 500`, `POSITION_FORM = 1000`, `POSITION_LAST = PHP_INT_MAX`.
 
@@ -41,7 +41,7 @@ Frl_Tab_Manager::render_tab_container_end();
 
 ### Frl_UI_Renderer
 
-[`admin/ui/class-ui-renderer.php`](admin/ui/class-ui-renderer.php) — reusable UI components:
+`admin/ui/class-ui-renderer.php` — reusable UI components:
 
 ```php
 frl_ui_render_widget('my-widget', $content, 'Title', 'extra-class', HOUR_IN_SECONDS);
@@ -55,7 +55,7 @@ frl_ui_render_toggle_button('Show Code', $target_id, 'button-small');
 
 ### Frl_Dashboard_Renderer
 
-[`admin/ui/class-dashboard-renderer.php`](admin/ui/class-dashboard-renderer.php):
+`admin/ui/class-dashboard-renderer.php`:
 
 ```php
 Frl_Dashboard_Renderer::render_widget([
@@ -73,7 +73,7 @@ Widgets cached in `admin` cache group. Refresh buttons submit to `admin-post.php
 
 ## Dashboard Widgets
 
-Registered via `wp_dashboard_setup` hook in [`admin/admin.php`](admin/admin.php). Configuration:
+Registered via `wp_dashboard_setup` hook in `admin/admin.php`. Configuration:
 
 ```php
 $widgets = [

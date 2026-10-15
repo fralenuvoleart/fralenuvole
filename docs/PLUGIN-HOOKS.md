@@ -6,7 +6,7 @@ Critical hook priority contract for Fralenuvole. Violating these priorities caus
 
 ### `plugins_loaded` (Priority 5)
 
-[`fralenuvole.php:43`](fralenuvole.php:43) — `frl_plugins_loaded()`:
+`fralenuvole.php:43` — `frl_plugins_loaded()`:
 1. `frl_load_core_components()` — Cache Manager, Environment Manager, Translator, Rewriter, ThemeKit, webhooks, shortcodes
 2. `frl_load_admin_components()` — if `frl_is_admin()`
 3. `frl_load_public_components()` — if `frl_is_valid_frontend_page_request()` and plugin not disabled
@@ -14,7 +14,7 @@ Critical hook priority contract for Fralenuvole. Violating these priorities caus
 
 ### `init` (Priority 10)
 
-[`fralenuvole.php:134`](fralenuvole.php:134) — `frl_environment_enforce_settings()`: Environment enforcement MUST run first. After this, `pre_option_*` filters are active and all option reads return environment-overridden values.
+`fralenuvole.php:134` — `frl_environment_enforce_settings()`: Environment enforcement MUST run first. After this, `pre_option_*` filters are active and all option reads return environment-overridden values.
 
 **⚠️ Any hook at `init` with priority < 10 reads RAW database options, NOT environment-overridden values.**
 
@@ -22,7 +22,7 @@ Also at priority 10: `frl_shortcodes_init()`.
 
 ### `init` (Priority 12)
 
-[`includes/main/logged-user.php:13`](includes/main/logged-user.php:13) — `frl_process_plugin_actions()`: Processes `?frl_action=...` GET requests from admin bar cache links.
+`includes/main/logged-user.php:13` — `frl_process_plugin_actions()`: Processes `?frl_action=...` GET requests from admin bar cache links.
 
 ### `init` (Priority 15)
 
@@ -30,7 +30,7 @@ Rewriter features register via `Frl_Rewriter_Coordinator`. Features read options
 
 ### `init` (Priority 20)
 
-[`fralenuvole.php:148`](fralenuvole.php:148) — `frl_themekit_init()`: Theme kit initialization.
+`fralenuvole.php:148` — `frl_themekit_init()`: Theme kit initialization.
 
 ### `init` (Priority 100)
 

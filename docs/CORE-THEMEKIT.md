@@ -1,13 +1,13 @@
-# ThemeKit
+# Core - ThemeKit
 
 Theme orchestration layer providing theme-independent body classes, base styles, block pattern management, and font optimization.
 
-**File:** [`core/themekit/themekit.php`](core/themekit/themekit.php)  
-**Config:** [`config/config-themekit.php`](config/config-themekit.php)
+**File:** `core/themekit/themekit.php`  
+**Config:** `config/config-themekit.php`
 
 ## Init
 
-[`frl_themekit_init()`](core/themekit/themekit.php:18) is called at `init:20`. Uses `frl_is_already_running(__FUNCTION__)` guard. Registers hooks based on admin options:
+`frl_themekit_init()` is called at `init:20`. Uses `frl_is_already_running(__FUNCTION__)` guard. Registers hooks based on admin options:
 
 | Option | Hook | Priority |
 |--------|------|----------|
@@ -29,7 +29,7 @@ Theme orchestration layer providing theme-independent body classes, base styles,
 
 ### Base Styles
 
-Enqueues [`assets/css/themekit-styles.css`](assets/css/themekit-styles.css) at priority 10 via `frl_enqueue_scripts()`.
+Enqueues `assets/css/themekit-styles.css` at priority 10 via `frl_enqueue_scripts()`.
 
 ### Font Display Optimization
 
@@ -43,7 +43,7 @@ Forces `font-display: swap` for all fonts uploaded via the WordPress Font Librar
 
 ## Configuration
 
-[`config/config-themekit.php`](config/config-themekit.php):
+`config/config-themekit.php`:
 
 ```php
 FRL_THEMEKIT_STYLE_PRIORITY = ['themekit' => 10, 'modules' => 15];

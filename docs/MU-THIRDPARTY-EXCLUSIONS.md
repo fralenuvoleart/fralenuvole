@@ -1,11 +1,11 @@
-# Thirdparty Exclusions
+# MU - Thirdparty Exclusions
 
 Prevents specified plugins from loading without deactivating them. Uses the MU plugin to filter `active_plugins` before regular plugins load.
 
 **Files:**
-- [`assets/mu/frl-mu-plugin.php`](assets/mu/frl-mu-plugin.php) — MU loader bootstrap
-- [`includes/mu/functions-mu.php`](includes/mu/functions-mu.php) — All exclusion logic
-- [`config/config-mu.php`](config/config-mu.php) — Bot throttle constants
+- `assets/mu/frl-mu-plugin.php` — MU loader bootstrap
+- `includes/mu/functions-mu.php` — All exclusion logic
+- `config/config-mu.php` — Bot throttle constants
 
 ## How It Works
 
@@ -21,7 +21,7 @@ The MU loader runs at `muplugins_loaded` and adds a `pre_option_active_plugins` 
 
 ### Backend Format
 
-`plugin-folder/plugin.php|admin-screen` — the screen after `|` is **required**. Uses [`frl_is_admin_page()`](includes/helpers/functions-access-control.php:138) for matching (filename-based like `post.php` or page slug-based).
+`plugin-folder/plugin.php|admin-screen` — the screen after `|` is **required**. Uses `frl_is_admin_page()` for matching (filename-based like `post.php` or page slug-based).
 
 ## Behavior Matrix
 
@@ -38,10 +38,10 @@ The MU loader runs at `muplugins_loaded` and adds a `pre_option_active_plugins` 
 
 ## Early-Loading Access Check
 
-Capability-based exclusion runs during `muplugins_loaded` (before `plugins_loaded`). [`frl_mu_check_access()`](includes/mu/functions-mu.php:75) handles this:
+Capability-based exclusion runs during `muplugins_loaded` (before `plugins_loaded`). `frl_mu_check_access()` handles this:
 
-1. If `plugins_loaded` has fired → delegates to [`frl_has_access()`](includes/helpers/functions-access-control.php:25)
-2. If early loading → uses [`frl_get_auth_cookie_user_data()`](includes/mu/functions-mu.php:115) to verify the auth cookie via HMAC (replicates `wp_validate_auth_cookie()` algorithm using `LOGGED_IN_KEY`/`LOGGED_IN_SALT`), then queries DB directly
+1. If `plugins_loaded` has fired → delegates to `frl_has_access()`
+2. If early loading → uses `frl_get_auth_cookie_user_data()` to verify the auth cookie via HMAC (replicates `wp_validate_auth_cookie()` algorithm using `LOGGED_IN_KEY`/`LOGGED_IN_SALT`), then queries DB directly
 
 Does NOT check `WP_Session_Tokens` revocation — accepted limitation since this only gates a soft plugin-visibility decision.
 
@@ -50,11 +50,11 @@ Does NOT check `WP_Session_Tokens` revocation — accepted limitation since this
 - `active_plugins` cached via `frl_cache_remember()` in `options` group with `WEEK_IN_SECONDS` TTL
 - Network active plugins have separate cache entry (`mu_plugin_network_active_plugins`)
 - Three levels of static per-request dedup
-- Invalidated on `activated_plugin`/`deactivated_plugin` via [`cache-cleanup.php`](core/cache/cache-cleanup.php)
+- Invalidated on `activated_plugin`/`deactivated_plugin` via `cache-cleanup.php`
 
 ## Bot Throttling
 
-[`frl_maybe_throttle_user_agent()`](includes/mu/functions-mu.php:31) checks User-Agent against [`FRL_MU_THROTTLE_USER_AGENT`](config/config-mu.php:23) patterns. Rate-limited by IP via transients. Configured via:
+`frl_maybe_throttle_user_agent()` checks User-Agent against `FRL_MU_THROTTLE_USER_AGENT` patterns. Rate-limited by IP via transients. Configured via:
 
 ```php
 FRL_MU_THROTTLE_USER_AGENT = [];  // Empty = disabled

@@ -1,9 +1,9 @@
-# Webhooks
+# Core - Webhooks
 
 Generic webhook dispatch infrastructure with sync/async dispatch, deduplication, and retry-with-backoff.
 
-**File:** [`includes/helpers/functions-webhook.php`](includes/helpers/functions-webhook.php)  
-**Config:** [`config/config-base.php`](config/config-base.php:88) (`FRL_WEBHOOK_RETRY`)
+**File:** `includes/helpers/functions-webhook.php`  
+**Config:** `config/config-base.php` (`FRL_WEBHOOK_RETRY`)
 
 ## API
 
@@ -24,7 +24,7 @@ Fire-and-forget via WP-Cron. Schedules a single `frl_webhook_dispatch` cron even
 
 ## Cron Handler
 
-[`frl_webhook_dispatch_handler()`](includes/helpers/functions-webhook.php:82) processes the `frl_webhook_dispatch` action. On failure, retries with backoff up to [`FRL_WEBHOOK_RETRY['max_attempts']`](config/config-base.php:88) (3 attempts, delays: 60s, 300s, 900s).
+`frl_webhook_dispatch_handler()` processes the `frl_webhook_dispatch` action. On failure, retries with backoff up to [`FRL_WEBHOOK_RETRY['max_attempts']`](config/config-base.php:88) (3 attempts, delays: 60s, 300s, 900s).
 
 ## cURL Configuration
 
@@ -48,8 +48,8 @@ Fire-and-forget via WP-Cron. Schedules a single `frl_webhook_dispatch` cron even
 
 ## Module Usage
 
-- **wsform:** [`modules/wsform/webhooks-wsform.php`](modules/wsform/webhooks-wsform.php) — per-webhook `use_cron` toggle, defaults async
-- **call_to_actions:** [`modules/call_to_actions/webhooks-call_to_actions.php`](modules/call_to_actions/webhooks-call_to_actions.php) — per-environment `use_cron` toggle, defaults sync, checks result
+- **wsform:** `modules/wsform/webhooks-wsform.php` — per-webhook `use_cron` toggle, defaults async
+- **call_to_actions:** `modules/call_to_actions/webhooks-call_to_actions.php` — per-environment `use_cron` toggle, defaults sync, checks result
 
 ## Adding a Consumer
 
