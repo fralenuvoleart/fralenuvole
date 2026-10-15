@@ -1,110 +1,296 @@
 # Plugin Permissions
 
-FRL_HAS_ACCESS: Who can access what
-====================
+**File:** [`docs/PLUGIN-PERMISSIONS.md`](docs/PLUGIN-PERMISSIONS.md)  
+**Purpose:** Documents the plugin's access control model — capabilities, nonce verification, admin bar gating, action dispatch, and `FRL_MODE` behavior.  
+**Key files:** [`config/config-base.php`](config/config-base.php:40), [`includes/helpers/functions-access-control.php`](includes/helpers/functions-access-control.php:25), [`includes/mu/functions-mu.php`](includes/mu/functions-mu.php:75), [`admin/helpers/functions-admin-action-handlers.php`](admin/helpers/functions-admin-action-handlers.php:816)
 
-SUPERADMIN (User ID 1 only)
----------------------------
-- All Plugin Features
-- FRL_NAME links in adminbar
+---
 
-PLUGIN ADMIN (delete_plugins capability)
------------------------------------------
-Who: User ID 1, Administrators, or any role with delete_plugins
-- Plugin settings page
-- Debug log
+## Constants
+
+| Constant | Value | Defined in |
+|----------|-------|------------|
+| `FRL_PLUGIN_SUPERADMIN_ID` | `1` | [`config/config-base.php:40`](config/config-base.php:40) |
+| `FRL_PLUGIN_ACCESS` | `'delete_plugins'` | [`config/config-base.php:41`](config/config-base.php:41) |
+| `FRL_PUBLIC_ACTIONS` | `['clear_website_transients']` | [`config/config-base.php:99`](config/config-base.php:99) |
+
+---
+
+## Access Tiers
+
+### Superadmin (User ID 1)
+
+User ID 1 bypasses **all** capability checks. [`frl_has_access()`](includes/helpers/functions-access-control.php:39) returns `true` immediately for this user regardless of the `$capability` argument.
+
+- Full access to every plugin feature
+- Admin bar: sees the plugin menu, debug log count, cache links, and CPT quick-links
+- The `'superadmin'` pseudo-capability is the **only** check that is exclusive to User ID 1
+
+### Plugin Admin (`delete_plugins` capability)
+
+Any WordPress role that holds the `delete_plugins` capability. By default this means **Administrators** (the built-in `administrator` role includes `delete_plugins`).
+
+- Plugin settings page (all tabs)
+- Debug log viewing/clearing/download
 - Cache management (most buttons)
-- Environment switcher (see current server type)
-- Developer tab
+- Environment switcher
+- Import/export
+- Admin bar: plugin menu, debug log, cache links (except Light/All — superadmin only)
 
-NOT LOGGED IN
--------------
-- Nothing
+### Logged-in Users (`read` capability)
 
-CODE EXAMPLES
--------------
+Actions listed in [`FRL_PUBLIC_ACTIONS`](config/config-base.php:99) are accessible to any logged-in user with the `read` capability, **without** a nonce check. Currently only `clear_website_transients`.
 
-// User ID 1 only (fralenuvole.art links, critical features)
-if (frl_has_access('superadmin')) {
-    // Show restricted links
-}
+### Not Logged In
 
-// Plugin admin - default (User ID 1 + Administrators)
-if (frl_has_access()) {
-    // Most admin features
-}
+No access to any plugin features.
 
-// Administrators only (settings pages, environment switcher)
-if (frl_has_access()) {
-    // Admin-level features
-}
+---
 
-SPECIAL CASES
--------------
-FRL_MODE = disable: Disables the plugin entirely.
-FRL_MODE =  core:    Mimics 'disable_plugin' option behavior.
-FRL_MODE = nocache: Bypasses the plugin's cache system.
-FRL_MODE = migrate: Applies Environment Manager Config to current environment.
-URL: ?frlmode=migrate (temporary for this request)
-wp-config.php: define('FRL_MODE', 'migrate') (persistent)
+## Core Function: `frl_has_access()`
 
-NOTE ON PLUGIN ADMIN ACCESS
--------------
-FRL_PLUGIN_ACCESS = 'delete_plugins'
-'administrator' role = Has full access
-'admin' role (custom) = Has not delete_plugins access
-Adding delete_plugins to a custom role makes those users equivalent to standard Administrators for the plugin
+**File:** [`includes/helpers/functions-access-control.php:25`](includes/helpers/functions-access-control.php:25)
 
-ADMIN BAR ACCESS
---------------
-Superadmin (User ID 1) + Plugin admins (Administrators FRL_PLUGIN_ACCESS) see plugin link and Environment Button in adminbar.
-Superadmin (User ID 1) additionally sees FRL_NAME links.
+```php
+function frl_has_access( $capability = FRL_PLUGIN_ACCESS ): bool
+```
 
-CACHE & RESET BUTTONS
----------------------
-How it works: frl_render_action_button() passes $cap to frl_has_access()
-- Default cap: FRL_PLUGIN_ACCESS (Administrators)
-- Empty string '': falls back to FRL_PLUGIN_ACCESS (Plugin Admin)
+**Decision flow:**
 
-Plugin Admin only (delete_plugins):
-- Clear Caches (All)
-- Clear Caches (Hard)
-- Reset Plugin
-- Sync wp-config.php
+1. `FRL_MODE === 'migrate'` → **true** (break-glass bypass)
+2. `current_user_can()` not available → **false** (too early in WP load)
+3. `$capability` is falsy (empty string, `null`, `0`) → falls back to `FRL_PLUGIN_ACCESS`
+4. User ID === `FRL_PLUGIN_SUPERADMIN_ID` (1) → **true**
+5. `$capability === 'superadmin'` → **true** only for User ID 1
+6. Otherwise → `$user->has_cap($capability)`, cached **300 seconds** in the `admin` cache group
 
-Administrators (manage_options):
-- Clear CSS/JS Caches
-- Clear Shortcodes Caches
-- Clear Caches (Light)
-- Clear Plugin Transients
-- Delete Orphan Options
-- Reset Environment
-- Reset Ignored Plugins
-- Clear Website Transients
-- Flush Rewrite Rules
+**Usage patterns:**
 
-KNOWN LIMITATION (UNCONFIRMED, NOT PATCHED)
-------------------------------------------------
-frl_is_admin() (includes/helpers/functions-access-control.php) requires BOTH
-`WP_ADMIN` (WordPress core constant, set by which wp-admin/*.php file is
-executing) AND `str_contains($_SERVER['REQUEST_URI'], '/wp-admin/')` before
-classifying a request as an admin page load. `WP_ADMIN` alone is already the
-same signal WordPress core's own is_admin() trusts — it does not depend on
-the visible URL at all. ANDing it with a URL substring check can only narrow
-that signal, never widen it, so this could theoretically produce a false
-negative (a real admin-area request misclassified as frontend) on hosting
-setups where the executing file is genuinely in wp-admin/ but the request
-URI the plugin sees doesn't literally contain "/wp-admin/" (e.g. certain
-reverse-proxy/rewrite configurations). Investigated in response to a report
-of possible interaction with the WPS Hide Login plugin — confirmed that WPS
-Hide Login does NOT rename the dashboard URL for an authenticated session
-(only unauthenticated wp-login.php/wp-admin requests are intercepted), so
-that specific plugin is not expected to trigger this path.
+```php
+frl_has_access()                  // Default: delete_plugins
+frl_has_access( '' )              // Same as above (falsy → falls back)
+frl_has_access( 'superadmin' )    // User ID 1 only
+frl_has_access( 'manage_options' ) // Specific capability
+frl_has_access( 'publish_pages' )  // CPT-specific (admin bar links)
+```
 
-Not patched: frl_is_admin() gates 9+ independent call sites (frontend
-component/script loading via frl_is_valid_frontend_page_request(), MU-plugin
-plugin-exclusion frontend/backend detection, schema generation, cache preload group selection, and
-more) with no automated test suite to catch a regression across all of them.
-No concrete reproduction of this edge case has been observed. Left as-is
-until an actual failure is reproduced — do not speculatively change this
-logic without a confirmed repro case.
+---
+
+## Early-Loading Access: `frl_mu_check_access()`
+
+**File:** [`includes/mu/functions-mu.php:75`](includes/mu/functions-mu.php:75)
+
+Used by the MU plugin's capability-based exclusion system **before** `plugins_loaded` fires, when WordPress user functions aren't available yet.
+
+```php
+function frl_mu_check_access( string $capability ): bool
+```
+
+**Decision flow:**
+
+1. `plugins_loaded` has fired → delegates to [`frl_has_access()`](includes/helpers/functions-access-control.php:25)
+2. Reads auth cookie via [`frl_get_auth_cookie_user_data()`](includes/mu/functions-mu.php:115) (HMAC-verified, 300s cache)
+3. No valid cookie → **false**
+4. `$capability === 'superadmin'` → checks `user_data['id'] === 1`
+5. User ID === 1 → **true**
+6. Checks `user_data['caps'][$capability]` directly from DB
+7. Falls back: if user has `administrator` role → **true**
+
+**Note:** This function intentionally does **not** check `WP_Session_Tokens` revocation — it's used only for the plugin-exclusion decision, never for real authentication.
+
+---
+
+## Context Detection Functions
+
+All in [`includes/helpers/functions-access-control.php`](includes/helpers/functions-access-control.php):
+
+| Function | Returns | Purpose |
+|----------|---------|---------|
+| [`frl_is_admin()`](includes/helpers/functions-access-control.php:72) | `bool` | Enhanced `is_admin()` — covers `WP_ADMIN`, `admin-post.php`, admin-originated AJAX, login/register pages |
+| [`frl_is_admin_page($page, $param)`](includes/helpers/functions-access-control.php:138) | `bool` | Checks if current request is a specific admin page (by slug or filename) |
+| [`frl_is_plugin_context()`](includes/helpers/functions-access-control.php:221) | `bool` | True when on plugin settings page (`?page=fralenuvole`) or processing a `frl_`-prefixed action |
+| [`frl_is_administrator_action()`](includes/helpers/functions-access-control.php:355) | `bool` | True for `admin-post.php` requests, `?frl_action=...` with access, or AJAX with `?action=...` and access |
+| [`frl_is_logged_in()`](includes/helpers/functions-access-control.php:183) | `bool` | Cached current-user check |
+| [`frl_is_valid_page_request()`](includes/helpers/functions-access-control.php:282) | `bool` | False for CLI, REST, CRON, invalid hosts, heartbeat, log manager, non-HTML |
+| [`frl_is_valid_frontend_page_request()`](includes/helpers/functions-access-control.php:338) | `bool` | `!frl_is_admin() && frl_is_valid_page_request()` |
+
+---
+
+## Nonce System
+
+### Creating Nonces
+
+```php
+// Prefixed nonce (action becomes "frl_my_action")
+frl_create_nonce( 'my_action' );              // → wp_create_nonce('frl_my_action')
+
+// Prefixed nonce field (hidden input)
+frl_nonce_field( 'save_options', '_wpnonce' ); // → wp_nonce_field('frl_save_options', '_wpnonce')
+```
+
+Both defined in [`includes/helpers/functions.php:864`](includes/helpers/functions.php:864).
+
+### Verifying Nonces
+
+All verification flows through [`_frl_verify_nonce_core()`](admin/helpers/functions-admin-action-handlers.php:909), which:
+1. Picks the correct superglobal (`$_GET`, `$_POST`, or `$_REQUEST`)
+2. Checks the nonce field exists
+3. Calls `wp_verify_nonce()`
+4. Optionally checks capability via `frl_has_access()`
+
+**Public wrappers:**
+
+| Function | File:Line | Use Case |
+|----------|-----------|----------|
+| [`frl_verify_simple_nonce()`](admin/helpers/functions-admin-action-handlers.php:966) | `:966` | Static action name, auto-prefixed. Default cap: `FRL_PLUGIN_ACCESS` |
+| [`frl_verify_dynamic_nonce()`](admin/helpers/functions-admin-action-handlers.php:992) | `:992` | Pattern-based action with `{placeholder}` replacement |
+| [`frl_verify_plugin_action_nonce()`](admin/helpers/functions-admin-action-handlers.php:816) | `:816` | Plugin action dispatch — supports `FRL_PUBLIC_ACTIONS` bypass |
+| [`frl_verify_admin_action_nonce()`](admin/helpers/functions-admin-action-handlers.php:853) | `:853` | Settings form save — no capability check, custom redirect on failure |
+
+### Public Actions (Nonce Bypass)
+
+Actions in [`FRL_PUBLIC_ACTIONS`](config/config-base.php:99) skip nonce verification when the user is logged in. The capability is downgraded to `'read'`. This exists for cache-warming compatibility where nonces would expire.
+
+---
+
+## Action Button Rendering
+
+**File:** [`admin/helpers/functions-admin-ui.php:59`](admin/helpers/functions-admin-ui.php:59)
+
+```php
+frl_render_action_button(
+    $action,        // Action name (e.g., 'clear_cache_all')
+    $class_name,    // CSS classes
+    $label,         // Button text
+    $description,   // Tooltip
+    $url,           // Target URL (default: plugin admin page)
+    $cap            // Required capability (default: FRL_PLUGIN_ACCESS)
+): string
+```
+
+**Capability parameter behavior:**
+
+| `$cap` value | Effect |
+|-------------|--------|
+| `FRL_PLUGIN_ACCESS` (default) | Requires `delete_plugins` |
+| `''` (empty string) | Falls back to `FRL_PLUGIN_ACCESS` |
+| `'skip_nonce'` | Renders for any logged-in user, **no nonce** added to URL |
+| `'manage_options'` | Requires that specific capability |
+| `'superadmin'` | User ID 1 only |
+
+Buttons with `button-primary` class get a JavaScript `confirm()` dialog.
+
+---
+
+## Admin Bar
+
+**File:** [`includes/main/logged-user.php:45`](includes/main/logged-user.php:45)
+
+The admin bar menu is gated by **both**:
+- [`frl_has_access()`](includes/helpers/functions-access-control.php:25) (plugin admin or better)
+- `custom_ab_menu` option enabled
+
+### Menu Structure
+
+**Primary menu** (always visible when gated):
+- Plugin name → links to plugin settings page
+- Debug Log entry (with count bubble if logs exist)
+- PageSpeed link (per-page, never cached)
+- Schema Validator link (per-page, never cached)
+
+**Cache action links** (capability-gated):
+
+| Action | Capability Required |
+|--------|-------------------|
+| Clear CSS/JS Caches | `''` → `delete_plugins` |
+| Clear Shortcodes Caches | `''` → `delete_plugins` |
+| Clear Caches (Light) | `'superadmin'` |
+| Clear Caches (All) | `'superadmin'` |
+| Warm Server Cache | `''` → `delete_plugins` |
+
+**CPT quick-links** (under "New" menu):
+- All Pages → `publish_pages`
+- All Posts → `edit_posts`
+- All Media → `upload_files`
+
+**Node removals:** When `ab_remove_links` is enabled, non-plugin-admin users get additional nodes removed (configured via `ab_remove_links_handles_user` option).
+
+---
+
+## Action Dispatch
+
+### GET Actions (`?frl_action=...`)
+
+**File:** [`includes/helpers/functions-action-handlers.php:24`](includes/helpers/functions-action-handlers.php:24)
+
+Hooked at `init:12`. Processes actions from admin bar cache links and other GET-based triggers.
+
+**Access check:**
+```php
+frl_has_access() || (in_array($action, FRL_PUBLIC_ACTIONS) && is_user_logged_in())
+```
+
+Registered actions: `clear_dashboard`, `clear_cache_light`, `clear_cache_all`, `clear_cache_hard`, `clear_plugin_transients`, `clear_website_transients`, `clear_scripts_tags`, `clear_shortcodes`, `reset_environment`, `reset_environment_ignored`, `reset_debug_config`, `reset_plugin`, `delete_mu_plugins`, `delete_orphan_options`, `sync_mu_plugins`, `flush_rewrite_rules`, `trigger_cache_warmer`, plus dynamic `clear_cache_{group}`.
+
+### Admin-Post Actions (`frl_post_*`)
+
+**File:** [`admin/helpers/functions-admin-action-handlers.php:24`](admin/helpers/functions-admin-action-handlers.php:24)
+
+Auto-discovered: any function named `frl_post_*` is registered as an `admin_post_` handler. Functions with `frl_post_ajax_*` prefix are also registered as `wp_ajax_` handlers.
+
+Gated by: `frl_is_admin() && frl_is_administrator_action()`.
+
+Each handler is responsible for its own nonce + capability verification (typically via [`frl_verify_plugin_action_nonce()`](admin/helpers/functions-admin-action-handlers.php:816) or direct [`frl_has_access()`](includes/helpers/functions-access-control.php:25) calls).
+
+---
+
+## `FRL_MODE` Behavior
+
+Defined via `?frlmode=<mode>` URL parameter or `define('FRL_MODE', '<mode>')` in `wp-config.php`. URL parameter takes precedence.
+
+| Mode | Effect on Access Control |
+|------|------------------------|
+| `disable` | Plugin stops loading entirely (early return in [`fralenuvole.php`](fralenuvole.php)) |
+| `core` | Mimics `disable_plugin` option — most features disabled |
+| `nocache` | Bypasses internal cache system; access control unchanged |
+| `migrate` | [`frl_has_access()`](includes/helpers/functions-access-control.php:27) returns **true** for everyone; environment enforcement runs for all users |
+
+---
+
+## Extension Points
+
+### Filter: `frl_is_section_restricted`
+
+**File:** [`admin/components/class-settings-fields.php:300`](admin/components/class-settings-fields.php:300)
+
+```php
+apply_filters( 'frl_is_section_restricted', false, $section_id ): bool
+```
+
+Return `true` to hide a settings section from the current user. Used to gate sensitive configuration sections behind additional capability checks.
+
+### Filter: `frl_admin_dashboard_links`
+
+**File:** [`admin/widgets/widget-administrator.php:16`](admin/widgets/widget-administrator.php:16)
+
+```php
+apply_filters( 'frl_admin_dashboard_links', $links ): array
+```
+
+Add or modify the administrator widget's quick-link sections.
+
+### Action: `frl_autodiscover_admin_actions`
+
+**File:** [`admin/helpers/functions-admin-action-handlers.php:74`](admin/helpers/functions-admin-action-handlers.php:74)
+
+Fires after auto-discovery registers all `frl_post_*` handlers. Use to register additional custom handlers.
+
+---
+
+## Security Notes
+
+- All capability checks use [`frl_has_access()`](includes/helpers/functions-access-control.php:25), which caches results for 300 seconds in the `admin` cache group
+- The `'superadmin'` pseudo-capability is the only check exclusive to User ID 1 — it is **not** a real WordPress capability
+- [`frl_mu_check_access()`](includes/mu/functions-mu.php:75) does **not** check session token revocation — it exists solely for the plugin-exclusion decision during early WordPress loading
+- [`frl_is_admin()`](includes/helpers/functions-access-control.php:72) requires **both** `WP_ADMIN` constant AND `/wp-admin/` in the request URI. This is intentional and load-bearing across 9+ call sites. Do not change without a confirmed reproduction case
+- Nonce verification always happens **before** the protected operation, and capability checks are embedded in the nonce verification flow via [`_frl_verify_nonce_core()`](admin/helpers/functions-admin-action-handlers.php:909)
