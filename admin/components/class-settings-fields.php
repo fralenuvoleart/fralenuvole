@@ -788,13 +788,18 @@ class Frl_Settings_Fields {
 			$updated_count = frl_batch_update_options( $updates );
 
 			if ( $updated_count > 0 ) {
+				$updated = true;
+				// Fire an action with the updated options BEFORE adding the admin notice,
+				// so that any cache-clearing operations triggered by hooks (e.g.,
+				// frl_handle_settings_update → frl_clear_dashboard) complete first.
+				// This prevents the notice transient from being wiped by a subsequent
+				// cache group flush on the first save.
+				do_action( 'frl_settings_updated', $updates );
+
 				frl_add_admin_notice(
 					sprintf( __( '%d settings updated.', FRL_PREFIX ), $updated_count ),
 					'success'
 				);
-				$updated = true;
-				// Fire an action with the updated options
-				do_action( 'frl_settings_updated', $updates );
 			}
 		}
 
