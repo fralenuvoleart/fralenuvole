@@ -223,7 +223,7 @@ function frl_render_admin_actions_buttons() {
 		'Clear all Website Transients from the database'
 	);
 
-	return frl_ui_render_widget( 'admin-action-buttons', $output, 'Reset Actions', 'widget-admin-actions' );
+	return frl_ui_render_widget( 'admin-action-buttons', $output, 'Plugin Actions', 'widget-admin-actions' );
 }
 
 /**
