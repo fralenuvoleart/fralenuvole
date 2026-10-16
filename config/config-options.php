@@ -606,10 +606,9 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
 			'footer_html'          => array(
-				'label'      => 'Footer HTML',
-				'type'       => 'html',
-				'default'    => '',
-				'restricted' => true,
+				'label'   => 'Footer HTML',
+				'type'    => 'html',
+				'default' => '',
 			),
 			'footer_html_php'      => array(
 				'label'             => 'Allow PHP in footer HTML',
@@ -635,6 +634,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
+				'restricted'        => true,
 			),
 			'themekit_base_css'                 => array(
 				'label'             => 'Add Plugin themekit-styles.css',
@@ -642,6 +642,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
+				'restricted'        => true,
 			),
 			'themekit_font_display_swap'        => array(
 				'label'             => 'Font Display Swap',
