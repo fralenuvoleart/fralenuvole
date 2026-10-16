@@ -9,7 +9,6 @@ Documents the plugin's access control model — capabilities, nonce verification
 |----------|-------|------------|
 | `FRL_PLUGIN_SUPERADMIN_ID` | `1` | `config/config-base.php:40` |
 | `FRL_PLUGIN_ACCESS` | `'delete_plugins'` | `config/config-base.php:41` |
-| `FRL_PUBLIC_ACTIONS` | `['clear_website_transients']` | `config/config-base.php:99` |
 | `FRL_MODE` | `null` / `'disable'` / `'core'` / `'nocache'` / `'migrate'` | URL param `?frlmode=` or `wp-config.php` constant |
 
 
@@ -46,10 +45,6 @@ Any WordPress role that holds the `delete_plugins` capability. By default this m
 - Environment switcher
 - Import/export
 - Admin bar: plugin menu, debug log, cache links (except Light/All — superadmin only)
-
-### Logged-in Users (`read` capability)
-
-Actions listed in `FRL_PUBLIC_ACTIONS` are accessible to any logged-in user with the `read` capability, **without** a nonce check. Currently only `clear_website_transients`.
 
 ### Not Logged In
 
@@ -150,13 +145,8 @@ All verification flows through `_frl_verify_nonce_core()`, which:
 |----------|-----------|----------|
 | `frl_verify_simple_nonce()` | `:966` | Static action name, auto-prefixed. Default cap: `FRL_PLUGIN_ACCESS` |
 | `frl_verify_dynamic_nonce()` | `:992` | Pattern-based action with `{placeholder}` replacement |
-| `frl_verify_plugin_action_nonce()` | `:816` | Plugin action dispatch — supports `FRL_PUBLIC_ACTIONS` bypass |
+| `frl_verify_plugin_action_nonce()` | `:816` | Plugin action dispatch — requires `FRL_PLUGIN_ACCESS` |
 | `frl_verify_admin_action_nonce()` | `:853` | Settings form save — no capability check, custom redirect on failure |
-
-### Public Actions (Nonce Bypass)
-
-Actions in `FRL_PUBLIC_ACTIONS` skip nonce verification when the user is logged in. The capability is downgraded to `'read'`. This exists for cache-warming compatibility where nonces would expire.
-
 
 ## Action Button Rendering
 
@@ -230,7 +220,7 @@ Hooked at `init:12`. Processes actions from admin bar cache links and other GET-
 
 **Access check:**
 ```php
-frl_has_access() || (in_array($action, FRL_PUBLIC_ACTIONS) && is_user_logged_in())
+frl_has_access()
 ```
 
 Registered actions: `clear_dashboard`, `clear_cache_light`, `clear_cache_all`, `clear_cache_hard`, `clear_plugin_transients`, `clear_website_transients`, `clear_scripts_tags`, `clear_shortcodes`, `reset_environment`, `reset_environment_ignored`, `reset_debug_config`, `reset_plugin`, `delete_mu_plugins`, `delete_orphan_options`, `sync_mu_plugins`, `flush_rewrite_rules`, `trigger_cache_warmer`, plus dynamic `clear_cache_{group}`.

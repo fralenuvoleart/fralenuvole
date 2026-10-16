@@ -160,7 +160,7 @@ function frl_render_admin_actions_buttons() {
 		'Clear Caches (Hard)',
 		'Clears all Plugin Caches, Plugin Transients, and flushes rewrite rules.',
 		'',
-		''
+		'superadmin',
 	);
 
 	$output .= frl_render_action_button(
@@ -169,7 +169,7 @@ function frl_render_admin_actions_buttons() {
 		'Reset Plugin',
 		'WARNING: Resets all plugin settings to their default values.',
 		'',
-		''
+		'superadmin',
 	);
 
 	$output .= frl_render_action_button(

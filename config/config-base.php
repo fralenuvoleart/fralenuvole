@@ -95,11 +95,6 @@ const FRL_LOG_COUNT_IGNORE = array(
 	'Automatic updates',
 );
 
-// List of actions that can be executed without a nonce check if the user is logged in
-const FRL_PUBLIC_ACTIONS = array(
-	'clear_website_transients',
-);
-
 /**
  * REST API endpoints disabled for unauthenticated users.
  *

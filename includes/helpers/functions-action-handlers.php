@@ -31,10 +31,7 @@ function frl_process_plugin_actions() {
 	$action            = isset( $_GET[ $action_param_name ] ) ? sanitize_key( $_GET[ $action_param_name ] ) : '';
 
 	// Check capability and if action parameter exists
-	$cap_check = ! empty( $action ) && (
-		frl_has_access() ||
-		( in_array( $action, FRL_PUBLIC_ACTIONS, true ) && is_user_logged_in() )
-	);
+	$cap_check = ! empty( $action ) && frl_has_access();
 
 	if ( ! $cap_check ) {
 		return;

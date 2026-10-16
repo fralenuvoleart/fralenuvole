@@ -1,5 +1,15 @@
 # Active Context
 
+## Latest: Removed FRL_PUBLIC_ACTIONS feature (2026-10-16)
+
+Removed the `FRL_PUBLIC_ACTIONS` constant and all its usages. Previously `clear_website_transients` was executable by any logged-in user (`read`) without a nonce check; now all GET actions uniformly require `frl_has_access()` (`delete_plugins`).
+
+**Files changed:**
+- [`config/config-base.php`](config/config-base.php) — removed `FRL_PUBLIC_ACTIONS` constant.
+- [`includes/helpers/functions-action-handlers.php`](includes/helpers/functions-action-handlers.php:33) — central dispatch gate simplified to `frl_has_access()` only.
+- [`admin/helpers/functions-admin-action-handlers.php`](admin/helpers/functions-admin-action-handlers.php:807) — `frl_verify_plugin_action_nonce()` no longer downgrades to `read`/skips nonce; always `FRL_PLUGIN_ACCESS`.
+- [`docs/PLUGIN-PERMISSIONS.md`](docs/PLUGIN-PERMISSIONS.md) — removed public-actions documentation.
+
 ## Latest Fix: CPT Base Translation restricted field not disabled (2026-10-16)
 
 **Bug:** The "CPT Base Translation" field (`translate_cpt_slugs`, `custom` type) showed the "restricted" message for non-superadmins, but its per-CPT `<textarea>` elements were not disabled — and their values were still saved.

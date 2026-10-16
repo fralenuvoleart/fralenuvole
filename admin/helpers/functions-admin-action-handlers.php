@@ -807,36 +807,15 @@ function frl_handle_action_delete_orphan_options() {
 /**
  * Verify the nonce for a specific plugin action.
  *
- * This function checks if the action is a public action (requiring only 'read' capability)
- * or a restricted admin action (requiring FRL_PLUGIN_ACCESS).
- *
  * @param string $action_name The action name to verify the nonce for.
- * @return bool True if the nonce is valid or verification is skipped for public actions, false otherwise.
+ * @return bool True if the nonce is valid, false otherwise.
  */
 function frl_verify_plugin_action_nonce( $action_name ) {
-	// Check if this action is registered as a low-security/public action
-	// Ideally this registry would be shared, but for now we define the logic here:
-	// If the action is known to be allowed for 'read' users in the dispatcher, we can skip strict nonce checks.
-	// However, frl_verify_simple_nonce defaults to FRL_PLUGIN_ACCESS.
-
-	$capability              = FRL_PLUGIN_ACCESS;
-	$skip_nonce_verification = false;
-
-	// Modular check: If action is meant for logged-in users (emergency access), adjust cap and skip nonce
-	if ( in_array( $action_name, FRL_PUBLIC_ACTIONS, true ) && is_user_logged_in() ) {
-		$capability              = 'read';
-		$skip_nonce_verification = true;
-	}
-
-	if ( $skip_nonce_verification ) {
-		return true;
-	}
-
 	return frl_verify_simple_nonce(
 		$action_name,                               // Will be converted to (frl_prefix($action_name) = frl_action_name)
 		frl_prefix( $action_name ) . '_nonce',       // Field name matches frl_render_action_button format
 		'GET',                                      // Data source
-		$capability,                                // Capability check
+		FRL_PLUGIN_ACCESS,                          // Capability check
 		false                                       // Return bool, don't die
 	);
 }
