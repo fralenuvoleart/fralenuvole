@@ -389,7 +389,7 @@ class Frl_Settings_Fields {
 
 		// Common attributes for non-formatting fields
 		$is_restricted     = ! empty( $field['restricted'] );
-		$is_admin          = frl_has_access();
+		$is_admin          = frl_has_access( 'superadmin' );
 		$disabled_attr     = ( $is_restricted && ! $is_admin ) ? 'disabled="disabled"' : '';
 		$restricted_class  = $field['type'];
 		$restricted_class .= ( $is_restricted && ! $is_admin ) ? FRL_PREFIX . '-restricted-field' : '';
@@ -612,8 +612,8 @@ class Frl_Settings_Fields {
 	 * @return array Associative array of [option_key => sanitized_value]
 	 */
 	private static function _get_submitted_values(): array {
-		$all_fields             = frl_get_all_plugin_options_settings( null );
-		$submitted_values       = array();
+		$all_fields       = frl_get_all_plugin_options_settings( null );
+		$submitted_values = array();
 		// wp_unslash() before sanitizing: WordPress adds a level of backslash-escaping to
 		// every superglobal on every request (wp_magic_quotes()) — none of sanitize_text_field()/
 		// sanitize_email()/wp_kses_post()/sanitize_textarea_field() (nor the 'html'/'custom'
@@ -644,7 +644,7 @@ class Frl_Settings_Fields {
 			// Skip restricted fields if current user doesn't have access
 			if (
 				in_array( $option_key, $restricted_fields_keys, true ) ||
-				( isset( $field['restricted'] ) && $field['restricted'] && ! frl_has_access() )
+				( isset( $field['restricted'] ) && $field['restricted'] && ! frl_has_access( 'superadmin' ) )
 			) {
 				continue;
 			}
