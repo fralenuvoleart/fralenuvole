@@ -554,6 +554,7 @@ function frl_load_runtime_cpt_options_fields() {
 					'type'        => $field_type,
 					'autoload'    => $autoload,
 					'section'     => 'runtime',
+					'restricted'  => true,
 					'label'       => null,  // No UI metadata needed
 					'description' => null,
 				);

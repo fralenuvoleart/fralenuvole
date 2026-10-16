@@ -168,7 +168,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'restricted'        => true,
 			),
 			'section_title_schema_toggles'       => array(
 				'label'       => 'Schema Type Toggles',
@@ -580,16 +579,14 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'textlist',
 				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'restricted'        => true,
 			),
 			'header_html'          => array(
-				'label'      => 'Header HTML',
-				'type'       => 'html',
-				'default'    => '',
-				'restricted' => true,
+				'label'   => 'Header HTML',
+				'type'    => 'html',
+				'default' => '',
 			),
 			'header_html_php'      => array(
-				'label'             => 'Allow PHP in header',
+				'label'             => 'Allow PHP in header HTML',
 				'description'       => 'Allow PHP code in the header HTML',
 				'type'              => 'checkbox',
 				'default'           => 0,
@@ -607,7 +604,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'textlist',
 				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'restricted'        => true,
 			),
 			'footer_html'          => array(
 				'label'      => 'Footer HTML',
@@ -616,7 +612,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'restricted' => true,
 			),
 			'footer_html_php'      => array(
-				'label'             => 'Allow PHP in footer',
+				'label'             => 'Allow PHP in footer HTML',
 				'description'       => 'Allow PHP code in the footer HTML',
 				'type'              => 'checkbox',
 				'default'           => 0,
@@ -1045,14 +1041,13 @@ const FRL_DEFAULT_FIELDS = array(
 				'description' => 'Enable WordPress debug mode',
 				'type'        => 'checkbox',
 				'default'     => 1,
-				'restricted'  => true,
 			),
 			'debug_log'                     => array(
 				'label'       => 'WP_DEBUG_LOG',
 				'description' => 'Log errors to wp-content/debug.log',
 				'type'        => 'checkbox',
 				'default'     => 1,
-				'restricted'  => true,
+
 				'autoload'    => 'no',
 			),
 			'debug_display'                 => array(
@@ -1081,7 +1076,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'description' => 'Log notices in the debug.log file',
 				'type'        => 'checkbox',
 				'default'     => 1,
-				'restricted'  => true,
 				'autoload'    => 'no',
 			),
 			'error_reporting_warning'       => array(
@@ -1089,7 +1083,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'description' => 'Log warnings in the debug.log file',
 				'type'        => 'checkbox',
 				'default'     => 1,
-				'restricted'  => true,
 				'autoload'    => 'no',
 			),
 			'error_reporting_deprecated'    => array(
@@ -1097,7 +1090,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'description' => 'Log deprecated messages in the debug.log file',
 				'type'        => 'checkbox',
 				'default'     => 1,
-				'restricted'  => true,
 				'autoload'    => 'no',
 			),
 			'error_reporting_plugin'        => array(
@@ -1105,7 +1097,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'description' => 'Log only messages from this plugin in the debug.log file',
 				'type'        => 'checkbox',
 				'default'     => 1,
-				'restricted'  => true,
 				'autoload'    => 'no',
 			),
 			'error_reporting_suppressed'    => array(
@@ -1114,7 +1105,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'textlist',
 				'default'           => '_load_textdomain_just_in_time',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'restricted'        => true,
 				'autoload'          => 'no',
 			),
 		),
@@ -1205,6 +1195,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'label'       => 'Disable Translator',
 				'description' => 'Disable dynamic translation features for post, options, users, terms metadata.',
 				'default'     => '0',
+				'restricted'  => true,
 			),
 			'disable_rewriter'                  => array(
 				'type'        => 'checkbox',

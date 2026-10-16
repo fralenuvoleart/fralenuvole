@@ -312,7 +312,7 @@ function frl_render_copyable_list_ui( $id, $description, $items ) {
  *
  * @return string The HTML for the checkbox fieldset.
  */
-function frl_render_rewrite_multilingual_cpts() {
+function frl_render_rewrite_multilingual_cpts( $disabled_attr = '' ) {
 	$configurable_cpts = defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) ? FRL_REWRITER_MULTILINGUAL_CPT : array();
 	$configurable_cpts = array_filter( $configurable_cpts, 'post_type_exists' );
 
@@ -336,10 +336,11 @@ function frl_render_rewrite_multilingual_cpts() {
 		$output .= '<div style="margin-bottom:1em">';
 		$output .= sprintf( '<label for="%s"><strong>%s</strong></label><br>', $field_id, esc_html( $cpt_name ) );
 		$output .= sprintf(
-			'<textarea id="%s" name="%s" rows="3" cols="50" class="textlist" placeholder="%s">%s</textarea>',
+			'<textarea id="%s" name="%s" rows="3" cols="50" class="textlist" placeholder="%s" %s>%s</textarea>',
 			$field_id,
 			$field_name,
 			'en|' . $cpt_slug,
+			$disabled_attr,
 			esc_textarea( $value )
 		);
 		$output .= '</div>';

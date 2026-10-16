@@ -396,7 +396,7 @@ class Frl_Settings_Fields {
 
 		// Handle 'custom' type separately as it gets its value from a callback, not an option.
 		if ( $field['type'] === 'custom' && isset( $field['callback'] ) && is_callable( $field['callback'] ) ) {
-			$value = call_user_func( $field['callback'] );
+			$value = call_user_func( $field['callback'], $disabled_attr );
 			echo '<div class="frl-custom-field ' . esc_attr( $restricted_class ) . '">' . $value . '</div>';
 
 			$description = $field['description'] ?? '';

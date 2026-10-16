@@ -1,5 +1,18 @@
 # Active Context
 
+## Latest Fix: CPT Base Translation restricted field not disabled (2026-10-16)
+
+**Bug:** The "CPT Base Translation" field (`translate_cpt_slugs`, `custom` type) showed the "restricted" message for non-superadmins, but its per-CPT `<textarea>` elements were not disabled — and their values were still saved.
+
+**Root cause:** `frl_field_callback()` computes `$disabled_attr` but only passes it to `frl_ui_render_field()` for standard fields. The `custom` branch calls the callback with no arguments, and `frl_render_rewrite_multilingual_cpts()` rendered each textarea without a `disabled` attribute. Additionally, the per-CPT runtime options (`translate_cpt_slugs_{cpt_slug}`) were built without a `restricted` flag, so the save guard in `_get_submitted_values()` did not skip them.
+
+**Fix:**
+- [`admin/components/class-settings-fields.php`](admin/components/class-settings-fields.php:399) — pass `$disabled_attr` into the custom callback.
+- [`admin/helpers/functions-admin-ui.php`](admin/helpers/functions-admin-ui.php:315) — `frl_render_rewrite_multilingual_cpts( $disabled_attr = '' )` now emits `disabled="disabled"` on each textarea.
+- [`includes/helpers/functions-options.php`](includes/helpers/functions-options.php:557) — runtime per-CPT fields now carry `'restricted' => true`, so the save guard blocks them for non-superadmins.
+
+**Deploy note:** field definitions are cached in the `adminui` group (`runtime_translate_cpt_slugs`); flush plugin caches once after deploy.
+
 ## Latest: Docs Viewer — Admin interface documentation browser (2026-10-14)
 
 New Documentation tab on the plugin settings page: 15 `docs/*.md` files are now browsable via AJAX within the admin UI. Server-side Parsedown Extra rendering, cached in `staticdata` (persistent heavy group, `WEEK_IN_SECONDS` TTL) keyed by `filemtime`. No extra permission gating — page access (`FRL_PLUGIN_ACCESS` = `delete_plugins`) equals docs access. Uses the existing Prism.js + `frl_content_loaded` event for code highlighting. Link rewriting: doc→doc `.md` links become in-viewer navigation (`data-frl-doc`); source-file links become plain `<code>` text.
