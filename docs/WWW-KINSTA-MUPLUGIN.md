@@ -2,6 +2,40 @@
 
 Third-party reference for Kinsta's MU plugin (v3.7.0) caching behavior. This plugin runs on Kinsta infrastructure and interacts with Kinsta's cache purge system.
 
+## Cache purge settings
+
+### Global Autopurge setting
+
+- The global Autopurge setting in Kinsta mu-plugin admin acts as the main switch for all CLI controllers. 
+- If Autopurge is turned off in the admin, all of the controllers are effectively disabled.
+
+### Cache controllers
+
+All the available cache controllers can be found with: 
+`wp kinsta cache autopurge list`
+
+| name | description | status |
+| --- | --- | --- |
+| `wp_post_controller` | Purge cache when posts are updated. | off |
+| `wp_term_controller` | Purge cache when terms are edited or deleted. | off |
+| `wp_attachment_controller` | Purge CDN cache when media items are permanently deleted. | off |
+| `wp_option_controller` | Purge cache when options are updated. | off |
+| `wp_theme_controller` | Purge cache when the theme is updated or switched. | off |
+
+### Single post purges
+ 
+When a single post is purged, not only clear the post itself is cleared. but also related translations, and:
+- The homepage.
+- Taxonomy archive pages associated with the post (e.g. categories and tags).
+- The author archive page associated with the post.
+- The post type archive page associated with the post.
+
+### How to enable Autopurge only for posts
+
+- To selectively enable or disable individual cache controllers, the global Autopurge setting needs to be turned on first.
+- To clear cache only when posts are updated or published, enable the global Autopurge, turn on wp_post_controller, and turn off the rest of controllers.
+
+
 ## Cache Purge Types
 
 | Type | Mechanism |
