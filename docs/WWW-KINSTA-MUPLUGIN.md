@@ -1,104 +1,152 @@
-# Kinsta MU-Plugin Reference
+# Kinsta MU Plugin — Automatic Cache Purge Cheat Sheet
 
-Third-party reference for Kinsta's MU plugin (v3.7.0) caching behavior. This plugin runs on Kinsta infrastructure and interacts with Kinsta's cache purge system.
+**Version:** v3.7.0.
 
-### Kinsta SSH access
+**Kinsta SSH:** `ssh pbservicesge@89.168.108.245 -p 51137`
 
-SSH Login: `ssh pbservicesge@89.168.108.245 -p 51137`
+**Manual single-URL purge:** `https://<domain>/kinsta-clear-cache/<path>/`.
 
-## Cache purge settings
-
-### Global Autopurge setting
-
-- The global Autopurge setting in Kinsta mu-plugin admin acts as the main switch for all CLI controllers. 
-- If Autopurge is turned off in the admin, all of the controllers are effectively disabled.
-
-### Cache controllers
-
-All the available cache controllers can be found with: 
-`wp kinsta cache autopurge list`
-
-| name | description | status |
-| --- | --- | --- |
-| `wp_post_controller` | Purge cache when posts are updated. | on |
-| `wp_term_controller` | Purge cache when terms are edited or deleted. | off |
-| `wp_attachment_controller` | Purge CDN cache when media items are permanently deleted. | off |
-| `wp_option_controller` | Purge cache when options are updated. | off |
-| `wp_theme_controller` | Purge cache when the theme is updated or switched. | off |
-
-### Enable Autopurge for single posts
-
-When a single post is purged, not only clear the post itself is cleared. but also related translations, and:
-- The homepage.
-- Taxonomy archive pages associated with the post (e.g. categories and tags).
-- The author archive page associated with the post.
-- The post type archive page associated with the post.
-
-To selectively enable or disable individual cache controllers, the global Autopurge setting needs to be turned on first.
-- To clear cache only when posts are updated or published, enable the global Autopurge, turn on `wp_post_controller`, and turn off the rest of controllers.
-
-### WP-CLI commands
-
-You can manage the autopurge setting in WP-CLI using the following commands:
-
-| command | action |
-| --- | --- |
-| `wp kinsta cache purge --site` | Clears only the site cache. |
-| `wp kinsta cache autopurge list` | Lists all autopurge controllers and their status. Each controller handles a specific integration that triggers cache clearing (e.g., when a post is updated or a site option changes). |
-| `wp kinsta cache autopurge disable` | Disables the global autopurge feature. Actions that normally clear the cache, such as updating posts or options, will no longer clear it. This is equivalent to adding KINSTA_DISABLE_AUTOPURGE to wp-config.php. |
-| `wp kinsta cache autopurge enable` | Enables the autopurge feature. You can use this to re-enable autopurge after it has been disabled. |
-| `wp kinsta cache autopurge status` | Displays whether the global autopurge feature is currently enabled or disabled. |
-| `wp kinsta cache autopurge toggle <controller> <on/off>` | Enables or disables a specific controller without affecting others. For example, you can disable cache clearing on post updates while keeping all other automatic purge actions active. |
-| `wp kinsta cache autopurge toggle wp_post_controller on` | Example: turn on autopurge only for posts |
-
-## Cache Purge Types
+## Cache types
 
 | Type | Mechanism |
-|------|-----------|
-| Selective URL (Immediate) | POST to `https://localhost/kinsta-clear-cache/v2/immediate` |
-| Selective URL (Throttled) | POST to `https://localhost/kinsta-clear-cache/v2/throttled` |
-| Site (Full Page) | GET to `https://localhost/kinsta-clear-cache-all` |
-| CDN/Edge | GET to `https://localhost/kinsta-clear-cache-cdn` |
-| Object Cache | `wp_cache_flush()` |
+|---|---|
+| **Object** | `wp_cache_flush()` |
+| **Site** (full-page, includes Edge) | `GET https://localhost/kinsta-clear-cache-all` |
+| **CDN** | `GET https://localhost/kinsta-clear-cache-cdn` |
+| **Selective** | `POST` to `/kinsta-clear-cache/v2/immediate` + `/v2/throttled` for specific URLs |
 
-Manual single URL: `https://pbservices.ge/kinsta-clear-cache/my-page/`
+**Naming note:** the `kinsta-clear-cache-all` endpoint clears the **site/full-page cache** (all pages, including Edge) — "all" means all pages, not all cache types. It does **not** clear the object cache or the CDN. A full purge calls all three separately.
 
-## Key Constants
+**Global gate:** automatic purges run only when global autopurge is ON (`KINSTAMU_DISABLE_AUTOPURGE` ≠ `true`). Controller-based triggers also require that controller ON.
+
+**Selective purge** sends two requests:
+- **Immediate** (cleared right away): the post's own URL, the home page, the blog page, the first page of each related archive (author, each term, year/month/day, post-type), the RSS feed, custom single paths, and AMP variants.
+- **Throttled** (cleared after a short delay): the remaining pages of those archives, the sitemap, and custom group paths.
+
+---
+
+## Automatic purge triggers
+
+### Full purge — Object + Site + CDN
+
+| Trigger (hook) | Controller / condition |
+|---|---|
+| Term edited (`edited_term`) | `WPTermController` |
+| Term deleted (`delete_term`) | `WPTermController` |
+| Option updated: `blogname`, `blogdescription`, `date_format`, `time_format`, `language` (`updated_option`) | `WPOptionController` |
+| Theme switched (`switch_theme`) | `WPThemeController` |
+| Active theme updated (`upgrader_process_complete`) | `WPThemeController` |
+| Theme custom header changed (`update_option_theme_mods_{stylesheet}`) | `WPThemeHeaderController` (theme supports `custom-header`) |
+| Nav menu updated (`wp_update_nav_menu`) | `Cache_Purge::purge_complete_caches` — **not gated by any controller** |
+
+### Selective purge — specific URLs
+
+| Trigger (hook) | Controller / condition |
+|---|---|
+| Published post set to non-published (`pre_post_update`) | `Cache_Purge::post_unpublished` |
+| Published post updated (`wp_insert_post`) | `Cache_Purge::post_updated` |
+| Post trashed (`wp_trash_post`) | `Cache_Purge::post_trashed` |
+| Published post saved (`save_post`) | `WPPostController` (Yoast "Rewrite & Republish" clones purge the original) |
+| Post status changed (`transition_post_status`) | `WPPostController` |
+
+All selective purges are gated by `wp_post_controller`.
+
+### CDN only
+
+| Trigger (hook) | Controller / condition |
+|---|---|
+| Media permanently deleted (`delete_attachment`) | `WPAttachmentController` — default OFF; debounced 30s (a burst of deletions produces one CDN purge) |
+
+---
+
+## Autopurge controllers
+
+| Controller | Description | Live | Default |
+|---|---|---|---|
+| `wp_post_controller` | Posts updated | on | ON |
+| `wp_term_controller` | Terms edited/deleted | off | ON |
+| `wp_attachment_controller` | Media permanently deleted (CDN) | off | OFF |
+| `wp_option_controller` | Options updated | off | ON |
+| `wp_theme_controller` | Theme updated/switched | off | ON |
+| `wp_theme_header_controller` | Theme headers updated | — | ON |
+| `acf_controller` | ACF options updated | — | ON |
+
+---
+
+## Key constants
 
 | Constant | Effect |
-|----------|--------|
-| `KINSTAMU_DISABLE_AUTOPURGE` | When `true`, disables all automatic cache purges globally |
-| `KINSTAMU_CACHE_PURGE_TIMEOUT` | cURL timeout for purge endpoints (default: 5s) |
-| `KINSTAMU_CAPABILITY` | WP capability required for cache purge options (default: `manage_options`) |
+|---|---|
+| `KINSTAMU_DISABLE_AUTOPURGE` | `true` = disable all automatic purges (hard kill-switch) |
+| `KINSTAMU_CACHE_PURGE_TIMEOUT` | cURL timeout per purge request (default 5s) |
+| `KINSTAMU_CAPABILITY` / `KINSTAMU_ROLE` | Capability/role required for cache options (default `manage_options`) |
+| `KINSTAMU_DEBUG_LOG` | `true` = log to `wp-content/kinsta-mu-plugins.log` |
+| `KINSTAMU_WHITELABEL` | Whitelabel menu configuration |
 
-### Autopurge Gate
+---
 
-`is_autopurge_enabled()` checks in order:
-1. `KINSTAMU_DISABLE_AUTOPURGE === true` → disabled (hard kill-switch)
-2. `kinsta-autopurge-status` option = `'disabled'` → disabled
-3. Otherwise → enabled
+## Hooks
 
-Manual purges (admin AJAX, admin bar, WP-CLI with `--all`) bypass this gate via `$force = true`.
+**Actions fired (no arguments):**
 
-## Automatic Complete Cache Purges
+| Cache flushed | Hook |
+|---|---|
+| **Selective** (single post) | `kinsta_initiate_purge_happened` |
+| **Full** (Object + Site + CDN) | `kinsta_purge_complete_caches_happened` |
 
-Triggered by: navigation menu updates, term edits/deletes, option changes (`blogname`, `blogdescription`, `date_format`, `time_format`, `language`), theme switches, theme updates, custom header changes, ACF options page saves, Elementor cache clears.
+No action fires for site-only, edge-only, CDN-only, or object-only purges.
 
-All gated by global autopurge and per-controller toggle. Deduplicated once per request.
+---
 
-## Selective URL-Based Purges
+## FAQ
 
-Triggered by: post publish/unpublish/update/trash, comment insert/edit/status change, WooCommerce stock changes.
+### 1. Does updating a template or pattern count as a post update?
 
-Purges: post permalink, home page, blog page, author/term/date/post type archives (first page immediate, remaining pages throttled at depth 3), RSS feed, sitemap, AMP variants, custom paths.
+**No purge.** The post hooks aborts on `is_post_type_viewable()`. Core registers `wp_template`, `wp_template_part`, `wp_block`, `wp_global_styles`, `wp_navigation` with `'public' => false`, so `is_post_type_viewable()` is `false`. Neither the pattern/template nor the site is purged.
 
-## Custom Action Hooks (Fired by Kinsta)
+### 2. When a single post is purged, is only that page flushed, or are its terms flushed too?
 
-| Hook | When |
-|------|------|
-| `kinsta_purge_complete_caches_happened` | After Object + Site + CDN all purged (once per request) |
-| `kinsta_initiate_purge_happened` | After selective URL-based purge sent |
+**Both.** `get_post_archives_list()` includes every attached term via `wp_get_object_terms()` → `get_term_link()`, plus the other targets listed under **Selective purge** above.
 
-## Third-Party Plugin Compatibility
+### 3. How do I allow only single-post updates and disable all other automatic purges?
 
-Kinsta's MU plugin disables WP Rocket page caching, Swift Performance caching, and Wordfence live traffic logging to prevent conflicts with its own caching layer.
+Global autopurge ON, `wp_post_controller` ON, all other controllers OFF
+
+**Caveats**: `wp_update_nav_menu` triggers a full purge that is **not** gated by any controller — so strict manual-only is not achievable while global autopurge is on.
+
+### 4. If only `wp_post_controller` is enabled, are the post's terms and its Polylang translations flushed?
+
+- **Terms: yes** — flushed as part of the single-post purge (term archives are included). `wp_term_controller` only governs purges triggered by editing/deleting a term itself.
+- **Polylang: no** — the plugin has **no Polylang integration**.
+
+### 5. Does flushing the object cache (including Redis) trigger a Kinsta purge?
+
+**No.** The plugin does not hook `wp_cache_flush`; the object purge does not cascade.
+
+### 6. Does the "Clear Site Cache" button also clear the object cache and the edge cache?
+
+**It clears only the site cache and the edge cache**, but not the object cache or the CDN. The button calls only (`GET /kinsta-clear-cache-all`); that endpoint covers the site and Edge cache. The object cache and CDN are separate and are cleared only by "Clear All Caches".
+
+### 7. Do plugin or WP core updates trigger a cache purge?
+
+**No.** There is no `Plugin_Upgrader` or `Core_Upgrader` handling.
+
+### 8. Which hook should I use to warm the cache after a specific cache is flushed?
+
+See the **Hooks** table above: 
+- **selective purge**: `kinsta_initiate_purge_happened`; 
+- **full purge**: `kinsta_purge_complete_caches_happened`. 
+
+No hooks exist for site-only, edge-only, CDN-only, or object-only purges.
+
+### 9. Does the ACPT plugin satisfy the `class_exists('ACF')` check?
+
+**No.** `ACFController::isSupported()` checks `class_exists('ACF')`; ACPT defines no `class ACF`.
+
+### 10. Is updating a single custom post with custom terms and complex ACPT fields a heavy server operation?
+
+**Not heavy on CPU/DB, but blocking.** `initiate_purge()` does a term lookup (cheap) then sends two synchronous cURL POSTs bounded by `KINSTAMU_CACHE_PURGE_TIMEOUT` (default 5s each). ACPT fields do not affect the Kinsta purge.
+
+### 11. Does enabling `KINSTAMU_DEBUG_LOG` affect performance?
+
+**No meaningful front-end impact.** `debug_log()` does one synchronous file append per purge event (not per request). Caveats: unbounded log growth; per-event disk I/O.
