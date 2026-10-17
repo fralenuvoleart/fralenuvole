@@ -11,11 +11,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 add_action( 'wp_enqueue_scripts', 'frl_thirdparty_public_scripts', FRL_THEMEKIT_STYLE_PRIORITY['modules'], 1 );
+
 add_action( 'admin_enqueue_scripts', 'frl_thirdparty_admin_scripts', 0, 0 );
+
 add_action( 'wp_print_scripts', 'frl_thirdparty_dequeue_acpt_conditional_rules', 100, 0 );
+
 add_filter( 'emr/feature/background', '__return_false', 10, 0 );
+
 add_filter( 'rest_endpoints', 'frl_greenshift_fix_rest_schemas', 10, 1 );
+
 add_filter( 'wp_rest_cache/display_clear_cache_button', '__return_false', 10, 1 );
+
+/*
+add_filter(
+	'wp_script_modules_import_map_html',
+	function ( $html ) {
+		return str_replace( '<script id="wp-importmap"', '<script id="wp-importmap" data-noptimize="1"', $html );
+	}
+);
+*/
 
 /**
  * Enqueue thirdparty-specific styles and scripts
