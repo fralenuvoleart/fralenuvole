@@ -22,6 +22,10 @@ add_filter( 'rest_endpoints', 'frl_greenshift_fix_rest_schemas', 10, 1 );
 
 add_filter( 'wp_rest_cache/display_clear_cache_button', '__return_false', 10, 1 );
 
+// Kinsta full purge → schedule the external cache warmer.
+add_action( 'kinsta_purge_complete_caches_happened', 'frl_thirdparty_schedule_cache_warmer', 10, 0 );
+add_action( 'frl_thirdparty_trigger_cache_warmer', 'frl_thirdparty_run_cache_warmer', 10, 0 );
+
 /*
 add_filter(
 	'wp_script_modules_import_map_html',
@@ -145,4 +149,65 @@ function frl_greenshift_fix_rest_schemas( $endpoints ) {
 	}
 	$done = true;
 	return $endpoints;
+}
+
+/**
+ * Schedule the external cache warmer 10 minutes after a Kinsta full purge.
+ *
+ * Gated by the `thirdparty_cache_warmer` option and `cache_warmer_url`. Uses a single cron event so repeated purges within the window do not stack.
+ *
+ * @return void
+ */
+function frl_thirdparty_schedule_cache_warmer(): void {
+	if ( ! frl_get_option( 'thirdparty_cache_warmer' ) ) {
+		return;
+	}
+
+	if ( empty( frl_get_option( 'cache_warmer_url' ) ) ) {
+		return;
+	}
+
+	if ( ! wp_next_scheduled( 'frl_thirdparty_trigger_cache_warmer' ) ) {
+		wp_schedule_single_event( time() + 600, 'frl_thirdparty_trigger_cache_warmer' );
+	}
+}
+
+/**
+ * Cron callback: run the external cache warmer.
+ *
+ * The action-handler file is loaded on demand because it is only required for
+ * administrator actions (and logged-in users), so it is not present during cron.
+ * The handler's result is logged and stored as an admin notice for the next
+ * admin page load.
+ *
+ * @return void
+ */
+function frl_thirdparty_run_cache_warmer(): void {
+	if ( ! frl_get_option( 'thirdparty_cache_warmer' ) ) {
+		return;
+	}
+
+	if ( empty( frl_get_option( 'cache_warmer_url' ) ) ) {
+		return;
+	}
+
+	if ( ! function_exists( 'frl_handle_action_trigger_cache_warmer' ) ) {
+		require_once FRL_DIR_PATH . 'includes/helpers/functions-action-handlers.php';
+	}
+
+	if ( ! function_exists( 'frl_handle_action_trigger_cache_warmer' ) ) {
+		return;
+	}
+
+	$result = frl_handle_action_trigger_cache_warmer();
+
+	if ( ! is_array( $result ) || empty( $result['message_parts'] ) ) {
+		return;
+	}
+
+	$message = implode( ' ', $result['message_parts'] );
+	$type    = $result['notice_type'] ?? 'info';
+
+	frl_log( 'CACHE WARMER (scheduled): {message}', array( 'message' => $message ), false );
+	frl_add_admin_notice( $message, $type, 300 );
 }
