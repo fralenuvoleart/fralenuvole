@@ -1,4 +1,4 @@
-# Kinsta MU Plugin — Automatic Cache Purge Cheat Sheet
+# Kinsta MU Plugin
 
 **Version:** v3.7.0.
 

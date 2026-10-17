@@ -92,12 +92,13 @@
 
 .frl-docs-content h3 {
 	margin: 20px 0 8px 0;
-	font-size: 15px;
+	font-size: 17px;
+	line-height: 1.5;
 }
 
 .frl-docs-content p {
 	margin: 0 0 12px 0;
-	font-size: 15px;
+	font-size: 16px;
 }
 
 .frl-docs-content ul,
