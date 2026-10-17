@@ -2,7 +2,7 @@
 
 Third-party reference for Kinsta's MU plugin (v3.7.0) caching behavior. This plugin runs on Kinsta infrastructure and interacts with Kinsta's cache purge system.
 
-## Kinsta SSH access
+### Kinsta SSH access
 
 SSH Login: `ssh pbservicesge@89.168.108.245 -p 51137`
 
@@ -26,21 +26,8 @@ All the available cache controllers can be found with:
 | `wp_option_controller` | Purge cache when options are updated. | off |
 | `wp_theme_controller` | Purge cache when the theme is updated or switched. | off |
 
-### WP-CLI commands for autopurge
-You can manage the autopurge setting in WP-CLI using the following commands:
+### Enable Autopurge for single posts
 
-| command | action |
-| --- | --- |
-| `wp kinsta cache autopurge list` | Lists all autopurge controllers and their status. Each controller handles a specific integration that triggers cache clearing (e.g., when a post is updated or a site option changes). |
-| `wp kinsta cache autopurge disable` | Disables the global autopurge feature. Actions that normally clear the cache, such as updating posts or options, will no longer clear it. This is equivalent to adding KINSTA_DISABLE_AUTOPURGE to wp-config.php. |
-| `wp kinsta cache autopurge enable` | Enables the autopurge feature. You can use this to re-enable autopurge after it has been disabled. |
-| `wp kinsta cache autopurge status` | Displays whether the global autopurge feature is currently enabled or disabled. |
-| `wp kinsta cache autopurge toggle <controller> <on/off>` | Enables or disables a specific controller without affecting others. For example, you can disable cache clearing on post updates while keeping all other automatic purge actions active. |
-| `wp kinsta cache autopurge toggle wp_post_controller on` | Example: turn on autopurge only for posts |
-
-
-
-### How to enable Autopurge only for posts
 When a single post is purged, not only clear the post itself is cleared. but also related translations, and:
 - The homepage.
 - Taxonomy archive pages associated with the post (e.g. categories and tags).
@@ -48,8 +35,21 @@ When a single post is purged, not only clear the post itself is cleared. but als
 - The post type archive page associated with the post.
 
 To selectively enable or disable individual cache controllers, the global Autopurge setting needs to be turned on first.
-- To clear cache only when posts are updated or published, enable the global Autopurge, turn on wp_post_controller, and turn off the rest of controllers.
+- To clear cache only when posts are updated or published, enable the global Autopurge, turn on `wp_post_controller`, and turn off the rest of controllers.
 
+### WP-CLI commands
+
+You can manage the autopurge setting in WP-CLI using the following commands:
+
+| command | action |
+| --- | --- |
+| `wp kinsta cache purge --site` | Clears only the site cache. |
+| `wp kinsta cache autopurge list` | Lists all autopurge controllers and their status. Each controller handles a specific integration that triggers cache clearing (e.g., when a post is updated or a site option changes). |
+| `wp kinsta cache autopurge disable` | Disables the global autopurge feature. Actions that normally clear the cache, such as updating posts or options, will no longer clear it. This is equivalent to adding KINSTA_DISABLE_AUTOPURGE to wp-config.php. |
+| `wp kinsta cache autopurge enable` | Enables the autopurge feature. You can use this to re-enable autopurge after it has been disabled. |
+| `wp kinsta cache autopurge status` | Displays whether the global autopurge feature is currently enabled or disabled. |
+| `wp kinsta cache autopurge toggle <controller> <on/off>` | Enables or disables a specific controller without affecting others. For example, you can disable cache clearing on post updates while keeping all other automatic purge actions active. |
+| `wp kinsta cache autopurge toggle wp_post_controller on` | Example: turn on autopurge only for posts |
 
 ## Cache Purge Types
 
