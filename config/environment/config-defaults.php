@@ -27,7 +27,9 @@ const FRL_ENV_DEFAULT = array(
 	'prefix'         => 'default',
 	'type'           => 'production',        // Base type
 	'plugins'        => array(
-		'active'   => array(),
+		'active'   => array(
+			'mail-queue/mail-queue.php',
+		),
 		'inactive' => array(
 			'query-monitor/query-monitor.php',
 			'better-search-replace/better-search-replace.php',
@@ -58,14 +60,32 @@ const FRL_ENV_DEFAULT = array(
 		'error_reporting_notice'     => true,
 		'error_reporting_warning'    => true,
 		'error_reporting_deprecated' => true,
-		'schema_founder_name'        => 'Rati (Iese) Abashmadze',
+		'schema_founder_name'        => '',
+		'schema_founder_url'         => '',
+		'wsform_webhook'             => false,
+		'wsform_use_cron'            => false,
 		'cta_webhook'                => false,
+		'cta_use_cron'               => false,
 	),
 );
 
 /** Production Diffs from FRL_ENV_DEFAULT */
 const FRL_ENV_DEFAULT_PRODUCTION = array(
 	// FRL_ENV_DEFAULT represents default production
+	'plugin_options' => array(
+		'custom_robots_txt' => '
+			User-agent: SemrushBot
+			User-agent: SiteAuditBot
+			User-agent: ClaudeBot
+			Allow: /
+			Crawl-delay: 10
+
+			User-agent: AhrefsBot
+			User-agent: AhrefsSiteAudit
+			User-agent: MJ12bot
+			Disallow: /
+		',
+	),
 );
 
 /** Staging Diffs from FRL_ENV_DEFAULT */
@@ -76,15 +96,15 @@ const FRL_ENV_DEFAULT_STAGING = array(
 			'query-monitor/query-monitor.php',
 			'better-search-replace/better-search-replace.php',
 		),
-		'inactive' => array(),
+		'inactive' => array(
+			'mail-queue/mail-queue.php',
+		),
 	),
 	'wp_options'     => array(
 		'blog_public' => 0,
 	),
 	'plugin_options' => array(
-		'footer_html'           => 'file',
-		'debug'                 => true,
-		'error_reporting_email' => false,
+		'debug' => true,
 	),
 );
 
@@ -92,11 +112,6 @@ const FRL_ENV_DEFAULT_STAGING = array(
 /** Base template for new websites with no dedicated brand template yet. */
 const FRL_ENV_MASTER_TEMPLATE = array(
 	'prefix'         => 'master',
-	'plugins'        => array(
-		'active' => array(
-			'query-monitor/query-monitor.php',
-		),
-	),
 	'plugin_options' => array(
 		'debug' => true,
 	),

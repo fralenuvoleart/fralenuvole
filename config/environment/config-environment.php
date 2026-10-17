@@ -28,13 +28,24 @@ const FRL_ENV_PBS_TEMPLATE = array(
 	'plugin_options' => array(
 		'editor_metabox'      => true,
 		'schema_founder_name' => 'Rati (Iese) Abashmadze',
-		'cta_webhook'         => true,
+		'schema_founder_url'  => 'https://pbservices.ge/about/rati-abashmadze/',
+		'schema_org_sameas'   => '
+			https://www.facebook.com/PBservices.georgia
+			https://www.instagram.com/pbservices.ge
+			https://www.linkedin.com/company/pbservices/
+		',
 	),
 );
 
 const FRL_ENV_PBS_PRODUCTION = array(
-	'extends'     => 'FRL_ENV_PBS_TEMPLATE',
-	'counterpart' => 'stg-pbservicesge-staging.kinsta.cloud',
+	'extends'        => 'FRL_ENV_PBS_TEMPLATE',
+	'counterpart'    => 'stg-pbservicesge-staging.kinsta.cloud',
+	'plugin_options' => array(
+		'wsform_webhook'  => true,
+		'wsform_use_cron' => true,
+		'cta_webhook'     => true,
+		'cta_use_cron'    => false,
+	),
 );
 
 const FRL_ENV_PBS_STAGING = array(
@@ -48,19 +59,27 @@ const FRL_ENV_PBP_TEMPLATE = array(
 	'prefix'         => 'pbp',
 	'modules'        => array(
 		'pbproperty'      => true,
-		'call_to_actions' => false,
+		'call_to_actions' => true,
 	),
 	'plugin_options' => array(
-		'header_html'     => 'file',
-		'header_html_php' => true,
-		'editor_metabox'  => true,
-		'cta_webhook'     => true,
+		'header_html'         => 'file',
+		'header_html_php'     => true,
+		'editor_metabox'      => true,
+		'schema_founder_name' => 'Sopho Chaduneli',
+		'schema_founder_url'  => 'https://pbproperty.ge/',
+
 	),
 );
 
 const FRL_ENV_PBP_PRODUCTION = array(
-	'extends'     => 'FRL_ENV_PBP_TEMPLATE',
-	'counterpart' => 'stg-pbproperty-staging.kinsta.cloud',
+	'extends'        => 'FRL_ENV_PBP_TEMPLATE',
+	'counterpart'    => 'stg-pbproperty-staging.kinsta.cloud',
+	'plugin_options' => array(
+		'wsform_webhook'  => true,
+		'wsform_use_cron' => true,
+		'cta_webhook'     => true,
+		'cta_use_cron'    => false,
+	),
 );
 
 const FRL_ENV_PBP_STAGING = array(
@@ -80,6 +99,7 @@ const FRL_ENV_PBNOVA_TEMPLATE = array(
 	),
 	'plugin_options' => array(
 		'schema_founder_name' => 'Francesco Castronovo',
+		'schema_founder_url'  => 'https://pbnova.com/',
 	),
 );
 
@@ -104,5 +124,6 @@ const FRL_ENV_FRALENUVOLE_PRODUCTION = array(
 	),
 	'plugin_options' => array(
 		'schema_founder_name' => 'Francesco Castronovo',
+		'schema_founder_url'  => 'https://fralenuvole.art/about/',
 	),
 );
