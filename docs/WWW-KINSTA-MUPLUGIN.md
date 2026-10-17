@@ -20,7 +20,7 @@ All the available cache controllers can be found with:
 
 | name | description | status |
 | --- | --- | --- |
-| `wp_post_controller` | Purge cache when posts are updated. | off |
+| `wp_post_controller` | Purge cache when posts are updated. | on |
 | `wp_term_controller` | Purge cache when terms are edited or deleted. | off |
 | `wp_attachment_controller` | Purge CDN cache when media items are permanently deleted. | off |
 | `wp_option_controller` | Purge cache when options are updated. | off |

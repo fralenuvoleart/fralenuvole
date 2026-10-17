@@ -25,6 +25,7 @@ function frl_render_last_posts_widget() {
 		'posts_per_page' => 5,
 		'orderby'        => 'modified',
 		'order'          => 'DESC',
+		'lang'           => '', // Deactivate Polylang filter to return posts across all languages
 	);
 
 	$last_posts = new WP_Query( $args );
@@ -48,14 +49,25 @@ function frl_render_last_posts_widget() {
 			$modified_time  = get_the_modified_time( 'U' );
 			// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Intentional: get_the_modified_time('U') returns a "local-time-as-fake-UTC" timestamp (WP core's mysql2date() treats 'U'/'G' formats as UTC-interpreted regardless of $gmt), matching current_time('timestamp')'s basis exactly. Using time() here would introduce an offset bug equal to the site's GMT offset.
 			$time_ago = human_time_diff( $modified_time, current_time( 'timestamp' ) ) . ' ' . __( 'ago', FRL_PREFIX );
-			// Use _edit_last to show the actual last editor, not the original author.
-			// _edit_last is WordPress core post meta, set automatically on every post save.
+			// Resolve last editor: 1) First retrieve by _edit_last meta; 2) Fallback to post revisions.
 			$last_editor_id = (int) get_post_meta( $post_id, '_edit_last', true );
+
+			if ( ! $last_editor_id || ! get_userdata( $last_editor_id ) ) {
+				$revisions = wp_get_post_revisions( $post_id, array( 'posts_per_page' => 5 ) );
+				if ( ! empty( $revisions ) ) {
+					foreach ( $revisions as $rev ) {
+						if ( ! wp_is_post_autosave( $rev ) && ! empty( $rev->post_author ) ) {
+							$last_editor_id = (int) $rev->post_author;
+							break;
+						}
+					}
+				}
+			}
+
 			if ( $last_editor_id && get_userdata( $last_editor_id ) ) {
 				$author_name = get_the_author_meta( 'user_login', $last_editor_id );
 				$author_link = '/wp-admin/user-edit.php?user_id=' . $last_editor_id;
 			} else {
-				// Fallback to original author if _edit_last is empty or user no longer exists.
 				$author_id   = (int) get_the_author_meta( 'ID' );
 				$author_name = get_the_author_meta( 'user_login', $author_id );
 				$author_link = '/wp-admin/user-edit.php?user_id=' . $author_id;

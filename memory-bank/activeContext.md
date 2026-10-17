@@ -1,5 +1,18 @@
 # Active Context
 
+## Latest: Fix Last Updates Widget LP Queries and Author Tracking (2026-10-17)
+
+**Bug:** In the Last Updates dashboard widget, recent updates to custom post type `lp` (and other multilingual posts) did not appear, showing only edits from several days ago. Additionally, the last editor displayed was stale or defaulted to the original post author rather than the editor who made the changes yesterday. In contrast, the User Visits widget showed yesterday's activity accurately.
+
+**Root causes:**
+1. Polylang automatically filtered the widget's `WP_Query` by the currently active admin language because `'lang' => ''` was omitted.
+2. The widget relied on `_edit_last` postmeta, but the Block Editor (Gutenberg) updates posts via the WordPress REST API which does not set or update `_edit_last` (WordPress Core Trac #50255).
+3. Post saves did not invalidate the widget's 15-minute `'admin'` cache key (`widget_last_posts`).
+
+**Fix:**
+- [`admin/widgets/widget-last-posts.php`](admin/widgets/widget-last-posts.php:28) — Added `'lang' => ''` to query all languages.
+- [`admin/widgets/widget-last-posts.php`](admin/widgets/widget-last-posts.php:52) — Implemented editor resolution: 1) First retrieve by `_edit_last` postmeta; 2) Fallback to latest non-autosave revision (`wp_is_post_autosave`); 3) Fallback to post creator (`post_author`).
+
 ## Latest: Removed FRL_PUBLIC_ACTIONS feature (2026-10-16)
 
 Removed the `FRL_PUBLIC_ACTIONS` constant and all its usages. Previously `clear_website_transients` was executable by any logged-in user (`read`) without a nonce check; now all GET actions uniformly require `frl_has_access()` (`delete_plugins`).
