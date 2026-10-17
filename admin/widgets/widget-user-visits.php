@@ -153,15 +153,6 @@ function frl_render_user_visits_widget() {
 						$user_id = isset( $visit['user_id'] ) ? (int) $visit['user_id'] : 0;
 						?>
 					<article class="post-item<?php echo $is_online ? ' online' : ''; ?>">
-						<div class="visit-url">
-							<?php if ( ! empty( $raw_page_url ) ) : ?>
-								<a href="<?php echo esc_url( $raw_page_url ); ?>" title="<?php echo esc_attr( $raw_page_url ); ?>">
-									<?php echo $page_display_text; ?>
-								</a>
-							<?php else : ?>
-								<?php echo $page_display_text; // Display 'Unknown Page' if no URL ?>
-							<?php endif; ?>
-						</div>
 						<div class="visit-user">
 							<?php if ( ! $is_filtered && $user_id > 0 ) : ?>
 								<a href="<?php echo esc_url( add_query_arg( 'frl_visit_user', $user_id ) ); ?>" title="<?php echo esc_attr( sprintf( __( 'Show all visits for %s', FRL_PREFIX ), $username ) ); ?>">
@@ -169,6 +160,15 @@ function frl_render_user_visits_widget() {
 								</a>
 							<?php else : ?>
 								<?php echo $username; ?>
+							<?php endif; ?>
+						</div>
+						<div class="visit-url">
+							<?php if ( ! empty( $raw_page_url ) ) : ?>
+								<a href="<?php echo esc_url( $raw_page_url ); ?>" title="<?php echo esc_attr( $raw_page_url ); ?>">
+									<?php echo $page_display_text; ?>
+								</a>
+							<?php else : ?>
+								<?php echo $page_display_text; // Display 'Unknown Page' if no URL ?>
 							<?php endif; ?>
 						</div>
 						<div class="visit-date">

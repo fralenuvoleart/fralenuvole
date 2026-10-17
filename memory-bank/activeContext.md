@@ -12,6 +12,7 @@
 **Fix:**
 - [`admin/widgets/widget-last-posts.php`](admin/widgets/widget-last-posts.php:28) — Added `'lang' => ''` to query all languages.
 - [`admin/widgets/widget-last-posts.php`](admin/widgets/widget-last-posts.php:52) — Implemented editor resolution: 1) First retrieve by `_edit_last` postmeta; 2) Fallback to latest non-autosave revision (`wp_is_post_autosave`); 3) Fallback to post creator (`post_author`).
+- [`admin/widgets/widget-user-visits.php`](admin/widgets/widget-user-visits.php:155) & [`assets/css/admin.css`](assets/css/admin.css:112) — Switched column order in User Visits widget so Author/User comes first and Post/URL comes second (`1.7fr 3fr 92px`).
 
 ## Latest: Removed FRL_PUBLIC_ACTIONS feature (2026-10-16)
 

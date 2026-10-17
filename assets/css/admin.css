@@ -109,7 +109,7 @@ div.postbox[id*="frl-widget"] h2 {
 
 #frl-widget-user-visits .post-item {
     display: grid;
-    grid-template-columns: 3fr 1.7fr 92px;
+    grid-template-columns: 110px auto 92px;
     gap: 3px 10px;
     padding: 4px;
     border-bottom: 1px solid #dddddd;
