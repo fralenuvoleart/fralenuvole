@@ -49,9 +49,15 @@ const FRL_ENV_PBS_PRODUCTION = array(
 );
 
 const FRL_ENV_PBS_STAGING = array(
-	'extends'     => 'FRL_ENV_PBS_TEMPLATE',
-	'type'        => 'staging',
-	'counterpart' => 'pbservices.ge',
+	'extends'        => 'FRL_ENV_PBS_TEMPLATE',
+	'type'           => 'staging',
+	'counterpart'    => 'pbservices.ge',
+	'plugin_options' => array(
+		'wsform_webhook'  => true,
+		'wsform_use_cron' => false,
+		'cta_webhook'     => true,
+		'cta_use_cron'    => false,
+	),
 );
 
 // --- PBP ---

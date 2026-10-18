@@ -6,7 +6,7 @@
 
 - **Single map** drives both detection and label: `$content_type_labels = array( 'text' => 'text', 'textarea' => 'textarea', 'textlist' => 'textlist', 'html' => 'html' )`. Adding a content type is a one-line change; detection is `isset( $content_type_labels[ $field_type ] )`, label is `$content_type_labels[ $field_type ]`.
 - **Section placement** stays keyed on the current environment config value (`$env_config['plugin_options'][$key]`): for a content-type field, a non-empty configured string counts as "Enabled by default". Previously such fields always fell to "Disabled by default" because `filter_var( ..., FILTER_VALIDATE_BOOLEAN )` returns false for ordinary text.
-- **Dot + label** reflect the live stored value (`frl_get_option`): filled → green dot labelled with the type (`text`/`textarea`/`textlist`/`html`); empty → red dot labelled `empty <type>`. Boolean/`file` rows are unchanged; file-typed `html` options are still caught by the `'file'` branch first.
+- **Dot + label** reflect the live stored value (`frl_get_option`): filled → green dot labelled with the type (`text`/`textarea`/`textlist`/`html`); empty → red dot labelled `empty <type>`. File-typed options are caught by the `'file'` branch first and now show a green dot labelled `file` (present) or a red dot labelled `no file` (empty). Boolean rows are unchanged.
 - Field type resolved once per option via `frl_get_all_plugin_options_settings( $key )['type']`.
 
 Section and dot can legitimately disagree (config vs live value), matching the existing boolean behaviour.

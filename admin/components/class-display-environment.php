@@ -279,7 +279,7 @@ class Frl_Environment_Display {
 
 				if ( $is_intended_file_option ) {
 					$has_content   = ! empty( $actual_value );
-					$status_value  = $has_content ? 'present' : 'empty';
+					$status_value  = $has_content ? 'file' : 'no file';
 					$toggle_id     = 'code-' . sanitize_key( $key );
 					$display_value = frl_ui_render_status_dot_boolean( $has_content, $status_value );
 					if ( $has_content ) {
