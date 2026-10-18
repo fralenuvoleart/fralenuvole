@@ -73,7 +73,8 @@ const FRL_ENV_DEFAULT = array(
 const FRL_ENV_DEFAULT_PRODUCTION = array(
 	// FRL_ENV_DEFAULT represents default production
 	'plugin_options' => array(
-		'custom_robots_txt' => '
+		'error_reporting_deprecated' => false,
+		'custom_robots_txt'          => '
 			User-agent: SemrushBot
 			User-agent: SiteAuditBot
 			User-agent: ClaudeBot
