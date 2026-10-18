@@ -26,6 +26,10 @@ add_filter( 'wp_rest_cache/display_clear_cache_button', '__return_false', 10, 1 
 add_action( 'kinsta_purge_complete_caches_happened', 'frl_thirdparty_schedule_cache_warmer', 10, 0 );
 add_action( 'frl_thirdparty_trigger_cache_warmer', 'frl_thirdparty_run_cache_warmer', 10, 0 );
 
+// Cache warmer admin-bar link + action handler (module-owned).
+add_filter( 'frl_admin_bar_menu_data', 'frl_thirdparty_admin_bar_cache_warmer', 10, 1 );
+add_filter( 'frl_action_registry', 'frl_thirdparty_register_action', 10, 1 );
+
 /*
 add_filter(
 	'wp_script_modules_import_map_html',
@@ -154,7 +158,8 @@ function frl_greenshift_fix_rest_schemas( $endpoints ) {
 /**
  * Schedule the external cache warmer 10 minutes after a Kinsta full purge.
  *
- * Gated by the `thirdparty_cache_warmer` option and `cache_warmer_url`. Uses a single cron event so repeated purges within the window do not stack.
+ * Gated by the `thirdparty_cache_warmer` option and `thirdparty_cache_warmer_url`.
+ * Uses a single cron event so repeated purges within the window do not stack.
  *
  * @return void
  */
@@ -163,7 +168,7 @@ function frl_thirdparty_schedule_cache_warmer(): void {
 		return;
 	}
 
-	if ( empty( frl_get_option( 'cache_warmer_url' ) ) ) {
+	if ( empty( frl_get_option( 'thirdparty_cache_warmer_url' ) ) ) {
 		return;
 	}
 
@@ -175,8 +180,6 @@ function frl_thirdparty_schedule_cache_warmer(): void {
 /**
  * Cron callback: run the external cache warmer.
  *
- * The action-handler file is loaded on demand because it is only required for
- * administrator actions (and logged-in users), so it is not present during cron.
  * The handler's result is logged and stored as an admin notice for the next
  * admin page load.
  *
@@ -187,19 +190,11 @@ function frl_thirdparty_run_cache_warmer(): void {
 		return;
 	}
 
-	if ( empty( frl_get_option( 'cache_warmer_url' ) ) ) {
+	if ( empty( frl_get_option( 'thirdparty_cache_warmer_url' ) ) ) {
 		return;
 	}
 
-	if ( ! function_exists( 'frl_handle_action_trigger_cache_warmer' ) ) {
-		require_once FRL_DIR_PATH . 'includes/helpers/functions-action-handlers.php';
-	}
-
-	if ( ! function_exists( 'frl_handle_action_trigger_cache_warmer' ) ) {
-		return;
-	}
-
-	$result = frl_handle_action_trigger_cache_warmer();
+	$result = frl_thirdparty_handle_trigger_cache_warmer();
 
 	if ( ! is_array( $result ) || empty( $result['message_parts'] ) ) {
 		return;
@@ -210,4 +205,134 @@ function frl_thirdparty_run_cache_warmer(): void {
 
 	frl_log( 'CACHE WARMER (scheduled): {message}', array( 'message' => $message ), false );
 	frl_add_admin_notice( $message, $type, 300 );
+}
+
+/**
+ * Add the "Warm Server Cache" admin-bar link.
+ *
+ * Contributes to the core admin-bar menu data via the `frl_admin_bar_menu_data`
+ * filter, so it inherits the core gating (custom_ab_menu + access) and the
+ * `ab_remove_links` removal logic.
+ *
+ * @param array $data Admin bar menu data.
+ * @return array Modified menu data.
+ */
+function frl_thirdparty_admin_bar_cache_warmer( $data ) {
+	if ( empty( frl_get_option( 'thirdparty_cache_warmer_url' ) ) ) {
+		return $data;
+	}
+
+	$parent_id = FRL_PREFIX . '-menu-primary';
+
+	$data['menu_primary']['warmer_separator'] = array(
+		'id'     => FRL_PREFIX . '-warmer-separator',
+		'parent' => $parent_id,
+		'title'  => '',
+		'meta'   => array( 'class' => FRL_PREFIX . '-ab-separator' ),
+	);
+
+	$data['menu_primary']['cache_trigger_cache_warmer'] = array(
+		'id'     => FRL_PREFIX . '-menu-child-trigger_cache_warmer',
+		'title'  => __( 'Warm Server Cache', FRL_PREFIX ),
+		'href'   => add_query_arg( FRL_PREFIX . '_action', 'trigger_cache_warmer' ),
+		'parent' => $parent_id,
+		'meta'   => array(
+			'class' => FRL_PREFIX . '-ab-trigger_cache_warmer',
+			'title' => 'Trigger the external cache warmer',
+		),
+	);
+
+	return $data;
+}
+
+/**
+ * Register the module's admin action with the core dispatcher.
+ *
+ * @param array<string,string> $registry Action key => handler function.
+ * @return array<string,string> Modified registry.
+ */
+function frl_thirdparty_register_action( $registry ) {
+	$registry['trigger_cache_warmer'] = 'frl_thirdparty_handle_trigger_cache_warmer';
+
+	return $registry;
+}
+
+/**
+ * Handle the 'trigger_cache_warmer' action.
+ *
+ * Pings the cache warmer URL via a synchronous GET request. The URL is
+ * self-contained (token in query string), so no POST body is needed.
+ * Synchronous so we can report the actual HTTP response to the user.
+ *
+ * Gated by the `thirdparty_cache_warmer_url` option — if empty, the admin bar
+ * entry is hidden and this handler is unreachable.
+ *
+ * @return array{success: bool, message_parts: string[], notice_type: string} Result array.
+ */
+function frl_thirdparty_handle_trigger_cache_warmer() {
+	$cache_warmer_url = frl_get_option( 'thirdparty_cache_warmer_url' );
+	if ( empty( $cache_warmer_url ) ) {
+		return array(
+			'success'       => false,
+			'message_parts' => array( __( 'Cache warmer URL not configured.', FRL_PREFIX ) ),
+			'notice_type'   => 'error',
+		);
+	}
+
+	if ( frl_is_already_running( __FUNCTION__ ) ) {
+		return array(
+			'success'       => true,
+			'message_parts' => array( __( 'Cache warmer already triggered in this request.', FRL_PREFIX ) ),
+			'notice_type'   => 'info',
+		);
+	}
+
+	$response = wp_remote_get(
+		$cache_warmer_url,
+		array(
+			'timeout'    => 10,
+			'user-agent' => 'Fralenuvole Cache Warmer',
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		frl_log( 'CACHE WARMER ERROR: {error}', array( 'error' => $response->get_error_message() ) );
+		return array(
+			'success'       => false,
+			'message_parts' => array(
+				sprintf(
+					__( 'Cache warmer request failed: %s', FRL_PREFIX ),
+					$response->get_error_message()
+				),
+			),
+			'notice_type'   => 'error',
+		);
+	}
+
+	$http_code = wp_remote_retrieve_response_code( $response );
+
+	if ( $http_code < 200 || $http_code >= 300 ) {
+		frl_log( 'CACHE WARMER ERROR: HTTP {code}', array( 'code' => $http_code ) );
+		return array(
+			'success'       => false,
+			'message_parts' => array(
+				sprintf(
+					__( 'Cache warmer returned HTTP %d.', FRL_PREFIX ),
+					$http_code
+				),
+			),
+			'notice_type'   => 'error',
+		);
+	}
+
+	return array(
+		'success'       => true,
+		'message_parts' => array(
+			sprintf(
+				__( 'Cache warmer triggered (HTTP %d).', FRL_PREFIX ),
+				$http_code
+			),
+		),
+		'notice_type'   => 'success',
+	);
 }

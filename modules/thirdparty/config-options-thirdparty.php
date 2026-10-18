@@ -22,12 +22,20 @@ $frl_thirdparty_default_fields = array(
 		'type'        => 'section_title',
 		'description' => 'Third-Party module settings',
 	),
-	'thirdparty_cache_warmer'  => array(
+	'thirdparty_cache_warmer'     => array(
 		'label'             => 'Warm cache after full purge',
 		'description'       => 'Schedule the external cache warmer 10 minutes after a full cache purge.',
 		'type'              => 'checkbox',
 		'default'           => 0,
 		'sanitize_callback' => 'absint',
+		'autoload'          => 'no',
+	),
+	'thirdparty_cache_warmer_url' => array(
+		'label'             => 'Cache Warmer URL',
+		'description'       => 'External cache warmer endpoint. If empty, the "Warm Server Cache" admin bar action is hidden.',
+		'type'              => 'text',
+		'default'           => '',
+		'sanitize_callback' => 'esc_url_raw',
 		'autoload'          => 'no',
 	),
 );

@@ -64,6 +64,13 @@ function frl_admin_bar_menu_render() {
 			$data = frl_admin_bar_add_cpt_links( $data );
 			$data = frl_admin_bar_remove_menu( $data );
 
+			/**
+			 * Filter the admin bar menu data so modules can contribute items.
+			 *
+			 * @param array $data Menu data keyed by section (menu_primary, menu_secondary, cpt_*).
+			 */
+			$data = apply_filters( 'frl_admin_bar_menu_data', $data );
+
 			return $data;
 		}
 	);
@@ -240,30 +247,6 @@ function frl_admin_bar_add_menu_primary( $data ) {
 				'title' => $alt,
 			),
 		);
-	}
-
-	$cache_warmer_url = frl_get_option( 'cache_warmer_url' );
-	if ( ! empty( $cache_warmer_url ) ) {
-		// Separator between cache-clearing actions and warmer actions
-		$data['menu_primary']['warmer_separator'] = array(
-			'id'     => FRL_PREFIX . '-warmer-separator',
-			'parent' => $parent_id,
-			'title'  => '',
-			'meta'   => array( 'class' => FRL_PREFIX . '-ab-separator' ),
-		);
-
-		if ( frl_has_access( '' ) ) {
-			$data['menu_primary']['cache_trigger_cache_warmer'] = array(
-				'id'     => FRL_PREFIX . '-menu-child-trigger_cache_warmer',
-				'title'  => __( 'Warm Server Cache', FRL_PREFIX ),
-				'href'   => add_query_arg( FRL_PREFIX . '_action', 'trigger_cache_warmer' ),
-				'parent' => $parent_id,
-				'meta'   => array(
-					'class' => FRL_PREFIX . '-ab-trigger_cache_warmer',
-					'title' => 'Trigger the external cache warmer',
-				),
-			);
-		}
 	}
 
 	return $data;

@@ -58,9 +58,15 @@ function frl_process_plugin_actions() {
 		'delete_orphan_options'     => 'frl_handle_action_delete_orphan_options',
 		'sync_mu_plugins'           => 'frl_handle_action_sync_mu_plugins',
 		'flush_rewrite_rules'       => 'frl_handle_action_flush_rewrite_rules',
-		'trigger_cache_warmer'      => 'frl_handle_action_trigger_cache_warmer',
 		// Add other static actions here if needed
 	);
+
+	/**
+	 * Filter the action registry so modules can register their own actions.
+	 *
+	 * @param array<string,string> $action_registry Map of action key => handler function.
+	 */
+	$action_registry = apply_filters( 'frl_action_registry', $action_registry );
 
 	// Check if the action is in the registry
 	if ( isset( $action_registry[ $action ] ) ) {
@@ -378,86 +384,6 @@ function frl_handle_action_flush_rewrite_rules() {
 	return array(
 		'success'       => true,
 		'message_parts' => array( __( 'Rewrite rules flushed successfully. All caches cleared and third-party cache plugins notified.', FRL_PREFIX ) ),
-		'notice_type'   => 'success',
-	);
-}
-
-/**
-	* Handle the 'trigger_cache_warmer' action.
-	*
-	* Pings the cache warmer URL via a synchronous GET request. The URL is
-	* self-contained (token in query string), so no POST body is needed.
-	* Synchronous so we can report the actual HTTP response to the user.
-	*
-	* Gated by cache_warmer_url option — if empty, the admin bar entry is
-	* hidden and this handler is unreachable.
-	*
-	* @return array{success: bool, message_parts: string[], notice_type: string} Result array.
-	*/
-function frl_handle_action_trigger_cache_warmer() {
-	$cache_warmer_url = frl_get_option( 'cache_warmer_url' );
-	if ( empty( $cache_warmer_url ) ) {
-		return array(
-			'success'       => false,
-			'message_parts' => array( __( 'Cache warmer URL not configured.', FRL_PREFIX ) ),
-			'notice_type'   => 'error',
-		);
-	}
-
-	if ( frl_is_already_running( __FUNCTION__ ) ) {
-		return array(
-			'success'       => true,
-			'message_parts' => array( __( 'Cache warmer already triggered in this request.', FRL_PREFIX ) ),
-			'notice_type'   => 'info',
-		);
-	}
-
-	$response = wp_remote_get(
-		$cache_warmer_url,
-		array(
-			'timeout'    => 10,
-			'user-agent' => 'Fralenuvole Cache Warmer',
-		)
-	);
-
-	if ( is_wp_error( $response ) ) {
-		frl_log( 'CACHE WARMER ERROR: {error}', array( 'error' => $response->get_error_message() ) );
-		return array(
-			'success'       => false,
-			'message_parts' => array(
-				sprintf(
-					__( 'Cache warmer request failed: %s', FRL_PREFIX ),
-					$response->get_error_message()
-				),
-			),
-			'notice_type'   => 'error',
-		);
-	}
-
-	$http_code = wp_remote_retrieve_response_code( $response );
-
-	if ( $http_code < 200 || $http_code >= 300 ) {
-		frl_log( 'CACHE WARMER ERROR: HTTP {code}', array( 'code' => $http_code ) );
-		return array(
-			'success'       => false,
-			'message_parts' => array(
-				sprintf(
-					__( 'Cache warmer returned HTTP %d.', FRL_PREFIX ),
-					$http_code
-				),
-			),
-			'notice_type'   => 'error',
-		);
-	}
-
-	return array(
-		'success'       => true,
-		'message_parts' => array(
-			sprintf(
-				__( 'Cache warmer triggered (HTTP %d).', FRL_PREFIX ),
-				$http_code
-			),
-		),
 		'notice_type'   => 'success',
 	);
 }
