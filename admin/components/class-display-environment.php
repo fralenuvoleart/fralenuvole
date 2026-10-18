@@ -255,15 +255,27 @@ class Frl_Environment_Display {
 		$active_options_data   = array();
 		$inactive_options_data = array();
 
+		// Content-bearing field types → label shown for the present/empty state.
+		$content_type_labels = array(
+			'text'     => 'text',
+			'textarea' => 'textarea',
+			'textlist' => 'textlist',
+			'html'     => 'html',
+		);
+
 		// --- Collect data for Managed Options ---
 		if ( ! empty( $env_config['plugin_options'] ) ) {
 			foreach ( array_keys( $env_config['plugin_options'] ) as $key ) {
 
 				$is_intended_file_option = ( $env_config['plugin_options'][ $key ] ?? null ) === 'file';
-				$actual_value            = frl_get_option( $key );
-				$display_value           = '';
-				$code_block              = '';
-				$is_live_active          = false;
+				// Resolve the field type once; content-type rows need a content-based dot + label.
+				$field_settings    = frl_get_all_plugin_options_settings( $key );
+				$field_type        = $field_settings['type'] ?? '';
+				$is_content_option = isset( $content_type_labels[ $field_type ] );
+				$actual_value      = frl_get_option( $key );
+				$display_value     = '';
+				$code_block        = '';
+				$is_live_active    = false;
 
 				if ( $is_intended_file_option ) {
 					$has_content   = ! empty( $actual_value );
@@ -283,6 +295,12 @@ class Frl_Environment_Display {
 					} else {
 						$is_live_active = $has_content;
 					}
+				} elseif ( $is_content_option ) {
+					// Content row: dot + label reflect the live stored value (content present or empty).
+					$has_content    = ! empty( $actual_value );
+					$type_label     = $content_type_labels[ $field_type ];
+					$display_value  = frl_ui_render_status_dot_boolean( $has_content, $has_content ? $type_label : 'empty ' . $type_label );
+					$is_live_active = $has_content;
 				} else {
 					$is_live_active = filter_var( $actual_value, FILTER_VALIDATE_BOOLEAN );
 					$display_value  = frl_ui_render_status_dot_boolean( $is_live_active );
@@ -298,11 +316,14 @@ class Frl_Environment_Display {
 				// Categorize based on the default state in env_config, not live status
 				$default_value_in_config = $env_config['plugin_options'][ $key ] ?? false; // Default to false if not explicitly set
 
-				if ( $default_value_in_config === 'file' || filter_var( $default_value_in_config, FILTER_VALIDATE_BOOLEAN ) ) {
-					// This option is configured to be active by default (e.g. true, 'on', '1') or is a 'file' type option
+				// Content-type options are "enabled by default" when the env config provides non-empty content.
+				$is_config_content_filled = $is_content_option && is_string( $default_value_in_config ) && trim( $default_value_in_config ) !== '';
+
+				if ( $default_value_in_config === 'file' || $is_config_content_filled || filter_var( $default_value_in_config, FILTER_VALIDATE_BOOLEAN ) ) {
+					// This option is configured to be active by default (true, 'on', '1', a 'file' type option, or filled content)
 					$active_options_data[] = $option_data;
 				} else {
-					// This option is configured to be inactive by default (e.g. false, 'off', '0')
+					// This option is configured to be inactive by default (false, 'off', '0', or empty content)
 					$inactive_options_data[] = $option_data;
 				}
 			}

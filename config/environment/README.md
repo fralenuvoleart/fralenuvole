@@ -35,7 +35,7 @@ plugin_options
   header_html           empty
   header_html_php       off
   footer_html           file
-  footer_html_php       on
+  footer_html_php       off
   debug                 off
   error_reporting_email         on
   error_reporting_notice        on

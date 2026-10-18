@@ -1,4 +1,4 @@
-# Project Progress — Current Feature Inventory | Last updated: 2026-10-14
+# Project Progress — Current Feature Inventory | Last updated: 2026-10-18
 
 This file is a **snapshot of what is implemented today**, organized by subsystem. It is not a changelog — for historical change history, use `git log`. When a feature changes, update its entry in place; do not append a dated narrative.
 
@@ -22,7 +22,7 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 |---|---|---|
 | Settings UI | `admin/ui/`, `admin/components/class-settings-fields.php` | Tabbed settings page (jQuery UI tabs), dynamic field rendering, widget injection hooks per section. Restricted fields (including `custom` callbacks) are disabled and save-blocked for non-superadmins. |
 | Dashboard | `admin/components/class-dashboard.php` + `admin/widgets/` | Plugin's own Dashboard tab (Environment/Cache summary, Tag Validator, Import/Export, Admin Actions) plus native WP dashboard widgets (Admin Panel, Editor Panel, Last Updates, User Visits, Custom HTML). Last Updates widget queries all languages (`lang => ''`) and resolves last editor via `_edit_last` with non-autosave revision fallback. |
-| Cache/Environment Display | `admin/components/class-display-cache.php`, `class-display-environment.php` | Read-only diagnostic tables (cache groups, transients, options DB-vs-cache comparison, managed plugins/modules status). |
+| Cache/Environment Display | `admin/components/class-display-cache.php`, `class-display-environment.php` | Read-only diagnostic tables (cache groups, transients, options DB-vs-cache comparison, managed plugins/modules status). "Managed Options" classifies rows from the environment config default (boolean / `file` / non-empty content type → Enabled by default; otherwise Disabled by default). Content-bearing types come from a single map (`text`, `textarea`, `textlist`, `html`): filled → green dot labelled with the type; empty → red dot labelled `empty <type>`, driven by the live option value. |
 | Log Manager | `admin/components/class-display-log.php` | Streaming debug.log viewer (chunked forward/reverse reads for files >256KB), AJAX refresh/clear/download. Entry count and admin-bar bubble share classification/counting logic (`frl_determine_log_error_type()`, `frl_count_debug_log_entries()` in `functions-error-log.php`), excluding Info-level entries; cached separately (`debug_log_count_fast`/`_full`) since the admin bar caps its scan to 100KB while this page scans the full file. |
 | Tag Validator | `admin/components/class-tag-validator.php` | On-demand HTML tag presence checker for any URL (via cURL fetch + regex extraction), used to verify critical-CSS/preload/schema tags render correctly. Result cached 5 minutes per URL+tag-set. |
 | Import/Export | `admin/components/class-import-export.php`, `admin/helpers/functions-admin-import-export.php` | JSON export/import of plugin settings and Polylang string translations. |

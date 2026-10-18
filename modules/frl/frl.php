@@ -2,7 +2,7 @@
 
 /**
  * Module Name: FRL Module
- * Description: Custom features
+ * Description: Custom FRL experimental features
  */
 
 // Exit if accessed directly

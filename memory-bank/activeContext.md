@@ -1,5 +1,16 @@
 # Active Context
 
+## Latest: Environment display — content-type option rows (2026-10-18)
+
+"Managed Options" in the Environment widget now distinguishes content-bearing field types in [`Frl_Environment_Display::render_plugin_options()`](admin/components/class-display-environment.php:253):
+
+- **Single map** drives both detection and label: `$content_type_labels = array( 'text' => 'text', 'textarea' => 'textarea', 'textlist' => 'textlist', 'html' => 'html' )`. Adding a content type is a one-line change; detection is `isset( $content_type_labels[ $field_type ] )`, label is `$content_type_labels[ $field_type ]`.
+- **Section placement** stays keyed on the current environment config value (`$env_config['plugin_options'][$key]`): for a content-type field, a non-empty configured string counts as "Enabled by default". Previously such fields always fell to "Disabled by default" because `filter_var( ..., FILTER_VALIDATE_BOOLEAN )` returns false for ordinary text.
+- **Dot + label** reflect the live stored value (`frl_get_option`): filled → green dot labelled with the type (`text`/`textarea`/`textlist`/`html`); empty → red dot labelled `empty <type>`. Boolean/`file` rows are unchanged; file-typed `html` options are still caught by the `'file'` branch first.
+- Field type resolved once per option via `frl_get_all_plugin_options_settings( $key )['type']`.
+
+Section and dot can legitimately disagree (config vs live value), matching the existing boolean behaviour.
+
 ## Latest: Fix Last Updates Widget LP Queries and Author Tracking (2026-10-17)
 
 **Bug:** In the Last Updates dashboard widget, recent updates to custom post type `lp` (and other multilingual posts) did not appear, showing only edits from several days ago. Additionally, the last editor displayed was stale or defaulted to the original post author rather than the editor who made the changes yesterday. In contrast, the User Visits widget showed yesterday's activity accurately.
