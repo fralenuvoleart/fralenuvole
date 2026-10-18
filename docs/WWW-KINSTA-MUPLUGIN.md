@@ -4,7 +4,7 @@
 
 **Kinsta SSH:** `ssh pbservicesge@89.168.108.245 -p 51137`
 
-**Manual single-URL purge:** `https://<domain>/kinsta-clear-cache/<path>/`.
+**Manual single-URL purge:** `https://pbservices.ge/kinsta-clear-cache/path/`.
 
 ## Cache types
 
