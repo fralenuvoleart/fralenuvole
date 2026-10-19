@@ -1,5 +1,14 @@
 # Active Context
 
+## Latest: WS Form email action translation (2026-10-19)
+
+Extended [`frl_wsf_translate_submit_actions()`](modules/wsform/wsform.php:177) (hook `wsf_actions_post_submit`, raw action configs before `WS_Form_Action_Email::post()` runs) to translate WS Form Pro email actions, verified against `ws-form-pro/includes/actions/class-ws-form-action-email.php`:
+
+- **Action id** `email`; keys `action_email_subject`, `action_email_message_html_editor`, `action_email_message_text_editor` (plain `action_email_message_textarea` intentionally left untouched — it carries submission data, matching WS Form's own translatable meta keys).
+- **Subject**: whole-string via `frl_get_translation()`.
+- **HTML body**: new [`frl_wsf_translate_html_tokens()`](modules/wsform/wsform.php) resolves only `{{...}}` text tokens (reusing [`frl_is_token_match()`](includes/helpers/utilities.php:395) exclusions), leaving HTML/CSS and `#variables` (`#email_submission`, `#field_225`) intact. Cached in `translations` group, keyed by `md5(content) + lang + frl_get_translation_version()`. Translator-disabled path strips delimiters (Safe-Mode parity).
+- **Language** derived once from `submit->meta['post_id']` (REST submit has no language prefix), same as the existing message-action path. Zero new hooks. `php -l` + phpstan clean.
+
 ## Latest: Environment display — content-type option rows (2026-10-18)
 
 "Managed Options" in the Environment widget now distinguishes content-bearing field types in [`Frl_Environment_Display::render_plugin_options()`](admin/components/class-display-environment.php:253):

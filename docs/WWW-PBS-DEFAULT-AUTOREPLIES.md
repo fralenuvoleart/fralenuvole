@@ -41,31 +41,31 @@ Thank you for your inquiry. We will answer you on Monday.
 
             <!-- Main Body Text Section -->
             <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                <strong>Thanks for reaching out!</strong>
+                <strong>{{Thanks for reaching out!}}</strong>
             </p>
             <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                We received your message, and one of our team members will contact you shortly.
+                {{We received your message, and one of our team members will contact you shortly.}}
             </p>
             <p style="margin: 0 0 10px 0; font-size: 15px; line-height: 1.5;">
-                If you prefer, you can also connect with us here:
+                {{If you prefer, you can also connect with us here:}}
             </p>
 
             <!-- Unordered List Section -->
             <ul style="margin: 0 0 20px 0; padding-left: 20px; font-size: 15px; line-height: 1.5;">
                 <li style="margin-bottom: 5px;">
-                    Chat via WhatsApp: <a target="_blank" href="https://wa.me/995599654454"
-                        style="color: #007ab8; text-decoration: underline;">WhatsApp</a>.
+                    {{Chat via WhatsApp}}: <a target="_blank" href="https://wa.me/995599654454"
+                        style="color: #007ab8; text-decoration: underline;">{{WhatsApp}}</a>.
                 </li>
                 <li style="margin-bottom: 5px;">
-                    Schedule a video call: <a target="_blank" href="https://pbservices.ge/free-consultation/"
-                        style="color: #007ab8; text-decoration: underline;">Book a meeting</a>.
+                    {{Schedule a video call}}: <a target="_blank" href="https://pbservices.ge/free-consultation/"
+                        style="color: #007ab8; text-decoration: underline;">{{Book a meeting}}</a>.
                 </li>
             </ul>
             <!-- Signature Section -->
             <p
                 style="margin: 25px 0 0 0; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 15px; line-height: 1.5;">
-                <strong>Best regards</strong>,<br>
-                PB Services Team
+                <strong>{{Best regards}}</strong>,<br>
+                {{PB Services Team}}
             </p>
         </td>
     </tr>
@@ -151,31 +151,31 @@ Thank you for your inquiry. We will answer you on Monday.
 
             <!-- Main Body Text Section -->
             <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                <strong>Thanks for reaching out!</strong>
+                <strong>{{Thanks for reaching out!}}</strong>
             </p>
             <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                We are currently offline until Monday, but we'll reply to your email first thing when we return.
+                {{We are currently offline until Monday, but we'll reply to your email first thing when we return.}}
             </p>
             <p style="margin: 0 0 10px 0; font-size: 15px; line-height: 1.5;">
-                In the meantime, you can also connect with us here:
+                {{In the meantime, you can also connect with us here:}}
             </p>
 
             <!-- Unordered List Section -->
             <ul style="margin: 0 0 20px 0; padding-left: 20px; font-size: 15px; line-height: 1.5;">
                 <li style="margin-bottom: 5px;">
-                    Chat via WhatsApp: <a target="_blank" href="https://wa.me/995599654454"
-                        style="color: #007ab8; text-decoration: underline;">WhatsApp</a>.
+                    {{Chat via WhatsApp}}: <a target="_blank" href="https://wa.me/995599654454"
+                        style="color: #007ab8; text-decoration: underline;">{{WhatsApp}}</a>.
                 </li>
                 <li style="margin-bottom: 5px;">
-                    Schedule a video call: <a target="_blank" href="https://pbservices.ge/free-consultation/"
-                        style="color: #007ab8; text-decoration: underline;">Book a meeting</a>.
+                    {{Schedule a video call}}: <a target="_blank" href="https://pbservices.ge/free-consultation/"
+                        style="color: #007ab8; text-decoration: underline;">{{Book a meeting}}</a>.
                 </li>
             </ul>
             <!-- Signature Section -->
             <p
                 style="margin: 25px 0 0 0; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 15px; line-height: 1.5;">
-                <strong>Best regards</strong>,<br>
-                PB Services Team
+                <strong>{{Best regards}}</strong>,<br>
+                {{PB Services Team}}
             </p>
         </td>
     </tr>

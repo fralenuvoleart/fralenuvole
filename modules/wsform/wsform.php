@@ -43,7 +43,7 @@ add_filter(
 	1
 );
 
-// Translate action messages (like "Thank you") dynamically on submit
+// Translate action strings (success message, email subject/body) dynamically on submit
 add_filter(
 	'wsf_actions_post_submit',
 	'frl_wsf_translate_submit_actions',
@@ -166,7 +166,8 @@ function frl_wsf_translate_fields( $form, $preview ) {
 }
 
 /**
- * Translates the success message returned by WS Form via AJAX.
+ * Translates WS Form action strings returned via AJAX: the success message and
+ * the email action's subject and HTML body.
  * This avoids the issue where translated CSS content gets frozen in the page cache.
  *
  * @param array  $actions The actions array.
@@ -215,10 +216,99 @@ function frl_wsf_translate_submit_actions( $actions, $form, $submit ) {
 					$actions[ $key ]['meta']['action_message_message'] = frl_get_translation( $message, $lang );
 				}
 			}
+		} elseif ( isset( $action['id'] ) && $action['id'] === 'email' && isset( $action['meta'] ) && is_array( $action['meta'] ) ) {
+			$actions[ $key ]['meta'] = frl_wsf_translate_email_meta( $action['meta'], $lang );
 		}
 	}
 
 	return $actions;
+}
+
+/**
+ * Translate a WS Form email action's subject and HTML body.
+ *
+ * Only text inside {{...}} delimiters in the body editors is translated, leaving
+ * HTML markup and WS Form #variables (e.g. #email_submission, #field_225)
+ * byte-for-byte intact. The plain-textarea body is deliberately untouched: it is
+ * submission data, matching WS Form's own translatable email meta keys.
+ *
+ * @param array  $meta Action meta array.
+ * @param string $lang Target language.
+ * @return array Translated meta.
+ */
+function frl_wsf_translate_email_meta( array $meta, string $lang ): array {
+	if ( isset( $meta['action_email_subject'] ) && is_string( $meta['action_email_subject'] ) ) {
+		$meta['action_email_subject'] = frl_get_translation( $meta['action_email_subject'], $lang );
+	}
+
+	foreach ( array( 'action_email_message_html_editor', 'action_email_message_text_editor' ) as $body_key ) {
+		if ( ! empty( $meta[ $body_key ] ) && is_string( $meta[ $body_key ] ) ) {
+			$meta[ $body_key ] = frl_wsf_translate_html_tokens( $meta[ $body_key ], $lang );
+		}
+	}
+
+	return $meta;
+}
+
+/**
+ * Resolve {{text}} tokens inside an email body while preserving all other content.
+ *
+ * Mirrors the block-token engine: only delimited text is translated; HTML tags,
+ * inline CSS and WS Form #variables are untouched. The resolved body is cached
+ * (language- and translation-version-scoped); per-token translation is itself
+ * cached by Frl_Translation_Service.
+ *
+ * @param string $content Body containing {{...}} tokens.
+ * @param string $lang    Target language.
+ * @return string Body with tokens translated.
+ */
+function frl_wsf_translate_html_tokens( string $content, string $lang ): string {
+	$start = FRL_TRANSLATOR_DELIMITER_TEXT['start'];
+	$end   = FRL_TRANSLATOR_DELIMITER_TEXT['end'];
+
+	if ( $content === '' || ! str_contains( $content, $start ) ) {
+		return $content;
+	}
+
+	$pattern = '/' . preg_quote( $start, '/' ) . '(.*?)' . preg_quote( $end, '/' ) . '/s';
+
+	// Translator disabled: strip delimiters so raw {{...}} never leaks into emails.
+	if ( ! frl_translator_is_enabled() ) {
+		$stripped = preg_replace_callback(
+			$pattern,
+			function ( $matched ) {
+				return $matched[1];
+			},
+			$content
+		);
+		// preg_replace_callback returns null on PCRE failure — never blank the body.
+		return $stripped ?? $content;
+	}
+
+	$cache_key = 'wsf_email_tokens_' . md5( $content ) . '_' . $lang . '_' . frl_get_translation_version();
+
+	$resolved = frl_cache_remember(
+		'translations',
+		$cache_key,
+		function () use ( $content, $pattern, $lang ) {
+			return preg_replace_callback(
+				$pattern,
+				function ( $matched ) use ( $lang ) {
+					$token = trim( $matched[1] );
+					// Excluded tokens keep their delimiters, matching the block engine.
+					if ( $token === '' || frl_is_token_match( $token ) ) {
+						return $matched[0];
+					}
+					return frl_get_translation( $token, $lang );
+				},
+				$content
+			);
+		},
+		DAY_IN_SECONDS
+	);
+
+	// Fall back to the original body if PCRE failed (null), never emit an empty email.
+	return is_string( $resolved ) ? $resolved : $content;
 }
 
 /**
