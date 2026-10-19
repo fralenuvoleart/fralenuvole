@@ -133,7 +133,6 @@ const FRL_ENV_FRALENUVOLE_PRODUCTION = array(
 	),
 	'plugin_options' => array(
 		'footer_html'         => '',
-		'custom_robots_txt'   => '',
 		'schema_founder_name' => 'Francesco Castronovo',
 		'schema_founder_url'  => 'https://fralenuvole.art/about/',
 	),

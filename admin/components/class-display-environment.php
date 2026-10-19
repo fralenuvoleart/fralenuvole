@@ -107,7 +107,7 @@ class Frl_Environment_Display {
 		}
 
 		$env_last_updated = $env_data['stored_state']['last_updated'] ?? 'Unknown';
-		$env_rows        .= frl_ui_render_table_row( 'State Last Updated', $env_last_updated, false );
+		$env_rows        .= frl_ui_render_table_row( 'Env Last Updated', $env_last_updated, false );
 
 		$debug_dot   = frl_ui_render_status_dot_boolean( WP_DEBUG );
 		$error_level = '<div class="env-debug">' . $debug_dot . '</div>';

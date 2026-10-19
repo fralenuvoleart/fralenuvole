@@ -313,6 +313,18 @@ class Frl_Cache_Display {
 		$groups_info       = self::get_groups_info();
 		$groups_table_rows = '';
 
+		// Order: heavy groups first, then by count descending (largest first).
+		usort(
+			$groups_info,
+			function ( $a, $b ) {
+				$heavy_comparison = (int) $b['is_heavy'] <=> (int) $a['is_heavy'];
+				if ( $heavy_comparison !== 0 ) {
+					return $heavy_comparison;
+				}
+				return $b['count'] <=> $a['count'];
+			}
+		);
+
 		// Calculate total count for header
 		$total_count = array_sum( array_column( $groups_info, 'count' ) );
 
