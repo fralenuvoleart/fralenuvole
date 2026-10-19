@@ -1082,7 +1082,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'label'       => 'Log Deprecated',
 				'description' => 'Log deprecated messages in the debug.log file',
 				'type'        => 'checkbox',
-				'default'     => 1,
+				'default'     => 0,
 				'autoload'    => 'no',
 			),
 			'error_reporting_plugin'        => array(

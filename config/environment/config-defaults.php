@@ -32,7 +32,6 @@ const FRL_ENV_DEFAULT = array(
 		),
 		'inactive' => array(
 			'query-monitor/query-monitor.php',
-			'better-search-replace/better-search-replace.php',
 		),
 	),
 	// Module keys: underscores only — hyphens break variable-name auto-discovery.
@@ -50,22 +49,19 @@ const FRL_ENV_DEFAULT = array(
 		'blog_public' => 1,
 	),
 	'plugin_options' => array(
-		'header_html'                => '',
-		'header_html_php'            => false,
-		'footer_html'                => 'file',
-		'footer_html_php'            => false,
-		'editor_metabox'             => false,
-		'debug'                      => false,
-		'error_reporting_email'      => true,
-		'error_reporting_notice'     => true,
-		'error_reporting_warning'    => true,
-		'error_reporting_deprecated' => true,
-		'schema_founder_name'        => '',
-		'schema_founder_url'         => '',
-		'wsform_webhook'             => false,
-		'wsform_use_cron'            => false,
-		'cta_webhook'                => false,
-		'cta_use_cron'               => false,
+		'header_html'         => '',
+		'header_html_php'     => false,
+		'footer_html'         => 'file',
+		'footer_html_php'     => false,
+		'debug'               => false,
+		'schema_founder_name' => '',
+		'schema_founder_url'  => '',
+		'schema_org_sameas'   => '',
+		'custom_robots_txt'   => '',
+		'wsform_webhook'      => false,
+		'wsform_use_cron'     => false,
+		'cta_webhook'         => false,
+		'cta_use_cron'        => false,
 	),
 );
 
@@ -73,8 +69,7 @@ const FRL_ENV_DEFAULT = array(
 const FRL_ENV_DEFAULT_PRODUCTION = array(
 	// FRL_ENV_DEFAULT represents default production
 	'plugin_options' => array(
-		'error_reporting_deprecated' => false,
-		'custom_robots_txt'          => '
+		'custom_robots_txt' => '
 			User-agent: SemrushBot
 			User-agent: SiteAuditBot
 			User-agent: ClaudeBot
@@ -95,7 +90,6 @@ const FRL_ENV_DEFAULT_STAGING = array(
 	'plugins'        => array(
 		'active'   => array(
 			'query-monitor/query-monitor.php',
-			'better-search-replace/better-search-replace.php',
 		),
 		'inactive' => array(
 			'mail-queue/mail-queue.php',

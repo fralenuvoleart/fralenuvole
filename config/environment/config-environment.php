@@ -26,7 +26,6 @@ const FRL_ENV_PBS_TEMPLATE = array(
 		'call_to_actions' => true,
 	),
 	'plugin_options' => array(
-		'editor_metabox'      => true,
 		'schema_founder_name' => 'Rati (Iese) Abashmadze',
 		'schema_founder_url'  => 'https://pbservices.ge/about/rati-abashmadze/',
 		'schema_org_sameas'   => '
@@ -70,7 +69,6 @@ const FRL_ENV_PBP_TEMPLATE = array(
 	'plugin_options' => array(
 		'header_html'         => 'file',
 		'header_html_php'     => true,
-		'editor_metabox'      => true,
 		'schema_founder_name' => 'Sopho Chaduneli',
 		'schema_founder_url'  => 'https://pbproperty.ge/',
 
@@ -133,3 +131,10 @@ const FRL_ENV_FRALENUVOLE_PRODUCTION = array(
 		'schema_founder_url'  => 'https://fralenuvole.art/about/',
 	),
 );
+
+/**
+ * Adding a new Domain
+ * 1. Add the domain to FRL_ENV_MAP
+ * 2. Define a new domain template
+ * 3. Add an instance constant with 'extends' and the diffs
+ */
