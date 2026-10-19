@@ -338,13 +338,17 @@ function frl_get_current_post_id(): int {
 /**
  * Retrieves a post ID based on its slug, with caching.
  *
- * @param string $slug The post slug or hierarchical path.
+ * @param string      $slug The post slug or hierarchical path.
+ * @param string|null $lang Optional lookup language. Defaults to the current
+ *                          request language; pass the source language to resolve
+ *                          a source-language slug regardless of request context.
  * @return int The post ID, or 0 if not found.
  */
-function frl_get_post_id_by_slug( $slug ) {
-	$lang = frl_get_language();
-	// Safe cache key
-	$cache_key = 'postslug2id_' . sanitize_key( $slug );
+function frl_get_post_id_by_slug( $slug, ?string $lang = null ) {
+	$lang = $lang ?? frl_get_language();
+	// Safe cache key — include the lookup language so explicit overrides never
+	// collide with request-language entries under the language-prefixed group.
+	$cache_key = 'postslug2id_' . sanitize_key( $lang ) . '_' . sanitize_key( $slug );
 
 	return frl_cache_remember(
 		'permalinks',

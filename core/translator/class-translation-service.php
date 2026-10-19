@@ -435,17 +435,22 @@ final class Frl_Translation_Service {
 	/**
 	 * Get translations for a batch of permalink slugs.
 	 *
-	 * @param array $slugs List of slugs to translate.
-	 * @param string|null $language Optional target language.
+	 * @param array       $slugs           List of slugs to translate.
+	 * @param string|null $language        Optional target language.
+	 * @param string|null $lookup_language Optional language to resolve slugs in.
+	 *                                     Defaults to the request language; pass the
+	 *                                     source language to resolve source-language
+	 *                                     slugs regardless of request context.
 	 * @return array Map of original slugs to translated permalinks.
 	 */
-	public function get_translation_batch_permalinks( array $slugs, ?string $language = null ): array {
+	public function get_translation_batch_permalinks( array $slugs, ?string $language = null, ?string $lookup_language = null ): array {
 		if ( empty( $slugs ) ) {
 			return array();
 		}
 
-		$language  = $language ?: $this->get_language();
-		$batch_key = $language . '|' . implode( '|', $slugs );
+		$language        = $language ?: $this->get_language();
+		$lookup_language = $lookup_language ?: $this->get_language();
+		$batch_key       = $language . '|' . $lookup_language . '|' . implode( '|', $slugs );
 
 		if ( isset( $this->batch_permalinks_cache[ $batch_key ] ) ) {
 			return $this->batch_permalinks_cache[ $batch_key ];
@@ -529,7 +534,7 @@ final class Frl_Translation_Service {
 			}
 
 			if ( ! $is_term_only ) {
-				$post_id = frl_get_post_id_by_slug( $lookup_slug );
+				$post_id = frl_get_post_id_by_slug( $lookup_slug, $lookup_language );
 
 				if ( $post_id && $post_id > 0 ) {
 					$link = $this->get_translation_permalink( $post_id, $language );

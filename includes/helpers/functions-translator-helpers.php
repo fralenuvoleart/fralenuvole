@@ -238,15 +238,16 @@ function frl_get_translation_permalink( string $slug, ?string $language = null )
 /**
  * Get translations for a batch of permalink slugs.
  *
- * @param array       $slugs    List of slugs to translate.
- * @param string|null $language Optional target language.
+ * @param array       $slugs           List of slugs to translate.
+ * @param string|null $language        Optional target language.
+ * @param string|null $lookup_language Optional language to resolve slugs in (defaults to request language).
  * @return array Map of original slugs to translated permalinks.
  */
-function frl_get_translation_batch_permalinks( array $slugs, ?string $language = null ): array {
+function frl_get_translation_batch_permalinks( array $slugs, ?string $language = null, ?string $lookup_language = null ): array {
 	if ( ! frl_translator_is_enabled() ) {
 		return array_fill_keys( $slugs, '#' );
 	}
-	return Frl_Translation_Service::get_instance()->get_translation_batch_permalinks( $slugs, $language );
+	return Frl_Translation_Service::get_instance()->get_translation_batch_permalinks( $slugs, $language, $lookup_language );
 }
 
 /**

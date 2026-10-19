@@ -251,33 +251,43 @@ function frl_wsf_translate_email_meta( array $meta, string $lang ): array {
 }
 
 /**
- * Resolve {{text}} tokens inside an email body while preserving all other content.
+ * Resolve {{text}} and ##permalink## tokens in an email body, preserving all other content.
  *
- * Mirrors the block-token engine: only delimited text is translated; HTML tags,
- * inline CSS and WS Form #variables are untouched. The resolved body is cached
- * (language- and translation-version-scoped); per-token translation is itself
- * cached by Frl_Translation_Service.
+ * Mirrors the block-token engine: only delimited content is translated; HTML tags,
+ * inline CSS and WS Form #variables are untouched. {{...}} resolves to translated
+ * text (excluded tokens keep their delimiters); ##slug## resolves to the permalink in
+ * the target language, looking the slug up in the SOURCE language so the result never
+ * depends on the request/Polylang-default language. The resolved body is cached
+ * (language- and translation-version-scoped); per-token translation is itself cached
+ * by Frl_Translation_Service.
  *
- * @param string $content Body containing {{...}} tokens.
+ * @param string $content Body containing {{...}} and/or ##slug## tokens.
  * @param string $lang    Target language.
- * @return string Body with tokens translated.
+ * @return string Body with tokens resolved.
  */
 function frl_wsf_translate_html_tokens( string $content, string $lang ): string {
-	$start = FRL_TRANSLATOR_DELIMITER_TEXT['start'];
-	$end   = FRL_TRANSLATOR_DELIMITER_TEXT['end'];
+	$text = FRL_TRANSLATOR_DELIMITER_TEXT;
+	$link = FRL_TRANSLATOR_DELIMITER_LINK;
 
-	if ( $content === '' || ! str_contains( $content, $start ) ) {
+	$has_text = str_contains( $content, $text['start'] );
+	$has_link = str_contains( $content, $link['start'] );
+
+	if ( $content === '' || ( ! $has_text && ! $has_link ) ) {
 		return $content;
 	}
 
-	$pattern = '/' . preg_quote( $start, '/' ) . '(.*?)' . preg_quote( $end, '/' ) . '/s';
+	$text_pattern = '/' . preg_quote( $text['start'], '/' ) . '(.*?)' . preg_quote( $text['end'], '/' ) . '/s';
+	$link_pattern = '/' . preg_quote( $link['start'], '/' ) . '(.*?)' . preg_quote( $link['end'], '/' ) . '/s';
+	// Combined alternation (group 1 = {{text}}, group 2 = ##link##) — one pass, so a
+	// translation containing ## cannot be re-interpreted as a link token.
+	$combined_pattern = preg_quote( $text['start'], '/' ) . '(.*?)' . preg_quote( $text['end'], '/' ) . '|' . preg_quote( $link['start'], '/' ) . '(.*?)' . preg_quote( $link['end'], '/' );
 
-	// Translator disabled: strip delimiters so raw {{...}} never leaks into emails.
+	// Translator disabled: strip {{text}} to its inner text and neutralise ##slug## (Safe-Mode parity).
 	if ( ! frl_translator_is_enabled() ) {
 		$stripped = preg_replace_callback(
-			$pattern,
+			'/' . $combined_pattern . '/s',
 			function ( $matched ) {
-				return $matched[1];
+				return ( isset( $matched[1] ) && $matched[1] !== '' ) ? trim( $matched[1] ) : '#';
 			},
 			$content
 		);
@@ -290,16 +300,31 @@ function frl_wsf_translate_html_tokens( string $content, string $lang ): string 
 	$resolved = frl_cache_remember(
 		'translations',
 		$cache_key,
-		function () use ( $content, $pattern, $lang ) {
+		function () use ( $content, $combined_pattern, $link_pattern, $lang ) {
+			// Resolve ##slug## → translated permalink, looked up in the source language.
+			$urls = array();
+			if ( preg_match_all( $link_pattern, $content, $matches ) ) {
+				$slugs = array_values( array_unique( array_filter( array_map( 'trim', $matches[1] ), 'strlen' ) ) );
+				if ( ! empty( $slugs ) ) {
+					$urls = frl_get_translation_batch_permalinks( $slugs, $lang, FRL_TRANSLATOR_SOURCE_LANG );
+				}
+			}
+
 			return preg_replace_callback(
-				$pattern,
-				function ( $matched ) use ( $lang ) {
-					$token = trim( $matched[1] );
-					// Excluded tokens keep their delimiters, matching the block engine.
-					if ( $token === '' || frl_is_token_match( $token ) ) {
-						return $matched[0];
+				'/' . $combined_pattern . '/s',
+				function ( $matched ) use ( $urls, $lang ) {
+					// {{text}} token (group 1).
+					if ( isset( $matched[1] ) && $matched[1] !== '' ) {
+						$token = trim( $matched[1] );
+						// Excluded tokens keep their delimiters, matching the block engine.
+						if ( frl_is_token_match( $token ) ) {
+							return $matched[0];
+						}
+						return frl_get_translation( $token, $lang );
 					}
-					return frl_get_translation( $token, $lang );
+					// ##slug## token (group 2).
+					$slug = isset( $matched[2] ) ? trim( $matched[2] ) : '';
+					return $slug === '' ? $matched[0] : ( $urls[ $slug ] ?? '#' );
 				},
 				$content
 			);
