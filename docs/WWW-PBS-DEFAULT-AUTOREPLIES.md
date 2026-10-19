@@ -91,7 +91,7 @@ PB Services Team
 ```
 
 
-## WhatsApp — respond.io Workflow Messages
+## WhatsApp — respond.io Workflow
 
 ### Weekday — EN
 
@@ -152,23 +152,29 @@ Thanks for reaching out!
 ### Autoreply — EN
 
 ```
-Hi {name}, thank you for reaching out to us! 🟢\nWe've received your message, and one of our team members will contact you shortly.
+Hi {name}, thank you for reaching out to us! 🟢
+We've received your message, and one of our team members will contact you shortly.
 ```
 
 ### Autoreply — RU
 
 ```
-Здравствуйте, {name}! Спасибо, что обратились к нам! 🟢\nМы получили ваше сообщение, и один из наших специалистов свяжется с вами в ближайшее время.
+Здравствуйте, {name}! Спасибо, что обратились к нам! 🟢
+Мы получили ваше сообщение, и один из наших специалистов свяжется с вами в ближайшее время.
 ```
 
 ## Autoreply After Hours — EN
 
 ```
-Welcome! 🟢\n\nWe're currently outside of our office hours (Mon–Fri, 10:00–18:00 Tbilisi time).\nFeel free to leave your message below, and our team will follow up with you as soon as business hours resume.\n\nThanks for reaching out!
+Welcome! 🟢
+
+We're currently outside of our office hours (Mon–Fri, 10:00–18:00 Tbilisi time).\nFeel free to leave your message below, and our team will follow up with you as soon as business hours resume.\n\nThanks for reaching out!
 ```
 
 ### Autoreply After Hours — RU
 
 ```
-Добро пожаловать! 🟢\n\nСейчас нерабочее время (Пн–Пт, 10:00–18:00 по тбилисскому времени).\nОставьте, пожалуйста, ваше сообщение здесь, и наша команда свяжется с вами, как только начнётся рабочий день.\n\nСпасибо за обращение!
+Добро пожаловать! 🟢
+
+Сейчас нерабочее время (Пн–Пт, 10:00–18:00 по тбилисскому времени).\nОставьте, пожалуйста, ваше сообщение здесь, и наша команда свяжется с вами, как только начнётся рабочий день.\n\nСпасибо за обращение!
 ```
