@@ -107,6 +107,11 @@ const FRL_ENV_DEFAULT_STAGING = array(
 /** Base template for new websites with no dedicated brand template yet. */
 const FRL_ENV_MASTER_TEMPLATE = array(
 	'prefix'         => 'master',
+	'plugins'        => array(
+		'active' => array(
+			'query-monitor/query-monitor.php',
+		),
+	),
 	'plugin_options' => array(
 		'debug' => true,
 	),

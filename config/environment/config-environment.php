@@ -123,6 +123,11 @@ const FRL_ENV_PBNOVA_STAGING = array(
 const FRL_ENV_FRALENUVOLE_PRODUCTION = array(
 	'extends'        => 'FRL_ENV_MASTER_TEMPLATE',
 	'prefix'         => 'frl',
+	'plugins'        => array(
+		'active' => array(
+			'query-monitor/query-monitor.php',
+		),
+	),
 	'modules'        => array(
 		'frl' => true,
 	),
