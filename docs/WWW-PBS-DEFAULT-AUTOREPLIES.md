@@ -1,25 +1,38 @@
 # PBS Default Auto-replies
 
-Content reference for PBS brand auto-reply message templates across all channels.
+Reference for PBS brand auto-reply messages across all channels.
 
 ## Webform — Inline Messages (Polylang)
 
 ### Weekday — EN
+
+```
 Thanks for getting in touch! Our consultant will contact you shortly.
+```
 
 ### Weekday — RU
+
+```
 Спасибо за обращение! Наш консультант свяжется с вами в ближайшее время.
+```
 
 ### Weekend — EN
+
+```
 Thank you for your inquiry. We will answer you on Monday.
+```
 
 ### Weekend — RU
+
+```
 Спасибо за ваш запрос. Мы ответим вам в понедельник.
+```
 
 ## Webform — HTML Emails (Polylang)
 
 ### Weekday — EN
-```html
+
+```
 Thanks for reaching out!
 
 We received your message, and one of our team members will contact you shortly.
@@ -30,7 +43,6 @@ If you prefer, you can also connect with us here:
 
 Best regards,
 PB Services Team
-
 ```
 
 ### Weekday — RU
