@@ -113,6 +113,7 @@ const FRL_ENV_MASTER_TEMPLATE = array(
 		),
 	),
 	'plugin_options' => array(
-		'debug' => true,
+		'debug'       => true,
+		'footer_html' => '',
 	),
 );
