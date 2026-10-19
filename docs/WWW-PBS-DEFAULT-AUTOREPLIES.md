@@ -20,222 +20,62 @@ Thank you for your inquiry. We will answer you on Monday.
 
 ### Weekday — EN
 ```html
-<!-- Email Content Container -->
-<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0"
-    style="max-width: 600px; font-family: Arial, Helvetica, sans-serif; color: #555555; background-color: #ffffff; border-radius: 8px;">
-    <tr>
-        <td style="padding: 20px;">
+Thanks for reaching out!
 
-            <!-- Logo Section -->
-            <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                    <td style="padding-bottom: 25px;">
-                        <a target="_blank" href="https://pbservices.ge">
-                            <img src="https://pbservices.ge/wp-content/uploads/2026/10/pbs-logo.png" alt="PB Services"
-                                width="155" height="40"
-                                style="display: block; border: 0; outline: none; text-decoration: none;">
-                        </a>
-                    </td>
-                </tr>
-            </table>
+We received your message, and one of our team members will contact you shortly.
 
-            <!-- Main Body Text Section -->
-            <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                <strong>{{Thanks for reaching out!}}</strong>
-            </p>
-            <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                {{We received your message, and one of our team members will contact you shortly.}}
-            </p>
-            <p style="margin: 0 0 10px 0; font-size: 15px; line-height: 1.5;">
-                {{If you prefer, you can also connect with us here:}}
-            </p>
+If you prefer, you can also connect with us here:
+    Chat via WhatsApp: WhatsApp
+    Schedule a video call: Book a meeting
 
-            <!-- Unordered List Section -->
-            <ul style="margin: 0 0 20px 0; padding-left: 20px; font-size: 15px; line-height: 1.5;">
-                <li style="margin-bottom: 5px;">
-                    {{Chat via WhatsApp}}: <a target="_blank" href="https://wa.me/995599654454"
-                        style="color: #007ab8; text-decoration: underline;">{{WhatsApp}}</a>.
-                </li>
-                <li style="margin-bottom: 5px;">
-                    {{Schedule a video call}}: <a target="_blank" href="https://pbservices.ge/free-consultation/"
-                        style="color: #007ab8; text-decoration: underline;">{{Book a meeting}}</a>.
-                </li>
-            </ul>
-            <!-- Signature Section -->
-            <p
-                style="margin: 25px 0 0 0; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 15px; line-height: 1.5;">
-                <strong>{{Best regards}}</strong>,<br>
-                {{PB Services Team}}
-            </p>
-        </td>
-    </tr>
-</table>
+Best regards,
+PB Services Team
+
 ```
 
 ### Weekday — RU
 
-```html
-<!-- Email Content Container -->
-<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0"
-    style="max-width: 600px; font-family: Arial, Helvetica, sans-serif; color: #555555; background-color: #ffffff; border-radius: 8px;">
-    <tr>
-        <td style="padding: 20px;">
+```
+Спасибо за обращение!
 
-            <!-- Logo Section -->
-            <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                    <td style="padding-bottom: 25px;">
-                        <a target="_blank" href="https://pbservices.ge/ru/">
-                            <img src="https://pbservices.ge/wp-content/uploads/2026/10/pbs-logo.png" alt="PB Services"
-                                width="155" height="40"
-                                style="display: block; border: 0; outline: none; text-decoration: none;">
-                        </a>
-                    </td>
-                </tr>
-            </table>
+Мы получили ваше сообщение, и один из наших специалистов свяжется с вами в ближайшее время.
 
-            <!-- Main Body Text Section -->
-            <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                <strong>Спасибо за обращение!</strong>
-            </p>
-            <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                Мы получили ваше сообщение, и один из наших специалистов свяжется с вами в ближайшее время.
-            </p>
-            <p style="margin: 0 0 10px 0; font-size: 15px; line-height: 1.5;">
-                Если вам так удобнее, вы также можете связаться с нами следующими способами:
-            </p>
+Если вам так удобнее, вы также можете связаться с нами следующими способами:
+    Чат в WhatsApp: WhatsApp
+    Запланировать видеозвонок: Забронировать встречу
 
-            <!-- Unordered List Section -->
-            <ul style="margin: 0 0 20px 0; padding-left: 20px; font-size: 15px; line-height: 1.5;">
-                <li style="margin-bottom: 5px;">
-                    Чат в WhatsApp: <a target="_blank" href="https://wa.me/995599654454"
-                        style="color: #007ab8; text-decoration: underline;">WhatsApp</a>.
-                </li>
-                <li style="margin-bottom: 5px;">
-                    Запланировать видеозвонок: <a target="_blank" href="https://pbservices.ge/ru/besplatnuyu-konsultacziyu/"
-                        style="color: #007ab8; text-decoration: underline;">Забронировать встречу</a>.
-                </li>
-            </ul>
-            <!-- Signature Section -->
-            <p
-                style="margin: 25px 0 0 0; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 15px; line-height: 1.5;">
-                <strong>С уважением</strong>,<br>
-                Команда PB Services
-            </p>
-        </td>
-    </tr>
-</table>
+С уважением,
+Команда PB Services
 ```
 
 ### Weekend — EN
 
-```html
-<!-- Email Content Container -->
-<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0"
-    style="max-width: 600px; font-family: Arial, Helvetica, sans-serif; color: #555555; background-color: #ffffff; border-radius: 8px;">
-    <tr>
-        <td style="padding: 20px;">
+```
+Thanks for reaching out!
 
-            <!-- Logo Section -->
-            <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                    <td style="padding-bottom: 25px;">
-                        <a target="_blank" href="https://pbservices.ge">
-                            <img src="https://pbservices.ge/wp-content/uploads/2026/10/pbs-logo.png" alt="PB Services"
-                                width="155" height="40"
-                                style="display: block; border: 0; outline: none; text-decoration: none;">
-                        </a>
-                    </td>
-                </tr>
-            </table>
+We are currently offline until Monday, but we'll reply to your email first thing when we return.
 
-            <!-- Main Body Text Section -->
-            <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                <strong>{{Thanks for reaching out!}}</strong>
-            </p>
-            <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                {{We are currently offline until Monday, but we'll reply to your email first thing when we return.}}
-            </p>
-            <p style="margin: 0 0 10px 0; font-size: 15px; line-height: 1.5;">
-                {{In the meantime, you can also connect with us here:}}
-            </p>
+In the meantime, you can also connect with us here:
+    Chat via WhatsApp: WhatsApp
+    Schedule a video call: Book a meeting
 
-            <!-- Unordered List Section -->
-            <ul style="margin: 0 0 20px 0; padding-left: 20px; font-size: 15px; line-height: 1.5;">
-                <li style="margin-bottom: 5px;">
-                    {{Chat via WhatsApp}}: <a target="_blank" href="https://wa.me/995599654454"
-                        style="color: #007ab8; text-decoration: underline;">{{WhatsApp}}</a>.
-                </li>
-                <li style="margin-bottom: 5px;">
-                    {{Schedule a video call}}: <a target="_blank" href="https://pbservices.ge/free-consultation/"
-                        style="color: #007ab8; text-decoration: underline;">{{Book a meeting}}</a>.
-                </li>
-            </ul>
-            <!-- Signature Section -->
-            <p
-                style="margin: 25px 0 0 0; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 15px; line-height: 1.5;">
-                <strong>{{Best regards}}</strong>,<br>
-                {{PB Services Team}}
-            </p>
-        </td>
-    </tr>
-</table>
+Best regards,
+PB Services Team
 ```
 
 ### Weekend — RU
 
-```html
-<!-- Email Content Container -->
-<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0"
-    style="max-width: 600px; font-family: Arial, Helvetica, sans-serif; color: #555555; background-color: #ffffff; border-radius: 8px;">
-    <tr>
-        <td style="padding: 20px;">
+```
+Спасибо за обращение!
 
-            <!-- Logo Section -->
-            <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                    <td style="padding-bottom: 25px;">
-                        <a target="_blank" href="https://pbservices.ge/ru/">
-                            <img src="https://pbservices.ge/wp-content/uploads/2026/10/pbs-logo.png" alt="PB Services"
-                                width="155" height="40"
-                                style="display: block; border: 0; outline: none; text-decoration: none;">
-                        </a>
-                    </td>
-                </tr>
-            </table>
+В настоящее время мы не работаем до понедельника, но ответим на ваше письмо в первую очередь, как только вернемся.
 
-            <!-- Main Body Text Section -->
-            <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                <strong>Спасибо за обращение!</strong>
-            </p>
-            <p style="margin: 0 0 15px 0; font-size: 15px; line-height: 1.5;">
-                В настоящее время мы не работаем до понедельника, но ответим на ваше письмо в первую очередь, как только вернемся.
-            </p>
-            <p style="margin: 0 0 10px 0; font-size: 15px; line-height: 1.5;">
-                А пока вы также можете связаться с нами здесь:
-            </p>
+Если вам так удобнее, вы также можете связаться с нами следующими способами:
+    Чат в WhatsApp: WhatsApp
+    Запланировать видеозвонок: Забронировать встречу
 
-            <!-- Unordered List Section -->
-            <ul style="margin: 0 0 20px 0; padding-left: 20px; font-size: 15px; line-height: 1.5;">
-                <li style="margin-bottom: 5px;">
-                    Чат в WhatsApp: <a target="_blank" href="https://wa.me/995599654454"
-                        style="color: #007ab8; text-decoration: underline;">WhatsApp</a>.
-                </li>
-                <li style="margin-bottom: 5px;">
-                    Запланировать видеозвонок: <a target="_blank" href="https://pbservices.ge/ru/besplatnuyu-konsultacziyu/"
-                        style="color: #007ab8; text-decoration: underline;">Забронировать встречу</a>.
-                </li>
-            </ul>
-            <!-- Signature Section -->
-            <p
-                style="margin: 25px 0 0 0; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 15px; line-height: 1.5;">
-                <strong>С уважением</strong>,<br>
-                Команда PB Services
-            </p>
-        </td>
-    </tr>
-</table>
-
+С уважением,
+Команда PB Services
 ```
 
 
@@ -268,24 +108,26 @@ Welcome! 🟢 We're currently outside of our office hours (Mon–Fri, 10:00–18
 
 ## Telegram — Bot Messages (Sevalla messages.json)
 
+### Autoreply — EN
+
 ```
-{
-  "welcome": {
-    "default": "Welcome to PB Services! 👋\nSend your message below to connect with our support team.",
-    "ru": "Добро пожаловать в PB Services! 👋\nНапишите ваше сообщение ниже, чтобы связаться с нашей поддержкой."
-  },
-  "autoreply": {
-    "default": "Hi {name}, thank you for reaching out to us! 🟢\nWe've received your message, and one of our team members will contact you shortly.",
-    "ru": "Здравствуйте, {name}! Спасибо, что обратились к нам! 🟢\nМы получили ваше сообщение, и один из наших специалистов свяжется с вами в ближайшее время."
-  },
-  "autoreply_after_hours": {
-    "default": "Welcome! 🟢\n\nWe're currently outside of our office hours (Mon–Fri, 10:00–18:00 Tbilisi time).\nFeel free to leave your message below, and our team will follow up with you as soon as business hours resume.\n\nThanks for reaching out!",
-    "ru": "Добро пожаловать! 🟢\n\nСейчас нерабочее время (Пн–Пт, 10:00–18:00 по тбилисскому времени).\nОставьте, пожалуйста, ваше сообщение здесь, и наша команда свяжется с вами, как только начнётся рабочий день.\n\nСпасибо за обращение!"
-  },
-  "relay": {
-    "sessionOpen": "🔄 *Relay session open*\nReplying to user `{userId}`.\nType your messages here — they will be sent to the user.\nSend /close to end the session.",
-    "sent": "✅ Sent",
-    "closed": "🔒 Relay session closed."
-  }
-}
+Hi {name}, thank you for reaching out to us! 🟢\nWe've received your message, and one of our team members will contact you shortly.
+```
+
+### Autoreply — RU
+
+```
+Здравствуйте, {name}! Спасибо, что обратились к нам! 🟢\nМы получили ваше сообщение, и один из наших специалистов свяжется с вами в ближайшее время.
+```
+
+## Autoreply After Hours — EN
+
+```
+Welcome! 🟢\n\nWe're currently outside of our office hours (Mon–Fri, 10:00–18:00 Tbilisi time).\nFeel free to leave your message below, and our team will follow up with you as soon as business hours resume.\n\nThanks for reaching out!
+```
+
+### Autoreply After Hours — RU
+
+```
+Добро пожаловать! 🟢\n\nСейчас нерабочее время (Пн–Пт, 10:00–18:00 по тбилисскому времени).\nОставьте, пожалуйста, ваше сообщение здесь, и наша команда свяжется с вами, как только начнётся рабочий день.\n\nСпасибо за обращение!
 ```
