@@ -4,7 +4,9 @@
 
 **Kinsta SSH:** `ssh pbservicesge@89.168.108.245 -p 51137`
 
-**Manual single-URL purge:** `https://pbservices.ge/kinsta-clear-cache/path/`.
+**Manual single-URL purge:** `https://example.com/kinsta-clear-cache/path/`.
+
+**Hierarchical posts**: `https://example.com/kinsta-clear-cache/page-slug/subpage-slug/`.
 
 ## Cache types
 
@@ -100,9 +102,21 @@ No action fires for site-only, edge-only, CDN-only, or object-only purges.
 
 ## FAQ
 
-### 1. Does updating a template or pattern count as a post update?
+### 1. Do site-editor edits (header, patterns, block menus) trigger a purge?
 
-**No purge.** The post hooks aborts on `is_post_type_viewable()`. Core registers `wp_template`, `wp_template_part`, `wp_block`, `wp_global_styles`, `wp_navigation` with `'public' => false`, so `is_post_type_viewable()` is `false`. Neither the pattern/template nor the site is purged.
+**No — nothing happens.** The post hooks aborts on `is_post_type_viewable()`. Core registers `wp_template`, `wp_template_part`, `wp_block`, `wp_global_styles`, `wp_navigation` with `'public' => false`, so `is_post_type_viewable()` is `false`. Neither the pattern/template nor the site is purged.
+
+| Site-editor item | Post type | Purge? |
+|---|---|---|
+| Website header / footer (template part) | `wp_template_part` | No |
+| Template | `wp_template` | No |
+| Synced pattern | `wp_block` | No |
+| Block navigation menu | `wp_navigation` | No |
+| Global styles | `wp_global_styles` | No |
+
+**Exception — classic navigation menus:** editing a classic menu (Appearance → Menus) fires `wp_update_nav_menu` → `purge_complete_caches()` → **full purge (Object + Site + CDN)**. Block-based navigation menus do not fire that hook.
+
+**Implication:** site-editor edits leave the Kinsta page cache stale; purge manually (admin-bar "Clear Caches" / "Clear Site Cache", or `wp kinsta cache purge`).
 
 ### 2. When a single post is purged, is only that page flushed, or are its terms flushed too?
 
@@ -114,7 +128,7 @@ Global autopurge ON, `wp_post_controller` ON, all other controllers OFF
 
 **Caveats**: `wp_update_nav_menu` triggers a full purge that is **not** gated by any controller — so strict manual-only is not achievable while global autopurge is on.
 
-### 4. If only `wp_post_controller` is enabled, are the post's terms and its Polylang translations flushed?
+### 4. If only `wp_post_controller` is enabled, are the post's terms and Polylang translations flushed?
 
 - **Terms: yes** — flushed as part of the single-post purge (term archives are included). `wp_term_controller` only governs purges triggered by editing/deleting a term itself.
 - **Polylang: no** — the plugin has **no Polylang integration**.
@@ -131,7 +145,7 @@ Global autopurge ON, `wp_post_controller` ON, all other controllers OFF
 
 **No.** There is no `Plugin_Upgrader` or `Core_Upgrader` handling.
 
-### 8. Which hook should I use to warm the cache after a specific cache is flushed?
+### 8. Which hook can be used to warm the cache after a specific cache is flushed?
 
 See the **Hooks** table above: 
 - **selective purge**: `kinsta_initiate_purge_happened`; 
