@@ -399,9 +399,9 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 			return;
 		}
 
-		// Clearing 'options' cascades into 'rewriter' via FRL_CACHE_DEPENDENCIES,
-		// so an explicit frl_cache_clear('rewriter') call is not needed here.
-		frl_cache_clear( 'options' );
+		// Clear only 'rewriter' (cascades to 'permalinks'): the full 'options' cascade
+		// would also drop 'html' fragments on every rewrite-rules flush.
+		frl_cache_clear( 'rewriter' );
 		frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
 	}
 
@@ -426,6 +426,9 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 		if ( frl_is_already_running( __METHOD__ ) ) {
 			return;
 		}
+
+		// Settings changed: option-derived config hashes must refresh before invalidating.
+		frl_cache_clear( 'options' );
 
 		// Invalidate caches first so the subsequent flush_rewrite_rules() call
 		// regenerates rules with fresh exclusion patterns. When flush_rewrite_rules

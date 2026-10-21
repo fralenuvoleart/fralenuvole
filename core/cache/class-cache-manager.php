@@ -489,7 +489,9 @@ class Frl_Cache_Manager {
 
 		// Locking mechanism to prevent race conditions
 		$lock_key     = self::generate_key( 'lock', $group . $key );
-		$max_attempts = 3;
+		// Non-blocking lock: one attempt, then generate. Waiting is wasted on the
+		// contended (slow) callbacks, and all remember() callbacks are idempotent reads.
+		$max_attempts = 1;
 		$wait_time    = 50000; // 50ms initially
 
 		for ( $attempt = 0; $attempt < $max_attempts; $attempt++ ) {
