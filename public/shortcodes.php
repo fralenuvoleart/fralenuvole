@@ -181,7 +181,7 @@ function frl_shortcode_readtime( $atts ) {
 	// design. json_encode() would be ~5 % faster for simple attr arrays but the
 	// difference is negligible; serialize() preserves PHP type fidelity if attrs
 	// ever include objects.
-	$cache_key           = "readtime_{$post->ID}_" . md5( serialize( $atts ) ) . '_v' . frl_get_post_cache_version( $post->ID ) . '_tv' . $translation_version;
+	$cache_key = "readtime_{$post->ID}_" . md5( serialize( $atts ) ) . '_v' . frl_get_post_cache_version( $post->ID ) . '_tv' . $translation_version;
 
 	return frl_cache_remember(
 		'shortcodes',
@@ -257,6 +257,12 @@ function frl_shortcode_langswitcher( $atts = array() ) {
 		$args['hide_if_no_translation'] = (int) $opt_hide_if_no_translation ? 1 : 0;
 	}
 
+	// Dropdown default from the option (the shortcode 'dropdown' attribute still overrides it below).
+	$opt_dropdown = frl_get_option( 'langswitcher_dropdown' );
+	if ( ! empty( $opt_dropdown ) ) {
+		$args['dropdown'] = (int) $opt_dropdown ? 1 : 0;
+	}
+
 	// Parse option-based hidden language slugs (merged with shortcode exclude later)
 	$opt_hide_langs_raw = (string) frl_get_option( 'langswitcher_hide_languages' );
 	$opt_exclude_slugs  = array();
@@ -289,19 +295,18 @@ function frl_shortcode_langswitcher( $atts = array() ) {
 	$post_id          = get_queried_object_id();
 	$dropdown_enabled = $a['dropdown'] !== ''
 		? (bool) $a['dropdown']
-		: (bool) ( $args['dropdown'] ?? frl_get_option( 'langswitcher_dropdown' ) );
+		: (bool) $args['dropdown'];
 	// Versioned key (Post Cache Versioning Pattern): invalidated by the _frl_post_version bump
 	// on save — which fires for every Polylang sibling.
 	$cache_key = frl_generate_cache_key( 'langswitcher_' . ( $dropdown_enabled ? 'dd' : 'fl' ), 'post', (string) $post_id, 'v' . frl_get_post_cache_version( $post_id ) );
 
 	// show_flags=0 avoids Polylang rendering unused base64 PNGs.
-	$raw_args = array_merge(
-		FRL_LANGSWITCHER_ARGS,
-		array(
-			'raw'        => 1,
-			'show_flags' => 0,
-		)
-	);
+	// Drop 'dropdown' — deprecated in Polylang 3.9 (emits a "Deprecated argument" notice)
+	// and inert under raw=1. The dropdown builder reads $el['slug'], not $el['name'].
+	$raw_args = FRL_LANGSWITCHER_ARGS;
+	unset( $raw_args['dropdown'] );
+	$raw_args['raw']        = 1;
+	$raw_args['show_flags'] = 0;
 
 	$elements = frl_cache_remember(
 		'shortcodes',
@@ -454,8 +459,8 @@ function frl_langswitcher_inline_flag( string $slug, string $name ): string {
  * Builds language switcher dropdown HTML from raw Polylang elements.
  *
  * Mirrors PLL_Walker_Dropdown output exactly, including the inline <script> for
- * language switching. Option text displays the language slug (matching the current
- * display_names_as='slug' behavior). Each <option> receives a title attribute
+ * language switching. Option text displays the language slug ($el['slug']). Each
+ * <option> receives a title attribute
  * with the native language name.
  *
  * @since 5.8.1
@@ -489,7 +494,7 @@ function frl_langswitcher_build_dropdown( array $elements ): string {
 			$selected,
 			esc_html( $data_lang ),
 			esc_attr( $native_name ),
-			esc_html( $el['name'] )
+			esc_html( $el['slug'] )
 		);
 	}
 
@@ -1172,7 +1177,7 @@ function frl_shortcode_breadcrumbs( $atts ) {
 	$translation_version = frl_get_option( 'translation_version' ) ?: 1;
 	// serialize() is cache-key fingerprinting (pre-lookup), NOT data
 	// serialization for storage — see frl_shortcode_readtime() for rationale.
-	$cache_key           = 'breadcrumbs_' . $object_id . '_' .
+	$cache_key = 'breadcrumbs_' . $object_id . '_' .
 			md5( serialize( array( $a['separator'], $a['class'], $show_home, $show_current ) ) ) . $version . '_tv' . $translation_version;
 
 	return frl_cache_remember(

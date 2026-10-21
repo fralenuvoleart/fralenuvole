@@ -70,10 +70,8 @@ const FRL_LANGSWITCHER_FLAGS_DIR = __DIR__ . '/../assets/images/flags';
 // Arguments for default langs switcher
 const FRL_LANGSWITCHER_ARGS = array(
 	'dropdown'               => 0,       // 0 = flags, 1 = dropdown
-	'display_names_as'       => 'slug',  // Dropdown only: option text: 'name' or 'slug'
 	'hide_current'           => 0,       // Flag only: default 0
 	'hide_if_no_translation' => 0,       // Both: default 0
-	'hide_languages'         => '',      // Both: comma-separated list of lang slugs
 );
 
 // Email notifications
