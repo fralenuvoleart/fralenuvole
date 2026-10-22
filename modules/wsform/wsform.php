@@ -44,7 +44,7 @@ add_filter(
 	1
 );
 
-// Translate action strings (success message, email subject/body) dynamically on submit
+// Translate action strings (inline success message, email subject/body) dynamically on submit
 add_filter(
 	'wsf_actions_post_submit',
 	'frl_wsf_translate_submit_actions',
@@ -167,8 +167,8 @@ function frl_wsf_translate_fields( $form, $preview ) {
 }
 
 /**
- * Translates WS Form action strings returned via AJAX: the success message and
- * the email action's subject and HTML body.
+ * Translates WS Form action strings returned via AJAX: the inline success message
+ * (WS Form "Show Message" action) and the email action's subject and HTML body.
  * This avoids the issue where translated CSS content gets frozen in the page cache.
  *
  * @param array  $actions The actions array.
@@ -181,7 +181,7 @@ function frl_wsf_translate_submit_actions( $actions, $form, $submit ) {
 		return $actions;
 	}
 
-	// Check if we need the weekend message override
+	// Check if we need the weekend inline-message override
 	// We look for a field with aria-label "Date" and value "Sat" or "Sun" in the submission data
 	$is_weekend = false;
 	if ( isset( $submit->meta ) ) {

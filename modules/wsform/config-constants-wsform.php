@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Examples: [10, 9, 'all']  |  ['all']  |  [10]  |  [].
 const WSFORM_STATS_FORM_IDS = array( 'all' );
 
-// Weekend override message shown instead of the form's configured success message.
+// Weekend inline-message override shown instead of the form's configured success message.
 // when a "Date" field contains "Sat" or "Sun". Translated via frl_get_translation().
 const WSFORM_WEEKEND_MESSAGE = 'Thank you for your inquiry. We will answer you on Monday.';
 
