@@ -43,11 +43,12 @@ Thanks for reaching out!
 We received your message, and one of our team members will contact you shortly.
 
 If you prefer, you can also connect with us here:
-    Chat via WhatsApp: WhatsApp
-    Schedule a video call: Book a meeting
+    WhatsApp Chat
+    Telegram Chat
+    Schedule a Video Call (First consultation is free)
 
 Best regards,
-PB Services Team
+The PB Services Team
 ```
 
 ### Weekday — RU
@@ -57,9 +58,10 @@ PB Services Team
 
 Мы получили ваше сообщение, и один из наших специалистов свяжется с вами в ближайшее время.
 
-Если вам так удобнее, вы также можете связаться с нами следующими способами:
-    Чат в WhatsApp: WhatsApp
-    Запланировать видеозвонок: Забронировать встречу
+Если вам удобнее, вы также можете связаться с нами здесь:
+    Чат в WhatsApp
+    Чат в Telegram
+    Запланировать видеозвонок (Первая консультация бесплатно)
 
 С уважением,
 Команда PB Services
@@ -73,8 +75,9 @@ Thanks for reaching out!
 We are currently offline until Monday, but we'll reply to your email first thing when we return.
 
 In the meantime, you can also connect with us here:
-    Chat via WhatsApp: WhatsApp
-    Schedule a video call: Book a meeting
+    WhatsApp Chat
+    Telegram Chat
+    Schedule a Video Call (First consultation is free)
 
 Best regards,
 PB Services Team
@@ -88,8 +91,9 @@ PB Services Team
 В настоящее время мы не работаем до понедельника, но ответим на ваше письмо в первую очередь, как только вернемся.
 
 Если вам так удобнее, вы также можете связаться с нами следующими способами:
-    Чат в WhatsApp: WhatsApp
-    Запланировать видеозвонок: Забронировать встречу
+    Чат в WhatsApp
+    Чат в Telegram
+    Запланировать видеозвонок (Первая консультация бесплатно)
 
 С уважением,
 Команда PB Services
