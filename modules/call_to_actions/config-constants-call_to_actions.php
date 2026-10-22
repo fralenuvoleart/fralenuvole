@@ -2,9 +2,11 @@
 /**
  * Call-to-Actions Module — Constants
  *
- * Per-environment CTA definitions: URLs, templates, and subjects only.
- * All behavioral toggles (channel enable/disable, webhook dispatch, cron)
- * live in admin options — see config-options-call_to_actions.php.
+ * Per-environment webhook destinations, field mapping, and rate limits.
+ * CTA templates (URL/template/subject) live in config/config-message-templates.php
+ * (FRL_CTA_TEMPLATES) — shared with the wsform module. All behavioral toggles
+ * (channel enable/disable, webhook dispatch, cron) live in admin options —
+ * see config-options-call_to_actions.php.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -14,53 +16,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Post meta key for service resolution from the current page
 const CTA_SERVICE_META = 'service-settings_service-type';
 
-// Per-environment CTA definitions. Each action produces a
-// [data-action="{action_id}"] click handler with {reference_id}
-// and {template} placeholders replaced at click time.
-const CTA_WEBHOOK_CONFIG = array(
-	'default' => array(),
-	'pbs'     => array(
-		'webhook_url' => 'https://webhooks.integrately.com/a/webhooks/171f3cf7dd074bc08c0ad004a245c5d7',
-		'actions'     => array(
-			array(
-				'action_id' => 'whatsapp',
-				'url'       => 'https://wa.me/995599654454?text={template}',
-				'template'  => "Support number: PIN-{reference_id}-PBS (please do not delete)\r\n---\r\nHello, please type your message below.{br}{br}",
-			),
-			array(
-				'action_id' => 'telegram',
-				'url'       => 'https://t.me/pbservicesGeorgia?text={template}',
-				'template'  => "Support number: PIN-{reference_id}-PBS (please do not delete)\r\n---\r\nHello, please type your message below.{br}{br}",
-			),
-			array(
-				'action_id' => 'email',
-				'url'       => 'mailto:info@pbservices.ge?subject={subject}&body={template}',
-				'subject'   => 'PB Services Enquiry from Website',
-				'template'  => "Hello,\r\nI'd like to enquire about your services.\r\n\r\n\r\n---\r\nSupport number: PIN-{reference_id}-PBS",
-			),
-		),
-	),
-	'pbp'     => array(
-		'webhook_url' => 'https://webhooks.integrately.com/a/webhooks/171f3cf7dd074bc08c0ad004a245c5d7',
-		'actions'     => array(
-			array(
-				'action_id' => 'whatsapp',
-				'url'       => 'https://wa.me/995511290408?text={template}',
-				'template'  => "Support number: PIN-{reference_id}-PBS (please do not delete)\r\n---\r\nHello, please type your message below.{br}{br}",
-			),
-			array(
-				'action_id' => 'telegram',
-				'url'       => 'https://t.me/PBPropertyGeorgia',
-				'template'  => '{reference_id}',
-			),
-			array(
-				'action_id' => 'email',
-				'url'       => 'mailto:info@pbservices.ge?subject={subject}&body={template}',
-				'subject'   => 'PB Property Enquiry',
-				'template'  => "Hello,\r\nI'd like to enquire about your services.\r\n\r\n\r\n---\r\nSupport number: PIN-{reference_id}-PBS",
-			),
-		),
-	),
+// Per-environment CTA webhook destinations. The CTA templates themselves live
+// in config/config-message-templates.php (FRL_CTA_TEMPLATES) — shared with the
+// wsform module so neither module depends on the other.
+const CTA_WEBHOOK_URLS = array(
+	'default' => '',
+	'pbs'     => 'https://webhooks.integrately.com/a/webhooks/171f3cf7dd074bc08c0ad004a245c5d7',
+	'pbp'     => 'https://webhooks.integrately.com/a/webhooks/171f3cf7dd074bc08c0ad004a245c5d7',
 );
 
 // Webhook field → POST key mapping. Sentinels (prefixed __) resolved in handler.

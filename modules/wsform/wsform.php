@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Load WS Form configuration
 require_once __DIR__ . '/config-constants-wsform.php';
 require_once FRL_DIR_PATH . 'public/channel-tracking.php';
+require_once __DIR__ . '/email-directives.php';
 
 // Load the phone sanitizer only when phone validation is enabled.
 if ( frl_get_option( 'wsform_phone_validation' ) ) {

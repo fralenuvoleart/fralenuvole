@@ -10,7 +10,7 @@ Both the main plugin and the MU plugin share the same bootstrap:
 includes/bootstrap.php
   ├─ ?frlmode= → defines FRL_MODE constant
   ├─ FRL_MODE=disable → return (stop loading)
-  ├─ config/config.php → loads all config constants (11 files in order)
+  ├─ config/config.php → loads all config constants (12 files in order)
   ├─ includes/helpers/functions.php → loads all helper files (9 files in order)
   ├─ core/cache/class-cache-manager.php → Frl_Cache_Manager::init()
   ├─ core/cache/class-cache-operations.php
@@ -36,8 +36,8 @@ fralenuvole.php
 | `includes/` | Bootstrap, plugin lifecycle, shared helpers, main feature modules (website, media, navigation, logged-user), MU-plugin helpers |
 | `public/` | Frontend-only: hooks (`public.php`), shortcodes (`shortcodes.php`), JSON-LD schema subsystem (`schema/`), channel tracking, performance |
 | `modules/` | Opt-in, per-environment feature modules (brand-specific CPTs, WS Form, third-party integrations, call-to-actions) |
-| `config/` | All PHP constants loaded by `config/config.php` in order: MU, base, options, fields, cache, rewriter, environment, translator, schema, themekit, channel-tracking |
-| `assets/` | Static assets: CSS (`admin.css`, `admin-ui.css`, `public-login.css`, etc.), JS (`admin.js`, `public.js`, `scroll-listener.js`, etc.), lib (`parsedown/`, `prism/`), MU plugin (`mu/frl-mu-plugin.php`) |
+| `config/` | All PHP constants loaded by `config/config.php` in order: MU, base, options, fields, cache, rewriter, environment, translator, schema, themekit, channel-tracking, message-templates |
+| `assets/` | Static assets: CSS (`admin.css`, `admin-ui.css`, `public-login.css`, etc.), JS (`admin.js`, `public.js`, `scroll-listener.js`, etc.), lib (`parsedown/`, `prism/`), email templates (`templates/emails/`), MU plugin (`mu/frl-mu-plugin.php`) |
 | `docs/` | Reference documentation — one file per subsystem |
 | `memory-bank/` | Architectural invariants (`systemPatterns.md`), product context, active context, progress log |
 
@@ -119,7 +119,8 @@ See `docs/PLUGIN-HOOKS.md` for the full priority table and the reasoning behind 
 | Navigation | `includes/main/navigation.php` | `wp_navigation` block translation, custom URL transforms for nav menu items |
 | Logged-User Features | `includes/main/logged-user.php` | Admin bar customization, plugin action dispatch, user-visit tracking, admin notices |
 | Plugin Lifecycle | `includes/plugin-lifecycle.php` | Activation (MU sync, translation version, rewrite flush), deactivation, uninstall, auto-backup on version upgrade |
-| Channel Tracking | `public/channel-tracking.php` | UTM/channel attribution tracking for WS Form submissions |
+| Channel Tracking | `public/channel-tracking.php` | UTM/channel attribution tracking for WS Form submissions. Config in `config/config-channel-tracking.php`. |
+| Message Templates | `config/config-message-templates.php` | Shared CTA link templates (`FRL_CTA_TEMPLATES`) and email template whitelist (`FRL_EMAIL_TEMPLATES`); consumed by both `call_to_actions` and `wsform` (email `@@include:@@` / `@@cta:@@` directives) |
 | Performance | `public/performance.php` | Critical CSS injection, deferred CSS, featured-image preload, font optimization |
 
 ## Module System
@@ -173,7 +174,7 @@ All admin actions are capability-gated via `frl_has_access()` and nonce-verified
 | Polylang | Primary multilingual plugin (implemented adapter) |
 | WPML | Alternative (adapter interface ready; no concrete adapter shipped) |
 | ACF / SCF | Custom field translation targets |
-| WS Form | Form submission webhook dispatch and channel tracking |
+| WS Form | Form submission webhook dispatch, channel tracking, and email `@@include:@@` / `@@cta:@@` directive resolution |
 | GeoDirectory | Property-listing query/translation filters (`pbproperty` module) |
 | Litespeed Cache / Docket Cache / Redis / Memcached | Object-cache backends detected by Cache Manager |
 | Kinsta | Hosting platform — MU plugin interacts with Kinsta's cache purge system |

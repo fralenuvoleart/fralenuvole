@@ -1,5 +1,16 @@
 # Active Context
 
+## Latest: Shared message templates + WS Form email directives (2026-10-22)
+
+Decoupled `wsform` from `call_to_actions` and added `@@...@@` email directives.
+
+- **New shared config** — [`config/config-message-templates.php`](config/config-message-templates.php): `FRL_CTA_TEMPLATES` (per-env CTA url/template/subject, moved out of the CTA module) + `FRL_EMAIL_TEMPLATES` (email template whitelist). Registered in [`config/config.php`](config/config.php). Both modules now read from `config/` — neither depends on the other.
+- **CTA module split** — [`config-constants-call_to_actions.php`](modules/call_to_actions/config-constants-call_to_actions.php) now holds `CTA_WEBHOOK_URLS` (per-env webhook destinations) + field map + rate limits. `CTA_WEBHOOK_CONFIG` removed; [`call_to_actions.php`](modules/call_to_actions/call_to_actions.php) and [`webhooks-call_to_actions.php`](modules/call_to_actions/webhooks-call_to_actions.php) updated.
+- **Email templates moved** — `assets/html/email-confirmation.html` → [`assets/templates/emails/confirmation_email_weekday.html`](assets/templates/emails/confirmation_email_weekday.html) + `confirmation_email_weekend.html` (split; links now `@@cta:whatsapp@@` / `@@cta:telegram@@`).
+- **New email directives** — [`modules/wsform/email-directives.php`](modules/wsform/email-directives.php): `@@include:<name>@@` (loads a whitelisted template, cached by `filemtime`) and `@@cta:<action_id>@@` (builds the CTA URL from `FRL_CTA_TEMPLATES`). Two hooks on `wsf_actions_post_submit`: priority 5 (includes, before translation) and priority 15 (CTA links, after translation — keeps the translation cache key stable). `frl_encode_uri_component()` reproduces JS `encodeURIComponent()` (leaves `! ' ( ) *` literal). Reference ID read from the webhook field map via `frl_wsf_get_all_webhook_configs()`.
+- **WS Form setup** — email body is now a single directive: `@@include:confirmation_email_weekday@@` / `@@include:confirmation_email_weekend@@` (weekday/weekend selected by WS Form's existing conditional logic).
+- **Deploy:** flush plugin caches (new config constant + template paths).
+
 ## Latest: WS Form email action translation (2026-10-19)
 
 Extended [`frl_wsf_translate_submit_actions()`](modules/wsform/wsform.php:177) (hook `wsf_actions_post_submit`, raw action configs before `WS_Form_Action_Email::post()` runs) to translate WS Form Pro email actions, verified against `ws-form-pro/includes/actions/class-ws-form-action-email.php`:

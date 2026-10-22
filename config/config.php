@@ -19,3 +19,4 @@ require_once __DIR__ . '/config-translator.php';
 require_once __DIR__ . '/config-schema.php';
 require_once __DIR__ . '/config-themekit.php';
 require_once __DIR__ . '/config-channel-tracking.php';
+require_once __DIR__ . '/config-message-templates.php';

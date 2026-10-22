@@ -2,6 +2,11 @@
 
 Reference for PBS brand auto-reply messages across all channels.
 
+**HTML email templates** 
+WS Form emails live in `assets/templates/emails/`. 
+WS Form email bodies reference them via `@@include:confirmation_email_weekday@@` / `@@include:confirmation_email_weekend@@`.
+CTA links use `@@cta:whatsapp@@` / `@@cta:telegram@@`. 
+
 ## Webform — Inline Messages (Polylang)
 
 ### Weekday — EN

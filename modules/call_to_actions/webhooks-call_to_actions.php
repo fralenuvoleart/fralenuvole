@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Handles CTA-click webhook requests sent via sendBeacon from the frontend.
- * Looks up the webhook URL server-side from CTA_WEBHOOK_CONFIG (never exposed to client).
+ * Looks up the webhook URL server-side from CTA_WEBHOOK_URLS (never exposed to client).
  */
 function frl_cta_webhook_handler() {
 	// Public analytics endpoint (nopriv). Protected by sanitization
@@ -59,12 +59,11 @@ function frl_cta_webhook_handler() {
 	$env_config = frl_environment_get_config();
 	$env_prefix = $env_config['prefix'] ?? 'default';
 
-	if ( ! defined( 'CTA_WEBHOOK_CONFIG' ) || empty( CTA_WEBHOOK_CONFIG[ $env_prefix ] ) ) {
+	if ( ! defined( 'CTA_WEBHOOK_URLS' ) || empty( CTA_WEBHOOK_URLS[ $env_prefix ] ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );
 	}
 
-	$env_entry   = CTA_WEBHOOK_CONFIG[ $env_prefix ];
-	$webhook_url = $env_entry['webhook_url'] ?? '';
+	$webhook_url = CTA_WEBHOOK_URLS[ $env_prefix ];
 	// Layer 4 — Admin option only, no constant fallback.
 	$use_cron = (bool) frl_get_option( 'cta_use_cron' );
 

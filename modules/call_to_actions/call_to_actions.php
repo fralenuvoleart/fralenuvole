@@ -22,22 +22,22 @@ function frl_cta_init() {
 	frl_channel_tracking_init();
 
 	// Register CTA actions for the shared tracking config.
-	// Extracts the 'actions' list from CTA_WEBHOOK_CONFIG for the current environment,
+	// Extracts the action list from FRL_CTA_TEMPLATES for the current environment,
 	// applies per-channel admin toggles (Layer 2) and webhook flag (Layer 3).
 	add_filter(
 		'frl_channel_tracking_cta_actions',
 		function ( array $actions ): array {
-			if ( ! defined( 'CTA_WEBHOOK_CONFIG' ) ) {
+			if ( ! defined( 'FRL_CTA_TEMPLATES' ) ) {
 				return $actions;
 			}
 			$env_config = frl_environment_get_config();
 			$env_prefix = $env_config['prefix'] ?? 'default';
 
-			if ( ! isset( CTA_WEBHOOK_CONFIG[ $env_prefix ] ) || ! is_array( CTA_WEBHOOK_CONFIG[ $env_prefix ] ) ) {
+			if ( ! isset( FRL_CTA_TEMPLATES[ $env_prefix ] ) || ! is_array( FRL_CTA_TEMPLATES[ $env_prefix ] ) ) {
 				return $actions;
 			}
 
-			$env_actions = CTA_WEBHOOK_CONFIG[ $env_prefix ]['actions'] ?? array();
+			$env_actions = FRL_CTA_TEMPLATES[ $env_prefix ];
 
 			// Layer 2 — Per-channel admin toggles: strip disabled channels entirely
 			$channel_option_map = array(

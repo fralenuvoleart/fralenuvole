@@ -48,8 +48,8 @@ Fire-and-forget via WP-Cron. Schedules a single `frl_webhook_dispatch` cron even
 
 ## Module Usage
 
-- **wsform:** `modules/wsform/webhooks-wsform.php` — per-webhook `use_cron` toggle, defaults async
-- **call_to_actions:** `modules/call_to_actions/webhooks-call_to_actions.php` — per-environment `use_cron` toggle, defaults sync, checks result
+- **wsform:** `modules/wsform/webhooks-wsform.php` — `wsform_use_cron` admin option wins, falls back to the per-webhook `use_cron` constant, then `true` (async)
+- **call_to_actions:** `modules/call_to_actions/webhooks-call_to_actions.php` — `cta_use_cron` admin option only (no constant fallback), defaults sync, checks result
 
 ## Adding a Consumer
 

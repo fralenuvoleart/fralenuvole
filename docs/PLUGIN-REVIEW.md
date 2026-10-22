@@ -60,7 +60,7 @@ Verified zero-DB-query warm-cache path in production:
 | Frontend | Critical CSS injection, deferred CSS, featured-image preload, header/footer HTML+scripts, REST endpoint pruning, login branding, shortcodes |
 | Admin | Tabbed settings UI, dashboard widgets, log manager, tag validator, import/export, bulk resave, debug display, cache/environment diagnostic tables |
 | Schema | JSON-LD schema generation (Organization, WebSite, WebPage, BreadcrumbList, BlogPosting, Service, HowTo, etc.) |
-| Modules | WS Form integration (webhooks, stats, UTM tracking), brand-specific CPTs, GeoDirectory filters, menu sitemap |
+| Modules | WS Form integration (webhooks, stats, UTM tracking, email `@@include:@@` / `@@cta:@@` directives), CTA click handling (WhatsApp/Telegram/Email), brand-specific CPTs, GeoDirectory filters, menu sitemap |
 
 ## Overall Rating: A (9.5/10)
 

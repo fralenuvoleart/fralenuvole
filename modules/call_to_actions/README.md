@@ -23,57 +23,59 @@ On click:
 
 ## Configuration
 
-CTA definitions and webhook URLs live in [`config-constants-call_to_actions.php`](config-constants-call_to_actions.php).
+CTA templates and webhook URLs are split across two files:
+
+- **Templates** — [`config/config-message-templates.php`](../../config/config-message-templates.php) (`FRL_CTA_TEMPLATES`).
+  Shared with the `wsform` module (email `@@cta:...@@` directives), so neither module depends on the other.
+- **Webhook URLs** — [`config-constants-call_to_actions.php`](config-constants-call_to_actions.php) (`CTA_WEBHOOK_URLS`).
 
 Per-environment structure:
+
 ```php
-const CTA_WEBHOOK_CONFIG = array(
+// config/config-message-templates.php
+const FRL_CTA_TEMPLATES = array(
     'pbs' => array(
-        'webhook_url' => 'https://webhooks.integrately.com/...',
-        'use_cron'    => false,
-        'actions'     => array(
-            array(
-                'action_id'    => 'whatsapp',
-                'url'          => 'https://wa.me/...',
-                'template'     => '...',
-                'send_webhook' => true,   // fire marketing webhook on click
-            ),
+        array(
+            'action_id' => 'whatsapp',
+            'url'       => 'https://wa.me/...?text={template}',
+            'template'  => 'Support number: PIN-{reference_id}-PBS ...',
         ),
     ),
 );
+
+// config-constants-call_to_actions.php
+const CTA_WEBHOOK_URLS = array(
+    'pbs' => 'https://webhooks.integrately.com/...',
+);
 ```
 
-### `use_cron` resolution order
+### `use_cron` resolution
 
-1. Admin option `cta_use_cron` — if explicitly saved in Modules tab, this wins.
-2. Per-env constant entry in `CTA_WEBHOOK_CONFIG` (e.g., `'pbs' => ['use_cron' => false]`).
-3. Hard default: `true` (WP-Cron async dispatch).
+Admin option only — `cta_use_cron` (Modules tab). There is no per-environment constant fallback.
 
 ### Admin toggles
 
 | Option | Purpose |
 |---|---|
 | `cta_webhook` | Master kill switch for webhook dispatch (Modules tab). When disabled, `send_webhook` is stripped from all actions — only deep links work, no webhooks fire. |
-| `cta_use_cron` | Async (WP-Cron) vs sync (inline cURL) dispatch. Defaults to on. Can be overridden per-environment in `CTA_WEBHOOK_CONFIG`. |
+| `cta_use_cron` | Async (WP-Cron) vs sync (inline cURL) dispatch. Defaults to off (sync). |
 
 The module on/off toggle (`module_call_to_actions`) is managed by the Environment system
 (`config-defaults.php` / `config-environment.php`).
 
 ### Per-action webhook toggle
 
-Each action in `CTA_WEBHOOK_CONFIG` has a `send_webhook` boolean. Set to `false` on individual actions to skip webhook dispatch while keeping the deep link functional (e.g., email CTA that only opens mailto).
-
-### Staging
-
-To force synchronous dispatch on staging, set `'use_cron' => false` in the staging environment's
-`CTA_WEBHOOK_CONFIG` entry and ensure the admin option `cta_use_cron` is not explicitly saved
-(the per-env constant is the fallback, not the override).
+`send_webhook` is set at runtime in [`call_to_actions.php`](call_to_actions.php) from the
+`cta_webhook` admin option — it is not authored in the config. When enabled, every action
+dispatches a webhook on click.
 
 ## Files
 
 | File | Purpose |
 |---|---|
 | `call_to_actions.php` | Module entry point, admin toggle gate, action registration filter |
-| `config-constants-call_to_actions.php` | CTA definitions, webhook URL, `send_webhook` flags, field mapping, rate limit |
-| `config-options-call_to_actions.php` | `cta_webhook` admin toggle |
+| `config-constants-call_to_actions.php` | Webhook URLs (`CTA_WEBHOOK_URLS`), field mapping, rate limit |
+| `config-options-call_to_actions.php` | `cta_webhook` / `cta_use_cron` admin toggles |
 | `webhooks-call_to_actions.php` | AJAX handler: rate limiting, payload assembly, webhook dispatch |
+
+CTA templates live in [`config/config-message-templates.php`](../../config/config-message-templates.php).
