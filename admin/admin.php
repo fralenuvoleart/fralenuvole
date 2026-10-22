@@ -416,6 +416,12 @@ function frl_enable_mime_support( array $mimes ): array {
  * @return string The sanitized filename or formatted title.
  */
 function frl_get_file_nicename( $filename, $as_title = false ) {
+	// Only sanitize media library / gallery uploads; skip plugin/theme installs
+	// and other non-media sanitize_file_name() calls.
+	if ( ! $as_title && ! frl_is_media_upload_request() ) {
+		return $filename;
+	}
+
 	if ( ! frl_get_option( 'image_filename_sanitize' ) ) {
 		return $filename;
 	}

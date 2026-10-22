@@ -176,6 +176,49 @@ function frl_is_post_edit_screen(): bool {
 }
 
 /**
+ * Checks if the current request is a media library / gallery upload.
+ *
+ * Covers the three standard WordPress media-upload entry points: the media
+ * modal (async-upload.php?action=upload-attachment), the media-new.php form,
+ * and the REST /wp/v2/media endpoint used by the block editor and
+ * programmatic uploads. Used to gate filename sanitization to media uploads
+ * only, excluding plugin/theme installs.
+ *
+ * @return bool True if the current request is a media upload, false otherwise.
+ */
+function frl_is_media_upload_request(): bool {
+	static $is_media_upload = null;
+	if ( $is_media_upload !== null ) {
+		return $is_media_upload;
+	}
+
+	// Media modal / featured image / classic editor uploader.
+	if ( isset( $_REQUEST['action'] ) && 'upload-attachment' === $_REQUEST['action'] ) {
+		$is_media_upload = true;
+		return $is_media_upload;
+	}
+
+	// media-new.php form upload.
+	global $pagenow;
+	if ( 'media-new.php' === $pagenow ) {
+		$is_media_upload = true;
+		return $is_media_upload;
+	}
+
+	// REST media endpoint (block editor, media library, programmatic uploads).
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST && isset( $GLOBALS['wp'] ) ) {
+		$route = $GLOBALS['wp']->query_vars['rest_route'] ?? '';
+		if ( is_string( $route ) && str_starts_with( $route, '/wp/v2/media' ) ) {
+			$is_media_upload = true;
+			return $is_media_upload;
+		}
+	}
+
+	$is_media_upload = false;
+	return $is_media_upload;
+}
+
+/**
  * Checks if the current user is logged in.
  *
  * @return bool True if the user is logged in.

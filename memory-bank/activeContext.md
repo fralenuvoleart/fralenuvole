@@ -1,5 +1,14 @@
 # Active Context
 
+## Latest: Gate filename sanitization to media uploads (2026-10-22)
+
+`frl_get_file_nicename` was showing up as a slow span during plugin uploads (`update.php?action=upload-plugin`). Root cause: it is hooked to the core `sanitize_file_name` filter ([`admin/admin.php:30`](admin/admin.php:30)), which fires on **every** `sanitize_file_name()` call — including the uploaded plugin ZIP — and its first line calls `frl_get_option('image_filename_sanitize')`, forcing the plugin's full options snapshot to load on the upload request.
+
+- **New helper** — [`frl_is_media_upload_request()`](includes/helpers/functions-access-control.php): whitelist of the three standard media-upload entry points — media modal (`$_REQUEST['action'] === 'upload-attachment'`), `media-new.php`, and REST `/wp/v2/media` (block editor + programmatic uploads). Static-cached per request.
+- **Guard** — [`frl_get_file_nicename()`](admin/admin.php:418) now returns the filename unchanged when `! $as_title && ! frl_is_media_upload_request()`, so the `frl_get_option()` call is skipped entirely for plugin/theme installs. The `$as_title === true` path (from `frl_update_image_metadata`, already media-gated via `add_attachment`) is untouched.
+- **Verified coverage:** post edit screen (classic → `async-upload.php?action=upload-attachment`; Gutenberg → REST `/wp/v2/media`) and Greenshift (`wp.media` modal + `wp.apiFetch /wp/v2/media`). Greenshift has no custom media-upload endpoint.
+- **Deploy:** none (no cache key or option shape changed).
+
 ## Latest: Shared message templates + WS Form email directives (2026-10-22)
 
 Decoupled `wsform` from `call_to_actions` and added `@@...@@` email directives.

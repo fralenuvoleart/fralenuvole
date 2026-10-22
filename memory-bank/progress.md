@@ -40,7 +40,7 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 | Website Features | `includes/shared/website.php` | Disable comments/oEmbed/emojis, critical CSS caching, Dashicons removal for logged-out frontend. |
 | Logged-User Features | `includes/shared/logged-user.php` | Admin bar customization (plugin menu, cache actions, CPT quick-links), admin notices display, plugin action dispatch (`frl_process_plugin_actions`), user-visit tracking. |
 | Navigation | `includes/shared/navigation.php` | `wp_navigation` block translation support, custom URL transforms for nav menu items (extensible via `frl_nav_menu_url_transforms` filter). |
-| Media | `includes/shared/media.php` | Custom image sizes, MIME support extension (WebP/SVG), attachment metadata auto-fill from filename. |
+| Media | `includes/shared/media.php` | Custom image sizes, MIME support extension (WebP/SVG), attachment metadata auto-fill from filename. Filename sanitization (`frl_get_file_nicename`, hooked to `sanitize_file_name`) is gated to media uploads only via `frl_is_media_upload_request()` — plugin/theme installs are skipped. |
 
 ## MU-Plugin (Early Loader)
 
