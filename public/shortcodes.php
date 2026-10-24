@@ -235,7 +235,7 @@ function frl_shortcode_language( $atts, $content = null ) {
 /**
  * [frl_langswitcher] - Renders the Polylang language switcher as flags or a dropdown.
  *
- * @param array $atts Attributes: exclude (comma-separated slugs).
+ * @param array $atts Attributes: exclude (comma-separated slugs), dropdown (0|1).
  * @return string HTML for the language switcher.
  */
 function frl_shortcode_langswitcher( $atts = array() ) {
@@ -244,47 +244,26 @@ function frl_shortcode_langswitcher( $atts = array() ) {
 		return '';
 	}
 
-	// Arguments for default flags langswitcher
+	// Single source of truth for switcher defaults.
 	$args = FRL_LANGSWITCHER_ARGS;
 
-	// Option-based overrides (only when provided)
-	$opt_hide_current = frl_get_option( 'langswitcher_hide_current' );
-	if ( ! empty( $opt_hide_current ) ) {
-		$args['hide_current'] = (int) $opt_hide_current ? 1 : 0;
-	}
-	$opt_hide_if_no_translation = frl_get_option( 'langswitcher_hide_if_no_translation' );
-	if ( ! empty( $opt_hide_if_no_translation ) ) {
-		$args['hide_if_no_translation'] = (int) $opt_hide_if_no_translation ? 1 : 0;
-	}
-
-	// Dropdown default from the option (the shortcode 'dropdown' attribute still overrides it below).
-	$opt_dropdown = frl_get_option( 'langswitcher_dropdown' );
-	if ( ! empty( $opt_dropdown ) ) {
-		$args['dropdown'] = (int) $opt_dropdown ? 1 : 0;
-	}
-
-	// Parse option-based hidden language slugs (merged with shortcode exclude later)
-	$opt_hide_langs_raw = (string) frl_get_option( 'langswitcher_hide_languages' );
-	$opt_exclude_slugs  = array();
-	if ( trim( $opt_hide_langs_raw ) !== '' ) {
-		$rows = frl_textlist_to_array( $opt_hide_langs_raw );
-		if ( is_array( $rows ) ) {
-			foreach ( $rows as $row ) {
-				if ( is_array( $row ) && isset( $row[0] ) ) {
-					$slug = sanitize_key( trim( (string) $row[0] ) );
-					if ( $slug !== '' ) {
-						$opt_exclude_slugs[] = $slug;
-					}
-				}
+	// Hidden-language slugs from the constant (comma/newline separated; '' or 0 = none).
+	$const_exclude  = array();
+	$const_hide_raw = (string) $args['hide_languages'];
+	if ( trim( $const_hide_raw ) !== '' ) {
+		foreach ( preg_split( '/[,\r\n]+/', $const_hide_raw ) as $slug ) {
+			$slug = sanitize_key( trim( $slug ) );
+			if ( $slug !== '' ) {
+				$const_exclude[] = $slug;
 			}
 		}
-		$opt_exclude_slugs = array_values( array_unique( $opt_exclude_slugs ) );
+		$const_exclude = array_values( array_unique( $const_exclude ) );
 	}
 
 	// Optional shortcode-level overrides
 	$a             = shortcode_atts(
 		array(
-			'exclude'  => ! empty( $opt_exclude_slugs ) ? implode( ',', $opt_exclude_slugs ) : '',
+			'exclude'  => ! empty( $const_exclude ) ? implode( ',', $const_exclude ) : '',
 			'dropdown' => '', // '' = use default, '1' = dropdown, '0' = flags
 		),
 		$atts,
@@ -302,9 +281,10 @@ function frl_shortcode_langswitcher( $atts = array() ) {
 
 	// show_flags=0 avoids Polylang rendering unused base64 PNGs.
 	// Drop 'dropdown' — deprecated in Polylang 3.9 (emits a "Deprecated argument" notice)
-	// and inert under raw=1. The dropdown builder reads $el['slug'], not $el['name'].
+	// and inert under raw=1. Drop 'hide_languages' — plugin-internal, not a
+	// Polylang arg; the shortcode applies it via the exclude list below.
 	$raw_args = FRL_LANGSWITCHER_ARGS;
-	unset( $raw_args['dropdown'] );
+	unset( $raw_args['dropdown'], $raw_args['hide_languages'] );
 	$raw_args['raw']        = 1;
 	$raw_args['show_flags'] = 0;
 

@@ -71,6 +71,7 @@ const FRL_LANGSWITCHER_FLAGS_DIR = __DIR__ . '/../assets/images/flags';
 const FRL_LANGSWITCHER_ARGS = array(
 	'dropdown'               => 0,       // 0 = flags, 1 = dropdown
 	'hide_current'           => 0,       // Flag only: default 0
+	'hide_languages'         => 0,       // Slugs to hide (comma/newline separated); 0 = none
 	'hide_if_no_translation' => 0,       // Both: default 0
 );
 

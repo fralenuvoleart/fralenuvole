@@ -1,5 +1,14 @@
 # Active Context
 
+## Latest: Langswitcher — options removed, FRL_LANGSWITCHER_ARGS is the single source (2026-10-24)
+
+User removed the 4 `langswitcher_*` options from `config-options.php` and added `hide_languages => 0` to `FRL_LANGSWITCHER_ARGS` (`config-base.php`); [`frl_shortcode_langswitcher()`](public/shortcodes.php:241) updated accordingly. Zero option reads remain in the shortcode.
+
+- `hide_current`/`hide_if_no_translation`/`dropdown` now come purely from the constant; per-use `[frl_langswitcher dropdown=… exclude=…]` **attributes** kept (they are not options).
+- `hide_languages` (comma/newline-separated slugs in the constant) feeds the `exclude` attribute default; the key is `unset()` from `$raw_args` so this plugin-internal pseudo-arg never reaches `pll_the_languages()`.
+- Deploy note: cached switcher output (per-post keys in `shortcodes` group) does not invalidate on constant edits — clear cache once after deploy. Orphan `frl_langswitcher_*` DB rows persist until uninstall/manual delete (uninstall `LIKE 'frl_%'` covers them).
+- Verified: `php -l`, `phpcs` exit 0, `phpstan` exit 0 on public/.
+
 ## Latest: Plugin-exclusions removal — audit + 5 fixes (2026-10-24)
 
 Audited the staged removal of the MU plugin-exclusions system (`includes/mu/`, `config/config-mu.php`, `docs/MU-THIRDPARTY-EXCLUSIONS.md`, options, dashboard widget, CSS, docs, memory-bank) — sweep clean except the items below, all now fixed (unstaged, on top of the staged set):
