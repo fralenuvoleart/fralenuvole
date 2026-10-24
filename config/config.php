@@ -7,9 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Load all config files
  */
-require_once __DIR__ . '/config-mu.php';
 require_once __DIR__ . '/config-base.php';
-
 require_once __DIR__ . '/config-options.php';
 require_once __DIR__ . '/config-fields.php';
 require_once __DIR__ . '/config-cache.php';

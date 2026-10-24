@@ -1060,66 +1060,12 @@ const FRL_DEFAULT_FIELDS = array(
 	'settings'       => array(
 		'title'  => 'Plugin Settings',
 		'fields' => array(
-			'section_title_plugin_exclusion'    => array(
-				'label'       => 'External Plugin Exclusions',
-				'description' => 'Prevent specified plugins from loading without deactivating them.',
-				'type'        => 'section_title',
-			),
-			'excluded_plugins_frontend_enabled' => array(
-				'label'       => 'Enable Frontend Exclusion',
-				'description' => 'Block plugins on frontend (applies to all users).',
-				'type'        => 'checkbox',
-				'default'     => 0,
-				'restricted'  => true,
-			),
-			'excluded_plugins_frontend'         => array(
-				'label'       => 'Frontend Excluded Plugins',
-				'description' => 'One plugin path per line (e.g., hello Dolly/hello.php).',
-				'type'        => 'textlist',
-				'default'     => '',
-				'restricted'  => true,
-			),
-			'excluded_plugins_backend_enabled'  => array(
-				'label'       => 'Enable Backend Exclusion',
-				'description' => 'Exclude plugins on admin dashboard (applies to all users).',
-				'type'        => 'checkbox',
-				'default'     => 0,
-				'restricted'  => true,
-			),
-			'excluded_plugins_backend'          => array(
-				'label'       => 'Backend Excluded Plugins',
-				'description' => 'One plugin path per line.  Format: plugin-handle|admin-screen (e.g. hello Dolly/hello.php|post.php).',
-				'type'        => 'textlist',
-				'default'     => '',
-				'restricted'  => true,
-			),
-			'excluded_plugins_bycap_enabled'    => array(
-				'label'       => 'Enable Admin Capability Exclusion',
-				'description' => 'Exclude plugins in admin for users without capability.',
-				'type'        => 'checkbox',
-				'default'     => 0,
-				'restricted'  => true,
-			),
-			'excluded_plugins_bycap_cap'        => array(
-				'label'       => 'Required Capability',
-				'description' => 'Capability needed to load excluded plugins in admin.',
-				'type'        => 'text',
-				'default'     => FRL_PLUGIN_ACCESS,
-				'restricted'  => true,
-			),
-			'excluded_plugins_bycap'            => array(
-				'label'       => 'Admin Excluded Plugins',
-				'description' => 'One plugin path per line (e.g., hello Dolly/hello.php).',
-				'type'        => 'textlist',
-				'default'     => '',
-				'restricted'  => true,
-			),
-			'section_title_components'          => array(
+			'section_title_components' => array(
 				'label'       => 'Disable Core Features',
 				'description' => 'Disable core plugin features',
 				'type'        => 'section_title',
 			),
-			'disable_cache'                     => array(
+			'disable_cache'            => array(
 				'label'       => 'Disable Cache Manager',
 				'description' => 'Bypass plugin cache manager and retrieve options directly from the database.',
 				'type'        => 'checkbox',
@@ -1127,28 +1073,28 @@ const FRL_DEFAULT_FIELDS = array(
 				'restricted'  => true,
 				'autoload'    => 'yes',
 			),
-			'disable_environment'               => array(
+			'disable_environment'      => array(
 				'label'       => 'Disable Environment Manager',
 				'description' => 'Bypass automatic runtime environment selection based on current host.',
 				'type'        => 'checkbox',
 				'default'     => 0,
 				'restricted'  => true,
 			),
-			'disable_translator'                => array(
+			'disable_translator'       => array(
 				'type'        => 'checkbox',
 				'label'       => 'Disable Translator',
 				'description' => 'Disable dynamic translation features for post, options, users, terms metadata.',
 				'default'     => '0',
 				'restricted'  => true,
 			),
-			'disable_rewriter'                  => array(
+			'disable_rewriter'         => array(
 				'type'        => 'checkbox',
 				'label'       => 'Disable Rewriter',
 				'description' => 'Disable rewriter features.',
 				'default'     => '0',
 				'restricted'  => true,
 			),
-			'disable_plugin'                    => array(
+			'disable_plugin'           => array(
 				'label'       => 'Disable Plugin',
 				'description' => 'Disable all plugin features (except admin, shortcodes, translations and theme.json).',
 				'type'        => 'checkbox',

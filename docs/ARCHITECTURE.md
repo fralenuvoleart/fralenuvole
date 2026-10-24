@@ -49,9 +49,6 @@ wp-config.php (LOGGED_IN_KEY/LOGGED_IN_SALT available)
   ▼
 mu-plugins/frl-mu-plugin.php   (muplugins_loaded)
   ├─ require includes/bootstrap.php     ← shared bootstrap
-  ├─ require includes/mu/mu.php         ← MU-specific helpers
-  ├─ frl_maybe_throttle_user_agent()    ← bot rate-limiting (429)
-  └─ frl_filter_plugin_exclusions()     ← pre_option_active_plugins filter
   │
   ▼
 fralenuvole.php   (plugins_loaded / 5)
@@ -100,7 +97,6 @@ See `docs/PLUGIN-HOOKS.md` for the full priority table and the reasoning behind 
 | Rewriter | `docs/REWRITER.md` | Feature-based URL rewriting (multilingual CPT slugs, taxonomy/CPT base removal) with priority-ordered, self-registering features |
 | Translator | `docs/TRANSLATOR.md` | Adapter-pattern translation service (Polylang implemented, WPML-ready). Block tokens, field translation, pattern-based caching |
 | ThemeKit | `docs/THEMEKIT.md` | Theme-independent body classes, base styles, block pattern/provider-style removal, font optimization |
-| Plugin Exclusion | `docs/THIRDPARTY-EXCLUSIONS.md` | MU-plugin-based conditional plugin loading (frontend/backend-screen/capability rules) with bot throttling |
 | Admin UI | `docs/PLUGIN-ADMINUI.md` | Tabbed settings page, dashboard widgets, log manager, tag validator, import/export, docs browser |
 | Access Control | `docs/PLUGIN-PERMISSIONS.md` | Capability model (`frl_has_access()`), superadmin/plugin-admin tiers, nonce system, `FRL_MODE` behavior |
 | Debug Modes | `docs/PLUGIN-DEBUG-MODES.md` | `FRL_MODE` URL parameter / constant for disable/core/nocache/migrate modes |

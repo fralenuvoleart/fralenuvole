@@ -78,30 +78,6 @@ frl_has_access( 'manage_options' ) // Specific capability
 frl_has_access( 'publish_pages' )  // CPT-specific (admin bar links)
 ```
 
-
-## Early-Loading Access: `frl_mu_check_access()`
-
-**File:** `includes/mu/functions-mu.php:75`
-
-Used by the MU plugin's capability-based exclusion system **before** `plugins_loaded` fires, when WordPress user functions aren't available yet.
-
-```php
-function frl_mu_check_access( string $capability ): bool
-```
-
-**Decision flow:**
-
-1. `plugins_loaded` has fired → delegates to `frl_has_access()`
-2. Reads auth cookie via `frl_get_auth_cookie_user_data()` (HMAC-verified, 300s cache)
-3. No valid cookie → **false**
-4. `$capability === 'superadmin'` → checks `user_data['id'] === 1`
-5. User ID === 1 → **true**
-6. Checks `user_data['caps'][$capability]` directly from DB
-7. Falls back: if user has `administrator` role → **true**
-
-**Note:** This function intentionally does **not** check `WP_Session_Tokens` revocation — it's used only for the plugin-exclusion decision, never for real authentication.
-
-
 ## Context Detection Functions
 
 All in `includes/helpers/functions-access-control.php`:
@@ -269,6 +245,5 @@ Fires after auto-discovery registers all `frl_post_*` handlers. Use to register 
 
 - All capability checks use `frl_has_access()`, which caches results for 300 seconds in the `admin` cache group
 - The `'superadmin'` pseudo-capability is the only check exclusive to User ID 1 — it is **not** a real WordPress capability
-- `frl_mu_check_access()` does **not** check session token revocation — it exists solely for the plugin-exclusion decision during early WordPress loading
 - `frl_is_admin()` requires **both** `WP_ADMIN` constant AND `/wp-admin/` in the request URI. This is intentional and load-bearing across 9+ call sites. Do not change without a confirmed reproduction case
 - Nonce verification always happens **before** the protected operation, and capability checks are embedded in the nonce verification flow via `_frl_verify_nonce_core()`

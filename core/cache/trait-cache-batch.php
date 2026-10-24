@@ -15,7 +15,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @method static string generate_key( string $group, $key )
  * @method static void set_runtime( string $cache_key, $value, ?string $group = null )
  * @method static mixed unwrap_transient_value( mixed $value )
- * @property static array $loaded_groups
  * @package Fralenuvole
  * @since 5.7.4.5
  */
@@ -38,8 +37,8 @@ trait Frl_Cache_Batch_Trait {
 
 		$or_clauses = array();
 		foreach ( $groups as $group ) {
-			$prefix         = '_transient_' . self::PREFIX . $group . '_';
-			$timeout_prefix = '_transient_timeout_' . self::PREFIX . $group . '_';
+			$prefix         = '_transient_' . Frl_Cache_Manager::PREFIX . $group . '_';
+			$timeout_prefix = '_transient_timeout_' . Frl_Cache_Manager::PREFIX . $group . '_';
 			$or_clauses[]   = $wpdb->prepare(
 				'option_name LIKE %s',
 				$wpdb->esc_like( $prefix ) . '%'
@@ -57,8 +56,8 @@ trait Frl_Cache_Batch_Trait {
 		$by_group = array();
 		foreach ( $db_results as $row ) {
 			foreach ( $groups as $group ) {
-				$prefix         = '_transient_' . self::PREFIX . $group . '_';
-				$timeout_prefix = '_transient_timeout_' . self::PREFIX . $group . '_';
+				$prefix         = '_transient_' . Frl_Cache_Manager::PREFIX . $group . '_';
+				$timeout_prefix = '_transient_timeout_' . Frl_Cache_Manager::PREFIX . $group . '_';
 				if ( str_starts_with( $row->option_name, $prefix ) || str_starts_with( $row->option_name, $timeout_prefix ) ) {
 					$by_group[ $group ][] = $row;
 					break;
@@ -71,12 +70,12 @@ trait Frl_Cache_Batch_Trait {
 			$rows = $by_group[ $group ] ?? array();
 
 			if ( empty( $rows ) ) {
-				self::$loaded_groups[ $group ] = true;
+				Frl_Cache_Manager::$loaded_groups[ $group ] = true;
 				continue;
 			}
 
-			$group_prefix       = '_transient_' . self::PREFIX . $group . '_';
-			$timeout_prefix     = '_transient_timeout_' . self::PREFIX . $group . '_';
+			$group_prefix       = '_transient_' . Frl_Cache_Manager::PREFIX . $group . '_';
+			$timeout_prefix     = '_transient_timeout_' . Frl_Cache_Manager::PREFIX . $group . '_';
 			$prefix_len         = strlen( $group_prefix );
 			$timeout_prefix_len = strlen( $timeout_prefix );
 
@@ -105,7 +104,7 @@ trait Frl_Cache_Batch_Trait {
 				wp_cache_add_multiple( $wp_cache, 'options' );
 			}
 
-			self::$loaded_groups[ $group ] = true;
+			Frl_Cache_Manager::$loaded_groups[ $group ] = true;
 		}
 	}
 

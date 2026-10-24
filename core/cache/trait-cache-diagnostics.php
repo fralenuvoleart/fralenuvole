@@ -11,14 +11,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  * members below (not reusable elsewhere).
  *
  * @method static bool _is_plugin_globally_active( string $plugin_path )
- * @property static ?array $cached_provider_details
- * @property static array $default_ttls
- * @property static array $persistent_groups
- * @property static array $cache_dependencies
  * @package Fralenuvole
  * @since 5.7.4.5
  */
 trait Frl_Cache_Diagnostics_Trait {
+
+	/** Per-request memo for provider detection (trait-owned state). */
+	private static ?array $cached_provider_details = null;
 
 	/**
 	 * Detect the active object-cache provider (slug, label, functional status).
@@ -32,7 +31,7 @@ trait Frl_Cache_Diagnostics_Trait {
 
 		// Use core WP transient to avoid recursion with self::get()
 		// v2: live connectivity test added for Kinsta-style WP_Object_Cache wrappers.
-		$transient_key = self::PREFIX . 'object_cache_provider_details_v2';
+		$transient_key = Frl_Cache_Manager::PREFIX . 'object_cache_provider_details_v2';
 		$cached        = get_transient( $transient_key );
 		if ( $cached !== false && is_array( $cached ) ) {
 			self::$cached_provider_details = $cached;
@@ -195,12 +194,13 @@ trait Frl_Cache_Diagnostics_Trait {
 	 * @return array{PREFIX: string, TTL: array, persistent_groups: array, cache_dependencies: array, LOCK_TTL: int} Cache configuration.
 	 */
 	public static function get_cache_config() {
+		// Config mirrors on the host class are never mutated; read source constants.
 		return array(
-			'PREFIX'             => self::PREFIX,
-			'TTL'                => self::$default_ttls,
-			'persistent_groups'  => self::$persistent_groups,
-			'cache_dependencies' => self::$cache_dependencies,
-			'LOCK_TTL'           => self::LOCK_TTL,
+			'PREFIX'             => Frl_Cache_Manager::PREFIX,
+			'TTL'                => FRL_CACHE_TTL,
+			'persistent_groups'  => FRL_CACHE_PERSISTENT_GROUPS,
+			'cache_dependencies' => FRL_CACHE_DEPENDENCIES,
+			'LOCK_TTL'           => Frl_Cache_Manager::LOCK_TTL,
 		);
 	}
 }

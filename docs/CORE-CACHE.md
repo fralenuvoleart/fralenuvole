@@ -231,7 +231,6 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 | `update_option` | Plugin transient matching option name |
 | `updated_option` | Translated option caches for all languages (plugin-owned options only) |
 | `profile_update` | Tracked meta for user |
-| `activated_plugin` / `deactivated_plugin` | MU plugin exclusion cache keys |
 
 ## Helper Functions API
 

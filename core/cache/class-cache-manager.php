@@ -25,10 +25,12 @@ class Frl_Cache_Manager {
 	/** Sentinel key marking a wrapped falsey value in transient storage. */
 	private const FALSEY_SENTINEL = '__frl_falsey__';
 
-	private static array $runtime_cache = array();
-	private static array $key_cache     = array();
-	private static array $group_keys    = array(); // Index of keys per group for efficient clearing
-	private static array $loaded_groups = array(); // Tracks which groups have been fully loaded this request
+	// public by design: cache traits reference these cross-file (Intelephense cannot
+	// resolve private host props from trait scope); the facade is the ONLY external accessor.
+	public static array $runtime_cache = array();
+	private static array $key_cache    = array();
+	public static array $group_keys    = array(); // Index of keys per group for efficient clearing
+	public static array $loaded_groups = array(); // Tracks which groups have been fully loaded this request
 
 	// public by design: the facade helpers in functions-class-helpers.php are the
 	// ONLY external accessors (guarded by frl_cache_is_loaded()). No external code
@@ -60,9 +62,6 @@ class Frl_Cache_Manager {
 	private static array $language_groups_map   = array();
 	private static array $heavy_groups_map      = array();
 	private static array $browser_groups_map    = array();
-
-	/** Cached provider details. */
-	private static ?array $cached_provider_details = null;
 
 	/**
 	 * Initialize lookup maps and auto-preload.

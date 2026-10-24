@@ -17,7 +17,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Checks if the current user has the required access capability.
  *
  * Uses standard WordPress capability checks via current_user_can().
- * For early-loading scenarios (before plugins_loaded), use frl_mu_check_access() instead.
  *
  * @param string $capability The capability to check for. Defaults to FRL_PLUGIN_ACCESS.
  * @return bool True if the user has access, false otherwise.
@@ -586,10 +585,8 @@ function frl_is_post_save_action( $post_id ): bool {
 /**
  * Checks if a third-party plugin is active (site-wide or network-wide).
  *
- * Cached via frl_cache_remember in the 'options' group with WEEK_IN_SECONDS TTL,
- * since the active plugins list changes only on plugin activation/deactivation.
- * Invalidated via frl_purge_mu_plugin_exclusion_cache() on activated_plugin/
- * deactivated_plugin hooks.
+ * Cached via frl_cache_remember in the 'options' group with WEEK_IN_SECONDS TTL;
+ * invalidated via frl_purge_active_plugins_cache() on activated_plugin/deactivated_plugin.
  *
  * @param string $plugin_path Plugin path relative to plugins directory, e.g. 'mwai/mwai.php'.
  * @return bool True if the plugin is active (site-wide or network-wide).

@@ -1,5 +1,35 @@
 # Active Context
 
+## Latest: Plugin-exclusions removal — audit + 5 fixes (2026-10-24)
+
+Audited the staged removal of the MU plugin-exclusions system (`includes/mu/`, `config/config-mu.php`, `docs/MU-THIRDPARTY-EXCLUSIONS.md`, options, dashboard widget, CSS, docs, memory-bank) — sweep clean except the items below, all now fixed (unstaged, on top of the staged set):
+
+- **Fatal:** stale `require_once .../config-mu.php` removed from [`config/config.php`](config/config.php:10) — PHPStan missed it via its broad `require_once` ignore pattern.
+- **Regression:** re-added [`frl_purge_active_plugins_cache()`](core/cache/cache-cleanup.php:254) — the removed MU purge hook also invalidated `thirdparty_active_plugins`, the cache key of the SURVIVING `frl_is_thirdparty_plugin_active()` (WEEK TTL); without it, plugin (de)activations went undetected for up to a week.
+- **Stale text:** removed dead `frl_mu_check_access()` reference + restored the invalidation clause in [`functions-access-control.php`](includes/helpers/functions-access-control.php:19) docblocks.
+- **Invariant:** "MU-Plugin Caching" in systemPatterns.md rewritten as "`frl_cache_remember()` Never Reads Options" (the MU `pre_option_*` premise is gone).
+- **Deploy step (NOT code):** the installed `wp-content/mu-plugins/frl-mu-plugin.php` still `require`s the deleted `includes/mu/mu.php`; the stale copy fatals before wp-admin loads, so the new `assets/mu/frl-mu-plugin.php` must be copied over the installed one as part of the deploy.
+- **Minor:** orphan `frl_excluded_plugins_*` DB rows keep appearing in Import/Export until manually deleted (uninstall `LIKE 'frl_%'` covers them).
+
+## Latest: Trait static-analysis cleanup extended to batch + LRU traits (2026-10-24)
+
+Applied the Trait Static-Analysis Contract (Option A, user-approved) to the two remaining cache traits. Zero behavior change.
+
+- [`class-cache-manager.php:28`](core/cache/class-cache-manager.php:28): `$runtime_cache`, `$group_keys`, `$loaded_groups` widened `private static` → `public static` with a "public by design" comment (same rationale as `$deferred_writes`: traits reference them cross-file; the facade remains the ONLY external accessor). `$key_cache` stays private (no trait refs).
+- [`trait-cache-lru.php`](core/cache/trait-cache-lru.php): `self::$runtime_cache`/`self::$group_keys` → `Frl_Cache_Manager::$…` (10 sites); dropped the two `@property static` docblocks.
+- [`trait-cache-batch.php`](core/cache/trait-cache-batch.php): `self::PREFIX` → `Frl_Cache_Manager::PREFIX` (6 sites), `self::$loaded_groups` → `Frl_Cache_Manager::$loaded_groups` (2 sites); dropped the `@property static` docblock.
+- Verified: `php -l`, `phpcs` exit 0 (phpcbf re-aligned the property block), `phpstan` exit 0 on core/cache.
+
+## Latest: Diagnostics-trait Intelephense cleanup — trait-owned memo + qualified host constants (2026-10-24)
+
+Lint-only, zero behavior change. Resolved 13 Intelephense diagnostics in [`trait-cache-diagnostics.php`](../core/cache/trait-cache-diagnostics.php) (root cause: Intelephense analyzes traits in isolation; `@property static` docblocks don't resolve `self::$prop` and there's no virtual-constant mechanism — see `systemPatterns.md` "Trait Static-Analysis Contract").
+
+- Moved `private static ?array $cached_provider_details` from `Frl_Cache_Manager` into the trait (used only there) — matches the "traits own their state" pattern (`$lru` in the LRU trait).
+- `get_cache_config()` + provider transient key now read `Frl_Cache_Manager::PREFIX`/`::LOCK_TTL` (public consts) and source constants `FRL_CACHE_TTL`/`FRL_CACHE_PERSISTENT_GROUPS`/`FRL_CACHE_DEPENDENCIES` (grep-verified never mutated — the class props were pure mirrors).
+- Removed the four ineffective `@property static` docblocks (also cleared the P1129 parse error); kept the working `@method` for `_is_plugin_globally_active()`.
+- Verified: `php -l`, `phpcs` clean (phpcbf fixed alignment), `phpstan` exit 0.
+- Known remaining (resolved same day — see entry above): same latent pattern in [`trait-cache-batch.php`](../core/cache/trait-cache-batch.php) and [`trait-cache-lru.php`](../core/cache/trait-cache-lru.php).
+
 ## Latest: auto_preload — skip no-op loop on object cache + document transient-only preload (2026-10-24)
 
 Clarification + micro-optimization of the preload path (behavior-preserving).
@@ -217,11 +247,10 @@ Lead-retrieval audit of `wsform` + `call_to_actions` (2026): fixed Cloudflare IP
 ## Lead-Retrieval Audit Fixes (latest)
 
 1. **🐛 `frl_get_client_ip()` Cloudflare gap** — [`utilities.php`](../includes/helpers/utilities.php): checked `REMOTE_ADDR` first, which is always syntactically valid, so the `HTTP_X_FORWARDED_FOR`/`HTTP_CLIENT_IP` fallback never ran behind an unfixed CDN. Reordered to `HTTP_CF_CONNECTING_IP` → `HTTP_X_FORWARDED_FOR` → `HTTP_CLIENT_IP` → `REMOTE_ADDR` last. This collapsed CTA per-IP rate limiting to a site-wide limit and mislabeled every lead's "User IP" field.
-2. **Deduplicated IP logic** — [`frl_maybe_throttle_user_agent()`](../includes/mu/functions-mu.php) now calls the shared `frl_get_client_ip()` instead of its own inline duplicate (safe: `bootstrap.php` loads `utilities.php` before `mu.php` runs).
-3. **`pbp` webhook was blocking the form's success response** — [`WSFORM_ALL_WEBHOOKS_CONFIG['pbp']`](../modules/wsform/config-constants-wsform.php) had `use_cron: false` (temporary testing), causing a synchronous cURL call (up to 20s) inside the same request that returns WS Form's "Thank you" response. Flipped to `true`, matching `pbs`.
-4. **Bounded async webhook retry** — `frl_webhook_dispatch` cron handler ([`functions-webhook.php`](../includes/helpers/functions-webhook.php)) now retries up to `FRL_WEBHOOK_RETRY['max_attempts']` times with backoff delays from `FRL_WEBHOOK_RETRY['delays']` (both in [`config-base.php`](../config/config-base.php)) on failure. Async-only by design — sync callers are inside a live request and must not be delayed further.
-5. **Dedup-key collision fix** — [`frl_wsf_submit_webhook()`](../modules/wsform/webhooks-wsform.php) dedup key now includes `md5($webhook_url)`, not just the submission ID, so a form with multiple webhook destinations for the same `form_id` won't have its second destination silently dropped as a "duplicate" of the first.
-6. **🐛 `_frl_uuid` always uses UUID now** — [`frl_send_webhook_async()`](../includes/helpers/functions-webhook.php:48): changed from `$dedup_key ?? wp_generate_uuid4()` to always `wp_generate_uuid4()`. Previously, when a caller passed a deterministic `$dedup_key` (e.g., `'cta_' . md5($ip . $action_id)` from the CTA handler), that same value leaked into `_frl_uuid`, causing `wp_schedule_single_event()`'s ~10-minute dedup to reject subsequent calls after the 5-second transient expired. `_frl_uuid` is cron-internal only — never reaches the webhook payload — so there's no reason to tie it to the caller's dedup key.
+2. **`pbp` webhook was blocking the form's success response** — [`WSFORM_ALL_WEBHOOKS_CONFIG['pbp']`](../modules/wsform/config-constants-wsform.php) had `use_cron: false` (temporary testing), causing a synchronous cURL call (up to 20s) inside the same request that returns WS Form's "Thank you" response. Flipped to `true`, matching `pbs`.
+3. **Bounded async webhook retry** — `frl_webhook_dispatch` cron handler ([`functions-webhook.php`](../includes/helpers/functions-webhook.php)) now retries up to `FRL_WEBHOOK_RETRY['max_attempts']` times with backoff delays from `FRL_WEBHOOK_RETRY['delays']` (both in [`config-base.php`](../config/config-base.php)) on failure. Async-only by design — sync callers are inside a live request and must not be delayed further.
+4. **Dedup-key collision fix** — [`frl_wsf_submit_webhook()`](../modules/wsform/webhooks-wsform.php) dedup key now includes `md5($webhook_url)`, not just the submission ID, so a form with multiple webhook destinations for the same `form_id` won't have its second destination silently dropped as a "duplicate" of the first.
+5. **🐛 `_frl_uuid` always uses UUID now** — [`frl_send_webhook_async()`](../includes/helpers/functions-webhook.php:48): changed from `$dedup_key ?? wp_generate_uuid4()` to always `wp_generate_uuid4()`. Previously, when a caller passed a deterministic `$dedup_key` (e.g., `'cta_' . md5($ip . $action_id)` from the CTA handler), that same value leaked into `_frl_uuid`, causing `wp_schedule_single_event()`'s ~10-minute dedup to reject subsequent calls after the 5-second transient expired. `_frl_uuid` is cron-internal only — never reaches the webhook payload — so there's no reason to tie it to the caller's dedup key.
 
 ## Changes Made
 

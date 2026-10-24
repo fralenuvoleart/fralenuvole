@@ -9,13 +9,11 @@ A high-performance, "Swiss-army knife" WordPress administrator plugin designed f
 - **Cache Manager:** A unified interface supporting Litespeed, Docket Cache, Redis, Memcached, and WordPress Transients, with dependency cascading and language-aware keys.
 - **Options System:** A three-tier fallback (Static → Persistent → DB) with per-type value normalization.
 - **Translation Service:** Adapter-based architecture with self-contained fallbacks, decoupled from the translation provider (Polylang implemented; WPML-ready) via `Frl_Translation_Adapter_Interface`. Deferred string registration via the `shutdown` hook.
-- **Plugin Exclusion:** MU-plugin-based loader that prevents specified plugins from loading (without deactivating them), gated by frontend/backend-screen/capability rules.
 
 ## 🛠️ Critical Workflows
 - **Environment Enforcement:** Runs at `init`/10, throttled (60s for admins, 300s for others) except when a host/state change is detected, which always bypasses the throttle.
 - **Cache Clearing:** Cascades via the `FRL_CACHE_DEPENDENCIES` constant and is orchestrated through `Frl_Cache_Operations` for centralized visibility of every multi-step clear/flush sequence.
 - **Navigation Translation:** Translates `wp_navigation` block-editor menus between languages via dedicated `pll_get_post_types`/`block_type_metadata_settings` filters.
-- **Plugin Exclusion:** Runs at `muplugins_loaded`, filters `active_plugins`/`active_sitewide_plugins` via `pre_option_*`/`pre_site_option_*`.
 
 ## 🏗️ Architecture Conventions
 - **`pre_option_frl_*` filters:** Strictly namespaced to this plugin's own prefixed options — never intercepts third-party option reads.

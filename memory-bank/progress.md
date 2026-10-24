@@ -42,15 +42,6 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 | Navigation | `includes/shared/navigation.php` | `wp_navigation` block translation support, custom URL transforms for nav menu items (extensible via `frl_nav_menu_url_transforms` filter). |
 | Media | `includes/shared/media.php` | Custom image sizes, MIME support extension (WebP/SVG), attachment metadata auto-fill from filename. Filename sanitization (`frl_get_file_nicename`, hooked to `sanitize_file_name`) is gated to media uploads only via `frl_is_media_upload_request()` — plugin/theme installs are skipped. |
 
-## MU-Plugin (Early Loader)
-
-| Subsystem | Entry Point | Status |
-|---|---|---|
-| Plugin Exclusion | `assets/mu/frl-mu-plugin.php` → `includes/mu/functions-mu.php` | Prevents specified plugins from loading (without deactivating them) via `pre_option_active_plugins`/`pre_site_option_active_plugins` filters, gated by frontend/backend-screen/capability rules. See `docs/PLUGIN-EXCLUSIONS.md`. |
-| Bot Throttle | `includes/mu/functions-mu.php` → `frl_maybe_throttle_user_agent()` | Rate-limits configured User-Agent patterns (429 response) before any WordPress output begins. |
-| Cron Sanitization | `includes/mu/functions-mu.php` → `frl_add_exclusion_filter_cron()` | Strips orphaned cron events (from excluded plugins) and normalizes null `args` to prevent `TypeError` during WP-Cron execution. |
-| Early Auth Cookie Check | `includes/mu/functions-mu.php` → `frl_get_auth_cookie_user_data()` | Reads and cryptographically verifies (HMAC + password-hash fragment, replicating WordPress's own `wp_validate_auth_cookie()` algorithm) the logged-in auth cookie before `pluggable.php` loads, for the capability-based exclusion check. |
-
 ## Modules (opt-in, per-environment)
 
 | Module | Purpose |
@@ -66,12 +57,11 @@ This file is a **snapshot of what is implemented today**, organized by subsystem
 
 These are deliberate choices, not defects — documented so future maintainers don't "fix" them into regressions:
 
-- **`frl_get_auth_cookie_user_data()` (MU-plugin) does not check session-token revocation** (`WP_Session_Tokens`). It verifies the cryptographic signature but not explicit "log out everywhere" revocation. Acceptable because this function only gates a soft plugin-visibility decision, not real authentication.
 - **`frl_get_post_id_by_slug()` runs two queries** (hierarchical via `pagename`, then non-hierarchical via `name`) rather than one UNION query — `pagename` resolution requires parent→child path structure that non-hierarchical post types don't support, and a UNION would bypass Polylang's `lang` filtering.
 - **GeoDirectory language filtering** (`modules/pbproperty/geodirectory.php`) calls `pll_get_post_language()` once per post in a loop — an N+1 pattern amortized by a 24-hour cache; acceptable at the scale of a property listing.
 - **The Rewriter's `Frl_Cache_Manager` and `Frl_Environment_Manager` are fully static classes** — not unit-testable in isolation, but this is the established convention across the codebase and consistent with how WordPress itself is typically extended.
 - **No automated test suite (PHPUnit or otherwise) — deliberate, not an oversight.** `composer.json` intentionally scopes `require-dev` to static analysis (`phpstan`, `phpstan-wordpress`) and coding-standards tooling (`phpcs`/`wpcs`) only. This is a considered project-philosophy decision, not a gap to flag in future reviews — do not recommend adding a test suite unless explicitly asked to scope one.
-- **`Frl_Cache_Manager::remember()` has no stampede lock (removed 2026-10-24).** The previous `wp_cache_add()` short-TTL lock was a no-op: `$max_attempts = 1` meant a failed lock acquisition fell straight through to generation, so it never serialized concurrent misses while still costing two object-cache round-trips per miss. All `remember()` callbacks are idempotent reads, so concurrent double-execution during rare race windows is a known, accepted performance tradeoff, not a correctness bug. Do not re-add a lock without a real wait-and-recheck loop.
+- **`Frl_Cache_Manager::remember()` has no stampede lock.** The previous `wp_cache_add()` short-TTL lock was a no-op: `$max_attempts = 1` meant a failed lock acquisition fell straight through to generation, so it never serialized concurrent misses while still costing two object-cache round-trips per miss. All `remember()` callbacks are idempotent reads, so concurrent double-execution during rare race windows is a known, accepted performance tradeoff, not a correctness bug. Do not re-add a lock without a real wait-and-recheck loop.
 - **`Frl_Cache_Manager::get_cached_value()` no longer has an `is_array($key)` branch.** The old path routed array keys through `get_multi()`, which treated them as a key LIST instead of the hashed compound identity `generate_key()` produced. This was dead code (facade helpers type-hint `string $key`) and has been removed; `$cache_key` is always a string, so the single-key `get_transient()` path handles all `$key` shapes.
 - **`FRL_MODE=disable` guard position in `fralenuvole.php` is load-bearing.** Must precede any `FRL_DIR_PATH` usage — the constant is defined in `config/config-base.php`, loaded by `bootstrap.php` AFTER the disable early-return. Placing the guard after a `require_once` that references `FRL_DIR_PATH` causes a fatal error. Fixed 2026-07-14.
 - **Brand-specific modules (`modules/pbnova`, `modules/pbs`, `modules/pbproperty`, `modules/wsform`, `modules/frl`, etc.) are disposable by design.** Any of them can be deleted in their entirety at any time at the maintainer's discretion — they exist to serve one deployment's specific needs and are not core plugin surface. Their presence, absence, or eventual removal is never itself a code-quality finding; do not flag "module X could be removed/consolidated/is site-specific" as an issue.

@@ -56,7 +56,6 @@ Verified zero-DB-query warm-cache path in production:
 | Rewriter | Multilingual CPT slug translation, taxonomy/CPT base removal, feature-based self-registering architecture, catch-all exclusion patterns |
 | Translator | Adapter pattern (Polylang), block token translation, field translation with pattern-based caching, deferred string registration |
 | ThemeKit | Dynamic body classes, base styles, block pattern/provider-style removal, font-display optimization |
-| MU-Plugin | Plugin exclusion by context/capability, bot throttling (429), cron sanitization, early auth cookie verification |
 | Frontend | Critical CSS injection, deferred CSS, featured-image preload, header/footer HTML+scripts, REST endpoint pruning, login branding, shortcodes |
 | Admin | Tabbed settings UI, dashboard widgets, log manager, tag validator, import/export, bulk resave, debug display, cache/environment diagnostic tables |
 | Schema | JSON-LD schema generation (Organization, WebSite, WebPage, BreadcrumbList, BlogPosting, Service, HowTo, etc.) |

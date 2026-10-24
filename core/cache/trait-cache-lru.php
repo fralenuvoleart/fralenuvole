@@ -10,8 +10,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Extracted from Frl_Cache_Manager for maintainability. $runtime_cache/$group_keys
  * stay on the host class since other non-LRU methods also touch them directly.
  *
- * @property static array $runtime_cache
- * @property static array $group_keys
  * @package Fralenuvole
  * @since 5.7.4.5
  */
@@ -34,14 +32,14 @@ trait Frl_Cache_Lru_Trait {
 	 */
 	private static function set_runtime( $cache_key, $value, $group = null ) {
 		// Store in runtime cache
-		self::$runtime_cache[ $cache_key ] = $value;
+		Frl_Cache_Manager::$runtime_cache[ $cache_key ] = $value;
 
 		// Index the key by group for efficient clearing
 		if ( $group === null ) {
 			$parts = explode( '_', $cache_key, 2 );
 			$group = $parts[0] ?? 'default';
 		}
-		self::$group_keys[ $group ][ $cache_key ] = 1;
+		Frl_Cache_Manager::$group_keys[ $group ][ $cache_key ] = 1;
 
 		// Update access order (O(1) update via associative assignment)
 		// We use associative array to move the key to the end of the array (most recently used)
@@ -49,7 +47,7 @@ trait Frl_Cache_Lru_Trait {
 		self::$lru['access_order'][ $cache_key ] = 1;
 
 		// Prune if over limit (True LRU)
-		if ( count( self::$runtime_cache ) > self::$max_runtime_items ) {
+		if ( count( Frl_Cache_Manager::$runtime_cache ) > self::$max_runtime_items ) {
 			reset( self::$lru['access_order'] );
 			$oldest_key = key( self::$lru['access_order'] );
 
@@ -68,7 +66,7 @@ trait Frl_Cache_Lru_Trait {
 	 */
 	private static function remove_runtime_item( $cache_key, $group = null ) {
 		// Remove from main storage
-		unset( self::$runtime_cache[ $cache_key ] );
+		unset( Frl_Cache_Manager::$runtime_cache[ $cache_key ] );
 
 		// Remove from LRU tracking
 		unset( self::$lru['access_order'][ $cache_key ] );
@@ -78,10 +76,10 @@ trait Frl_Cache_Lru_Trait {
 			$parts = explode( '_', $cache_key, 2 );
 			$group = $parts[0] ?? 'default';
 		}
-		if ( isset( self::$group_keys[ $group ] ) ) {
-			unset( self::$group_keys[ $group ][ $cache_key ] );
-			if ( empty( self::$group_keys[ $group ] ) ) {
-				unset( self::$group_keys[ $group ] );
+		if ( isset( Frl_Cache_Manager::$group_keys[ $group ] ) ) {
+			unset( Frl_Cache_Manager::$group_keys[ $group ][ $cache_key ] );
+			if ( empty( Frl_Cache_Manager::$group_keys[ $group ] ) ) {
+				unset( Frl_Cache_Manager::$group_keys[ $group ] );
 			}
 		}
 	}
@@ -93,12 +91,12 @@ trait Frl_Cache_Lru_Trait {
 	 * @return mixed|null Cached value or null if not found.
 	 */
 	private static function get_runtime( $cache_key ) {
-		if ( isset( self::$runtime_cache[ $cache_key ] ) ) {
+		if ( isset( Frl_Cache_Manager::$runtime_cache[ $cache_key ] ) ) {
 			// Move to end of access order (O(1) update)
 			unset( self::$lru['access_order'][ $cache_key ] );
 			self::$lru['access_order'][ $cache_key ] = 1;
 
-			return self::$runtime_cache[ $cache_key ];
+			return Frl_Cache_Manager::$runtime_cache[ $cache_key ];
 		}
 		return null;
 	}
