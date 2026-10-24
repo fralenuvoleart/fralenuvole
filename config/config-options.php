@@ -385,61 +385,61 @@ const FRL_DEFAULT_FIELDS = array(
 	'website'        => array(
 		'title'  => 'Website Settings',
 		'fields' => array(
-			'section_title_wordpress'             => array(
+			'section_title_wordpress'      => array(
 				'label'       => 'WordPress Features',
 				'description' => 'Wordpress core features settings',
 				'type'        => 'section_title',
 			),
-			'disable_comments'                    => array(
+			'disable_comments'             => array(
 				'label'             => 'Disable Comments',
 				'description'       => 'Disable comments sitewide',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'login_branding'                      => array(
+			'login_branding'               => array(
 				'label'             => 'Login Page Branding',
 				'description'       => 'Apply theme colors and logo to login page',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'custom_avatar'                       => array(
+			'custom_avatar'                => array(
 				'label'             => 'Custom User Avatar',
 				'description'       => 'Upload a custom avatar for all users',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'editor_metabox'                      => array(
+			'editor_metabox'               => array(
 				'label'             => 'Editor Metabox',
 				'description'       => 'Enable editor metabox in post edit screen',
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'scroll_listener'                     => array(
+			'scroll_listener'              => array(
 				'label'             => 'Enable Scroll Listener',
 				'description'       => 'Enable the frontend scroll listener JS and header/hero CSS styles.',
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'nav_menu_custom_urls'                => array(
+			'nav_menu_custom_urls'         => array(
 				'label'             => 'Nav Menu URL Transforms',
 				'description'       => 'Transform <code>#frl_url_*</code> fragments to URLs in navigation menus.',
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'custom_wp_query_opt'                 => array(
+			'custom_wp_query_opt'          => array(
 				'label'             => 'Optimize WP Query',
 				'description'       => 'Optimize secondary queries. One post type per line.',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'custom_wp_query_cpt'                 => array(
+			'custom_wp_query_cpt'          => array(
 				'label'             => 'Order WP Query by menu_order',
 				'description'       => 'Order CPTs by menu_order. One post type per line.',
 				'type'              => 'textlist',
@@ -450,19 +450,19 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
-			'section_title_heartbeat'             => array(
+			'section_title_heartbeat'      => array(
 				'label'       => 'Heartbeat API',
 				'description' => 'Control WordPress Heartbeat API frequency per context',
 				'type'        => 'section_title',
 			),
-			'heartbeat_control'                   => array(
+			'heartbeat_control'            => array(
 				'label'             => 'Control Heartbeat',
 				'description'       => 'Enable Heartbeat API throttling per context',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'heartbeat_frontend_interval'         => array(
+			'heartbeat_frontend_interval'  => array(
 				'label'             => 'Frontend Interval',
 				'description'       => 'Heartbeat interval in seconds for public-facing pages (0 = disable). Default: 60',
 				'type'              => 'number',
@@ -470,7 +470,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'absint',
 				'size'              => 5,
 			),
-			'heartbeat_editor_interval'           => array(
+			'heartbeat_editor_interval'    => array(
 				'label'             => 'Editor Interval',
 				'description'       => 'Heartbeat interval in seconds for post edit screens. Default: 60',
 				'type'              => 'number',
@@ -478,7 +478,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'absint',
 				'size'              => 5,
 			),
-			'heartbeat_dashboard_interval'        => array(
+			'heartbeat_dashboard_interval' => array(
 				'label'             => 'Dashboard Interval',
 				'description'       => 'Heartbeat interval in seconds for admin dashboard pages. Default: 120',
 				'type'              => 'number',
@@ -486,33 +486,33 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'absint',
 				'size'              => 5,
 			),
-			'section_title_image_support'         => array(
+			'section_title_image_support'  => array(
 				'label'       => 'Image Support',
 				'description' => 'Backend admin support for Images',
 				'type'        => 'section_title',
 			),
-			'image_filename_sanitize'             => array(
+			'image_filename_sanitize'      => array(
 				'label'             => 'Sanitize Filenames',
 				'description'       => 'Sanitize filename and title of uploaded images to readable format.',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'image_mime_support'                  => array(
+			'image_mime_support'           => array(
 				'label'             => 'SVG and WEBP Uploads',
 				'description'       => 'Enable SVG and WEBP media support',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
 			),
-			'image_sizes'                         => array(
+			'image_sizes'                  => array(
 				'label'             => 'Add Media Image Sizes',
 				'description'       => 'Add custom image sizes to post edit screen',
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
 			),
-			'image_sizes_list'                    => array(
+			'image_sizes_list'             => array(
 				'label'             => 'image Sizes List',
 				'description'       => 'One image size per line. Format: name|width|height|Label',
 				'type'              => 'textlist',
