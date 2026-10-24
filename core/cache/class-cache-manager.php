@@ -20,7 +20,11 @@ class Frl_Cache_Manager {
 	use Frl_Cache_Lru_Trait;
 
 	/** Cache key prefix. */
-	const PREFIX                        = FRL_CACHE_PREFIX;
+	const PREFIX = FRL_CACHE_PREFIX;
+
+	/** Sentinel key marking a wrapped falsey value in transient storage. */
+	private const FALSEY_SENTINEL = '__frl_falsey__';
+
 	private static array $runtime_cache = array();
 	private static array $key_cache     = array();
 	private static array $group_keys    = array(); // Index of keys per group for efficient clearing
@@ -110,7 +114,14 @@ class Frl_Cache_Manager {
 			return true;
 		}
 
-		// Object cache functional or mixed groups — per-group preload (no DB queries needed)
+		// On a functional object cache, preload_multi() cannot enumerate a group's
+		// keys — it would only hydrate the empty per-request runtime index and load
+		// nothing. Keys warm lazily on first access, so skip the no-op loop entirely.
+		if ( self::is_object_cache_truly_functional() ) {
+			return true;
+		}
+
+		// Transient path with mixed groups: per-group preload still issues real queries.
 		foreach ( $groups_to_preload as $group ) {
 			self::preload_multi( $group );
 		}
@@ -215,6 +226,16 @@ class Frl_Cache_Manager {
 		// Process array keys first to avoid duplication
 		if ( is_array( $key ) ) {
 			$key_str = json_encode( $key );
+			// json_encode() returns false on invalid UTF-8; fall back to
+			// serialize() so distinct keys don't all collapse to md5('').
+			if ( $key_str === false ) {
+				$key_str = serialize( $key );
+			}
+			// Bound the hash memo: unlike $runtime_cache it is not LRU-pruned,
+			// so cap it to avoid unbounded growth in long-running processes.
+			if ( count( self::$key_cache ) > self::$max_runtime_items ) {
+				self::$key_cache = array();
+			}
 			if ( ! isset( self::$key_cache[ $key_str ] ) ) {
 				// Use faster hashing if available
 				if ( function_exists( 'xxh3_hash64' ) ) {
@@ -238,7 +259,35 @@ class Frl_Cache_Manager {
 	}
 
 	/**
-	 * Set a value in cache (runtime and persistent).
+		* Wrap a value for transient storage so a cached falsey value (false/null)
+		* is distinguishable from a cache miss — get_transient() returns false for
+		* both. Only falsey values are wrapped, so the common case is unchanged.
+		*
+		* @param mixed $value Value to store.
+		* @return mixed Wrapped value.
+		*/
+	private static function wrap_transient_value( $value ) {
+		if ( $value === false || $value === null ) {
+			return array( self::FALSEY_SENTINEL => $value );
+		}
+		return $value;
+	}
+
+	/**
+		* Unwrap a value read from transient storage.
+		*
+		* @param mixed $value Value read from the transient.
+		* @return mixed Unwrapped value.
+		*/
+	private static function unwrap_transient_value( $value ) {
+		if ( is_array( $value ) && count( $value ) === 1 && array_key_exists( self::FALSEY_SENTINEL, $value ) ) {
+			return $value[ self::FALSEY_SENTINEL ];
+		}
+		return $value;
+	}
+
+	/**
+		* Set a value in cache (runtime and persistent).
 	 *
 	 * @param string $group Cache group name.
 	 * @param string|array $key Cache key.
@@ -278,7 +327,7 @@ class Frl_Cache_Manager {
 		}
 
 		if ( self::use_transient_fallback( $group ) ) {
-			return set_transient( self::PREFIX . $cache_key, $value, $ttl );
+			return set_transient( self::PREFIX . $cache_key, self::wrap_transient_value( $value ), $ttl );
 		}
 
 		return true;
@@ -350,7 +399,7 @@ class Frl_Cache_Manager {
 		if ( self::use_transient_fallback( $group ) ) {
 			$all_ok = true;
 			foreach ( $sanitized_items as $cache_key => $value ) {
-				$all_ok = set_transient( self::PREFIX . $cache_key, $value, $ttl ) && $all_ok;
+				$all_ok = set_transient( self::PREFIX . $cache_key, self::wrap_transient_value( $value ), $ttl ) && $all_ok;
 			}
 			return $all_ok;
 		}
@@ -383,13 +432,18 @@ class Frl_Cache_Manager {
 		if ( self::use_transient_fallback( $group ) ) {
 			$data = get_transient( self::PREFIX . $cache_key );
 			if ( $data !== false ) {
+				$data = self::unwrap_transient_value( $data );
 				self::set_runtime( $cache_key, $data, $group );
 				return $data;
 			}
 		} elseif ( self::is_object_cache_truly_functional() ) {
-			// Object cache for all data when available
-			$data = wp_cache_get( $cache_key, self::PREFIX . $group );
-			if ( $data !== false ) {
+			// Object cache for all data when available. Use $found so a cached
+			// falsey value (false) is not mistaken for a miss. $found is null on
+			// drop-ins that don't implement it — fall back to the legacy
+			// false-check so those backends are not treated as permanent misses.
+			$found = null;
+			$data  = wp_cache_get( $cache_key, self::PREFIX . $group, false, $found );
+			if ( true === $found || ( null === $found && false !== $data ) ) {
 				self::set_runtime( $cache_key, $data, $group );
 				return $data;
 			}
@@ -439,7 +493,7 @@ class Frl_Cache_Manager {
 		if ( self::is_object_cache_truly_functional() ) {
 			wp_cache_set( $cache_key, $data, self::PREFIX . $group, $ttl );
 		} elseif ( self::use_transient_fallback( $group ) ) {
-			set_transient( self::PREFIX . $cache_key, $data, $ttl );
+			set_transient( self::PREFIX . $cache_key, self::wrap_transient_value( $data ), $ttl );
 		}
 
 		return $data;
@@ -469,62 +523,12 @@ class Frl_Cache_Manager {
 			return $value;
 		}
 
-		// Stampede lock requires a real object-cache backend (Redis/Memcached)
-		// where wp_cache_add() is atomic across processes. On transient-only
-		// sites, wp_cache_add() degrades to per-process in-memory storage — no
-		// cross-process serialization. Transient-based locking (get_transient/
-		// set_transient) is not a safe alternative: TOCTOU race between check
-		// and set. MySQL GET_LOCK() works but ties up a connection per lock
-		// attempt across 110+ call sites. All remember() callbacks are idempotent
-		// reads, so concurrent double-execution during rare race windows wastes
-		// CPU but cannot corrupt data. This is a known, accepted tradeoff for
-		// sites without a persistent object-cache backend.
-		if ( ! self::is_object_cache_truly_functional() ) {
-			$value = $callback();
-			if ( $value !== null ) {
-				self::set( $group, $key, $value, $ttl );
-			}
-			return $value;
-		}
-
-		// Locking mechanism to prevent race conditions
-		$lock_key     = self::generate_key( 'lock', $group . $key );
-		// Non-blocking lock: one attempt, then generate. Waiting is wasted on the
-		// contended (slow) callbacks, and all remember() callbacks are idempotent reads.
-		$max_attempts = 1;
-		$wait_time    = 50000; // 50ms initially
-
-		for ( $attempt = 0; $attempt < $max_attempts; $attempt++ ) {
-			// Try to get lock
-			if ( wp_cache_add( $lock_key, 1, 'locks', self::LOCK_TTL ) ) {
-				try {
-					// Generate value with callback
-					$value = $callback();
-					if ( $value !== null ) {
-						self::set( $group, $key, $value, $ttl );
-					}
-					return $value;
-				} finally {
-					// Always release lock
-					wp_cache_delete( $lock_key, 'locks' );
-				}
-			}
-
-			// Wait with exponential backoff
-			if ( $attempt < $max_attempts - 1 ) {
-				usleep( $wait_time );
-				$wait_time *= 2; // Double wait time each attempt
-
-				// Check if another process generated the value while waiting
-				$value = self::get( $group, $key, null );
-				if ( $value !== null ) {
-					return $value;
-				}
-			}
-		}
-
-		// After all retries, generate the value anyway
-		// Better to have multiple processes generate it than none
+		// No stampede lock. With the previous $max_attempts = 1 the lock never
+		// serialized anything (a failed wp_cache_add() fell straight through to
+		// generation) while still costing two object-cache round-trips per miss.
+		// All remember() callbacks are idempotent reads, so concurrent
+		// double-execution during a rare race window wastes CPU but cannot
+		// corrupt data. This is the accepted tradeoff for every backend.
 		$value = $callback();
 		if ( $value !== null ) {
 			self::set( $group, $key, $value, $ttl );
@@ -541,6 +545,60 @@ class Frl_Cache_Manager {
 	 */
 	public static function delete( $group, $key ) {
 		return self::clear_group_with_dependencies( $group, $key, false );
+	}
+
+	/**
+	 * Delete multiple specific keys from a group in one batch.
+	 *
+	 * Collapses N per-key wp_cache_delete() round-trips into a single
+	 * wp_cache_delete_multiple() call (WP 6.0+; per-key fallback otherwise).
+	 * Runtime entries and the options-group static caches are cleared too.
+	 *
+	 * @param string $group Cache group name.
+	 * @param array<int,string> $keys Original (pre-generate_key) keys.
+	 * @return int Number of keys cleared.
+	 */
+	public static function clear_keys( string $group, array $keys ): int {
+		if ( empty( $keys ) ) {
+			return 0;
+		}
+
+		$cache_keys = array();
+		foreach ( $keys as $key ) {
+			$cache_keys[] = self::generate_key( $group, $key );
+		}
+
+		if ( self::is_object_cache_truly_functional() ) {
+			if ( function_exists( 'wp_cache_delete_multiple' ) ) {
+				wp_cache_delete_multiple( $cache_keys, self::PREFIX . $group );
+			} else {
+				foreach ( $cache_keys as $cache_key ) {
+					wp_cache_delete( $cache_key, self::PREFIX . $group );
+				}
+			}
+		} elseif ( self::use_transient_fallback( $group ) ) {
+			foreach ( $cache_keys as $cache_key ) {
+				delete_transient( self::PREFIX . $cache_key );
+			}
+		}
+
+		foreach ( $cache_keys as $cache_key ) {
+			if ( isset( self::$runtime_cache[ $cache_key ] ) ) {
+				self::remove_runtime_item( $cache_key, $group );
+			}
+		}
+
+		if ( $group === 'options' ) {
+			$stats = array(
+				'runtime'      => 0,
+				'persistent'   => 0,
+				'wordpress'    => 0,
+				'dependencies' => array(),
+			);
+			self::reset_options_caches( $stats );
+		}
+
+		return count( $cache_keys );
 	}
 
 	/**
@@ -883,7 +941,7 @@ class Frl_Cache_Manager {
 							$timeouts[ $key ] = $row->option_value;
 						} else {
 							$key                = str_replace( $prefix, '', $row->option_name );
-							$transients[ $key ] = maybe_unserialize( $row->option_value );
+							$transients[ $key ] = self::unwrap_transient_value( maybe_unserialize( $row->option_value ) );
 						}
 					}
 
@@ -912,15 +970,15 @@ class Frl_Cache_Manager {
 						// Mark this group as fully loaded
 						self::$loaded_groups[ $group ] = true;
 				} else {
-					// Object cache case - we still need to initialize runtime cache
-					// Since we can't get all keys efficiently from object cache,
-					// we rely on the runtime cache for any existing entries
+					// Object cache case: keys cannot be enumerated from the object
+					// cache, so only the runtime cache can be hydrated. Do NOT mark
+					// the group as fully loaded — that flag means "the complete set
+					// was loaded" (transient path only); setting it here would make
+					// later get_multi($group, null) calls return a partial set as if
+					// it were complete.
 					if ( $return_values ) {
 						$result = self::hydrate_result_from_group_keys( $group );
 					}
-
-					// Still mark as loaded to prevent repeated access attempts
-					self::$loaded_groups[ $group ] = true;
 				}
 			}
 
@@ -1553,7 +1611,20 @@ class Frl_Cache_Manager {
 		// every transient on the site. Other plugins'/themes' transients are
 		// intentionally left untouched — use the separate "Clear Website
 		// Transients" action for a full-site purge.
-		$stats['plugin_transients_deleted'] = self::clear_transients();
+		// purge_all() above already batch-deleted plugin transients when the
+		// object cache is non-functional; skip the redundant DB delete there but
+		// still reset the per-request transient static cache.
+		if ( self::is_object_cache_truly_functional() ) {
+			$stats['plugin_transients_deleted'] = self::clear_transients();
+		} else {
+			$runtime_transient_cache            = &frl_transients_static_cache();
+			$runtime_transient_cache            = array();
+			$stats['plugin_transients_deleted'] = array(
+				'transients'         => 0,
+				'runtime_transients' => 'all',
+				'note'               => 'DB transients already cleared by purge_all()',
+			);
+		}
 
 		$stats['browser_cache_headers_sent_via_purge_all'] = 'dependent_on_group_config';
 

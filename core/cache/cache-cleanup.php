@@ -119,12 +119,13 @@ function frl_clear_option_cache( $option_name ) {
 
 	$version = frl_get_option( 'translation_version' ) ?: 1;
 
+	// Collect all per-language keys and clear them in one batch (one round-trip
+	// instead of one per language). Dependency cascades are skipped for key-level clears.
+	$cache_keys = array();
 	foreach ( $active_languages as $language ) {
-		$cache_key = "translation_option_{$option_name}_{$language}_{$version}";
-
-		// Clear only this option-specific key (dependency cascades are skipped by the cache manager for key-level clears)
-		frl_cache_clear( 'options', $cache_key );
+		$cache_keys[] = "translation_option_{$option_name}_{$language}_{$version}";
 	}
+	frl_cache_clear_keys( 'options', $cache_keys );
 }
 
 /**

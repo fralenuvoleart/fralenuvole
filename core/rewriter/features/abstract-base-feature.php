@@ -510,9 +510,6 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 			// Normalize and de-duplicate without re-escaping to avoid double quoting
 			$exclusion_patterns = array_values( array_unique( array_filter( $exclusion_patterns ) ) );
 
-			// Cache the alternation string per-request to avoid repeated work
-			static $alternation_cache = array();
-
 			// Optional grouping: combine lang-prefixed patterns into (?:lang1|lang2)/(?:items)
 			$langs       = Frl_Rewriter_Path_Utils::get_active_languages_safe();
 			$lang_groups = array();
@@ -545,18 +542,19 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
 			$cache_input = array( $exclusion_patterns, $lang_groups, $plain_items );
 			$alt_key     = md5( serialize( $cache_input ) );
-			if ( ! isset( $alternation_cache[ $alt_key ] ) ) {
-				if ( ! empty( $lang_groups ) ) {
-					$parts                         = array_merge( $lang_groups, $plain_items );
-					$alternation_cache[ $alt_key ] = '(?:' . implode( '|', $parts ) . ')';
-				} else {
-					$alternation_cache[ $alt_key ] = implode( '|', $exclusion_patterns );
+			// Persist the alternation string in the rewriter group (keyed by the
+			// pattern set) so it is not rebuilt on every request.
+			$excluded_pattern = frl_cache_remember(
+				'rewriter',
+				'catchall_alt_' . $alt_key,
+				function () use ( $lang_groups, $plain_items, $exclusion_patterns ) {
+					if ( ! empty( $lang_groups ) ) {
+						$parts = array_merge( $lang_groups, $plain_items );
+						return '(?:' . implode( '|', $parts ) . ')';
+					}
+					return implode( '|', $exclusion_patterns );
 				}
-				if ( count( $alternation_cache ) > 1024 ) {
-					$alternation_cache = array();
-				}
-			}
-			$excluded_pattern = $alternation_cache[ $alt_key ];
+			);
 
 			// Pagination rule must be registered BEFORE the single-slug rule.
 			// Both use 'top' priority so they are inserted into extra_rules_top in insertion order.

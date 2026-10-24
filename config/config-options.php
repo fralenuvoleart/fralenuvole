@@ -155,7 +155,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'textarea',
 				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload'          => 'no',
 			),
 			'section_title_schema'               => array(
 				'label'       => 'Schema Settings',
@@ -404,7 +403,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'custom_avatar'                       => array(
 				'label'             => 'Custom User Avatar',
@@ -412,7 +410,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'editor_metabox'                      => array(
 				'label'             => 'Editor Metabox',
@@ -420,7 +417,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'scroll_listener'                     => array(
 				'label'             => 'Enable Scroll Listener',
@@ -481,7 +477,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 60,
 				'sanitize_callback' => 'absint',
 				'size'              => 5,
-				'autoload'          => 'no',
 			),
 			'heartbeat_dashboard_interval'        => array(
 				'label'             => 'Dashboard Interval',
@@ -490,7 +485,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => 120,
 				'sanitize_callback' => 'absint',
 				'size'              => 5,
-				'autoload'          => 'no',
 			),
 			'section_title_image_support'         => array(
 				'label'       => 'Image Support',
@@ -503,7 +497,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'image_mime_support'                  => array(
 				'label'             => 'SVG and WEBP Uploads',
@@ -511,7 +504,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'image_sizes'                         => array(
 				'label'             => 'Add Media Image Sizes',
@@ -519,7 +511,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'image_sizes_list'                    => array(
 				'label'             => 'image Sizes List',
@@ -528,7 +519,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'rows'              => 3,
 				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload'          => 'no',
 			),
 			'section_title_langswitcher'          => array(
 				'label'       => 'Language Switcher',
@@ -769,7 +759,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'logged_user_visits'                   => array(
 				'label'             => 'Log User Visits',
@@ -777,7 +766,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'admin_featured_post_list'             => array(
 				'label'             => 'Featured Image in Posts List',
@@ -785,7 +773,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'extend_admin_cookie'                  => array(
 				'label'             => 'Extend Admin Cookie',
@@ -793,7 +780,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'section_title_adminbar'               => array(
 				'label'       => 'Adminbar',
@@ -805,7 +791,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'ab_remove_links_handles'              => array(
 				'label'             => 'Links to remove for everybody',
@@ -819,7 +804,6 @@ const FRL_DEFAULT_FIELDS = array(
 					ws-form-node
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload'          => 'no',
 			),
 			'ab_remove_links_handles_user'         => array(
 				'label'             => 'Adminbar links to remove except for plugin admins',
@@ -830,14 +814,12 @@ const FRL_DEFAULT_FIELDS = array(
 					kwlm-menu
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload'          => 'no',
 			),
 			'custom_ab_menu'                       => array(
 				'label'             => 'Custom menu in Adminbar',
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'custom_ab_links'                      => array(
 				'label'             => 'Custom Adminbar links',
@@ -846,7 +828,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => '',
 				'cols'              => 70,
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload'          => 'no',
 			),
 			'section_title_admin_menu'             => array(
 				'label'       => 'Admin menu',
@@ -858,7 +839,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'am_remove_links_handles'              => array(
 				'label'             => 'Admin links to remove for everybody',
@@ -866,7 +846,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'textlist',
 				'default'           => '',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload'          => 'no',
 			),
 			'am_remove_links_handles_user'         => array(
 				'label'             => 'Admin links to remove except for plugin admins',
@@ -880,7 +859,6 @@ const FRL_DEFAULT_FIELDS = array(
 				',
 				'cols'              => 70,
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload'          => 'no',
 			),
 			'section_title_dashboard_widgets'      => array(
 				'label'       => 'Dashboard Widgets',
@@ -893,7 +871,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'dash_widget_editor'                   => array(
 				'label'             => 'Editor dashboard widget',
@@ -901,7 +878,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'dash_widget_administrator'            => array(
 				'label'             => 'Admin dashboard widget',
@@ -909,7 +885,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'remove_dash_widg'                     => array(
 				'label'             => 'Remove dashboard widgets',
@@ -917,7 +892,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 1,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			'remove_dash_widg_handles'             => array(
 				'label'             => 'Handles of widgets to remove',
@@ -929,7 +903,6 @@ const FRL_DEFAULT_FIELDS = array(
 					blc_dashboard_widget
 				',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload'          => 'no',
 			),
 			'section_title_custom_html_widgets'    => array(
 				'label'       => 'Custom HTML Widgets',
@@ -942,7 +915,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'checkbox',
 				'default'           => 0,
 				'sanitize_callback' => 'absint',
-				'autoload'          => 'no',
 			),
 			// Widget 1
 			'dash_widget_custom_html_label_1'      => array(
@@ -950,7 +922,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'text',
 				'default'           => 'Custom Widget',
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload'          => 'no',
 			),
 			'dash_widget_custom_html_cap_1'        => array(
 				'label'             => 'Widget 1: Minimum Capability',
@@ -958,7 +929,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'text',
 				'default'           => FRL_PLUGIN_ACCESS,
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload'          => 'no',
 			),
 			'dash_widget_custom_html_content_1'    => array(
 				'label'       => 'Widget 1 Content',
@@ -967,7 +937,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'rows'        => 4,
 				'default'     => '',
 				'restricted'  => true,
-				'autoload'    => 'no',
 			),
 			// Widget 2
 			'dash_widget_custom_html_label_2'      => array(
@@ -975,7 +944,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'text',
 				'default'           => 'Custom Widget',
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload'          => 'no',
 			),
 			'dash_widget_custom_html_cap_2'        => array(
 				'label'             => 'Widget 2: Minimum Capability',
@@ -983,7 +951,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'text',
 				'default'           => FRL_PLUGIN_ACCESS,
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload'          => 'no',
 			),
 			'dash_widget_custom_html_content_2'    => array(
 				'label'       => 'Widget 2 Content',
@@ -992,7 +959,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'rows'        => 4,
 				'default'     => '',
 				'restricted'  => true,
-				'autoload'    => 'no',
 			),
 			// Widget 3
 			'dash_widget_custom_html_label_3'      => array(
@@ -1000,7 +966,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'text',
 				'default'           => 'Custom Widget',
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload'          => 'no',
 			),
 			'dash_widget_custom_html_cap_3'        => array(
 				'label'             => 'Widget 3: Minimum Capability',
@@ -1008,7 +973,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'text',
 				'default'           => FRL_PLUGIN_ACCESS,
 				'sanitize_callback' => 'sanitize_text_field',
-				'autoload'          => 'no',
 			),
 			'dash_widget_custom_html_content_3'    => array(
 				'label'       => 'Widget 3 Content',
@@ -1017,7 +981,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'rows'        => 4,
 				'default'     => '',
 				'restricted'  => true,
-				'autoload'    => 'no',
 			),
 		),
 	),
@@ -1041,7 +1004,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'checkbox',
 				'default'     => 1,
 
-				'autoload'    => 'no',
 			),
 			'debug_display'                 => array(
 				'label'       => 'WP_DEBUG_DISPLAY',
@@ -1049,7 +1011,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'checkbox',
 				'default'     => 0,
 				'restricted'  => true,
-				'autoload'    => 'no',
 			),
 			'section_title_error_reporting' => array(
 				'label'       => 'Error reporting',
@@ -1062,35 +1023,30 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'checkbox',
 				'default'     => 1,
 				'restricted'  => true,
-				'autoload'    => 'no',
 			),
 			'error_reporting_notice'        => array(
 				'label'       => 'Log Notices',
 				'description' => 'Log notices in the debug.log file',
 				'type'        => 'checkbox',
 				'default'     => 1,
-				'autoload'    => 'no',
 			),
 			'error_reporting_warning'       => array(
 				'label'       => 'Log Warnings',
 				'description' => 'Log warnings in the debug.log file',
 				'type'        => 'checkbox',
 				'default'     => 1,
-				'autoload'    => 'no',
 			),
 			'error_reporting_deprecated'    => array(
 				'label'       => 'Log Deprecated',
 				'description' => 'Log deprecated messages in the debug.log file',
 				'type'        => 'checkbox',
 				'default'     => 0,
-				'autoload'    => 'no',
 			),
 			'error_reporting_plugin'        => array(
 				'label'       => 'Log Plugin Only',
 				'description' => 'Log only messages from this plugin in the debug.log file',
 				'type'        => 'checkbox',
 				'default'     => 1,
-				'autoload'    => 'no',
 			),
 			'error_reporting_suppressed'    => array(
 				'label'             => 'Suppress error patterns',
@@ -1098,7 +1054,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'              => 'textlist',
 				'default'           => '_load_textdomain_just_in_time',
 				'sanitize_callback' => 'sanitize_textarea_field',
-				'autoload'          => 'no',
 			),
 		),
 	),
@@ -1130,7 +1085,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'checkbox',
 				'default'     => 0,
 				'restricted'  => true,
-				'autoload'    => 'no',
 			),
 			'excluded_plugins_backend'          => array(
 				'label'       => 'Backend Excluded Plugins',
@@ -1138,7 +1092,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'textlist',
 				'default'     => '',
 				'restricted'  => true,
-				'autoload'    => 'no',
 			),
 			'excluded_plugins_bycap_enabled'    => array(
 				'label'       => 'Enable Admin Capability Exclusion',
@@ -1146,7 +1099,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'checkbox',
 				'default'     => 0,
 				'restricted'  => true,
-				'autoload'    => 'no',
 			),
 			'excluded_plugins_bycap_cap'        => array(
 				'label'       => 'Required Capability',
@@ -1154,7 +1106,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'text',
 				'default'     => FRL_PLUGIN_ACCESS,
 				'restricted'  => true,
-				'autoload'    => 'no',
 			),
 			'excluded_plugins_bycap'            => array(
 				'label'       => 'Admin Excluded Plugins',
@@ -1162,7 +1113,6 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'textlist',
 				'default'     => '',
 				'restricted'  => true,
-				'autoload'    => 'no',
 			),
 			'section_title_components'          => array(
 				'label'       => 'Disable Core Features',
@@ -1175,6 +1125,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'checkbox',
 				'default'     => 0,
 				'restricted'  => true,
+				'autoload'    => 'yes',
 			),
 			'disable_environment'               => array(
 				'label'       => 'Disable Environment Manager',
@@ -1203,6 +1154,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'checkbox',
 				'default'     => 0,
 				'restricted'  => true,
+				'autoload'    => 'yes',
 			),
 		),
 	),

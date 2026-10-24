@@ -65,7 +65,8 @@ Groups stored across requests (object cache or transients):
 |---|---|
 | `staticdata`, `theme`, `html` | `WEEK_IN_SECONDS` |
 | `postdata`, `blocks`, `shortcodes`, `translations`, `permalinks`, `rewriter`, `metafields`, `versions`, `adminui` | `DAY_IN_SECONDS` |
-| `options`, `environment`, `admin`, `default` | `HOUR_IN_SECONDS` |
+| `options` | `DAY_IN_SECONDS` (actively invalidated; TTL is a safety net for out-of-band DB edits) |
+| `environment`, `admin`, `default` | `HOUR_IN_SECONDS` |
 
 ### Language-Aware Groups
 
@@ -90,6 +91,8 @@ Keys are prefixed: `{group}_{lang}_{key}` (e.g., `permalinks_en_post_42`).
 - **Frontend:** `options`, `rewriter`, `environment`, `theme`, `versions`, `html`
 - **Backend:** `options`, `environment`, `theme`, `versions`, `admin`
 
+These lists are a **transient-path** optimization. On a functional object cache, `auto_preload()` early-returns (a group's keys cannot be enumerated from the object cache), so these groups warm lazily on first access; the lists are inert there.
+
 ### Dependency Graph
 
 ```
@@ -103,6 +106,10 @@ staticdata    → adminui
 ### Runtime Limit
 
 `FRL_CACHE_RUNTIME_MAX_ITEMS = 1000` — max items in per-request LRU cache.
+
+### Single-Site Scope
+
+Cache keys are intentionally **not** blog-scoped — no `get_current_blog_id()` segment and no `switch_blog` reset. The plugin is single-site by design: one configuration shared across a multisite network, differentiated per environment, not per blog. Do not add blog scoping without revisiting this decision.
 
 ## Frl_Cache_Manager — Core
 
@@ -132,8 +139,10 @@ Groups in `FRL_CACHE_PERSISTENT_GROUPS` use transients when object cache is abse
 **Key methods:**
 - `set()` — writes to runtime + persistent
 - `get()` — runtime → persistent → callback generation. Populates runtime on persistent hit.
-- `get_multi()` — batch load. `$keys = null` loads all keys for group. Chunks specific-key loads in batches of 100.
-- `preload_multi()` — calls `get_multi()` with `$return_values = false` (populates runtime without returning).
+- `get_multi()` — batch load. `$keys = null` loads all keys for a group **only on the transient path** (a `LIKE` query); on a functional object cache keys cannot be enumerated, so it returns the runtime-hydrated subset. Chunks specific-key loads in batches of 100.
+- `preload_multi()` — calls `get_multi()` with `$return_values = false`. On a functional object cache this is a no-op (no enumeration); groups listed in `FRL_CACHE_PRELOAD_*_GROUPS` warm lazily on first access there. The eager preload only does real work on the transient path, where `auto_preload()` collapses the groups into one batched `LIKE` query.
+
+**Falsey values:** a cached `false`/`null` is distinguishable from a miss. Object-cache reads use `wp_cache_get(..., $found)` (with a legacy `!== false` fallback for drop-ins that don't populate `$found`); transient reads/writes wrap falsey values in a `__frl_falsey__` sentinel so `get_transient()` returning `false` still means "miss".
 
 ### Provider Detection
 
@@ -165,11 +174,7 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 
 ### Race Condition Prevention
 
-`remember()` uses lock-based cache-aside:
-1. Generates lock key via `wp_cache_add()` with `FRL_CACHE_LOCK_TTL` (2 seconds)
-2. On contention, waits with exponential backoff (50ms → 100ms → 200ms)
-3. Re-checks cache between retries
-4. Falls through to unconditional generation after max retries
+`remember()` is a plain cache-aside with **no stampede lock**. An earlier `wp_cache_add()` short-TTL lock was removed: with a single attempt it never serialized concurrent misses (a failed lock fell straight through to generation) while costing two object-cache round-trips per miss. All `remember()` callbacks are idempotent reads, so concurrent double-execution during a rare race window wastes CPU but cannot corrupt data. Do not re-add a lock without a real wait-and-recheck loop.
 
 ### Auth Preservation
 
@@ -236,8 +241,9 @@ All in `functions-class-helpers.php`. Every function checks `frl_cache_is_loaded
 |---|---|
 | `frl_cache_get($group, $key, $callback, $ttl)` | Get value, optionally generate via callback |
 | `frl_cache_set($group, $key, $value, $ttl)` | Store value |
-| `frl_cache_remember($group, $key, $callback, $ttl)` | Cache-aside with lock-based race prevention |
+| `frl_cache_remember($group, $key, $callback, $ttl)` | Cache-aside (no lock — see Race Condition Prevention) |
 | `frl_cache_clear($group, $key, $include_dependencies)` | Clear cache — routes to orchestrator or direct manager calls |
+| `frl_cache_clear_keys($group, $keys)` | Batch-clear specific keys via one `wp_cache_delete_multiple()` (per-key fallback on older cores); also drops runtime entries and resets the options static caches for the `options` group |
 | `frl_cache_get_multi($group, $keys, $return_values)` | Batch get multiple keys |
 | `frl_cache_preload_multi($group, $keys)` | Preload group into runtime cache |
 
@@ -264,7 +270,7 @@ frl_cache_clear($group, $key, $include_dependencies)
 
 ### Full-Group Clear
 
-`frl_cache_clear('options')` — checks `$groups_cleared` dedup, purges persistent + runtime storage, resets WordPress option caches (`alloptions` + `frl_get_option` static), removes `pre_option_frl_*` filters, cascades to dependencies, sends browser headers if group is in `FRL_CACHE_BROWSER_GROUPS`.
+`frl_cache_clear('options')` — checks `$groups_cleared` dedup, purges persistent + runtime storage, resets the plugin's `frl_get_option` static cache, cascades to dependencies, sends browser headers if the group is in `FRL_CACHE_BROWSER_GROUPS`. It deliberately does **not** clear WordPress's own `alloptions` cache (that would force a full autoloaded-options reload site-wide), and it does **not** remove `pre_option_frl_*` filters — those are managed per-write by `frl_update_option()` / `frl_delete_option()`.
 
 ### Hard Cache Reset (Action)
 
@@ -280,9 +286,9 @@ Step order is deliberate: caches are purged before rewrite rules are regenerated
 
 Four tiers:
 1. **Request-local static array** — populated once per request, zero cache/DB cost thereafter
-2. **Persistent cache** — first load calls `frl_get_plugin_options('all')` → `Frl_Cache_Manager::remember('options', 'all_options', …)`, lock-protected, backed by a single `LIKE 'frl_%'` DB query
+2. **Persistent cache** — first load calls `frl_get_plugin_options('all')` → `Frl_Cache_Manager::remember('options', 'all_options', …)`, backed by a single `LIKE 'frl_%'` DB query (no lock — see Race Condition Prevention)
 3. **Stale-cache recovery** — if a key is missing from the snapshot, does one direct `get_option()` check and patches the snapshot
-4. **Missing-option self-seeding** — if a key genuinely doesn't exist in DB (new field from code deploy), looks up its registered default/type/autoload, writes it once, batches cache invalidation across N missing keys
+4. **Missing-option self-seeding** — if a key genuinely doesn't exist in DB (new field from code deploy), looks up its registered default/type/autoload, writes it once, batches cache invalidation across N missing keys. On a normal install/reset most defaults are already pre-written by `frl_seed_option_defaults()` at activation, so this path mainly covers options added by a later code deploy.
 
 ### Write path (`frl_update_option()`)
 
@@ -300,7 +306,7 @@ add_filter('pre_option_' . $prefixed_key, fn() => $normalized_value, 9999, 1);
 ## Performance Considerations
 
 - **Frontend, warm cache:** Zero DB queries for anything this plugin controls — consequence of layered caching (static array → runtime LRU → persistent cache → batched preload)
-- **`auto_preload()`** runs on every non-AJAX request, preloading 5-6 groups. On transient-only sites, batched into a single DB query when all groups are persistent
+- **`auto_preload()`** runs on every non-AJAX request. On transient-only sites it batches the preload groups into a single DB query; on a functional object cache it early-returns (keys cannot be enumerated per group), so groups warm lazily instead
 - **`purge_all()`** performs a single batch transient deletion, then skips per-group deletion via `$transients_batch_deleted` flag
 - **Provider detection** is cached in a core transient with `WEEK_IN_SECONDS` TTL
 - **Admin "Hard Reset"** can take several seconds — this is expected: it chains `purge_all()` + `clear_transients()` + `flush_rewrite_rules(true)`. The cost is paid only on explicit admin request, never on visitor-facing pages

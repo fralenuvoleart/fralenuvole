@@ -23,7 +23,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  *    (Ensures the default is set only once per request via a 'write_attempted' flag).
  *
  * @param string $key The option key without prefix.
- * @param bool $bypass_cache Whether to bypass the static cache and fetch fresh from DB.
+ * @param bool $bypass_cache Whether to bypass the persistent cache. Returns the
+ *                           request's DB snapshot; the request-static DB cache is
+ *                           not re-read within the same request.
  * @return mixed The normalized option value, or null if not found and no default is defined.
  */
 function frl_get_option( $key, $bypass_cache = false ) {
@@ -49,8 +51,11 @@ function frl_get_option( $key, $bypass_cache = false ) {
 
 	// --- 2. Populate static $options if not loaded or if bypassing cache ---
 	if ( $bypass_cache ) {
-		// Bypassing cache: fetch fresh from DB. $loaded state is not changed.
+		// Bypassing cache: fetch fresh from DB. Mark as loaded so a later
+		// non-bypass read reuses this fresh snapshot instead of reloading the
+		// (possibly older) persistent cache and discarding it.
 		$options = frl_get_plugin_options_db();
+		$loaded  = true;
 		if ( isset( $options[ $key ] ) ) {
 			return $options[ $key ];
 		}
@@ -97,8 +102,8 @@ function frl_get_option( $key, $bypass_cache = false ) {
  * @param string $key Option key without prefix.
  * @param mixed $value_param Value to set.
  * @param bool $clear_cache Whether to clear the options cache, default = true.
- * @param string|null $autoload_param Optional. Whether to autoload the option. Accepts 'yes' or 'no'. Defaults to 'yes' if null.
- * @return bool True on success, false on failure.
+ * @param string|null $autoload_param Optional. Whether to autoload the option. Accepts 'yes' or 'no'. Defaults to 'no' if null.
+ * @return bool True on success. Note: update_option() returns false when the value is unchanged, so false means "not written", not "failed".
  */
 function frl_update_option( $key, $value_param, $clear_cache = true, $autoload_param = null ) {
 	if ( ! is_string( $key ) ) {
@@ -116,17 +121,21 @@ function frl_update_option( $key, $value_param, $clear_cache = true, $autoload_p
 	// Strip stale anonymous closures from prior writes to the same key in this request.
 	// Without this, multiple frl_update_option() calls accumulate priority-9999 filters
 	// returning old values, overriding the latest write. Closures are anonymous and cannot
-	// be referenced by name for targeted remove_filter().
+	// be referenced by name for targeted remove_filter(). This also removes any
+	// third-party pre_option_frl_* filter; the frl_ namespace makes that collision unlikely.
 	remove_all_filters( 'pre_option_' . $prefixed_key );
 	$result = update_option( $prefixed_key, $normalized_value, $autoload );
 
 	if ( $clear_cache ) {
 		// Only refresh the options cache entry itself – dependent groups must remain intact to avoid thrashing.
 		frl_cache_clear( 'options', 'all_options', false );
-		// HTML options are cached in the html group with 1-week TTL;
-		// single-key clears do not cascade, so explicit invalidation is needed.
-		if ( $key === 'header_html' || $key === 'footer_html' ) {
-			frl_cache_clear( 'html' );
+		// HTML options are cached in the html group with 1-week TTL under
+		// per-login-status keys; clear only those keys (not the whole group,
+		// which also holds critical CSS, schema, etc.).
+		if ( $key === 'header_html' || $key === 'header_html_php' ) {
+			frl_cache_clear_keys( 'html', array( 'header_html_user', 'header_html_visitor' ) );
+		} elseif ( $key === 'footer_html' || $key === 'footer_html_php' ) {
+			frl_cache_clear_keys( 'html', array( 'footer_html_user', 'footer_html_visitor' ) );
 		}
 	}
 
@@ -158,6 +167,7 @@ function frl_delete_option( $key, $cache_group = '' ) {
 
 	// Same stale-closure rationale as frl_update_option() — prevents a previously-written
 	// priority-9999 filter from resurrecting a deleted option's value via pre_option_*.
+	// Also removes any third-party pre_option_frl_* filter (frl_ namespace makes that unlikely).
 	remove_all_filters( 'pre_option_' . $prefixed_key );
 
 	// Update option and capture result
@@ -302,10 +312,17 @@ function frl_get_plugin_options_db( $reset = false ) {
 	$results = $wpdb->get_results(
 		$wpdb->prepare(
 			"SELECT option_name, option_value FROM {$wpdb->options}
-             WHERE option_name LIKE %s",
+	            WHERE option_name LIKE %s",
 			$wpdb->esc_like( $prefix ) . '%'
 		)
 	);
+
+	// A failed query returns null/empty; log and bail rather than caching an
+	// empty option set (which would force per-key DB fallbacks for the request).
+	if ( $wpdb->last_error ) {
+		frl_log( 'FRL Options DB Error: {error}', array( 'error' => $wpdb->last_error ) );
+		return array();
+	}
 
 	$options = array();
 	if ( ! is_array( $results ) ) {
@@ -338,11 +355,12 @@ function frl_get_plugin_options_db( $reset = false ) {
 function frl_get_all_plugin_options_settings( $key = null, $ui_fields = false ) {
 	// For single key lookups, get from the appropriate cached group and use fast array access
 	if ( $key !== null ) {
-		// First try the fields_data cache (most common for option defaults)
-		$cache_key   = 'option_default_' . $key;
+		// Cache the merged defaults map ONCE (not per key). Caching the full
+		// merged array under 'option_default_{key}' stored N copies of the same
+		// data for N keys; one shared map keeps the object-cache footprint flat.
 		$fields_data = frl_cache_remember(
 			'options',
-			$cache_key,
+			'options_defaults_map',
 			function () {
 				$options_defaults         = frl_load_config_options_defaults();
 				$modules_options_defaults = frl_modules_load_options_defaults();
@@ -443,7 +461,7 @@ function frl_load_config_options_defaults() {
 					$field_type              = $field_definition_item['type'] ?? 'text';
 					$default_val_from_ui_def = $field_definition_item['default'] ?? null;
 					$normalized_default      = frl_normalize_option( $default_val_from_ui_def, $field_type );
-					$autoload_from_ui_def    = frl_normalize_autoload( $field_definition_item['autoload'] ?? 'yes' );
+					$autoload_from_ui_def    = frl_normalize_autoload( $field_definition_item['autoload'] ?? 'no' );
 					$internally_processed_fields[ $option_id_from_ui_def ] = array(
 						'value'    => $normalized_default,
 						'autoload' => $autoload_from_ui_def,
@@ -472,7 +490,7 @@ function frl_load_runtime_options_defaults() {
 				$field_type    = $data['type'] ?? 'text'; // @phpstan-ignore-line
 				$field_default = $data['default'] ?? null; // @phpstan-ignore-line
 				$field_default = frl_normalize_option( $field_default, $field_type );
-				$autoload      = 'yes'; // Default autoload for runtime options
+				$autoload      = 'no'; // Default autoload for runtime options
 
 				// Build 'options' format
 				$defaults[ $key ] = array(
@@ -506,7 +524,7 @@ function frl_load_runtime_options_fields() {
 				/** @phpstan-ignore-next-line */
 				$field_default = $data['default'] ?? null;
 				$field_default = frl_normalize_option( $field_default, $field_type );
-				$autoload      = 'yes'; // Default autoload for runtime options
+				$autoload      = 'no'; // Default autoload for runtime options
 
 				// Build 'fields' format
 				$fields[] = array(
@@ -542,7 +560,7 @@ function frl_load_runtime_cpt_options_fields() {
 		function () {
 			$fields     = array();
 			$field_type = 'textlist';
-			$autoload   = 'yes'; // Default autoload for runtime options
+			$autoload   = 'no'; // Default autoload for runtime options
 
 			foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $slug ) {
 				$opt_key = 'translate_cpt_slugs_' . $slug;
@@ -744,7 +762,9 @@ function frl_delete_transient( $key ) {
  * Shared transient cache storage.
  *
  * Provides a static cache for transients to avoid repeated calls to the
- * WordPress transient API within a single request.
+ * WordPress transient API within a single request. Assumes the plugin is the
+ * only writer of `frl_*` transients — an external writer under the same name
+ * would leave this per-request copy stale until the request ends.
  *
  * @return array Reference to the static transient cache array.
  */

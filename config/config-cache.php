@@ -37,8 +37,8 @@ const FRL_CACHE_PERSISTENT_GROUPS = array(
 // Default TTL values for different cache groups
 const FRL_CACHE_TTL = array(
 	'staticdata'   => WEEK_IN_SECONDS,     // 1 week (for heavy data)
-	'theme'        => WEEK_IN_SECONDS,     // 1 week (for stable data)
-	'html'         => WEEK_IN_SECONDS,     // 1 week
+	'theme'        => DAY_IN_SECONDS,      // 1 day (for stable data)
+	'html'         => DAY_IN_SECONDS,      // 1 day
 	'postdata'     => DAY_IN_SECONDS,      // 1 day (post-specific data
 	'blocks'       => DAY_IN_SECONDS,      // 1 day
 	'shortcodes'   => DAY_IN_SECONDS,      // 1 day
@@ -46,10 +46,12 @@ const FRL_CACHE_TTL = array(
 	'permalinks'   => DAY_IN_SECONDS,      // 1 day
 	'rewriter'     => DAY_IN_SECONDS,      // 1 day (rewriter data is stable)
 	'metafields'   => DAY_IN_SECONDS,      // 1 day
-	'versions'     => DAY_IN_SECONDS,      // 1 day
-	'options'      => HOUR_IN_SECONDS,     // 1 hour
-	'environment'  => HOUR_IN_SECONDS,     // 1 hour
+	// 'options' actively invalidated by frl_update_option() + cache-cleanup hooks;
+	// TTL is only a safety net for DB edits.
+	'options'      => DAY_IN_SECONDS,      // 1 day
 	'adminui'      => DAY_IN_SECONDS,      // 1 day (UI assembly data)
+	'versions'     => HOUR_IN_SECONDS,     // 1 hour
+	'environment'  => HOUR_IN_SECONDS,     // 1 hour
 	'admin'        => HOUR_IN_SECONDS,     // 1 hour
 	'default'      => HOUR_IN_SECONDS,     // 1 hour default
 );
@@ -122,6 +124,9 @@ const FRL_CACHE_DEPENDENCIES = array(
 	'shortcodes'   => array(),  // Translations dependency handled by versioned keys
 );
 
+// Groups eagerly warmed at init by Frl_Cache_Manager::auto_preload().
+// This is a TRANSIENT-path optimization: on sites without a persistent object
+// cache, auto_preload() collapses these groups into one batched LIKE query.
 const FRL_CACHE_PRELOAD_FRONTEND_GROUPS = array(
 	'options',      // Plugin settings
 	'rewriter',     // Rewriter data

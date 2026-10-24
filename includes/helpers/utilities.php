@@ -676,7 +676,7 @@ function frl_validate_html_fragment( string $html ): string {
  * @return bool True if autoload is enabled, false otherwise.
  */
 function frl_normalize_autoload( $value ) {
-	return $value !== 'no';
+	return $value === 'yes';
 }
 
 /**

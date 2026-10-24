@@ -1,5 +1,62 @@
 # Active Context
 
+## Latest: auto_preload — skip no-op loop on object cache + document transient-only preload (2026-10-24)
+
+Clarification + micro-optimization of the preload path (behavior-preserving).
+
+- [`auto_preload()`](core/cache/class-cache-manager.php:92) now returns early when `is_object_cache_truly_functional()` is true, skipping the per-group `preload_multi()` loop. On a functional object cache `get_multi($group, null)` cannot enumerate keys, so the loop only hydrated the empty runtime index and loaded nothing — pure no-op. Keys warm lazily on first access instead.
+- [`FRL_CACHE_PRELOAD_FRONTEND_GROUPS`/`_BACKEND_GROUPS`](config/config-cache.php:127) documented as a **transient-path** optimization (one batched `LIKE` query when there is no persistent object cache); inert on Redis/Memcached.
+- Behavior-preserving across all four branches: (OC functional, all-persistent) and (OC functional, mixed) both previously ran the no-op loop → now early-return; (transient, all-persistent) still uses `batch_preload_transients()`; (transient, mixed) still runs the per-group loop. `php -l` + `phpstan` clean.
+
+## Latest: Rewriter — deterministic exclusions + page-event invalidation (2026-10-24)
+
+Two verified patches to the catch-all exclusion pipeline. All claims checked against Polylang source (`src/filters.php`, `src/frontend/frontend.php`, `src/query.php`, `src/admin/admin-static-pages.php`) and WP core (`get_pages()` does not pass `fields` to its query; `WP_Query` supports only `ids`/`id=>parent` — so no slug-only API path exists; raw SQL rejected as a micro-optimization of a cold path).
+
+- **Determinism (A):** [`compute_exclusion_patterns()`](core/rewriter/class-rewriter-path-utils.php) now calls `get_pages( array( 'lang' => '', ... ) )` — the same escape hatch Polylang's own admin code uses (`admin-static-pages.php:88`). Previously the list was language-filtered when computed by a frontend request but all-language when computed by cron/admin, so routing depended on which context last warmed the cache — the likely root cause of the recurring non-English 404s. The 500 cap now scales with language count (`cap × langs`, hard ceiling 1000) to keep per-language coverage without unbounded regex growth.
+- **Invalidation (B):** the `posts:last_changed` cache key is replaced by an autoloaded `_frl_rewriter_excl_version` counter ([`invalidate_exclusion_patterns()`](core/rewriter/class-rewriter-path-utils.php)). Ordinary post saves no longer force a full recompute on the next request (cold-cache spike). Page lifecycle events (`post_updated` with routing-relevant diff, `wp_trash_post`, `untrash_post`, `before_delete_post`) bump the version AND schedule the debounced `frl_schedule_rewrite_flush()` (fires within ~5 min) — closing the real gap: routing uses the flushed `rewrite_rules` snapshot, and previously nothing flushed on page create/rename. Term events bump the version only (no flush). Language deletion still triggers the full `clear_rewriter_caches()`.
+
+**Deploy:** re-activate or trigger any rewrite flush once so the saved rules pick up the all-language exclusions. Verify: create a top-level page in a non-default language → URL must resolve within ~5 min without a manual flush.
+
+## Latest: Cache/options hardening — Phase 4 (2026-10-24)
+
+Applied all Phase 4 items from the option/cache review. No per-request round-trip or query was added.
+
+- **4.1** New [`frl_seed_option_defaults()`](includes/plugin-lifecycle.php:62), called from [`frl_activate_plugin()`](includes/plugin-lifecycle.php:30): seeds all registered option defaults at activation, so the first page load after install/reset does not pay a write-per-option burst. The write-on-read fallback remains for options added by later versions.
+- **4.2** Autoload is now opt-in: [`FRL_FIELD_ATTRIBUTES['autoload']`](config/config-fields.php:37) and [`frl_normalize_autoload()`](includes/helpers/utilities.php:678) default to `'no'`; the runtime loaders' hardcoded `'yes'` fallbacks were flipped to `'no'`; the 50 redundant explicit `'autoload' => 'no'` entries in [`config-options.php`](config/config-options.php) were removed. `disable_plugin` and `disable_cache` are explicitly `'autoload' => 'yes'` (the only hot `get_option()` reads, in [`should_bypass()`](core/cache/class-cache-manager.php:139)). This shrinks WordPress's `alloptions` payload per request with no added query for the plugin. [`frl_migrate_option_autoload()`](includes/plugin-lifecycle.php:77) (called from [`frl_activate_plugin()`](includes/plugin-lifecycle.php:30)) refreshes existing rows via a direct `$wpdb` column update — `update_option()` does not change autoload when the value is unchanged.
+- **4.3** New [`Frl_Cache_Manager::clear_keys()`](core/cache/class-cache-manager.php:547) + [`frl_cache_clear_keys()`](includes/helpers/functions-class-helpers.php:210); [`frl_clear_option_cache()`](core/cache/cache-cleanup.php:93) now clears all per-language keys in one `wp_cache_delete_multiple()` call instead of one per language.
+- **4.4** [`frl_update_option()`](includes/helpers/functions-options.php:103) docblock notes that `false` means "not written" (unchanged value), not "failed".
+- **TTL bump** — `options` group TTL `HOUR` → `DAY` in [`config-cache.php`](config/config-cache.php:50): `all_options` is actively invalidated by `frl_update_option()`/cleanup hooks, so the TTL is only a safety net for out-of-band DB edits; replaces the rejected refresh-ahead proposal with zero new machinery. Caveat: manual DB edits to `frl_*` options now propagate within 24 h, not 1 h.
+
+**Deploy:** re-activate the plugin once to run `frl_migrate_option_autoload()` (refreshes existing rows' autoload). No cache key shape changed.
+
+## Latest: Cache/options hardening — Phase 0 & 3 (2026-10-24)
+
+Applied Phase 0 (documentation) and Phase 3 (architecture) from the option/cache review. Warm-on-flush (3.2) and refresh-ahead (3.4) were explicitly excluded.
+
+- **0.1** [`frl_get_option()`](includes/helpers/functions-options.php:26) docblock corrected: `$bypass_cache` bypasses the *persistent* cache and returns the request's DB snapshot (the request-static DB cache is not re-read).
+- **0.2** Single-site design documented in [`systemPatterns.md`](memory-bank/systemPatterns.md) and [`docs/CORE-CACHE.md`](docs/CORE-CACHE.md): cache keys are intentionally not blog-scoped.
+- **0.3** [`frl_transients_static_cache()`](includes/helpers/functions-options.php:751) docblock notes the `frl_*` single-writer assumption.
+- **0.4** [`frl_update_option()`](includes/helpers/functions-options.php:120) / [`frl_delete_option()`](includes/helpers/functions-options.php:161) comments note the `remove_all_filters()` namespace assumption.
+- **3.1** **REVERTED.** The generation-token approach added one object-cache round-trip per request for no benefit — Redis supports `wp_cache_flush_group()`. [`purge_group_storage()`](core/cache/class-cache-manager.php:1155) keeps the original `wp_cache_flush_group()` + canary behavior.
+- **3.3** [`get_multi()`](core/cache/class-cache-manager.php:826) no longer marks a group as "fully loaded" on the object-cache path (keys can't be enumerated there), so the flag now means "the complete set was loaded" (transient path only).
+
+**Deploy:** none (no cache key or group-name shape changed).
+
+## Latest: Cache/options hardening — Phase 1 & 2 (2026-10-24)
+
+Applied the approved Phase 1 (correctness) and Phase 2 (performance) items from the option/cache review. No cache key shapes changed except the defaults-map key (one-time invalidation).
+
+- **1.2** [`frl_get_plugin_options_db()`](includes/helpers/functions-options.php:302) now checks `$wpdb->last_error` and bails (logging) instead of caching an empty option set on a failed query.
+- **1.3** [`generate_key()`](core/cache/class-cache-manager.php:214) guards `json_encode() === false` (invalid UTF-8) with a `serialize()` fallback, preventing all such array keys collapsing to `md5('')`.
+- **2.5** [`frl_get_option()`](includes/helpers/functions-options.php:51) sets `$loaded = true` after a bypass load, so a later non-bypass read reuses the fresh DB snapshot instead of discarding it.
+- **2.1** [`frl_get_all_plugin_options_settings()`](includes/helpers/functions-options.php:340) caches the merged defaults map **once** under `options_defaults_map` (was one full copy per key under `option_default_{key}`).
+- **2.3** `$key_cache` is now capped at `$max_runtime_items` to bound growth in long-running processes.
+- **2.2** Removed the no-op stampede lock from [`remember()`](core/cache/class-cache-manager.php:457) (see `systemPatterns.md`).
+- **2.4** [`hard_cache_reset()`](core/cache/class-cache-manager.php:1544) skips the redundant transient DB delete when `purge_all()` already ran it (object cache non-functional), while still resetting the per-request transient static cache.
+- **1.1** Falsey values (`false`/`null`) are now cacheable: object-cache reads use `wp_cache_get(..., $found)`; transient reads/writes use a `__frl_falsey__` sentinel wrapper ([`wrap_transient_value()`](core/cache/class-cache-manager.php:241) / [`unwrap_transient_value()`](core/cache/class-cache-manager.php:257)).
+
+**Deploy:** flush plugin caches once (the `option_default_*` → `options_defaults_map` key change invalidates the old per-key entries).
+
 ## Latest: Gate filename sanitization to media uploads (2026-10-22)
 
 `frl_get_file_nicename` was showing up as a slow span during plugin uploads (`update.php?action=upload-plugin`). Root cause: it is hooked to the core `sanitize_file_name` filter ([`admin/admin.php:30`](admin/admin.php:30)), which fires on **every** `sanitize_file_name()` call — including the uploaded plugin ZIP — and its first line calls `frl_get_option('image_filename_sanitize')`, forcing the plugin's full options snapshot to load on the upload request.

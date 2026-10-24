@@ -159,8 +159,10 @@ Invalidates coordinator's in-memory config hash, calls `frl_flush_rewrite_rules(
 | `pll_add_language` | `clear_rewriter_caches()` |
 | `pll_update_language` | `clear_rewriter_caches()` |
 | `pll_update_default_lang` | `clear_rewriter_caches()` |
-| `save_post` (real saves) | Exclusion patterns invalidation |
-| `created_term`, `deleted_term`, `edited_term` | Exclusion patterns invalidation |
+| `post_updated` (page: slug/parent/status change) | Bump exclusion version + schedule debounced rewrite flush |
+| `wp_trash_post`, `untrash_post`, `before_delete_post` (page) | Bump exclusion version + schedule debounced rewrite flush |
+| `created_term`, `edited_term` | Bump exclusion version (no flush) |
+| `deleted_term` | Non-language: bump version; `language` taxonomy: full `clear_rewriter_caches()` |
 
 ## Exclusion Pattern System
 
@@ -170,11 +172,13 @@ Invalidates coordinator's in-memory config hash, calls `frl_flush_rewrite_rules(
 2. CPT archive translated prefixes via `frl_rewriter_url_prefixes` filter
 3. All public CPT rewrite slugs (with language-prefixed variants)
 4. All public taxonomy rewrite bases
-5. Top-level published page slugs (capped at `FRL_REWRITER_PAGE_TOPLEVEL_CAP = 500`)
+5. Top-level published page slugs — fetched across **all** languages via `get_pages( array( 'lang' => '' ) )` (Polylang's own escape hatch), so the list is identical regardless of which context (frontend/cron/admin) computes it. Capped at `FRL_REWRITER_PAGE_TOPLEVEL_CAP` (500) scaled by active-language count, hard ceiling 1000.
 
 **Two-tier caching:**
-- **Object cache active:** keyed by `posts:last_changed` — auto-invalidates on content changes
-- **No object cache:** stored in `frl_rewriter_excl_patterns` transient (1 hour TTL), deleted by `clear_rewriter_caches()`
+- **Object cache active:** keyed by an autoloaded `_frl_rewriter_excl_version` counter, bumped only by events that can change page/language slugs. Ordinary post edits no longer force a recompute (the old `posts:last_changed` key did).
+- **No object cache:** stored in the `frl_rewriter_excl_patterns` transient (1 hour TTL), deleted on the same events.
+
+**Routing uses the flushed `rewrite_rules` snapshot**, so bumping the version alone does not change routing. Page lifecycle events (`post_updated` with a routing-relevant slug/parent/status change, plus trash/untrash/delete of pages) bump the version **and** schedule the debounced `frl_schedule_rewrite_flush()` (fires within the next cron run). Term events bump the version only; language deletion still runs the full `clear_rewriter_caches()`.
 
 ## Module Extension
 

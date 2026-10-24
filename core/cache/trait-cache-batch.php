@@ -14,6 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @method static array safe_db_query( string $query, array $fallback = array(), string $operation = 'cache_query', string $output = OBJECT )
  * @method static string generate_key( string $group, $key )
  * @method static void set_runtime( string $cache_key, $value, ?string $group = null )
+ * @method static mixed unwrap_transient_value( mixed $value )
  * @property static array $loaded_groups
  * @package Fralenuvole
  * @since 5.7.4.5
@@ -91,7 +92,7 @@ trait Frl_Cache_Batch_Trait {
 				}
 
 				$key                = substr( $row->option_name, $prefix_len );
-				$value              = maybe_unserialize( $row->option_value );
+				$value              = self::unwrap_transient_value( maybe_unserialize( $row->option_value ) );
 				$transients[ $key ] = $value;
 
 				// Inject into runtime cache — mirrors get_multi() transient path

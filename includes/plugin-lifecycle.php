@@ -28,24 +28,77 @@ add_action( 'admin_init', 'frl_auto_backup_on_upgrade', 5, 0 );
  * @return void
  */
 function frl_activate_plugin(): void {
+	// MU-plugin functions live in the early-loading stack; the sync guards
+	// against the MU file not being installed yet on a first activation.
 	if ( function_exists( 'frl_mu_plugins_sync' ) ) {
 		frl_mu_plugins_sync();
 	}
 
-	if ( function_exists( 'frl_update_option' ) ) {
-		frl_update_option( 'translation_version', 1 );
-	}
+	frl_update_option( 'translation_version', 1 );
 
 	// Activation fires before 'init' — rewrite rules cannot be flushed yet.
 	// Schedule a cron event to flush them after post types are registered.
 	frl_schedule_rewrite_flush();
-	if ( function_exists( 'frl_cache_clear' ) ) {
-		frl_cache_clear( 'light' );
-	}
+	frl_cache_clear( 'light' );
 
-	if ( function_exists( 'frl_update_option' ) ) {
-		frl_update_option( 'plugin_version', FRL_VERSION );
+	frl_update_option( 'plugin_version', FRL_VERSION );
+
+	frl_seed_option_defaults();
+	frl_migrate_option_autoload();
+}
+
+/**
+	* Seed all registered option defaults that are missing from the database.
+	*
+	* Called on activation so the first page load does not pay a write-per-option
+	* burst via frl_set_missing_option_default(). The write-on-read fallback remains
+	* for options added by later plugin versions.
+	*
+	* @return void
+	*/
+function frl_seed_option_defaults(): void {
+	// One LIKE scan for all existing plugin options, instead of one get_option()
+	// per field (~100 queries on a fresh install).
+	$existing = frl_get_plugin_options_db();
+
+	foreach ( frl_get_all_plugin_options_settings( null ) as $field ) {
+		if ( ! isset( $field['id'] ) ) {
+			continue;
+		}
+		if ( ! array_key_exists( $field['id'], $existing ) ) {
+			frl_update_option( $field['id'], $field['default'] ?? '', false, $field['autoload'] ?? 'no' );
+		}
 	}
+}
+
+/**
+	* Apply the configured autoload flag to existing plugin options.
+	*
+	* Options written before the autoload default changed to 'no' still carry
+	* autoload='yes' in the DB. update_option() short-circuits on an unchanged value
+	* (so it would not touch the autoload column), hence the direct column update.
+	*
+	* @return void
+	*/
+function frl_migrate_option_autoload(): void {
+	global $wpdb;
+
+	$like = $wpdb->esc_like( frl_prefix() ) . '%';
+
+	// Keep the two hot get_option() reads autoloaded; everything else opts out.
+	$keep = array( frl_prefix( 'disable_plugin' ), frl_prefix( 'disable_cache' ) );
+	$in   = implode( ',', array_fill( 0, count( $keep ), '%s' ) );
+
+	$wpdb->query(
+		$wpdb->prepare(
+			"UPDATE {$wpdb->options} SET autoload = 'no'
+			 WHERE option_name LIKE %s AND option_name NOT IN ($in)",
+			array_merge( array( $like ), $keep )
+		)
+	);
+
+	// Invalidate WordPress's alloptions cache so the change takes effect.
+	wp_cache_delete( 'alloptions', 'options' );
 }
 
 /**
@@ -137,9 +190,7 @@ function frl_auto_backup_on_upgrade(): void {
  * @return void
  */
 function frl_deactivate_plugin(): void {
-	if ( function_exists( 'frl_cache_clear' ) ) {
-		frl_cache_clear( 'light' );
-	}
+	frl_cache_clear( 'light' );
 
 	// Deactivation fires before 'init' — schedule a deferred flush.
 	frl_schedule_rewrite_flush();

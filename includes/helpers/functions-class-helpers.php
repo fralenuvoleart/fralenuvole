@@ -208,6 +208,21 @@ function frl_cache_clear( string $group, ?string $key = null, bool $include_depe
 }
 
 /**
+	* Clear multiple specific keys from a group in one batch (fewer round-trips
+	* than calling frl_cache_clear() per key — see Frl_Cache_Manager::clear_keys()).
+	*
+	* @param string $group Cache group
+	* @param array<int,string> $keys Keys to clear
+	* @return int Number of keys cleared
+	*/
+function frl_cache_clear_keys( string $group, array $keys ): int {
+	if ( ! frl_cache_is_loaded() ) {
+		return 0;
+	}
+	return Frl_Cache_Manager::clear_keys( $group, $keys );
+}
+
+/**
  * Get deferred writes from cache manager
  * @return array Deferred writes
  */

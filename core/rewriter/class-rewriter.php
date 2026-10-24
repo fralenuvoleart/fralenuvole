@@ -500,26 +500,59 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 				add_action( 'pll_update_language', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
 				add_action( 'pll_update_default_lang', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
 
-				// Invalidate exclusion patterns when content changes that could
-				// introduce new slugs captured by catch-all rewrite rules.
-				// Without persistent object cache, exclusion patterns have a 1-hour
-				// TTL — these hooks ensure new pages/CPTs/terms don't cause routing
-				// conflicts during that window.
+				// Page lifecycle: top-level page slugs are part of the exclusion
+				// patterns, and routing uses the flushed rewrite_rules snapshot —
+				// so bump the version AND schedule a debounced flush (fires within
+				// the next cron run, ~5 min max). Ordinary post edits no longer
+				// invalidate anything (the old posts:last_changed key did).
 				add_action(
-					'save_post',
-					function ( $post_id ) {
-						// Use the existing helper — covers autosave, revision, auto-draft,
-						// trash, and inherit statuses.
-						if ( ! frl_is_post_save_action( $post_id ) ) {
+					'post_updated',
+					function ( $post_id, $post_after, $post_before ) {
+						if ( ! isset( $post_after->post_type ) || 'page' !== $post_after->post_type ) {
 							return;
 						}
-						frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
+						$routing_changed = $post_after->post_name !== $post_before->post_name
+							|| $post_after->post_parent !== $post_before->post_parent
+							|| ( 'publish' === $post_after->post_status ) !== ( 'publish' === $post_before->post_status );
+						if ( $routing_changed ) {
+							Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns( true );
+						}
+					},
+					10,
+					3
+				);
+				// Trash/untrash change publish visibility without post_updated firing.
+				add_action(
+					'wp_trash_post',
+					function ( $post_id ) {
+						if ( get_post_type( $post_id ) === 'page' ) {
+							Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns( true );
+						}
 					}
 				);
 				add_action(
+					'untrash_post',
+					function ( $post_id ) {
+						if ( get_post_type( $post_id ) === 'page' ) {
+							Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns( true );
+						}
+					}
+				);
+				add_action(
+					'before_delete_post',
+					function ( $post_id ) {
+						if ( get_post_type( $post_id ) === 'page' ) {
+							Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns( true );
+						}
+					}
+				);
+				// Term events can change language slugs (patterns include lang-prefixed
+				// variants): bump the version, but no flush needed — term archives have
+				// their own rules; only the exclusion alternation changes.
+				add_action(
 					'created_term',
 					function () {
-						frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
+						Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns();
 					}
 				);
 				add_action(
@@ -527,27 +560,20 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 					function ( $term_id, $tt_id, $taxonomy ) {
 						if ( $taxonomy === 'language' ) {
 							// Language deletion invalidates all cached language-dependent
-							// rewrite rules. A full flush is required — merely deleting
-							// the exclusion patterns transient is insufficient.
+							// rewrite rules. A full flush is required — merely bumping
+							// the exclusion version is insufficient.
 							self::clear_rewriter_caches();
 						} else {
-							frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
+							Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns();
 						}
 					},
 					10,
 					3
 				);
-				// Term renames: WP has no generic 'created_term'/'deleted_term' equivalent
-				// for edits, but 'edited_term' fires for ANY taxonomy (category, post_tag,
-				// custom) whenever a term's slug or other properties change. A renamed
-				// slug must be added to the exclusion list so catch-all rules don't hijack
-				// it. Language term renames are already handled by 'pll_update_language'
-				// above (a full clear_rewriter_caches()), so no special-casing is needed
-				// here — a redundant transient delete for that case is harmless.
 				add_action(
 					'edited_term',
 					function () {
-						frl_delete_transient( Frl_Rewriter_Path_Utils::EXCLUSION_PATTERNS_TRANSIENT );
+						Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns();
 					}
 				);
 

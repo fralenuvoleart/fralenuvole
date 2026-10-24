@@ -1,6 +1,6 @@
-# Plugin AI Review
+# Plugin AI Review 
 
-**Version:** 5.8.4 | **PHP:** 8.3+ | **License:** GPL2+
+**Version:** 5.8.7 | **PHP:** 8.3+ | **License:** GPL2+
 
 ## Overview
 
@@ -30,7 +30,7 @@ The Translator's adapter pattern (Polylang, WPML-ready) isolates the multilingua
 ## Performance
 
 Verified zero-DB-query warm-cache path in production:
-- `auto_preload()` batches entire cache groups into single round-trips
+- `auto_preload()` batches the preload groups into a single DB query **on the transient path**; on a functional object cache it early-returns (a group's keys cannot be enumerated), so those groups warm lazily on first access instead
 - `frl_get_option()` static-array tier absorbs repeat reads
 - Rewriter's `transform_url()` caches per-request
 - `purge_all()` uses single batch transient deletion with dedup flag
@@ -62,6 +62,21 @@ Verified zero-DB-query warm-cache path in production:
 | Schema | JSON-LD schema generation (Organization, WebSite, WebPage, BreadcrumbList, BlogPosting, Service, HowTo, etc.) |
 | Modules | WS Form integration (webhooks, stats, UTM tracking, email `@@include:@@` / `@@cta:@@` directives), CTA click handling (WhatsApp/Telegram/Email), brand-specific CPTs, GeoDirectory filters, menu sitemap |
 
-## Overall Rating: A (9.5/10)
+## Limitations & Trade-offs
+
+Several are deliberate design choices, not defects:
+
+- **No automated test suite.** `composer.json` scopes dev tooling to static analysis (phpstan) and coding standards only; correctness is verified by review, not by tests.
+- **Static subsystem classes** (`Frl_Cache_Manager`, `Frl_Environment_Manager`) are not unit-testable in isolation — an established convention, consistent with how WordPress is extended.
+- **Single-site by design.** Cache keys are intentionally not blog-scoped; there is no per-blog configuration on multisite.
+- **Deploy steps are required.** The autoload change and the rewriter exclusion model take effect on plugin re-activation / a cache flush, not automatically on file deploy.
+- **Routing is flush-driven.** A newly created or renamed top-level page resolves only after the next (debounced) rewrite flush — within one cron run, not instantly.
+- **Catch-all exclusions are capped** (`500 × languages`, ceiling 1000). Beyond that a page can drop off the exclusion list and be captured by a catch-all rule.
+- **`versions` group TTL is 1 day**, so asset cache-busting strings can lag a deploy by up to 24h unless the "Clear CSS/JS" action or a flush runs.
+- **Security is strong by inspection** (CSP, `$wpdb->prepare`, capability gating, nonces, `wp_kses_post`) but has no formal threat model or penetration test.
+
+## Overall Rating: A (9.4/10)
 
 Fralenuvole replaces 8-10 separate plugins plus a cluttered `functions.php`: multi-environment config, caching, URL rewriting, multilingual support, performance optimization, and developer tooling — all from a single, zero-dependency codebase.
+
+Reflects the **current** state. The remaining gap is **not** open defects but the absence of an automated test suite and a verified security threat model.

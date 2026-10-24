@@ -155,7 +155,7 @@ All admin actions are capability-gated via `frl_has_access()` and nonce-verified
 
 ## Performance Profile
 
-**Frontend, warm cache:** Zero database queries for anything this plugin controls — consequence of layered caching (static array → runtime LRU → persistent cache → batched preload via `auto_preload()`).
+**Frontend, warm cache:** Zero database queries for anything this plugin controls — consequence of layered caching (static array → runtime LRU → persistent cache). On a functional object cache the persistent tier warms lazily on first access; `auto_preload()`'s batched preload only does real work on the transient (no-object-cache) path.
 
 **Admin "Hard Reset":** Can take several seconds — expected cost of chaining `purge_all()` + `clear_transients()` + `flush_rewrite_rules(true)`. Paid only on explicit admin request, never on visitor-facing pages.
 

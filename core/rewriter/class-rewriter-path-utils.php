@@ -235,32 +235,60 @@ final class Frl_Rewriter_Path_Utils {
 	const EXCLUSION_PATTERNS_TRANSIENT = 'rewriter_excl_patterns';
 
 	/**
+	 * Autoloaded version counter for the exclusion patterns.
+	 *
+	 * Bumped only by events that can change page/language slugs (see
+	 * Frl_Rewriter::register_cache_invalidation_hooks()). Replacing the old
+	 * posts:last_changed key means an ordinary post edit no longer forces a full
+	 * exclusion recompute on the next request (the cold-cache spike). Autoloaded
+	 * deliberately: read on every request, a few bytes.
+	 */
+	const EXCLUSION_VERSION_OPTION = '_' . FRL_PREFIX . '_' . 'rewriter_excl_version';
+
+	/**
+	 * Invalidate the cached exclusion patterns and optionally refresh routing.
+	 *
+	 * Routing matches the flushed rewrite_rules snapshot, so bumping the version
+	 * alone does not change routing — $schedule_flush must be true whenever page
+	 * slugs actually changed.
+	 *
+	 * @param bool $schedule_flush Whether to schedule a debounced rewrite flush.
+	 * @return void
+	 */
+	public static function invalidate_exclusion_patterns( bool $schedule_flush = false ): void {
+		$version = (int) get_option( self::EXCLUSION_VERSION_OPTION, 0 ) + 1;
+		update_option( self::EXCLUSION_VERSION_OPTION, $version, true );
+
+		// Transient path (sites without a persistent object cache). Must use the
+		// plugin helper: it prefixes the key with frl_ (matching frl_set_transient's
+		// write) and clears the per-request static cache.
+		frl_delete_transient( self::EXCLUSION_PATTERNS_TRANSIENT );
+
+		if ( $schedule_flush ) {
+			frl_schedule_rewrite_flush();
+		}
+	}
+
+	/**
 	 * Generate configuration-based exclusion patterns (shared by catch-all features).
 	 *
 	 * Results are cached in two layers:
-	 *  - When a persistent object cache is active: keyed by posts:last_changed so slugs
-	 *    added or removed automatically invalidate the cache (no DB transient needed).
-	 *  - Without persistent object cache: stored in a DB transient (TTL = 1 hour).
-	 *    The transient is deleted by Frl_Rewriter::clear_rewriter_caches() whenever
-	 *    permalink structure or relevant options change, so stale data is bounded.
+	 *  - Persistent object cache: keyed by the exclusion version option, bumped only
+	 *    when page/language slugs can have changed (see invalidate_exclusion_patterns()).
+	 *  - Without object cache: DB transient (TTL = 1 hour), deleted on the same events.
 	 *
 	 * @return array Array of escaped regex patterns
 	 */
 	public static function generate_standard_exclusion_patterns(): array {
 		if ( wp_using_ext_object_cache() ) {
-			// Fine-grained invalidation: re-key on posts last_changed counter.
-			$posts_last_changed = wp_cache_get( 'last_changed', 'posts' );
-			if ( ! $posts_last_changed ) {
-				$posts_last_changed = microtime();
-				wp_cache_set( 'last_changed', $posts_last_changed, 'posts' );
-			}
-			$cache_key = "exclusion_patterns_{$posts_last_changed}";
+			$version   = (int) get_option( self::EXCLUSION_VERSION_OPTION, 0 );
+			$cache_key = "exclusion_patterns_v{$version}";
 			return frl_cache_remember( 'rewriter', $cache_key, array( self::class, 'compute_exclusion_patterns' ) );
 		}
 
 		// No persistent object cache: avoid the expensive get_pages() on every request
 		// by storing results in a DB transient. TTL is 1 hour; explicit deletion is wired
-		// to clear_rewriter_caches() which fires on permalink/option changes.
+		// to the same page/term events that bump the version counter.
 		$cached = frl_get_transient( self::EXCLUSION_PATTERNS_TRANSIENT );
 		if ( $cached !== false ) {
 			return $cached;
@@ -328,16 +356,23 @@ final class Frl_Rewriter_Path_Utils {
 		}
 
 		// Top-level published page slugs (avoids hijacking standard pages).
-		$limit = defined( 'FRL_REWRITER_PAGE_TOPLEVEL_CAP' ) ? (int) FRL_REWRITER_PAGE_TOPLEVEL_CAP : 500;
+		// 'lang' => '' disables Polylang's per-language get_pages filter (its own
+		// admin code uses this idiom) so the exclusion list is identical regardless
+		// of which context (frontend/cron/admin) computes it. The cap scales with
+		// language count — with a hard ceiling — to keep per-language coverage
+		// equivalent to the old per-context behavior without unbounded regex growth.
+		$cap   = defined( 'FRL_REWRITER_PAGE_TOPLEVEL_CAP' ) ? (int) FRL_REWRITER_PAGE_TOPLEVEL_CAP : 500;
+		$langs = self::get_active_languages_safe();
+		$limit = min( $cap * max( 1, count( $langs ) ), 1000 );
 		$pages = get_pages(
 			array(
 				'post_status' => 'publish',
 				'number'      => $limit,
 				'parent'      => 0,
+				'lang'        => '',
 			)
 		);
 		if ( $pages ) {
-			$langs = self::get_active_languages_safe();
 			foreach ( $pages as $page ) {
 				if ( is_object( $page ) && ! empty( $page->post_name ) ) {
 					$slug       = $page->post_name;
