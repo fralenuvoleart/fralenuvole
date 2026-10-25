@@ -1,5 +1,39 @@
 # Active Context
 
+## Latest: Generic multi-group batch purge API + scripts-tags operation converted (2026-10-25)
+
+Extended the combined Redis flush to the remaining multi-group path ("Clear CSS/JS Caches" = versions/html/shortcodes, previously 3 separate `frl_cache_clear` steps = 3 scans):
+
+- New public [`Frl_Cache_Manager::purge_groups(array $groups)`](../core/cache/class-cache-manager.php:733): batch storage flush via `flush_groups_redis()` + per-group loop for runtime/options/browser handling + flag reset. Null batch (non-Redis) → identical per-group behavior.
+- New helper [`frl_cache_clear_groups(array $groups)`](../includes/helpers/functions-class-helpers.php:210).
+- `action_clear_scripts_tags` ([`config-cache-operations.php:246`](../config/config-cache-operations.php:246)) is now ONE step using it; [`frl_handle_action_clear_scripts_tags()`](../includes/helpers/functions-action-handlers.php:192) updated to read the aggregate result (`$stats['groups']` breakdown, single message).
+- **Load-order trap caught by runtime test:** `config-cache-operations.php` is required at `config-cache.php:13`, before `FRL_CACHE_SCRIPTS_GROUPS` was defined there (line 79) — referencing it in the step fataled. Resolution (user's call): the constant MOVED to [`config-cache-operations.php`](../config/config-cache-operations.php:22) (its only consumer is the operation; the handler reference was docblock-only, now updated). The step uses the constant normally.
+- Verified: `php -l` × 3 files + runtime load test of `config/config-cache.php` (WP constants stubbed) — constant and step args both resolve to `['versions','html','shortcodes']`.
+
+## Latest: Combined Redis group flush — any K-group purge = 1 keyspace scan (2026-10-25)
+
+Traced the 10–15s "Clear All Caches" on production: Kinsta's drop-in (Till Krüss Redis Object Cache) implements `wp_cache_flush_group()` as a Lua `SCAN` over the **entire** keyspace per group — `purge_all()` ran 15 full blocking scans. Fix in [`class-cache-manager.php`](../core/cache/class-cache-manager.php), generalized to any multi-group flush:
+
+- New [`flush_groups_redis(array $groups)`](../core/cache/class-cache-manager.php:1296): ONE Lua `SCAN` (no MATCH) with one anchored Lua pattern per group passed via `KEYS` (`^{salt}{prefix}:frl_cache_{group}:.*`, built via the drop-in's own `build_key()` so salt/blog-prefix are never reconstructed; Lua magic chars escaped). `UNLINK` on Redis ≥ 4 (`DEL` fallback), PhpRedis/Predis-compatible `eval`, then `flush_runtime()` to drop the drop-in's in-request cache. Returns `null` on non-Redis backend / missing API / eval failure → caller falls back to per-group `wp_cache_flush_group()`.
+- `$storage_batch_flushed` is a **group map** (`['theme' => true, ...]`): [`purge_group_storage()`](../core/cache/class-cache-manager.php:1228) skips only already-flushed groups — mirrors the `$transients_batch_deleted` pattern; reset at the end of `purge_all()`/`purge_light()`.
+- Wired into `purge_all()` (all groups minus `default`) and `purge_light()` (all minus heavy groups); `hard_cache_reset()` benefits via `purge_all()`. Single-group purges unchanged (1 group = 1 scan is already optimal). Verified `php -l`; standalone phpstan shows only pre-existing symbol-discovery noise.
+
+## Latest: Guard unguarded Polylang call in geodirectory places_by_lang (2026-10-25)
+
+[`frl_pbproperty_get_properties_ids()`](../modules/pbproperty/geodirectory.php:125) cache callback called `pll_get_post_language()` unguarded — fatal if Polylang is inactive during a cache regeneration. Now gated by `frl_multilingual_function_exists('pll_get_post_language')`; when unavailable it returns all `gd_place` IDs unfiltered (fail-open: unfiltered beats fatal). Docblock updated: invalidation is event-driven via `frl_clear_places_by_lang_cache()` on `save_post_gd_place`, TTL is only a safety net (was "24h cache window"). Verified `php -l`.
+
+## Latest: TTL audit — 6 groups to WEEK + invalidation hooks for 5 unversioned keys (2026-10-25)
+
+User raised `theme`, `rewriter`, `translations`, `permalinks`, `postdata`, `metafields` to `WEEK_IN_SECONDS` in [`FRL_CACHE_TTL`](config/config-cache.php:38) after an audit confirmed every key family in those groups is version-suffixed (`_v`/`_tv`), content-hashed, mtime-keyed, or hook-cleared. `html`/`blocks`/`shortcodes` stayed at DAY pending invalidation for 5 unversioned keys, now added in [`cache-cleanup.php`](core/cache/cache-cleanup.php):
+
+- `acf/save_post` (`post_id` = `option`/`options`) → purge `shortcodes` group (`acf_calc_*_option` keys; ACF options saves never fire `save_post`).
+- `customize_save_after` → key-clear `html/login_inline_style` (embeds `custom_logo` theme mod).
+- `wp_update_attachment_metadata` (filter) → key-clear `html/svg_dims_{id}` (attachments are skipped by `frl_clear_post_cache()`).
+- `save_post_gd_place` → purge `blocks` group (`places_by_lang` is language-prefixed; key-level clear would only reach the admin's language).
+- `frl_clear_menu_cache()` + `frl_clear_navigation_cache()` now also purge `shortcodes` (menu-sitemap keys embed hashed args, not enumerable).
+
+Rationale for group purges over key-level clears: language-prefixed groups can't be key-cleared across languages, and all triggering events are rare admin/editorial actions. Verified `php -l`. With these hooks in place, `html`/`blocks`/`shortcodes` are now eligible for WEEK TTL too (user's call).
+
 ## Latest: Cache warmer scheduled run now emails too (2026-10-24)
 
 User request: the cron run should send the email notification, not just write the log. In [`frl_thirdparty_run_cache_warmer()`](../modules/thirdparty/thirdparty.php:192) the summary `frl_log()` call now passes `true` for `$force_email` (was `false`), so every scheduled run that produces a result emails the admin — gated, as before, by the `error_reporting_email` option, the per-request duplicate-hash throttle, and the `frl_email_error_notification()` rate limit. The two `CACHE WARMER ERROR` logs inside `frl_thirdparty_handle_trigger_cache_warmer()` already emailed (default `true`). Verified `php -l`.

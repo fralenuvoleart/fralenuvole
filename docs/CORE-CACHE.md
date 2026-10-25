@@ -63,10 +63,10 @@ Groups stored across requests (object cache or transients):
 
 | Group | TTL |
 |---|---|
-| `staticdata`, `theme`, `html` | `WEEK_IN_SECONDS` |
-| `postdata`, `blocks`, `shortcodes`, `translations`, `permalinks`, `rewriter`, `metafields`, `versions`, `adminui` | `DAY_IN_SECONDS` |
+| `staticdata`, `theme`, `rewriter`, `translations`, `permalinks`, `postdata`, `metafields` | `WEEK_IN_SECONDS` (all version- or hook-invalidated; TTL is a safety net) |
+| `html`, `blocks`, `shortcodes`, `adminui` | `DAY_IN_SECONDS` |
 | `options` | `DAY_IN_SECONDS` (actively invalidated; TTL is a safety net for out-of-band DB edits) |
-| `environment`, `admin`, `default` | `HOUR_IN_SECONDS` |
+| `versions`, `environment`, `admin`, `default` | `HOUR_IN_SECONDS` |
 
 ### Language-Aware Groups
 
@@ -166,9 +166,11 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 | All | `purge_all()` | All groups | Yes | Cleared |
 | Hard | `hard_cache_reset()` | `purge_all()` + plugin transients + action hook | Yes | Cleared |
 
-**`purge_all()`:** Resets runtime state, batch-deletes plugin transients from DB (if transient fallback), iterates all groups with dependency cascade. Wrapped in `with_auth_preservation()`.
+**`purge_all()`:** Resets runtime state, batch-deletes plugin transients from DB (if transient fallback), iterates all groups with dependency cascade. Wrapped in `with_auth_preservation()`. On Redis, all groups are storage-flushed in ONE keyspace scan first (`flush_groups_redis()`), and the per-group loop skips storage via the `$storage_batch_flushed` map.
 
-**`purge_light()`:** Iterates all groups skipping `FRL_CACHE_HEAVY_GROUPS`, clears each WITHOUT dependencies.
+**`purge_light()`:** Iterates all groups skipping `FRL_CACHE_HEAVY_GROUPS`, clears each WITHOUT dependencies. Uses the same single-scan Redis batch for the light groups.
+
+**`purge_groups(array $groups)`:** Generic multi-group batch (helper: `frl_cache_clear_groups()`). One Redis scan for K groups; per-group fallback on other backends. Used by `action_clear_scripts_tags`.
 
 **`hard_cache_reset()`:** Calls `purge_all()` → `clear_transients()` (plugin-prefixed only, NOT all website transients) → fires `frl_cache__after_hard_cache_reset` action. Does **not** call `wp_cache_flush()` or `clear_all_website_transients()`.
 
@@ -205,7 +207,7 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 | `action_flush_rewrite_rules` | `frl_flush_rewrite_rules()` |
 | `action_clear_plugin_transients` | `frl_cache_clear('plugin_transients')` → `frl_cache_clear('adminui')` |
 | `action_clear_website_transients` | `frl_cache_clear('website_transients')` → `frl_cache_clear('adminui')` |
-| `action_clear_scripts_tags` | `frl_cache_clear('versions')` → `frl_cache_clear('html')` → `frl_cache_clear('shortcodes')` |
+| `action_clear_scripts_tags` | `frl_cache_clear_groups(FRL_CACHE_SCRIPTS_GROUPS)` — single batched step (one Redis scan) |
 | `env_enforce_full` | `frl_cache_clear('all')` → `frl_flush_rewrite_rules()` |
 | `env_enforce_url_change` | `frl_cache_clear('all')` |
 | `env_enforce_options` | `frl_cache_clear('options')` |
@@ -224,13 +226,17 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 | Hook | What It Clears |
 |---|---|
 | `save_post` | Postdata, permalinks, meta, langswitcher, featured images |
-| `save_post_wp_navigation` | `wp_navigation_{$post_id}` key in `permalinks` |
-| `wp_update_nav_menu` | `wp_menu_{$menu_id}` key in `permalinks` |
+| `save_post_wp_navigation` | `wp_navigation_{$post_id}` key in `permalinks` + `shortcodes` group (menu sitemap) |
+| `wp_update_nav_menu` | `wp_menu_{$menu_id}` key in `permalinks` + `shortcodes` group (menu sitemap) |
 | `edited_term` | `permalinks` group + tracked meta for term |
 | `pll_save_strings_translations` | Bumps `translation_version`, clears `translations` (→ cascades to `metafields`) |
 | `update_option` | Plugin transient matching option name |
 | `updated_option` | Translated option caches for all languages (plugin-owned options only) |
 | `profile_update` | Tracked meta for user |
+| `acf/save_post` (post_id = `option`/`options`) | `shortcodes` group (unversioned `acf_calc_*_option` keys) |
+| `customize_save_after` | `login_inline_style` key in `html` (embeds `custom_logo` theme mod) |
+| `wp_update_attachment_metadata` | `svg_dims_{$id}` key in `html` (attachments skip `save_post` clearing) |
+| `save_post_gd_place` | `blocks` group (unversioned, language-prefixed `places_by_lang` key) |
 
 ## Helper Functions API
 
@@ -307,6 +313,7 @@ add_filter('pre_option_' . $prefixed_key, fn() => $normalized_value, 9999, 1);
 - **Frontend, warm cache:** Zero DB queries for anything this plugin controls — consequence of layered caching (static array → runtime LRU → persistent cache → batched preload)
 - **`auto_preload()`** runs on every non-AJAX request. On transient-only sites it batches the preload groups into a single DB query; on a functional object cache it early-returns (keys cannot be enumerated per group), so groups warm lazily instead
 - **`purge_all()`** performs a single batch transient deletion, then skips per-group deletion via `$transients_batch_deleted` flag
+- **Multi-group purges on Redis cost ONE keyspace scan** — `flush_groups_redis()` runs a single Lua `SCAN` with one pattern per group (`UNLINK` on Redis ≥ 4), instead of the drop-in's one full `SCAN` per `wp_cache_flush_group()` call; `$storage_batch_flushed` skips already-flushed groups in the per-group loop. Falls back to per-group flushes on non-Redis backends
 - **Provider detection** is cached in a core transient with `WEEK_IN_SECONDS` TTL
 - **Admin "Hard Reset"** can take several seconds — this is expected: it chains `purge_all()` + `clear_transients()` + `flush_rewrite_rules(true)`. The cost is paid only on explicit admin request, never on visitor-facing pages
 

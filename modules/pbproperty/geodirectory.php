@@ -10,6 +10,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+add_action( 'save_post_gd_place', 'frl_clear_places_by_lang_cache', 10, 1 );
+
+/**
+ * Purge the blocks group when a GeoDirectory place is saved.
+ *
+ * places_by_lang (blocks group) is unversioned and language-prefixed, so a
+ * key-level clear would only reach the admin's current language — purge the
+ * whole group instead (gd_place saves are editorial events, not hot path).
+ *
+ * @param int $post_id Post ID.
+ * @return void
+ */
+function frl_clear_places_by_lang_cache( $post_id ) {
+	if ( ! frl_is_post_save_action( $post_id ) ) {
+		return;
+	}
+	frl_cache_clear( 'blocks' );
+}
+
 /**
  * Initialize GeoDirectory integration
  */
@@ -96,9 +115,10 @@ function frl_pbproperty_geodir_posts_where( $where, $query ) {
  * Helper: Get property IDs for current language.
  *
  * NOTE: The inner loop calls pll_get_post_language() individually per post
- * (N+1 pattern). This is amortized by a daily cache (frl_cache_remember
- * 'blocks' group, 24h TTL). On cold cache (~200 gd_place posts), the loop
- * runs ~200 Polylang lookups — acceptable given the 24h cache window.
+ * (N+1 pattern), amortized by the 'blocks' group cache. Invalidation is
+ * event-driven via frl_clear_places_by_lang_cache() on save_post_gd_place
+ * (core/cache/cache-cleanup.php), so the group TTL is only a safety net.
+ * On cold cache (~200 gd_place posts), the loop runs ~200 Polylang lookups.
  *
  * If performance becomes critical, replace with a single wp_get_object_terms()
  * batch call for all post IDs at once.
@@ -115,6 +135,11 @@ function frl_pbproperty_get_properties_ids() {
 					'fields'         => 'ids',
 				)
 			);
+
+			// Polylang unavailable: no language filtering possible — return all.
+			if ( ! function_exists( 'pll_get_post_language' ) ) {
+				return $posts;
+			}
 
 			$post_ids = array();
 

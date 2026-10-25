@@ -24,6 +24,10 @@ add_action( 'save_post_wp_navigation', 'frl_clear_navigation_cache', 10, 1 );
 add_action( 'wp_update_nav_menu', 'frl_clear_menu_cache', 10, 1 );
 add_action( 'profile_update', 'frl_clear_user_cache', 10, 1 );
 add_action( 'updated_option', 'frl_clear_option_cache', 10, 1 );
+// Invalidation for unversioned keys (TTL was their only safety net).
+add_action( 'acf/save_post', 'frl_clear_acf_option_shortcode_cache', 20, 1 );
+add_action( 'customize_save_after', 'frl_clear_login_inline_style_cache', 10, 0 );
+add_action( 'wp_update_attachment_metadata', 'frl_clear_svg_dims_cache', 10, 2 );
 
 /**
  * Bump the post cache version and clear tracked translated meta caches.
@@ -186,6 +190,10 @@ function frl_clear_navigation_cache( $post_id ) {
 	$cache_key = "wp_navigation_{$post_id}";
 
 	frl_cache_clear( 'permalinks', $cache_key );
+
+	// Menu-sitemap shortcode keys embed hashed args and are not enumerable —
+	// purge the whole shortcodes group (menu edits are rare admin events).
+	frl_cache_clear( 'shortcodes' );
 }
 
 /**
@@ -201,6 +209,10 @@ function frl_clear_menu_cache( $menu_id ) {
 	$cache_key = "wp_menu_{$menu_id}";
 
 	frl_cache_clear( 'permalinks', $cache_key );
+
+	// Same rationale as frl_clear_navigation_cache(): menu-sitemap shortcode
+	// output depends on classic menus but its keys are not enumerable.
+	frl_cache_clear( 'shortcodes' );
 }
 
 /**
@@ -251,6 +263,52 @@ function frl_clear_tracked_meta_cache( string $type, int $id ) {
 		// After clearing all individual entries, remove the tracking key itself.
 		frl_cache_clear( 'metafields', $tracking_key );
 	}
+}
+
+/**
+ * Purge shortcode caches when an ACF options page is saved.
+ *
+ * ACF options saves use post_id 'option'/'options' — they never fire save_post,
+ * so acf_calc_*_option shortcode keys (unversioned) would otherwise go stale
+ * until the group TTL. Key targets are unknown at this point, so purge the
+ * whole shortcodes group (options-page saves are rare admin events).
+ *
+ * @param string|int $post_id ACF post ID ('option'/'options' for options pages).
+ * @return void
+ */
+function frl_clear_acf_option_shortcode_cache( $post_id ) {
+	if ( $post_id !== 'option' && $post_id !== 'options' ) {
+		return;
+	}
+	frl_cache_clear( 'shortcodes' );
+}
+
+/**
+ * Clear the cached login-page inline CSS after a Customizer save.
+ *
+ * login_inline_style (html group) embeds the custom_logo theme mod; Customizer
+ * saves touch no other frl hook, so the key would go stale until TTL.
+ *
+ * @return void
+ */
+function frl_clear_login_inline_style_cache() {
+	frl_cache_clear( 'html', 'login_inline_style' );
+}
+
+/**
+ * Clear cached SVG dimensions when attachment metadata is regenerated.
+ *
+ * svg_dims_{id} keys (html group) are skipped by frl_clear_post_cache()
+ * (attachments are excluded there), so replacing an image on the same
+ * attachment ID would leave stale dimensions until TTL.
+ *
+ * @param array $data    Attachment metadata.
+ * @param int   $post_id Attachment ID.
+ * @return array Unmodified metadata (this is a filter).
+ */
+function frl_clear_svg_dims_cache( $data, $post_id ) {
+	frl_cache_clear( 'html', 'svg_dims_' . (int) $post_id );
+	return $data;
 }
 
 /**

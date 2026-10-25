@@ -57,6 +57,9 @@ class Frl_Cache_Manager {
 	/** Flag: batch transient deletion already performed this request. */
 	private static bool $transients_batch_deleted = false;
 
+	/** Map of groups already storage-flushed by a combined Redis scan this request. */
+	private static array $storage_batch_flushed = array();
+
 	/** O(1) lookup maps. */
 	private static array $persistent_groups_map = array();
 	private static array $language_groups_map   = array();
@@ -731,6 +734,51 @@ class Frl_Cache_Manager {
 	}
 
 	/**
+	 * Purge multiple cache groups in one batch.
+	 *
+	 * On Redis, storage for all groups is flushed in a single keyspace scan
+	 * (flush_groups_redis); the per-group loop below then only handles runtime
+	 * state, options resets, and browser headers. On other backends the loop
+	 * falls back to per-group wp_cache_flush_group() — identical to calling
+	 * purge_group() per group.
+	 *
+	 * @param string[] $groups Cache groups to purge (without dependencies).
+	 * @return array{runtime: int, persistent: int, wordpress: int, groups: array} Aggregated stats.
+	 */
+	public static function purge_groups( array $groups ): array {
+		$stats = array(
+			'runtime'    => 0,
+			'persistent' => 0,
+			'wordpress'  => 0,
+			'groups'     => array(),
+		);
+
+		if ( empty( $groups ) ) {
+			return $stats;
+		}
+
+		$batch_flushed = self::flush_groups_redis( $groups );
+		if ( $batch_flushed !== null ) {
+			$stats['persistent'] += $batch_flushed;
+		}
+
+		foreach ( $groups as $group ) {
+			$group_stats = self::clear_group_with_dependencies( $group, null, false );
+
+			$stats['runtime']    += $group_stats['runtime'];
+			$stats['persistent'] += $group_stats['persistent'];
+			$stats['wordpress']  += $group_stats['wordpress'];
+
+			$stats['groups'][ $group ] = $group_stats;
+		}
+
+		// Reset batch flag so a later single-group purge is not skipped.
+		self::$storage_batch_flushed = array();
+
+		return $stats;
+	}
+
+	/**
 	 * Execute a callback while preserving the current user's authentication state.
 	 *
 	 * Some cache operations (particularly those that touch the object cache or
@@ -805,6 +853,15 @@ class Frl_Cache_Manager {
 						$transient_stats                = self::delete_transients_from_db( self::PREFIX );
 						$stats['transients']            = $transient_stats['transients'];
 						self::$transients_batch_deleted = true;
+					} else {
+						// Redis: flush all groups in ONE keyspace scan instead of
+						// one SCAN per group in the loop below (~15 scans).
+						$batch_groups  = array_diff( array_keys( self::$default_ttls ), array( 'default' ) );
+						$batch_flushed = self::flush_groups_redis( $batch_groups );
+						if ( $batch_flushed !== null ) {
+							$stats['persistent']   += $batch_flushed;
+							$stats['object_cache'] += $batch_flushed;
+						}
 					}
 
 					// 3. Flush each cache group using the comprehensive method
@@ -839,9 +896,10 @@ class Frl_Cache_Manager {
 						$stats['groups'][ $group ] = $group_stats;
 					}
 
-					// Reset batch-delete flag so subsequent calls (e.g., clear_transients for a specific group)
-					// are not incorrectly skipped.
+					// Reset batch flags so subsequent calls (e.g., clear_transients for a
+					// specific group, or a later single-group purge) are not skipped.
 					self::$transients_batch_deleted = false;
+					self::$storage_batch_flushed    = array();
 
 					return $stats;
 				} finally {
@@ -1217,6 +1275,12 @@ class Frl_Cache_Manager {
 		global $wpdb;
 		$count = 0;
 
+		// A combined Redis scan already removed this group from storage
+		// this request (mirrors the $transients_batch_deleted pattern).
+		if ( isset( self::$storage_batch_flushed[ $group ] ) ) {
+			return 0;
+		}
+
 		if ( self::is_object_cache_truly_functional() ) {
 			$wp_cache_group = self::PREFIX . $group;
 
@@ -1269,6 +1333,110 @@ class Frl_Cache_Manager {
 		}
 
 		return $count;
+	}
+
+	/**
+	 * Flush multiple cache groups from Redis in a single keyspace scan.
+	 *
+	 * The Till Krüss-style drop-in (Kinsta) flushes each group via a Lua SCAN
+	 * over the ENTIRE Redis keyspace, so flushing K groups costs K full blocking
+	 * scans. This method passes one Lua pattern per group and scans ONCE,
+	 * testing each visited key against all patterns. UNLINK (Redis ≥ 4) deletes
+	 * asynchronously, avoiding DEL's per-key blocking.
+	 *
+	 * On success, each flushed group is recorded in self::$storage_batch_flushed
+	 * so purge_group_storage() skips its per-group flush for exactly those
+	 * groups (mirrors the $transients_batch_deleted pattern).
+	 *
+	 * @param string[] $groups Cache groups to flush (must be ≥ 1).
+	 * @return int|null Number of keys deleted, or null when the combined flush
+	 *                  is not applicable (non-Redis backend, missing drop-in API,
+	 *                  or eval failure) — the caller must then use per-group flushes.
+	 */
+	private static function flush_groups_redis( array $groups ): ?int {
+		global $wp_object_cache;
+
+		if ( empty( $groups ) || ! self::is_object_cache_truly_functional() ) {
+			return null;
+		}
+
+		$provider = self::get_provider_details();
+		if ( ! str_contains( strtolower( (string) ( $provider['slug'] ?? '' ) ), 'redis' ) ) {
+			return null;
+		}
+
+		if ( ! is_object( $wp_object_cache )
+			|| ! method_exists( $wp_object_cache, 'redis_instance' )
+			|| ! method_exists( $wp_object_cache, 'build_key' )
+			|| ! method_exists( $wp_object_cache, 'redis_status' )
+			|| ! $wp_object_cache->redis_status()
+		) {
+			return null;
+		}
+
+		$redis = $wp_object_cache->redis_instance();
+		if ( ! is_object( $redis ) || ! method_exists( $redis, 'eval' ) ) {
+			return null;
+		}
+
+		// One anchored Lua pattern per group. build_key() supplies the drop-in's
+		// salt/blog prefix so we never reconstruct them.
+		$patterns = array();
+		foreach ( $groups as $group ) {
+			$literal    = substr( $wp_object_cache->build_key( '*', self::PREFIX . $group ), 0, -1 );
+			$patterns[] = '^' . preg_replace( '/([%(%)%.%%%+%-%?%[%]%^%$])/', '%%%1', $literal ) . '.*';
+		}
+
+		$version    = (string) $wp_object_cache->redis_version();
+		$delete_cmd = ( $version !== '' && version_compare( $version, '4.0.0', '>=' ) ) ? 'unlink' : 'del';
+
+		$script = <<<LUA
+			local cur = 0
+			local i = 0
+			local tmp
+			repeat
+				tmp = redis.call('SCAN', cur)
+				cur = tonumber(tmp[1])
+				if tmp[2] then
+					for _, v in pairs(tmp[2]) do
+						for _, p in pairs(KEYS) do
+							if string.match(v, p) then
+								redis.call('{$delete_cmd}', v)
+								i = i + 1
+								break
+							end
+						end
+					end
+				end
+			until 0 == cur
+			return i
+LUA;
+
+		try {
+			if ( is_a( $redis, 'Predis\Client' ) ) {
+				$deleted = $redis->eval( $script, count( $patterns ), ...$patterns );
+			} else {
+				// PhpRedis: eval( string $script, array $args = [], int $num_keys = 0 ).
+				$deleted = $redis->eval( $script, $patterns, count( $patterns ) );
+			}
+		} catch ( \Throwable $e ) {
+			frl_log(
+				'FRL Cache: combined Redis group flush failed, falling back to per-group flush: {error}',
+				array( 'error' => $e->getMessage() )
+			);
+			return null;
+		}
+
+		// Drop the drop-in's own in-request cache too: it may hold plugin entries
+		// read earlier this request, which would otherwise be served stale.
+		// Runtime-only flush (no Redis round-trip); purges are rare admin actions.
+		if ( method_exists( $wp_object_cache, 'flush_runtime' ) ) {
+			$wp_object_cache->flush_runtime();
+		}
+
+		self::$storage_batch_flushed += array_fill_keys( $groups, true );
+
+		return (int) $deleted;
 	}
 
 	/**
@@ -1535,6 +1703,14 @@ class Frl_Cache_Manager {
 			// Get all defined groups from TTL config
 			$all_groups = array_keys( self::$default_ttls );
 
+			// Redis: flush all light groups in ONE keyspace scan instead of one
+			// SCAN per group in the loop below. Null on non-Redis → per-group path.
+			$light_groups  = array_diff( $all_groups, array_keys( self::$heavy_groups_map ) );
+			$batch_flushed = self::flush_groups_redis( $light_groups );
+			if ( $batch_flushed !== null ) {
+				$stats['persistent'] += $batch_flushed;
+			}
+
 			foreach ( $all_groups as $group ) {
 				// Skip heavy groups
 				if ( isset( self::$heavy_groups_map[ $group ] ) ) {
@@ -1556,6 +1732,9 @@ class Frl_Cache_Manager {
 			// Explicitly clear key/deferred caches if needed, but not full runtime
 			self::$key_cache       = array();
 			self::$deferred_writes = array();
+
+			// Reset batch flag so a later single-group purge is not skipped.
+			self::$storage_batch_flushed = array();
 
 			return $stats;
 		} finally {

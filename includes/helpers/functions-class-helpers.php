@@ -208,8 +208,23 @@ function frl_cache_clear( string $group, ?string $key = null, bool $include_depe
 }
 
 /**
-	* Clear multiple specific keys from a group in one batch (fewer round-trips
-	* than calling frl_cache_clear() per key — see Frl_Cache_Manager::clear_keys()).
+ * Clear multiple cache groups in one batch (single Redis keyspace scan via
+ * Frl_Cache_Manager::purge_groups() — far cheaper than per-group flushes).
+ *
+ * @param string[] $groups Cache groups to clear (without dependencies).
+ * @return array{runtime: int, persistent: int, WordpPress: int, groups: array}|false Aggregated stats, false if cache not loaded.
+ */
+function frl_cache_clear_groups( array $groups ): array|false {
+	if ( ! frl_cache_is_loaded() ) {
+		return false;
+	}
+
+	return Frl_Cache_Manager::purge_groups( $groups );
+}
+
+/**
+* Clear multiple specific keys from a group in one batch (fewer round-trips
+* than calling frl_cache_clear() per key — see Frl_Cache_Manager::clear_keys()).
 	*
 	* @param string $group Cache group
 	* @param array<int,string> $keys Keys to clear

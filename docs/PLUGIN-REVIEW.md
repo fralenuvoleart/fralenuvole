@@ -71,7 +71,7 @@ Several are deliberate design choices, not defects:
 - **Deploy steps are required.** The autoload change and the rewriter exclusion model take effect on plugin re-activation / a cache flush, not automatically on file deploy.
 - **Routing is flush-driven.** A newly created or renamed top-level page resolves only after the next (debounced) rewrite flush — within one cron run, not instantly.
 - **Catch-all exclusions are capped** (`500 × languages`, ceiling 1000). Beyond that a page can drop off the exclusion list and be captured by a catch-all rule.
-- **`versions` group TTL is 1 day**, so asset cache-busting strings can lag a deploy by up to 24h unless the "Clear CSS/JS" action or a flush runs.
+- **`versions` group TTL is 1 hour**, so asset cache-busting strings can lag a deploy by up to 1h unless the "Clear CSS/JS" action or a flush runs.
 - **Security is strong by inspection** (CSP, `$wpdb->prepare`, capability gating, nonces, `wp_kses_post`) but has no formal threat model or penetration test.
 
 ## Overall Rating: A (9.4/10)

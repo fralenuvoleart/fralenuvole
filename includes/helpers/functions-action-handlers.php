@@ -185,7 +185,7 @@ function frl_handle_action_clear_website_transients() {
 /**
  * Handle the 'clear_scripts_tags' action.
  *
- * Groups to clear are defined by FRL_CACHE_SCRIPTS_GROUPS in config-cache.php.
+ * Groups to clear are defined by FRL_CACHE_SCRIPTS_GROUPS in config-cache-operations.php.
  *
  * @return array{success: bool, message_parts: string[], notice_type: string} Result array.
  */
@@ -194,23 +194,20 @@ function frl_handle_action_clear_scripts_tags() {
 	$message_parts = array();
 	$success       = false;
 
-	foreach ( $orchestrated['steps'] as $step ) {
-		$group = $step['args'][0] ?? '';
-		$stats = $step['result'] ?? array();
+	// Single batched step: result carries aggregate stats + per-group breakdown.
+	$step  = $orchestrated['steps'][0] ?? array();
+	$stats = $step['result'] ?? array();
 
-		if ( $step['success'] && is_array( $stats ) && isset( $stats['persistent'] ) ) {
-			$message_parts[] = sprintf(
-				__( '%1$s cache cleared: %2$d persistent items deleted.', FRL_PREFIX ),
-				ucfirst( $group ),
-				$stats['persistent'] ?? 0
-			);
-			$success         = true;
-		} else {
-			$message_parts[] = sprintf(
-				__( 'Failed to clear %s cache or get stats.', FRL_PREFIX ),
-				$group
-			);
-		}
+	if ( ( $step['success'] ?? false ) && is_array( $stats ) && isset( $stats['persistent'] ) ) {
+		$groups          = array_map( 'ucfirst', array_keys( $stats['groups'] ?? array() ) );
+		$message_parts[] = sprintf(
+			__( '%1$s caches cleared: %2$d persistent items deleted.', FRL_PREFIX ),
+			implode( ', ', $groups ),
+			$stats['persistent']
+		);
+		$success         = true;
+	} else {
+		$message_parts[] = __( 'Failed to clear scripts caches or get stats.', FRL_PREFIX );
 	}
 
 	return array(

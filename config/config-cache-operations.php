@@ -19,6 +19,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Groups purged when a 'scripts' flush is requested (e.g. by external cache flush).
+// Lives here (not config-cache.php) because its only consumer is the
+// action_clear_scripts_tags operation below — and this file is required
+// before config-cache.php's constants are defined.
+const FRL_CACHE_SCRIPTS_GROUPS = array(
+	'versions',
+	'html',
+	'shortcodes',
+);
+
 /**
  * Cache operation definitions.
  *
@@ -247,19 +257,9 @@ const FRL_CACHE_OPERATIONS = array(
 		'label' => 'Admin: Clear CSS/JS Caches',
 		'steps' => array(
 			array(
-				'fn'   => 'frl_cache_clear',
-				'args' => array( 'versions' ),
-				'note' => 'Clear versions cache group (asset version strings)',
-			),
-			array(
-				'fn'   => 'frl_cache_clear',
-				'args' => array( 'html' ),
-				'note' => 'Clear HTML cache group (minified/processed HTML)',
-			),
-			array(
-				'fn'   => 'frl_cache_clear',
-				'args' => array( 'shortcodes' ),
-				'note' => 'Clear shortcodes cache group',
+				'fn'   => 'frl_cache_clear_groups',
+				'args' => array( FRL_CACHE_SCRIPTS_GROUPS ),
+				'note' => 'Clear scripts groups (FRL_CACHE_SCRIPTS_GROUPS) in one batched purge — single Redis keyspace scan',
 			),
 		),
 		'hooks' => array(

@@ -37,18 +37,18 @@ const FRL_CACHE_PERSISTENT_GROUPS = array(
 // Default TTL values for different cache groups
 const FRL_CACHE_TTL = array(
 	'staticdata'   => WEEK_IN_SECONDS,     // 1 week (for heavy data)
-	'theme'        => DAY_IN_SECONDS,      // 1 day (for stable data)
-	'html'         => DAY_IN_SECONDS,      // 1 day
-	'postdata'     => DAY_IN_SECONDS,      // 1 day (post-specific data
-	'blocks'       => DAY_IN_SECONDS,      // 1 day
-	'shortcodes'   => DAY_IN_SECONDS,      // 1 day
-	'translations' => DAY_IN_SECONDS,      // 1 day
-	'permalinks'   => DAY_IN_SECONDS,      // 1 day
-	'rewriter'     => DAY_IN_SECONDS,      // 1 day (rewriter data is stable)
-	'metafields'   => DAY_IN_SECONDS,      // 1 day
+	'theme'        => WEEK_IN_SECONDS,     // 1 week (for stable data)
+	'rewriter'     => WEEK_IN_SECONDS,     // 1 week (rewriter data is stable)
+	'translations' => WEEK_IN_SECONDS,     // 1 week
+	'permalinks'   => WEEK_IN_SECONDS,     // 1 week
+	'postdata'     => WEEK_IN_SECONDS,     // 1 week (post-specific data
+	'metafields'   => WEEK_IN_SECONDS,     // 1 week
+	'html'         => WEEK_IN_SECONDS,     // 1 week
+	'blocks'       => WEEK_IN_SECONDS,     // 1 week
+	'shortcodes'   => WEEK_IN_SECONDS,     // 1 week
 	// 'options' actively invalidated by frl_update_option() + cache-cleanup hooks;
 	// TTL is only a safety net for DB edits.
-	'options'      => DAY_IN_SECONDS,      // 1 day
+	'options'      => WEEK_IN_SECONDS,     // 1 day
 	'adminui'      => DAY_IN_SECONDS,      // 1 day (UI assembly data)
 	'versions'     => HOUR_IN_SECONDS,     // 1 hour
 	'environment'  => HOUR_IN_SECONDS,     // 1 hour
@@ -73,13 +73,7 @@ const FRL_CACHE_HEAVY_GROUPS = array(
 	'translations',
 	'permalinks',
 	'postdata',
-);
-
-// Define groups to be purged when a 'scripts' flush is requested (e.g. by external cache flush)
-const FRL_CACHE_SCRIPTS_GROUPS = array(
-	'versions',
-	'html',
-	'shortcodes',
+	'rewriter',
 );
 
 // Cache dependencies between groups
