@@ -207,7 +207,7 @@ function frl_thirdparty_run_cache_warmer(): void {
 	$message = implode( ' ', $result['message_parts'] );
 	$type    = $result['notice_type'] ?? 'info';
 
-	frl_log( 'CACHE WARMER (scheduled): {message}', array( 'message' => $message ), false );
+	frl_log( 'CACHE WARMER (scheduled): {message}', array( 'message' => $message ), true );
 	frl_add_admin_notice( $message, $type, 300 );
 }
 

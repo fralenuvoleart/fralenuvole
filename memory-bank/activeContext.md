@@ -1,5 +1,11 @@
 # Active Context
 
+## Latest: Cache warmer scheduled run now emails too (2026-10-24)
+
+User request: the cron run should send the email notification, not just write the log. In [`frl_thirdparty_run_cache_warmer()`](../modules/thirdparty/thirdparty.php:192) the summary `frl_log()` call now passes `true` for `$force_email` (was `false`), so every scheduled run that produces a result emails the admin — gated, as before, by the `error_reporting_email` option, the per-request duplicate-hash throttle, and the `frl_email_error_notification()` rate limit. The two `CACHE WARMER ERROR` logs inside `frl_thirdparty_handle_trigger_cache_warmer()` already emailed (default `true`). Verified `php -l`.
+
+Note (answered for user): `frl_log()` has no severity concept — signature is `($message, $context, $force_email)`; info/warning/error classification exists only post-hoc in the Log Manager via `frl_determine_log_error_type()` keyword sniffing, and FRL-prefixed entries are always grouped as `FRL_PREFIX` regardless of wording.
+
 ## Latest: Langswitcher — options removed, FRL_LANGSWITCHER_ARGS is the single source (2026-10-24)
 
 User removed the 4 `langswitcher_*` options from `config-options.php` and added `hide_languages => 0` to `FRL_LANGSWITCHER_ARGS` (`config-base.php`); [`frl_shortcode_langswitcher()`](public/shortcodes.php:241) updated accordingly. Zero option reads remain in the shortcode.
