@@ -164,3 +164,15 @@ No hooks exist for site-only, edge-only, CDN-only, or object-only purges.
 ### 11. Does enabling `KINSTAMU_DEBUG_LOG` affect performance?
 
 **No meaningful front-end impact.** `debug_log()` does one synchronous file append per purge event (not per request). Caveats: unbounded log growth; per-event disk I/O.
+
+### 12. Autoptimize ↔ Kinsta: what triggers what?
+
+Whenever AO's cache is cleared, `autoptimizeCache::flushPageCache()` detects `KINSTA_CACHE_ZONE` and fires `GET localhost/kinsta-clear-cache-all` — a **sitewide page + edge purge** (not object, not CDN), independent of the MU controllers.
+
+| Trigger | AO cache cleared | Kinsta sitewide purge |
+|---|---|---|
+| AO settings save | Yes | Yes |
+| AO toolbar "Delete Cache" | Yes | Yes |
+| AO version update | Yes | Yes |
+| Other cache plugins' purge actions (WP Rocket, W3TC, WP-Optimize, nginx-helper) | Yes | Yes |
+| Third-party code calling `autoptimizeCache::clearall()` or firing `autoptimize_action_cachepurgedall` | Yes | Yes |
