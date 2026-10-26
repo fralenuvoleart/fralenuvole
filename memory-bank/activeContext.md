@@ -1,5 +1,11 @@
 # Active Context
 
+## Resolved: Clear-All 21s → <0.5s server-side (2026-10-26)
+
+Final instrumented measurement on staging: combined flush 0.013s, `purge_all` 0.013s, action request 0.024s, action page total 0.199s; reload: dashboard render 0.007s, settings render 0.015s, full request 0.464s. The earlier "21s click-to-reload" was dominated by deploy-cold PHP/OPcache warmup + the pre-patch per-group scans; with the batch flush + cascade batching deployed, the entire cycle is sub-second. Tag validator was eliminated as a suspect (cURL only on explicit submit, `class-tag-validator.php:1350`).
+
+**Instrumentation left in code (decision pending):** timing logs in `flush_groups_redis()`/`purge_all()`/clear-all handler, `FRL Dashboard render` + `FRL Settings page render` breakdowns, and a `shutdown` total-request probe in [`frl_load_plugin_ui()`](../admin/admin.php:78). The fallback-reason logs in `flush_groups_redis()` are worth keeping permanently (rare, diagnostic); the per-render timing logs fire on every plugin admin page view and should be gated behind the debug option or stripped once the user is satisfied.
+
 ## Latest: Dependency-cascade batching + Clear-All instrumentation (2026-10-25 evening)
 
 **Root cause found via instrumentation:** the Clear-All patch worked (combined flush: 0.014s for 219 keys/15 groups on staging) — `purge_all` 1.6s, action request 2.8s, so ~80% of the perceived 15s was the **post-redirect admin page reload** with cold caches. Per-component timing probes added to [`Frl_Dashboard::render()`](../admin/components/class-dashboard.php:36) (logs `env_stats/env_widget/cache_widget/tag_validator/environment_overview/total`); tag-validator widget renders with `bypass_cache=true, ttl=0` every load — prime suspect.

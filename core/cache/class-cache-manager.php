@@ -809,7 +809,12 @@ class Frl_Cache_Manager {
 		} finally {
 			// Guarantee auth restoration even if the callback throws.
 			if ( $current_user_id && $auth_cookie ) {
-				wp_set_auth_cookie( $current_user_id, true );
+				// Re-issue the auth cookie ONLY if the operation actually clobbered
+				// auth state — avoids 3 redundant Set-Cookie headers on every purge.
+				$post_user = wp_get_current_user();
+				if ( (int) $post_user->ID !== (int) $current_user_id || ! wp_validate_auth_cookie( '', 'logged_in' ) ) {
+					wp_set_auth_cookie( $current_user_id, true );
+				}
 				wp_set_current_user( $current_user_id );
 			}
 		}
@@ -1175,13 +1180,21 @@ class Frl_Cache_Manager {
 	 * @return void
 	 */
 	public static function clear_browser_cache() {
-		if ( ! headers_sent() ) {
-			// Clear only cache and storage, not cookies
-			header( 'Clear-Site-Data: "cache", "storage"' );
-			header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private' );
-			header( 'Pragma: no-cache' );
-			header( 'Expires: Wed, 11 Jan 1984 05:00:00 GMT' );
+		// Send once per request: purge_all() triggers this for every browser
+		// group (4×), and identical headers are pure redundancy.
+		static $sent = false;
+		if ( $sent || headers_sent() ) {
+			return;
 		}
+		$sent = true;
+
+		// Clear only the HTTP cache — NOT "storage": wiping localStorage/
+		// IndexedDB/service workers punishes the admin's own browser, and
+		// Chrome blocks the redirect navigation while processing it.
+		header( 'Clear-Site-Data: "cache"' );
+		header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private' );
+		header( 'Pragma: no-cache' );
+		header( 'Expires: Wed, 11 Jan 1984 05:00:00 GMT' );
 	}
 
 	/**
