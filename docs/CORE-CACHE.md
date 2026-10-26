@@ -314,6 +314,7 @@ add_filter('pre_option_' . $prefixed_key, fn() => $normalized_value, 9999, 1);
 - **`auto_preload()`** runs on every non-AJAX request. On transient-only sites it batches the preload groups into a single DB query; on a functional object cache it early-returns (keys cannot be enumerated per group), so groups warm lazily instead
 - **`purge_all()`** performs a single batch transient deletion, then skips per-group deletion via `$transients_batch_deleted` flag
 - **Multi-group purges on Redis cost ONE keyspace scan** — `flush_groups_redis()` runs a single Lua `SCAN` with one pattern per group (`UNLINK` on Redis ≥ 4), instead of the drop-in's one full `SCAN` per `wp_cache_flush_group()` call; `$storage_batch_flushed` skips already-flushed groups in the per-group loop. Falls back to per-group flushes on non-Redis backends
+- **Dependency cascades are batched too** — a top-level `clear_group_with_dependencies()` call (e.g. `frl_cache_clear('options')` on every settings save) flushes the entire dependency closure in one scan via `get_dependency_closure()` + a `$cascade_depth` guard; recursive cascade calls skip storage
 - **Provider detection** is cached in a core transient with `WEEK_IN_SECONDS` TTL
 - **Admin "Hard Reset"** can take several seconds — this is expected: it chains `purge_all()` + `clear_transients()` + `flush_rewrite_rules(true)`. The cost is paid only on explicit admin request, never on visitor-facing pages
 

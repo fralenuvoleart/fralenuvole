@@ -60,6 +60,9 @@ class Frl_Cache_Manager {
 	/** Map of groups already storage-flushed by a combined Redis scan this request. */
 	private static array $storage_batch_flushed = array();
 
+	/** Recursion depth of clear_group_with_dependencies() (cascade batching guard). */
+	private static int $cascade_depth = 0;
+
 	/** O(1) lookup maps. */
 	private static array $persistent_groups_map = array();
 	private static array $language_groups_map   = array();
@@ -1222,6 +1225,27 @@ class Frl_Cache_Manager {
 			'dependencies' => array(),
 		);
 
+		// Batch the whole dependency closure in ONE Redis scan at the top-level
+		// call; recursive cascade calls then skip storage via $storage_batch_flushed.
+		// $batched_here ensures only the call that created the batch resets the map,
+		// so batches from purge_all/purge_light/purge_groups (which call this method
+		// with $include_dependencies=false) are never reset prematurely.
+		$batched_here = false;
+		++self::$cascade_depth;
+
+		try {
+		if ( self::$cascade_depth === 1
+			&& $key === null
+			&& $include_dependencies
+			&& ! empty( self::$cache_dependencies[ $group ] )
+		) {
+			$batch_flushed = self::flush_groups_redis( self::get_dependency_closure( $group ) );
+			if ( $batch_flushed !== null ) {
+				$stats['persistent'] += $batch_flushed;
+				$batched_here       = true;
+			}
+		}
+
 		// 1. Clear persistent storage (transients or object cache)
 		if ( $key !== null ) {
 			// Clear specific key
@@ -1271,6 +1295,13 @@ class Frl_Cache_Manager {
 		// 4. Handle browser cache for specific groups
 		if ( $key === null && isset( self::$browser_groups_map[ $group ] ) ) {
 			self::clear_browser_cache();
+		}
+
+		} finally {
+			--self::$cascade_depth;
+			if ( $batched_here && self::$cascade_depth === 0 ) {
+				self::$storage_batch_flushed = array();
+			}
 		}
 
 		return $stats;
@@ -1344,6 +1375,29 @@ class Frl_Cache_Manager {
 		}
 
 		return $count;
+	}
+
+	/**
+	 * Compute the transitive dependency closure of a group (itself included).
+	 *
+	 * @param string $group Root cache group.
+	 * @return string[] Groups in flush order (root first, dependencies after).
+	 */
+	private static function get_dependency_closure( string $group ): array {
+		$closure = array( $group => true );
+		$queue   = array( $group );
+
+		while ( ! empty( $queue ) ) {
+			$current = array_shift( $queue );
+			foreach ( self::$cache_dependencies[ $current ] ?? array() as $dependent ) {
+				if ( ! isset( $closure[ $dependent ] ) ) {
+					$closure[ $dependent ] = true;
+					$queue[]               = $dependent;
+				}
+			}
+		}
+
+		return array_keys( $closure );
 	}
 
 	/**

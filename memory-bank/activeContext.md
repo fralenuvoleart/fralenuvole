@@ -1,5 +1,13 @@
 # Active Context
 
+## Latest: Dependency-cascade batching + Clear-All instrumentation (2026-10-25 evening)
+
+**Root cause found via instrumentation:** the Clear-All patch worked (combined flush: 0.014s for 219 keys/15 groups on staging) — `purge_all` 1.6s, action request 2.8s, so ~80% of the perceived 15s was the **post-redirect admin page reload** with cold caches. Per-component timing probes added to [`Frl_Dashboard::render()`](../admin/components/class-dashboard.php:36) (logs `env_stats/env_widget/cache_widget/tag_validator/environment_overview/total`); tag-validator widget renders with `bypass_cache=true, ttl=0` every load — prime suspect.
+
+**Dependency-cascade batching:** [`clear_group_with_dependencies()`](../core/cache/class-cache-manager.php:1192) now batches the whole dependency closure in ONE Redis scan at the top-level call (new [`get_dependency_closure()`](../core/cache/class-cache-manager.php:1397) BFS + `$cascade_depth` guard). Covers `options`→6 groups (8 scans→1, fires on every settings save via `frl_batch_update_options`), `rewriter`→permalinks, `translations`→metafields, etc. `$batched_here` flag ensures only the batching call resets `$storage_batch_flushed` — batches from purge_all/purge_light/purge_groups (which pass `include_dependencies=false`) are never reset prematurely. Non-Redis → null → per-group fallback, unchanged.
+
+**Instrumentation (keep or strip later):** fallback-reason logs in `flush_groups_redis()`, timing logs in `purge_all()` and `frl_handle_action_clear_cache_all()`, dashboard render breakdown. Verified `php -l` on all touched files.
+
 ## Latest: Generic multi-group batch purge API + scripts-tags operation converted (2026-10-25)
 
 Extended the combined Redis flush to the remaining multi-group path ("Clear CSS/JS Caches" = versions/html/shortcodes, previously 3 separate `frl_cache_clear` steps = 3 scans):

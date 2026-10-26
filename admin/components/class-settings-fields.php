@@ -164,6 +164,9 @@ class Frl_Settings_Fields {
 	 * @return void
 	 */
 	public function frl_settings_content() {
+		$content_start = microtime( true );
+		$timings       = array();
+
 		// Get the current active tab from Tab Manager
 		$active_tab = frl_tab_get_active_tab();
 
@@ -174,9 +177,13 @@ class Frl_Settings_Fields {
 		frl_tab_render_tab_container_start( $use_vertical_tabs, '', $active_tab );
 
 		// Render the header
+		$mark = microtime( true );
 		echo frl_ui_render_plugin_settings_header();
+		$timings['header'] = microtime( true ) - $mark;
 
+		$mark = microtime( true );
 		$this->frl_setup_tabs( $active_tab );
+		$timings['setup_tabs'] = microtime( true ) - $mark;
 
 		// Allow adding content before the settings form
 		echo apply_filters( 'frl_before_settings_sections', '' );
@@ -194,10 +201,14 @@ class Frl_Settings_Fields {
 
 				<?php
 				// Render all custom tabs from the registry - still inside the form
+				$mark = microtime( true );
 				frl_tab_render_all_custom_tabs();
+				$timings['custom_tabs'] = microtime( true ) - $mark;
 
 				// Use the custom renderer with hooks for widget insertion
+				$mark = microtime( true );
 				$this->custom_do_settings_sections( FRL_NAME );
+				$timings['settings_sections'] = microtime( true ) - $mark;
 
 				?>
 				<?php
@@ -212,6 +223,21 @@ class Frl_Settings_Fields {
 
 		// Let the Tab Manager close the container
 		frl_tab_render_tab_container_end();
+
+		$timings['total'] = microtime( true ) - $content_start;
+		frl_log(
+			'FRL Settings page render: {breakdown}',
+			array(
+				'breakdown' => implode(
+					', ',
+					array_map(
+						fn( $k, $v ) => $k . '=' . number_format( $v, 3 ) . 's',
+						array_keys( $timings ),
+						$timings
+					)
+				),
+			)
+		);
 	}
 
 	/**
