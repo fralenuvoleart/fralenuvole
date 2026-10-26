@@ -835,8 +835,6 @@ class Frl_Cache_Manager {
 		return self::with_auth_preservation(
 			function () {
 				try {
-					$purge_start = microtime( true );
-
 					// Reset the cleared groups tracker for this batch operation
 					self::$groups_cleared = array();
 
@@ -910,15 +908,6 @@ class Frl_Cache_Manager {
 					// specific group, or a later single-group purge) are not skipped.
 					self::$transients_batch_deleted = false;
 					self::$storage_batch_flushed    = array();
-
-					frl_log(
-						'FRL Cache: purge_all completed in {seconds}s (persistent={persistent}, runtime={runtime})',
-						array(
-							'seconds'    => number_format( microtime( true ) - $purge_start, 3 ),
-							'persistent' => $stats['persistent'],
-							'runtime'    => $stats['runtime'],
-						)
-					);
 
 					return $stats;
 				} finally {
@@ -1435,7 +1424,7 @@ class Frl_Cache_Manager {
 		global $wp_object_cache;
 
 		if ( empty( $groups ) || ! self::is_object_cache_truly_functional() ) {
-			frl_log( 'FRL Cache: combined Redis flush skipped — object cache not functional or no groups' );
+			frl_log( 'FRL Cache: combined Redis flush skipped — object cache not functional or no groups', array(), false );
 			return null;
 		}
 
@@ -1443,7 +1432,8 @@ class Frl_Cache_Manager {
 		if ( ! str_contains( strtolower( (string) ( $provider['slug'] ?? '' ) ), 'redis' ) ) {
 			frl_log(
 				'FRL Cache: combined Redis flush skipped — provider "{slug}" is not Redis',
-				array( 'slug' => $provider['slug'] ?? 'unknown' )
+				array( 'slug' => $provider['slug'] ?? 'unknown' ),
+				false
 			);
 			return null;
 		}
@@ -1454,13 +1444,13 @@ class Frl_Cache_Manager {
 			|| ! method_exists( $wp_object_cache, 'redis_status' )
 			|| ! $wp_object_cache->redis_status()
 		) {
-			frl_log( 'FRL Cache: combined Redis flush skipped — drop-in lacks redis_instance/build_key/redis_status or Redis is disconnected' );
+			frl_log( 'FRL Cache: combined Redis flush skipped — drop-in lacks redis_instance/build_key/redis_status or Redis is disconnected', array(), false );
 			return null;
 		}
 
 		$redis = $wp_object_cache->redis_instance();
 		if ( ! is_object( $redis ) || ! method_exists( $redis, 'eval' ) ) {
-			frl_log( 'FRL Cache: combined Redis flush skipped — Redis client has no eval()' );
+			frl_log( 'FRL Cache: combined Redis flush skipped — Redis client has no eval()', array(), false );
 			return null;
 		}
 
@@ -1498,25 +1488,17 @@ class Frl_Cache_Manager {
 LUA;
 
 		try {
-			$flush_start = microtime( true );
 			if ( is_a( $redis, 'Predis\Client' ) ) {
 				$deleted = $redis->eval( $script, count( $patterns ), ...$patterns );
 			} else {
 				// PhpRedis: eval( string $script, array $args = [], int $num_keys = 0 ).
 				$deleted = $redis->eval( $script, $patterns, count( $patterns ) );
 			}
-			frl_log(
-				'FRL Cache: combined Redis flush deleted {deleted} keys across {groups} groups in {seconds}s',
-				array(
-					'deleted' => (int) $deleted,
-					'groups'  => count( $groups ),
-					'seconds' => number_format( microtime( true ) - $flush_start, 3 ),
-				)
-			);
 		} catch ( \Throwable $e ) {
 			frl_log(
 				'FRL Cache: combined Redis group flush failed, falling back to per-group flush: {error}',
-				array( 'error' => $e->getMessage() )
+				array( 'error' => $e->getMessage() ),
+				false
 			);
 			return null;
 		}

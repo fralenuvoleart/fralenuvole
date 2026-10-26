@@ -34,26 +34,16 @@ class Frl_Admin_Dashboard {
 	 * @return string HTML content.
 	 */
 	public function render( $content = '' ) {
-		$render_start = microtime( true );
-		$timings      = array();
-
 		// Instantiate the display classes
 		$cache_display = new Frl_Cache_Display();
 		$env_display   = new Frl_Environment_Display();
 
 		// Get the environment data, as it's needed by both sections
-		$mark     = microtime( true );
 		$env_data = frl_environment_display_get_stats();
-		$timings['env_stats'] = microtime( true ) - $mark;
 
 		// --- Render sections from display classes ---
-		$mark       = microtime( true );
-		$env_widget = $env_display->render_dashboard_widget( $env_data );
-		$timings['env_widget'] = microtime( true ) - $mark;
-
-		$mark         = microtime( true );
+		$env_widget   = $env_display->render_dashboard_widget( $env_data );
 		$cache_widget = $cache_display->render_dashboard_widget( $env_data );
-		$timings['cache_widget'] = microtime( true ) - $mark;
 
 		// Use the flexible layout renderer for a 2-column layout with only the main content
 		$columns = frl_ui_render_flex_layout(
@@ -69,26 +59,18 @@ class Frl_Admin_Dashboard {
 			'Environment & Cache',
 		);
 
-		$mark             = microtime( true );
-		$tag_validator    = frl_tag_validator_render();
-		$timings['tag_validator'] = microtime( true ) - $mark;
-
 		$widget_content .= frl_ui_render_widget(
 			'tag-validator-overview',
-			$tag_validator,
+			frl_tag_validator_render(),
 			'',
 			'tag-validator-overview',
 			0,
 			true
 		);
 
-		$mark                 = microtime( true );
-		$environment_overview = frl_environment_display_render();
-		$timings['environment_overview'] = microtime( true ) - $mark;
-
 		$widget_content .= frl_ui_render_widget(
 			'environment-overview',
-			$environment_overview,
+			frl_environment_display_render(),
 		);
 
 		$widget_content .= frl_ui_render_widget(
@@ -105,21 +87,6 @@ class Frl_Admin_Dashboard {
 		}
 
 		// Render the final widget
-		$timings['total'] = microtime( true ) - $render_start;
-		frl_log(
-			'FRL Dashboard render: {breakdown}',
-			array(
-				'breakdown' => implode(
-					', ',
-					array_map(
-						fn( $k, $v ) => $k . '=' . number_format( $v, 3 ) . 's',
-						array_keys( $timings ),
-						$timings
-					)
-				),
-			)
-		);
-
 		return $widget_content;
 	}
 }

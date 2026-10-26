@@ -75,19 +75,6 @@ function frl_load_plugin_ui() {
 	// Load required files
 	require_once FRL_DIR_PATH . 'admin/ui/ui-admin-settings.php';
 
-	// Probe: total request time for plugin admin pages (bootstrap + all plugins + render).
-	add_action(
-		'shutdown',
-		function () {
-			frl_log(
-				'FRL Admin page total request time: {seconds}s',
-				array( 'seconds' => number_format( microtime( true ) - (float) $_SERVER['REQUEST_TIME_FLOAT'], 3 ) )
-			);
-		},
-		10,
-		0
-	);
-
 	add_action( 'admin_init', 'frl_get_settings_page', 10, 0 );
 	// The hook MUST be available on admin-post.php:
 	// Settings form submissions go through admin-post.php
