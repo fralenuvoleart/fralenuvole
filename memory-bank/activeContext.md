@@ -1,5 +1,16 @@
 # Active Context
 
+## Latest: Bootstrap gate flags read via direct get_option() (2026-10-27)
+
+The subsystem-disable gate flags are now read with direct `get_option()` (autoloaded) instead of `frl_get_option()` in the bootstrap path, so the first gate check no longer triggers the full options load (`frl_get_plugin_options_db()` → type-map build + `LIKE 'frl_%'` scan). Values are identical: `frl_normalize_boolval()` stores `'1'`/`'0'`, and `get_option()` returns the same, so the existing `=== '1'` / truthiness checks are unchanged. Uses `frl_prefix( 'disable_*' )` (→ `frl_disable_*`), matching the existing [`should_bypass()`](../core/cache/class-cache-manager.php:151) precedent.
+
+- [`fralenuvole.php`](../fralenuvole.php:82) — `disable_plugin`, `disable_environment`, `disable_rewriter`.
+- [`frl_translator_is_enabled()`](../includes/helpers/functions-translator-helpers.php:82) — `disable_translator`.
+- [`frl_environment_is_loaded()`](../includes/helpers/functions-class-helpers.php:294) — `disable_plugin`, `disable_environment`.
+- [`frl_rewriter_is_loaded()`](../includes/helpers/functions-class-helpers.php:392) — `disable_rewriter`.
+
+`disable_cache` needs no change — [`should_bypass()`](../core/cache/class-cache-manager.php:151) already reads it directly, and [`frl_cache_is_loaded()`](../includes/helpers/functions-class-helpers.php:18) reads no option. Admin-only and hook-callback reads (`admin/helpers/functions-admin.php`, `includes/main/website.php:111`, `functions-translator-helpers.php:169`) were intentionally left on `frl_get_option()` — they are not on the bootstrap path. Verified `php -l` on all touched files.
+
 ## Latest: Cold-cache optimizations — rewriter + translator (2026-10-27)
 
 Three always-cold-cache optimizations, all behavior-preserving. Verified `php -l` on all touched files (phpcs/phpstan not installed globally in this environment).

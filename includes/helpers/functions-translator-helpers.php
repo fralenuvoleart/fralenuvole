@@ -80,7 +80,9 @@ function frl_is_multilingual_plugin_active(): bool {
  * @return bool True if a multilingual plugin is active AND the translator is not disabled in settings.
  */
 function frl_translator_is_enabled(): bool {
-	return frl_is_multilingual_plugin_active() && ! frl_get_option( 'disable_translator' );
+	// Direct get_option() (autoloaded) avoids triggering the full frl_get_option()
+	// options load during bootstrap; the value is identical ('1'/'0').
+	return frl_is_multilingual_plugin_active() && ! get_option( frl_prefix( 'disable_translator' ), '0' );
 }
 
 /**

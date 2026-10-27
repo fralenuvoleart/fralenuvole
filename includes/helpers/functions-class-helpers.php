@@ -306,8 +306,10 @@ function frl_environment_is_loaded() {
 	}
 
 	// Check for explicit plugin-level or EM-specific disable options.
-	$plugin_disabled      = ( frl_get_option( 'disable_plugin' ) === '1' );
-	$environment_disabled = ( frl_get_option( 'disable_environment' ) === '1' );
+	// Direct get_option() (autoloaded) avoids triggering the full frl_get_option()
+	// options load during bootstrap; the value is identical ('1'/'0').
+	$plugin_disabled      = ( get_option( frl_prefix( 'disable_plugin' ), '0' ) === '1' );
+	$environment_disabled = ( get_option( frl_prefix( 'disable_environment' ), '0' ) === '1' );
 	$core_mode            = ( defined( 'FRL_MODE' ) && FRL_MODE === 'core' );
 
 	if ( $plugin_disabled || $environment_disabled || $core_mode ) {
@@ -394,7 +396,9 @@ function frl_rewriter_is_loaded(): bool {
 	if ( $is_available !== null ) {
 		return $is_available;
 	}
-	if ( frl_get_option( 'disable_rewriter' ) ) {
+	// Direct get_option() (autoloaded) avoids triggering the full frl_get_option()
+	// options load during bootstrap; the value is identical ('1'/'0').
+	if ( get_option( frl_prefix( 'disable_rewriter' ), '0' ) ) {
 		$is_available = false;
 		return $is_available;
 	}

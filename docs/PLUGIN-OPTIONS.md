@@ -78,7 +78,7 @@ Note: `update_option()` returns false when the value did not actually change. So
 
 Plugin options default to `autoload = 'no'`. This matters because WordPress loads every autoloaded option on every request; since the plugin reads its options through its own cache (not `get_option()`), autoloading them would only bloat that payload.
 
-Keep `autoload = 'yes'` **only** for an option read via native `get_option()` on a hot path. Today that is just `disable_plugin` and `disable_cache` (read by the cache-bypass check).
+Keep `autoload = 'yes'` **only** for an option read via native `get_option()` on a hot path. Today these are the subsystem-disable gate flags — read at bootstrap so the first gate check does not trigger the full options load: `disable_plugin`, `disable_cache`, `disable_environment`, `disable_rewriter`, `disable_translator`.
 
 Because `update_option()` does not change the autoload flag when the value is unchanged, an activation step (`frl_migrate_option_autoload()`) refreshes existing rows with a direct column update. Re-activate the plugin after deploy so this runs.
 

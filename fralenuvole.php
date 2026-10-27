@@ -78,8 +78,10 @@ function frl_plugins_loaded() {
 		frl_load_admin_components();
 	}
 
-	// Exit early if plugin is disabled or request context is invalid
-	if ( frl_get_option( 'disable_plugin' ) || ( defined( 'FRL_MODE' ) && FRL_MODE === 'core' ) ) {
+	// Exit early if plugin is disabled or request context is invalid.
+	// Direct get_option() (autoloaded) avoids triggering the full frl_get_option()
+	// options load during bootstrap; the value is identical ('1'/'0').
+	if ( get_option( frl_prefix( 'disable_plugin' ), '0' ) || ( defined( 'FRL_MODE' ) && FRL_MODE === 'core' ) ) {
 		return;
 	}
 
@@ -100,7 +102,9 @@ function frl_load_core_components() {
 	require_once FRL_DIR_PATH . 'core/cache/cache-cleanup.php';
 
 	// Environment Manager — only load + init if not explicitly disabled.
-	if ( ! frl_get_option( 'disable_environment' ) ) {
+	// Direct get_option() (autoloaded) avoids triggering the full frl_get_option()
+	// options load during bootstrap; the value is identical ('1'/'0').
+	if ( ! get_option( frl_prefix( 'disable_environment' ), '0' ) ) {
 		require_once FRL_DIR_PATH . 'core/environment/environment-manager.php';
 		frl_environment_init();
 	}
@@ -112,8 +116,10 @@ function frl_load_core_components() {
 		frl_translator_init();
 	}
 
-	// Rewriter — only load + init if not explicitly disabled
-	if ( ! frl_get_option( 'disable_rewriter' ) ) {
+	// Rewriter — only load + init if not explicitly disabled.
+	// Direct get_option() (autoloaded) avoids triggering the full frl_get_option()
+	// options load during bootstrap; the value is identical ('1'/'0').
+	if ( ! get_option( frl_prefix( 'disable_rewriter' ), '0' ) ) {
 		require_once FRL_DIR_PATH . 'core/rewriter/class-rewriter.php';
 		frl_rewriter_init();
 	}

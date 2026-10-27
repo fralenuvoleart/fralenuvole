@@ -1046,13 +1046,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'type'        => 'checkbox',
 				'default'     => 0,
 				'restricted'  => true,
-			),
-			'disable_translator'       => array(
-				'type'        => 'checkbox',
-				'label'       => 'Disable Translator',
-				'description' => 'Disable dynamic translation features for post, options, users, terms metadata.',
-				'default'     => '0',
-				'restricted'  => true,
+				'autoload'    => 'yes',
 			),
 			'disable_rewriter'         => array(
 				'type'        => 'checkbox',
@@ -1060,6 +1054,15 @@ const FRL_DEFAULT_FIELDS = array(
 				'description' => 'Disable rewriter features.',
 				'default'     => '0',
 				'restricted'  => true,
+				'autoload'    => 'yes',
+			),
+			'disable_translator'       => array(
+				'type'        => 'checkbox',
+				'label'       => 'Disable Translator',
+				'description' => 'Disable dynamic translation features for post, options, users, terms metadata.',
+				'default'     => '0',
+				'restricted'  => true,
+				'autoload'    => 'yes',
 			),
 			'disable_plugin'           => array(
 				'label'       => 'Disable Plugin',
