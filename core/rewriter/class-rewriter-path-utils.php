@@ -515,28 +515,61 @@ final class Frl_Rewriter_Path_Utils {
 	/**
 	 * Parse a lang=>base option into associative array, cached.
 	 *
+	 * Reads from the single 'langmap_all' entry (see get_all_lang_mappings())
+	 * so N multilingual CPTs cost ONE cold cache miss instead of N.
+	 *
 	 * @param string $option_name The option name to parse
 	 * @return array Associative array of lang=>base pairs
 	 */
 	public static function parse_lang_mapping_option( string $option_name ): array {
+		$all = self::get_all_lang_mappings();
+		return $all[ $option_name ] ?? array();
+	}
+
+	/**
+	 * Parse every multilingual CPT lang=>base mapping in ONE cache entry.
+	 *
+	 * Replaces the previous per-option 'langmap_{option}' keys (N cold misses for
+	 * N multilingual CPTs) with a single 'langmap_all' entry. Invalidated by the
+	 * same frl_cache_clear('rewriter') cascade as before.
+	 *
+	 * @return array Map of option_name => (lang => base) mappings.
+	 */
+	public static function get_all_lang_mappings(): array {
 		return frl_cache_remember(
 			'rewriter',
-			'langmap_' . $option_name,
-			function () use ( $option_name ) {
-				$value = frl_get_option( $option_name );
-				if ( empty( trim( (string) $value ) ) ) {
-					return array();
-				}
-				$parsed   = frl_textlist_to_array( $value );
-				$mappings = array();
-				foreach ( $parsed as $line ) {
-					if ( count( $line ) >= 2 && trim( $line[1] ) !== '' ) {
-						$mappings[ trim( $line[0] ) ] = trim( $line[1] );
+			'langmap_all',
+			function () {
+				$all = array();
+				if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
+					foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
+						$option_name         = "translate_cpt_slugs_{$cpt_slug}";
+						$all[ $option_name ] = self::parse_lang_mapping_value( frl_get_option( $option_name ) );
 					}
 				}
-				return $mappings;
+				return $all;
 			}
 		);
+	}
+
+	/**
+	 * Parse a raw lang=>base option value into an associative array.
+	 *
+	 * @param mixed $value Raw option value (textlist).
+	 * @return array Associative array of lang=>base pairs.
+	 */
+	private static function parse_lang_mapping_value( $value ): array {
+		if ( empty( trim( (string) $value ) ) ) {
+			return array();
+		}
+		$parsed   = frl_textlist_to_array( $value );
+		$mappings = array();
+		foreach ( $parsed as $line ) {
+			if ( count( $line ) >= 2 && trim( $line[1] ) !== '' ) {
+				$mappings[ trim( $line[0] ) ] = trim( $line[1] );
+			}
+		}
+		return $mappings;
 	}
 
 	/**

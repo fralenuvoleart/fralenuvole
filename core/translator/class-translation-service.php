@@ -258,7 +258,25 @@ final class Frl_Translation_Service {
 			return $block_content;
 		}
 
-		// Build mappings to check if any actual translations exist.
+		// Fast-path: read the block cache BEFORE building mappings. On a hit the
+		// expensive build_translation_mappings() (adapter + DB lookups) is skipped.
+		$pattern_hash = md5( serialize( $patterns ) );
+		$cache_key    = $this->generate_block_cache_key( $block, $pattern_hash );
+		$cached_data  = frl_cache_get( 'blocks', $cache_key );
+
+		if ( is_array( $cached_data ) ) {
+			// Preserve the original per-render string registration (idempotent, deduped
+			// inside queue_string_registration()) while skipping the expensive
+			// build_translation_mappings() adapter/DB work on a cache hit.
+			if ( ! empty( $cached_data['strings'] ) ) {
+				$this->queue_string_registration( $cached_data['strings'] );
+			}
+			$translated_html = $this->apply_translation_mappings( $block_content, $cached_data['mappings'] ?? array() );
+			$translated_html = apply_filters( 'frl_block_translation_filter', $translated_html );
+			return $translated_html ?: $block_content;
+		}
+
+		// Cache miss: build mappings (the expensive work).
 		$mappings_data = $this->build_translation_mappings( $patterns );
 
 		// If no actual translations were found, apply identity mappings and skip caching.
@@ -270,21 +288,10 @@ final class Frl_Translation_Service {
 		}
 
 		// Actual translations exist — cache the mappings for performance.
-		$pattern_hash = md5( serialize( $patterns ) );
-		$cache_key    = $this->generate_block_cache_key( $block, $pattern_hash );
+		frl_cache_set( 'blocks', $cache_key, $mappings_data, DAY_IN_SECONDS );
 
-		$cached_data = frl_cache_remember(
-			'blocks',
-			$cache_key,
-			function () use ( $mappings_data ) {
-				// This logic now only runs ONCE per block version (a cache miss).
-				return $mappings_data;
-			},
-			DAY_IN_SECONDS
-		);
-
-		// Apply cached mappings to the current request's HTML.
-		$translated_html = $this->apply_translation_mappings( $block_content, $cached_data['mappings'] ?? array() );
+		// Apply the freshly built mappings to the current request's HTML.
+		$translated_html = $this->apply_translation_mappings( $block_content, $mappings_data['mappings'] );
 
 		// Apply any additional filters.
 		$translated_html = apply_filters( 'frl_block_translation_filter', $translated_html );

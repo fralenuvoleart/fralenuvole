@@ -1,5 +1,15 @@
 # Active Context
 
+## Latest: Cold-cache optimizations — rewriter + translator (2026-10-27)
+
+Three always-cold-cache optimizations, all behavior-preserving. Verified `php -l` on all touched files (phpcs/phpstan not installed globally in this environment).
+
+- **Rewriter enabled-features memo:** [`Frl_Rewriter_Coordinator::get_enabled_features()`](../core/rewriter/class-rewriter-coordinator.php:274) now memoizes the `array_filter`+`is_enabled()` result in a new `$enabled_features_cache` property. Enabled state is only stable after `init`/20 (all four config-loading features register `load_configuration`/`ensure_config_loaded` at `init`/20; before that the archive/single features report `is_enabled() === false` because `$mappings` is empty). The memo is therefore reset in `force_refresh()`, `invalidate_config_hash()`, `add_feature()`, and by an `init`/20 hook registered after the feature-register loop (so it runs after the config loaders). Removes the per-miss filter from `Frl_Rewriter::transform_url()`.
+- **Rewriter lang mappings batched:** [`Frl_Rewriter_Path_Utils::parse_lang_mapping_option()`](../core/rewriter/class-rewriter-path-utils.php:521) now reads from a single `langmap_all` cache entry via new `get_all_lang_mappings()` (extracted `parse_lang_mapping_value()` helper). N multilingual CPTs = 1 cold miss instead of N. Same `frl_cache_clear('rewriter')` invalidation. Old `langmap_{option}` keys become orphans (WEEK TTL).
+- **Translator block cache reordered:** [`Frl_Translation_Service::get_translation_block()`](../core/translator/class-translation-service.php:241) now reads the `blocks` cache BEFORE `build_translation_mappings()`, so a hit skips the expensive adapter/DB build entirely. Miss path unchanged (identity mappings still not cached, to avoid transient bloat). Uses `frl_cache_get`/`frl_cache_set`.
+
+**Not implemented (evaluated, rejected):** splitting the option type map into its own cache entry — it is a cheap loop over `frl_get_all_plugin_options_settings(null)`, already cached in the `adminui` group (`all_options_fields`), so a separate entry adds a key for no benefit. Critical-CSS pre-minification and batching `frl_get_post_id_by_slug()` were skipped per user decision (inline/load-order constraints; hierarchical `pagename` cannot be batched).
+
 ## Resolved: Clear-All 21s → <0.5s server-side (2026-10-26)
 
 Final instrumented measurement on staging: combined flush 0.013s, `purge_all` 0.013s, action request 0.024s, action page total 0.199s; reload: dashboard render 0.007s, settings render 0.015s, full request 0.464s. The earlier "21s click-to-reload" was dominated by deploy-cold PHP/OPcache warmup + the pre-patch per-group scans; with the batch flush + cascade batching deployed, the entire cycle is sub-second. Tag validator was eliminated as a suspect (cURL only on explicit submit, `class-tag-validator.php:1350`).

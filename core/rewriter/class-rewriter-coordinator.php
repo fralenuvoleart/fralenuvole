@@ -46,6 +46,9 @@ class Frl_Rewriter_Coordinator {
 	/** Computed lazily on first access, after init/20 config loaders have run. */
 	private ?string $config_hash = null;
 
+	/** Memoized enabled-features list; enabled state is request-invariant after init/20. */
+	private ?array $enabled_features_cache = null;
+
 	/**
 	 * Private constructor - use init() to get instance
 	 *
@@ -101,6 +104,8 @@ class Frl_Rewriter_Coordinator {
 	 */
 	public function add_feature( Frl_Rewriter_Feature_Base $feature ): void {
 		$this->features[] = $feature;
+		// A newly added feature invalidates any memoized enabled-features list.
+		$this->enabled_features_cache = null;
 	}
 
 	/**
@@ -179,6 +184,18 @@ class Frl_Rewriter_Coordinator {
 				foreach ( $this->features as $feature ) {
 					$feature->register();
 				}
+				// Features load their config at init/20 (register_additional_hooks()).
+				// Clear any enabled-features memo computed before that point so the
+				// next get_enabled_features() call reflects the loaded configuration.
+				// Registered here (after the loop) so it runs AFTER the init/20 loaders.
+				add_action(
+					'init',
+					function () {
+						$this->enabled_features_cache = null;
+					},
+					20,
+					0
+				);
 			},
 			15,
 			0
@@ -269,12 +286,15 @@ class Frl_Rewriter_Coordinator {
 	 * @return array Array of enabled feature instances
 	 */
 	public function get_enabled_features(): array {
-		return array_filter(
-			$this->features,
-			function ( $feature ) {
-				return $feature->is_enabled();
-			}
-		);
+		if ( $this->enabled_features_cache === null ) {
+			$this->enabled_features_cache = array_filter(
+				$this->features,
+				function ( $feature ) {
+					return $feature->is_enabled();
+				}
+			);
+		}
+		return $this->enabled_features_cache;
 	}
 
 	/**
@@ -291,7 +311,8 @@ class Frl_Rewriter_Coordinator {
 	 * @return void
 	 */
 	public function force_refresh(): void {
-		$this->config_hash = null;
+		$this->config_hash            = null;
+		$this->enabled_features_cache = null;
 		frl_flush_rewrite_rules();
 	}
 
@@ -303,7 +324,8 @@ class Frl_Rewriter_Coordinator {
 	 * @return void
 	 */
 	public function invalidate_config_hash(): void {
-		$this->config_hash = null;
+		$this->config_hash            = null;
+		$this->enabled_features_cache = null;
 	}
 
 	/**
