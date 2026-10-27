@@ -123,7 +123,9 @@ function frl_cta_webhook_handler() {
 			wp_send_json_error( 'Webhook scheduling failed', 502 );
 		}
 	} else {
-		$result = frl_send_webhook( $webhook_url, $post_data, $dedup_key, $dedup_interval );
+		// sendBeacon ignores the response, so a slow webhook must not hold the
+		// PHP worker for the full 15s default — cap it at 5s.
+		$result = frl_send_webhook( $webhook_url, $post_data, $dedup_key, $dedup_interval, 5 );
 		if ( ! $result['success'] ) {
 			wp_send_json_error( 'Webhook dispatch failed', 502 );
 		}

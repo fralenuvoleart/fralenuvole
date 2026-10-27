@@ -140,9 +140,10 @@ function frl_webhook_dispatch_handler( array $args ): void {
  * @param array       $data           Payload to send.
  * @param string|null $dedup_key      Optional unique key for dedup.
  * @param int         $dedup_interval Lock duration in seconds (default 60).
+ * @param int         $timeout        Total request timeout in seconds (default 15).
  * @return array{success: bool, http_code: int, error: ?string}
  */
-function frl_send_webhook( string $url, array $data, ?string $dedup_key = null, int $dedup_interval = 60 ): array {
+function frl_send_webhook( string $url, array $data, ?string $dedup_key = null, int $dedup_interval = 60, int $timeout = 15 ): array {
 	if ( $dedup_key !== null && frl_is_duplicate_operation( $dedup_key, $dedup_interval ) ) {
 		// Expected condition (duplicate fire inside lock window) — intentionally silent, no log/email.
 		return array(
@@ -190,7 +191,7 @@ function frl_send_webhook( string $url, array $data, ?string $dedup_key = null, 
 		curl_setopt( $ch, CURLOPT_HTTPHEADER, array( 'Accept: application/json', 'Content-Type: application/json' ) );
 		curl_setopt( $ch, CURLOPT_POST, true );
 		curl_setopt( $ch, CURLOPT_POSTFIELDS, $json_payload );
-		curl_setopt( $ch, CURLOPT_TIMEOUT, 15 );
+		curl_setopt( $ch, CURLOPT_TIMEOUT, $timeout );
 		curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 5 );
 		curl_setopt( $ch, CURLOPT_NOSIGNAL, true );
 		curl_setopt( $ch, CURLOPT_ENCODING, '' );

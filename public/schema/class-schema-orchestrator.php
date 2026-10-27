@@ -394,17 +394,27 @@ class Frl_Schema_Orchestrator {
 			return $keys;
 		}
 
-		$keys  = array();
-		$dir   = frl_schema_get_data_file( 'Organization.php', 'definitions' );
-		$dir   = dirname( $dir );
-		$files = glob( $dir . '/*.php' ) ?: array();
+		// The scan depends only on plugin code, so cache it keyed by FRL_VERSION
+		// (a version bump invalidates) instead of globbing + including every
+		// definition file on every request.
+		$keys = frl_cache_remember(
+			'html',
+			'schema_toggle_keys_' . FRL_VERSION,
+			function () {
+				$keys  = array();
+				$dir   = dirname( frl_schema_get_data_file( 'Organization.php', 'definitions' ) );
+				$files = glob( $dir . '/*.php' ) ?: array();
 
-		foreach ( $files as $file ) {
-			$def = include $file;
-			if ( is_array( $def ) && ! empty( $def['_if'] ) ) {
-				$keys[] = $def['_if'];
+				foreach ( $files as $file ) {
+					$def = include $file;
+					if ( is_array( $def ) && ! empty( $def['_if'] ) ) {
+						$keys[] = $def['_if'];
+					}
+				}
+
+				return $keys;
 			}
-		}
+		);
 
 		return $keys;
 	}
@@ -490,9 +500,11 @@ class Frl_Schema_Orchestrator {
 
 		$type = $schema['@type'] ?? '';
 
-		// Translate keys matching FRL_SCHEMA_TRANSLATE_KEYS
+		// Translate keys matching FRL_SCHEMA_TRANSLATE_KEYS. Pass the post-aware
+		// placeholder map the builder already built so the resolver does not
+		// rebuild the separate '_global' map (saves its get_page_by_path query).
 		if ( function_exists( 'frl_schema_resolver_resolve' ) ) {
-			$schema = frl_schema_resolver_resolve( $schema );
+			$schema = frl_schema_resolver_resolve( $schema, '', frl_schema_get_placeholders( $post_id ?? 0 ) );
 		}
 
 		// Merge term properties (dynamic — resolved from WP taxonomy data)

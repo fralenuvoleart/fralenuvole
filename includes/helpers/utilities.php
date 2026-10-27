@@ -63,14 +63,14 @@ function frl_get_assets_versions( $assets, $key = 'general', $group = 'versions'
 				$is_absolute = str_starts_with( $path, '/' );
 				$full_path   = $is_absolute ? $path : FRL_DIR_PATH . $path;
 
-				if ( file_exists( $full_path ) ) {
-					if ( filesize( $full_path ) > 0 ) {
-						$versions_array[ $handle ] = filemtime( $full_path );
+				// One stat() call returns size + mtime (vs. file_exists + filesize + filemtime).
+				$stat = @stat( $full_path );
+				if ( false !== $stat ) {
+					if ( $stat['size'] > 0 ) {
+						$versions_array[ $handle ] = $stat['mtime'];
 					}
-				} else {
-					if ( $log_errors ) {
-						frl_log( "Asset file does not exist: {$path} (for assets key: {$key})" );
-					}
+				} elseif ( $log_errors ) {
+					frl_log( "Asset file does not exist: {$path} (for assets key: {$key})" );
 				}
 			}
 			return $versions_array;
