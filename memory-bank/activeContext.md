@@ -1,5 +1,13 @@
 # Active Context
 
+## Latest: Autoload keep-list const + migration fix (2026-10-27)
+
+Fixed a bug where activating the plugin reset `disable_environment`, `disable_rewriter`, and `disable_translator` to `autoload = 'no'`, silently undoing the bootstrap-gate autoload change.
+
+- New [`FRL_AUTOLOAD_OPTIONS`](../config/config-cache.php:73) const in `config-cache.php` — the single source of truth for the autoloaded option keys (unprefixed): the five bootstrap-gate flags.
+- [`frl_migrate_option_autoload()`](../includes/plugin-lifecycle.php:86) now builds its keep-list from that const instead of a hardcoded two-entry array, and is now **bidirectional**: query 1 forces every other `frl_*` option to `autoload = 'no'`; query 2 forces the keep-list back to `autoload = 'yes'`. Previously it only ever wrote `'no'`, so a keep-list option already at `'no'` (e.g. after a prior activation) was never restored. Verified `php -l`.
+- Deploy: re-activate once so the direct `$wpdb` column update re-applies autoload to existing rows.
+
 ## Latest: Bootstrap gate flags read via direct get_option() (2026-10-27)
 
 The subsystem-disable gate flags are now read with direct `get_option()` (autoloaded) instead of `frl_get_option()` in the bootstrap path, so the first gate check no longer triggers the full options load (`frl_get_plugin_options_db()` → type-map build + `LIKE 'frl_%'` scan). Values are identical: `frl_normalize_boolval()` stores `'1'`/`'0'`, and `get_option()` returns the same, so the existing `=== '1'` / truthiness checks are unchanged. Uses `frl_prefix( 'disable_*' )` (→ `frl_disable_*`), matching the existing [`should_bypass()`](../core/cache/class-cache-manager.php:151) precedent.

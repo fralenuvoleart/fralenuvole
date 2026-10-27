@@ -66,6 +66,15 @@ const FRL_CACHE_LANGUAGE_GROUPS = array(
 	'blocks',       // Translated blocks
 );
 
+// Plugin options that must stay autoloaded: read via native get_option() on.
+const FRL_AUTOLOAD_OPTIONS = array(
+	'disable_plugin',
+	'disable_cache',
+	'disable_environment',
+	'disable_rewriter',
+	'disable_translator',
+);
+
 // Define Heavy Groups to exclude from light purge
 const FRL_CACHE_HEAVY_GROUPS = array(
 	'staticdata',

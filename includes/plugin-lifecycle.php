@@ -78,6 +78,9 @@ function frl_seed_option_defaults(): void {
 	* autoload='yes' in the DB. update_option() short-circuits on an unchanged value
 	* (so it would not touch the autoload column), hence the direct column update.
 	*
+	* The keep-list is FRL_AUTOLOAD_OPTIONS (config-cache.php) — the options read via
+	* native get_option() on the bootstrap hot path. Keep it in sync with that const.
+	*
 	* @return void
 	*/
 function frl_migrate_option_autoload(): void {
@@ -85,15 +88,28 @@ function frl_migrate_option_autoload(): void {
 
 	$like = $wpdb->esc_like( frl_prefix() ) . '%';
 
-	// Keep the two hot get_option() reads autoloaded; everything else opts out.
-	$keep = array( frl_prefix( 'disable_plugin' ), frl_prefix( 'disable_cache' ) );
-	$in   = implode( ',', array_fill( 0, count( $keep ), '%s' ) );
+	// Keep the bootstrap-gate reads autoloaded (FRL_AUTOLOAD_OPTIONS); everything else opts out.
+	$keep = array();
+	foreach ( FRL_AUTOLOAD_OPTIONS as $option_key ) {
+		$keep[] = frl_prefix( $option_key );
+	}
+	$in = implode( ',', array_fill( 0, count( $keep ), '%s' ) );
 
+	// 1. Every other plugin option opts out of autoload.
 	$wpdb->query(
 		$wpdb->prepare(
 			"UPDATE {$wpdb->options} SET autoload = 'no'
 			 WHERE option_name LIKE %s AND option_name NOT IN ($in)",
 			array_merge( array( $like ), $keep )
+		)
+	);
+
+	// 2. The keep-list is forced back to autoload = 'yes'.
+	$wpdb->query(
+		$wpdb->prepare(
+			"UPDATE {$wpdb->options} SET autoload = 'yes'
+			 WHERE option_name IN ($in)",
+			$keep
 		)
 	);
 
