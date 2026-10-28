@@ -672,17 +672,17 @@
     flex-basis: 48%;
 }
 
-#cache-groups-table.multicolumn-table .widget-table-cell-name {
-    flex-direction: column;
-    flex-basis: 30%;
-}
-
 #cache-groups-table.multicolumn-table .widget-table-cell-name .group-dependencies {
     font-weight: normal;
 }
 
-#cache-groups-table.multicolumn-table .widget-table-cell-value-1 {
-    flex-basis: 15%;
+#cache-groups-table.multicolumn-table .widget-table-cell-name {
+    flex-direction: column;
+    flex-basis: 28%;
+}
+
+cache-groups-table.multicolumn-table .widget-table-cell-value-1 {
+    flex-basis: 12%;
 }
 
 #cache-groups-table.multicolumn-table .widget-table-cell-value-2,
