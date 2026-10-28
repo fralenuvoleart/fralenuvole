@@ -746,7 +746,7 @@ class Frl_Cache_Manager {
 	 * purge_group() per group.
 	 *
 	 * @param string[] $groups Cache groups to purge (without dependencies).
-	 * @return array{runtime: int, persistent: int, wordpress: int, groups: array} Aggregated stats.
+	 * @return array{runtime: int, persistent: int, WordPress: int, groups: array} Aggregated stats.
 	 */
 	public static function purge_groups( array $groups ): array {
 		$stats = array(
@@ -1236,69 +1236,68 @@ class Frl_Cache_Manager {
 		++self::$cascade_depth;
 
 		try {
-		if ( self::$cascade_depth === 1
+			if ( self::$cascade_depth === 1
 			&& $key === null
 			&& $include_dependencies
 			&& ! empty( self::$cache_dependencies[ $group ] )
-		) {
-			$batch_flushed = self::flush_groups_redis( self::get_dependency_closure( $group ) );
-			if ( $batch_flushed !== null ) {
-				$stats['persistent'] += $batch_flushed;
-				$batched_here       = true;
-			}
-		}
-
-		// 1. Clear persistent storage (transients or object cache)
-		if ( $key !== null ) {
-			// Clear specific key
-			$cache_key = self::generate_key( $group, $key );
-			// Clear from all storage mechanisms
-			if ( self::is_object_cache_truly_functional() ) {
-				wp_cache_delete( $cache_key, self::PREFIX . $group );
-				++$stats['persistent'];
-			} elseif ( self::use_transient_fallback( $group ) ) {
-				delete_transient( self::PREFIX . $cache_key );
-				++$stats['persistent'];
+			) {
+				$batch_flushed = self::flush_groups_redis( self::get_dependency_closure( $group ) );
+				if ( $batch_flushed !== null ) {
+					$stats['persistent'] += $batch_flushed;
+					$batched_here         = true;
+				}
 			}
 
-			// Clear from runtime cache
-			if ( isset( self::$runtime_cache[ $cache_key ] ) ) {
-				self::remove_runtime_item( $cache_key, $group );
-				++$stats['runtime'];
+			// 1. Clear persistent storage (transients or object cache)
+			if ( $key !== null ) {
+				// Clear specific key
+				$cache_key = self::generate_key( $group, $key );
+				// Clear from all storage mechanisms
+				if ( self::is_object_cache_truly_functional() ) {
+					wp_cache_delete( $cache_key, self::PREFIX . $group );
+					++$stats['persistent'];
+				} elseif ( self::use_transient_fallback( $group ) ) {
+					delete_transient( self::PREFIX . $cache_key );
+					++$stats['persistent'];
+				}
+
+				// Clear from runtime cache
+				if ( isset( self::$runtime_cache[ $cache_key ] ) ) {
+					self::remove_runtime_item( $cache_key, $group );
+					++$stats['runtime'];
+				}
+			} else {
+				// Clear entire group
+				$stats['persistent'] = self::purge_group_storage( $group );
+				$stats['runtime']   += self::purge_group_runtime( $group );
+
+				// Also clear the group's "fully loaded" status
+				if ( isset( self::$loaded_groups[ $group ] ) ) {
+					unset( self::$loaded_groups[ $group ] );
+					++$stats['runtime'];
+				}
 			}
-		} else {
-			// Clear entire group
-			$stats['persistent'] = self::purge_group_storage( $group );
-			$stats['runtime']   += self::purge_group_runtime( $group );
 
-			// Also clear the group's "fully loaded" status
-			if ( isset( self::$loaded_groups[ $group ] ) ) {
-				unset( self::$loaded_groups[ $group ] );
-				++$stats['runtime'];
+			// 2. Handle WordPress built-in caches (for common cases)
+			if ( $group === 'options' ) {
+				self::reset_options_caches( $stats );
 			}
-		}
 
-		// 2. Handle WordPress built-in caches (for common cases)
-		if ( $group === 'options' ) {
-			self::reset_options_caches( $stats );
-		}
-
-		// 3. Handle dependencies only for full-group clears
-		if ( $key === null && $include_dependencies && isset( self::$cache_dependencies[ $group ] ) ) {
-			foreach ( self::$cache_dependencies[ $group ] as $dependent_group ) {
-				$stats['dependencies'][ $dependent_group ] = self::clear_group_with_dependencies(
-					$dependent_group,
-					null,
-					true
-				);
+			// 3. Handle dependencies only for full-group clears
+			if ( $key === null && $include_dependencies && isset( self::$cache_dependencies[ $group ] ) ) {
+				foreach ( self::$cache_dependencies[ $group ] as $dependent_group ) {
+					$stats['dependencies'][ $dependent_group ] = self::clear_group_with_dependencies(
+						$dependent_group,
+						null,
+						true
+					);
+				}
 			}
-		}
 
-		// 4. Handle browser cache for specific groups
-		if ( $key === null && isset( self::$browser_groups_map[ $group ] ) ) {
-			self::clear_browser_cache();
-		}
-
+			// 4. Handle browser cache for specific groups
+			if ( $key === null && isset( self::$browser_groups_map[ $group ] ) ) {
+				self::clear_browser_cache();
+			}
 		} finally {
 			--self::$cascade_depth;
 			if ( $batched_here && self::$cascade_depth === 0 ) {
@@ -1403,6 +1402,134 @@ class Frl_Cache_Manager {
 	}
 
 	/**
+	 * Resolve the active Redis backend for keyspace operations.
+	 *
+	 * Abstracts the two supported Redis drop-ins so flush/count/measure share
+	 * one detection path:
+	 *   - "dropin": the Till Krüss "Redis Object Cache" drop-in
+	 *     (redis_instance()/build_key()/redis_status()).
+	 *   - "ocp": Object Cache Pro (RedisCachePro\ObjectCaches\ObjectCacheInterface),
+	 *     which exposes client()/config() instead.
+	 *
+	 * @return array{client: object, flavor: string, version: string, prefix: string, cluster: bool}|null
+	 */
+	private static function get_redis_backend(): ?array {
+		global $wp_object_cache;
+
+		if ( ! is_object( $wp_object_cache ) ) {
+			return null;
+		}
+
+		// Flavor A — Till Krüss "Redis Object Cache" drop-in.
+		if ( method_exists( $wp_object_cache, 'redis_instance' )
+			&& method_exists( $wp_object_cache, 'build_key' )
+			&& method_exists( $wp_object_cache, 'redis_status' )
+			&& $wp_object_cache->redis_status()
+		) {
+			$client = $wp_object_cache->redis_instance();
+			if ( ! is_object( $client ) || ! method_exists( $client, 'eval' ) ) {
+				return null;
+			}
+
+			return array(
+				'client'  => $client,
+				'flavor'  => 'dropin',
+				'version' => method_exists( $wp_object_cache, 'redis_version' )
+					? (string) $wp_object_cache->redis_version()
+					: '',
+				'prefix'  => '',
+				'cluster' => false,
+			);
+		}
+
+		// Flavor B — Object Cache Pro. Detected by API shape (client()/config())
+		// plus a Redis class name, so there is no hard dependency on OCP namespaces.
+		if ( method_exists( $wp_object_cache, 'client' )
+			&& method_exists( $wp_object_cache, 'config' )
+			&& str_contains( strtolower( (string) get_class( $wp_object_cache ) ), 'redis' )
+		) {
+			$client = $wp_object_cache->client();
+			if ( ! is_object( $client ) ) {
+				return null;
+			}
+
+			$config = $wp_object_cache->config();
+			if ( ! is_object( $config ) ) {
+				return null;
+			}
+
+			return array(
+				'client'  => $client,
+				'flavor'  => 'ocp',
+				'version' => '',
+				'prefix'  => (string) ( $config->prefix ?? '' ),
+				'cluster' => (bool) ( $config->cluster ?? false ),
+			);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Build the anchored Lua pattern matching every Redis key of a cache group.
+	 *
+	 * Mirrors the drop-in's build_key() for the free drop-in, and reproduces
+	 * ObjectCache::id()'s key layout for OCP (prefix, optional blog segment,
+	 * optional cluster hash-tag braces, colon→dash, lowercasing) without calling
+	 * its protected id() method.
+	 *
+	 * @param array  $backend Backend descriptor from get_redis_backend().
+	 * @param string $group   Plugin cache group (without the FRL prefix).
+	 * @return string Anchored Lua pattern with magic characters escaped.
+	 */
+	private static function redis_group_pattern( array $backend, string $group ): string {
+		global $wp_object_cache;
+
+		if ( 'ocp' === $backend['flavor'] ) {
+			$group_seg = str_replace( ':', '-', self::PREFIX . $group );
+			if ( ! empty( $backend['cluster'] ) ) {
+				$group_seg = '{' . $group_seg . '}';
+			}
+			$blog    = is_multisite() ? get_current_blog_id() . ':' : '';
+			$literal = str_replace( ' ', '-', $backend['prefix'] . ':' . $blog . $group_seg . ':' );
+			$literal = strtolower( ltrim( $literal, ':' ) );
+		} else {
+			// Drop-in: build_key() supplies its own salt/blog prefix.
+			$literal = substr( $wp_object_cache->build_key( '*', self::PREFIX . $group ), 0, -1 );
+		}
+
+		return '^' . preg_replace( '/([%(%)%.%%%+%-%?%[%]%^%$])/', '%%%1', $literal ) . '.*';
+	}
+
+	/**
+	 * Resolve the Redis server version for the active backend.
+	 *
+	 * The free drop-in exposes redis_version(); OCP does not, so its version is
+	 * read lazily from INFO. Returns '' when unknown (callers fall back to STRLEN).
+	 *
+	 * @param array $backend Backend descriptor from get_redis_backend().
+	 * @return string Version string, or '' when unknown.
+	 */
+	private static function redis_backend_version( array $backend ): string {
+		if ( '' !== $backend['version'] ) {
+			return $backend['version'];
+		}
+
+		if ( 'ocp' === $backend['flavor'] ) {
+			try {
+				$info = $backend['client']->info( 'server' );
+				if ( is_array( $info ) && isset( $info['redis_version'] ) ) {
+					return (string) $info['redis_version'];
+				}
+			} catch ( \Throwable $e ) {
+				// Ignore — callers fall back to STRLEN-based sizing.
+			}
+		}
+
+		return '';
+	}
+
+	/**
 	 * Flush multiple cache groups from Redis in a single keyspace scan.
 	 *
 	 * The Till Krüss-style drop-in (Kinsta) flushes each group via a Lua SCAN
@@ -1410,6 +1537,9 @@ class Frl_Cache_Manager {
 	 * scans. This method passes one Lua pattern per group and scans ONCE,
 	 * testing each visited key against all patterns. UNLINK (Redis ≥ 4) deletes
 	 * asynchronously, avoiding DEL's per-key blocking.
+	 *
+	 * Uses the free "Redis Object Cache" drop-in's keyspace; Object Cache Pro
+	 * defers to its own per-group flush (see get_redis_backend()).
 	 *
 	 * On success, each flushed group is recorded in self::$storage_batch_flushed
 	 * so purge_group_storage() skips its per-group flush for exactly those
@@ -1438,31 +1568,31 @@ class Frl_Cache_Manager {
 			return null;
 		}
 
-		if ( ! is_object( $wp_object_cache )
-			|| ! method_exists( $wp_object_cache, 'redis_instance' )
-			|| ! method_exists( $wp_object_cache, 'build_key' )
-			|| ! method_exists( $wp_object_cache, 'redis_status' )
-			|| ! $wp_object_cache->redis_status()
-		) {
-			frl_log( 'FRL Cache: combined Redis flush skipped — drop-in lacks redis_instance/build_key/redis_status or Redis is disconnected', array(), false );
+		$backend = self::get_redis_backend();
+		if ( $backend === null ) {
+			frl_log( 'FRL Cache: combined Redis flush skipped — no supported Redis backend API (drop-in redis_instance/build_key/redis_status or Object Cache Pro client/config)', array(), false );
 			return null;
 		}
 
-		$redis = $wp_object_cache->redis_instance();
-		if ( ! is_object( $redis ) || ! method_exists( $redis, 'eval' ) ) {
-			frl_log( 'FRL Cache: combined Redis flush skipped — Redis client has no eval()', array(), false );
+		// Object Cache Pro: defer to its own per-group flush (already one scan per
+		// group) instead of our reconstructed pattern. The pattern is derived from
+		// OCP internals and cannot be verified here, so a wrong match could mark
+		// groups flushed without actually deleting them. Count/size (read-only)
+		// still use the pattern.
+		if ( 'ocp' === $backend['flavor'] ) {
 			return null;
 		}
 
-		// One anchored Lua pattern per group. build_key() supplies the drop-in's
-		// salt/blog prefix so we never reconstruct them.
+		$redis = $backend['client'];
+
+		// One anchored Lua pattern per group. The drop-in supplies its key layout
+		// via build_key() so we never reconstruct salt/blog prefixes ourselves.
 		$patterns = array();
 		foreach ( $groups as $group ) {
-			$literal    = substr( $wp_object_cache->build_key( '*', self::PREFIX . $group ), 0, -1 );
-			$patterns[] = '^' . preg_replace( '/([%(%)%.%%%+%-%?%[%]%^%$])/', '%%%1', $literal ) . '.*';
+			$patterns[] = self::redis_group_pattern( $backend, $group );
 		}
 
-		$version    = (string) $wp_object_cache->redis_version();
+		$version    = $backend['version'];
 		$delete_cmd = ( $version !== '' && version_compare( $version, '4.0.0', '>=' ) ) ? 'unlink' : 'del';
 
 		$script = <<<LUA
@@ -1538,28 +1668,19 @@ LUA;
 			return null;
 		}
 
-		if ( ! is_object( $wp_object_cache )
-			|| ! method_exists( $wp_object_cache, 'redis_instance' )
-			|| ! method_exists( $wp_object_cache, 'build_key' )
-			|| ! method_exists( $wp_object_cache, 'redis_status' )
-			|| ! $wp_object_cache->redis_status()
-		) {
+		$backend = self::get_redis_backend();
+		if ( $backend === null ) {
 			return null;
 		}
 
-		$redis = $wp_object_cache->redis_instance();
-		if ( ! is_object( $redis ) || ! method_exists( $redis, 'eval' ) ) {
-			return null;
-		}
+		$redis = $backend['client'];
 
 		$groups = array_values( $groups );
 
-		// One anchored Lua pattern per group. build_key() supplies the drop-in's
-		// salt/blog prefix so we never reconstruct them.
+		// One anchored Lua pattern per group. Each backend supplies its key layout.
 		$patterns = array();
 		foreach ( $groups as $group ) {
-			$literal    = substr( $wp_object_cache->build_key( '*', self::PREFIX . $group ), 0, -1 );
-			$patterns[] = '^' . preg_replace( '/([%(%)%.%%%+%-%?%[%]%^%$])/', '%%%1', $literal ) . '.*';
+			$patterns[] = self::redis_group_pattern( $backend, $group );
 		}
 
 		// Single SCAN; tally matches per pattern index. Each key matches at most
@@ -1642,32 +1763,23 @@ LUA;
 			return null;
 		}
 
-		if ( ! is_object( $wp_object_cache )
-			|| ! method_exists( $wp_object_cache, 'redis_instance' )
-			|| ! method_exists( $wp_object_cache, 'build_key' )
-			|| ! method_exists( $wp_object_cache, 'redis_status' )
-			|| ! $wp_object_cache->redis_status()
-		) {
+		$backend = self::get_redis_backend();
+		if ( $backend === null ) {
 			return null;
 		}
 
-		$redis = $wp_object_cache->redis_instance();
-		if ( ! is_object( $redis ) || ! method_exists( $redis, 'eval' ) ) {
-			return null;
-		}
+		$redis = $backend['client'];
 
 		$groups = array_values( $groups );
 
-		// One anchored Lua pattern per group. build_key() supplies the drop-in's
-		// salt/blog prefix so we never reconstruct them.
+		// One anchored Lua pattern per group. Each backend supplies its key layout.
 		$patterns = array();
 		foreach ( $groups as $group ) {
-			$literal    = substr( $wp_object_cache->build_key( '*', self::PREFIX . $group ), 0, -1 );
-			$patterns[] = '^' . preg_replace( '/([%(%)%.%%%+%-%?%[%]%^%$])/', '%%%1', $literal ) . '.*';
+			$patterns[] = self::redis_group_pattern( $backend, $group );
 		}
 
 		// MEMORY USAGE (Redis >= 4) reflects the real footprint; STRLEN is the fallback.
-		$version   = (string) $wp_object_cache->redis_version();
+		$version   = self::redis_backend_version( $backend );
 		$size_expr = ( $version !== '' && version_compare( $version, '4.0.0', '>=' ) )
 			? "redis.call('MEMORY', 'USAGE', v)"
 			: "redis.call('STRLEN', v)";

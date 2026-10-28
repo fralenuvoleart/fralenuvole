@@ -1,5 +1,25 @@
 # Active Context
 
+## Latest: Human-friendly cache-provider labels + "Backend Class" → "PHP Class" (2026-10-28)
+
+The Cache System Details table's **Cache Provider** label leaked PHP class names (`Redis (WP_Object_Cache)`) and used inconsistent casing. Labels are now technology-first / product-second, and the raw class name lives only in the renamed **PHP Class** row.
+
+- [`trait-cache-diagnostics.php`](../core/cache/trait-cache-diagnostics.php:130) labels: OCP (`RedisCachePro\…` class) → `Redis — Object Cache Pro`; free drop-in (`WP_Object_Cache` class + `redis-cache/redis-cache.php` plugin active) → `Redis — Redis Object Cache`; host wrapper (Kinsta/Cloudways/GridPane) → `Redis — host drop-in`; `Litespeed Cache` → `LiteSpeed Cache`; transients → `WordPress Transients — no object cache`; inactive drop-in → `WordPress Object Cache — inactive drop-in`.
+- Provider-details transient bumped `_v2` → `_v3` ([`trait-cache-diagnostics.php:34`](../core/cache/trait-cache-diagnostics.php:34)) so the reworded labels refresh immediately (the value is cached for a week).
+- [`class-display-cache.php`](../admin/components/class-display-cache.php:282) renames the `Backend Class` row to `PHP Class` (the `<code>` rendering condition is updated at [`:296`](../admin/components/class-display-cache.php:296)) and rewords the Details sentences to plain English ([`:129`](../admin/components/class-display-cache.php:129), [`:142`](../admin/components/class-display-cache.php:142), [`:146`](../admin/components/class-display-cache.php:146)).
+- No logic depends on label text — conditionals key off `slug` only (verified by grep).
+
+## Latest: Redis backend abstraction — Object Cache Pro support for group flush/count/size (2026-10-28)
+
+Object Cache Pro ships a different drop-in than the free Till Krüss "Redis Object Cache" drop-in this cache layer was written against: OCP's `$wp_object_cache` is a `RedisCachePro\ObjectCaches\ObjectCacheInterface` exposing `client()`/`config()` instead of `redis_instance()`/`build_key()`/`redis_status()`. The old `method_exists()` guard therefore failed on OCP, so the combined single-scan Redis flush was skipped (logged as "combined Redis flush skipped — drop-in lacks …") and the per-group count/size fell back to the per-request runtime count + blank size.
+
+- New [`get_redis_backend()`](../core/cache/class-cache-manager.php:1417) — resolves a `{client, flavor, version, prefix, cluster}` descriptor for either drop-in. OCP is detected by API shape (`client()`+`config()` + a `redis` class name), never by referencing OCP namespaces.
+- New [`redis_group_pattern()`](../core/cache/class-cache-manager.php:1490) — builds the anchored Lua pattern per group: `build_key()` for the free drop-in; for OCP a faithful reproduction of `ObjectCache::id()` (`{prefix}:{blogId}:{group}:{key}`, colon→dash, cluster `{}` hash-tags, `trim(':')`, lowercased).
+- New [`redis_backend_version()`](../core/cache/class-cache-manager.php:1518) — `redis_version()` for the free drop-in; lazy `INFO server` for OCP (empty → `STRLEN` fallback).
+- [`count_groups_redis()`](../core/cache/class-cache-manager.php:1665) and [`measure_groups_redis()`](../core/cache/class-cache-manager.php:1760) consume the descriptor, so the dashboard shows the true OCP per-group count/size.
+- [`flush_groups_redis()`](../core/cache/class-cache-manager.php:1557) consumes the descriptor too but **defers for OCP** (`return null` when flavor is `ocp`): the combined single-scan flush stays drop-in-only, and OCP uses its own per-group `flush_group()` (already one scan per group). Rationale: the OCP key pattern is reconstructed from OCP internals and cannot be verified here, and a wrong match on a *destructive* flush would mark groups flushed without actually deleting them.
+- OCP builds full keys itself (no client `OPT_PREFIX`; confirmed in `id()`), and keys are lowercased/colon-trimmed — the pattern mirrors that. Free drop-in behavior is unchanged.
+
 ## Latest: Rewriter options namespaced + precise invalidation; rewriter dropped from options cache deps (2026-10-28)
 
 Rewriter-owned options were renamed into the `rewriter_*` namespace so a single hook can invalidate rewriter caches precisely, instead of relying on the broad `options` cache-group cascade (which cleared the heavy `rewriter`/`permalinks` groups on every settings save).

@@ -126,9 +126,9 @@ class Frl_Cache_Display {
 
 		// === Refine Description based on final state ===
 		if ( $details['is_functional'] ) {
-			$details['description'] = 'Persistent cache active with ' . $details['label'] . ' backend.';
+			$details['description'] = $details['label'] . ' is active and persisting cache between requests.';
 		} elseif ( $details['slug'] === 'transients' ) {
-			$details['description'] = 'Using WordPress Transients for caching. No external object cache drop-in configured.';
+			$details['description'] = 'No object-cache drop-in is configured; the plugin is using WordPress transients.';
 		} elseif ( $details['is_dropin'] ) { // Drop-in present, but not functional
 			if ( $details['slug'] === 'docket_cache_force_disabled' ) {
 				$details['description'] = 'Docket Cache is forcefully disabled by constant. Plugin is using WordPress Transients for fallback persistence.';
@@ -139,11 +139,11 @@ class Frl_Cache_Display {
 				$provider_name          = ucwords( trim( $provider_name ) );
 				$details['description'] = $provider_name . ' drop-in detected but not active/functional. Plugin is using WordPress Transients for fallback persistence.';
 			} elseif ( $details['slug'] === 'wp_object_cache_dropin' ) {
-				$details['description'] = 'Generic WP Object Cache drop-in detected; not a recognized high-performance cache. Plugin is using WordPress Transients for fallback persistence.';
+				$details['description'] = 'A WordPress object-cache drop-in is present but not working; the plugin is using WordPress transients as a fallback.';
 			} elseif ( str_starts_with( $details['slug'], 'unknown_dropin' ) ) {
 				$details['description'] = 'Unknown object cache drop-in (' . $details['label'] . ') detected. Plugin is using WordPress Transients for fallback persistence.';
 			} else { // General case for non-functional drop-in with transient fallback
-				$details['description'] = 'Object cache drop-in (' . $details['label'] . ') detected but not functional. Plugin is using WordPress Transients for fallback persistence.';
+				$details['description'] = 'A ' . $details['label'] . ' drop-in is present but not responding; the plugin is using WordPress transients as a fallback.';
 			}
 		}
 
@@ -279,7 +279,7 @@ class Frl_Cache_Display {
 			'Persistent Cache' => $cache_info['is_persistent'] ?? null,
 			'Is Functional'    => $cache_info['is_functional'] ?? null,
 			'Drop-in Present'  => $cache_info['is_dropin'] ?? null,
-			'Backend Class'    => $cache_info['backend_class'] ?? 'N/A',
+			'PHP Class'        => $cache_info['backend_class'] ?? 'N/A',
 			'Details'          => $cache_info['description'] ?? 'N/A',
 		);
 
@@ -293,7 +293,7 @@ class Frl_Cache_Display {
 				$formatted_value = frl_ui_render_status_dot_boolean( (bool) $value, $text );
 			} elseif ( is_null( $value ) ) {
 				$formatted_value = '<em>N/A</em>';
-			} elseif ( $label === 'Cache Slug' || $label === 'Backend Class' ) {
+			} elseif ( $label === 'Cache Slug' || $label === 'PHP Class' ) {
 				$formatted_value = '<code>' . esc_html( (string) $value ) . '</code>';
 			} else {
 				$formatted_value = esc_html( (string) $value );
