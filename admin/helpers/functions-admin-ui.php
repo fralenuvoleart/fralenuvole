@@ -155,15 +155,6 @@ function frl_render_admin_actions_buttons() {
 
 	// Plugin Admin only (delete_plugins via empty string)
 	$output .= frl_render_action_button(
-		'reset_plugin',
-		'reset_plugin button-primary',
-		'Reset Plugin',
-		'WARNING: Resets all plugin settings to their default values.',
-		'',
-		'superadmin',
-	);
-
-	$output .= frl_render_action_button(
 		'delete_orphan_options',
 		'delete_orphan_options button-secondary',
 		'Delete Orphan Options',
@@ -221,6 +212,15 @@ function frl_render_admin_actions_buttons() {
 		'clear_website_transients button-secondary',
 		'Clear Website Transients',
 		'Clear all Website Transients from the database'
+	);
+
+	$output .= frl_render_action_button(
+		'reset_plugin',
+		'reset_plugin button-primary',
+		'Reset Plugin',
+		'WARNING: Resets all plugin settings to their default values.',
+		'',
+		'superadmin',
 	);
 
 	return frl_ui_render_widget( 'admin-action-buttons', $output, 'Plugin Actions', 'widget-admin-actions' );
