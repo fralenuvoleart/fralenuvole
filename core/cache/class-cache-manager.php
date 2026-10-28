@@ -1604,7 +1604,7 @@ class Frl_Cache_Manager {
 				cur = tonumber(tmp[1])
 				if tmp[2] then
 					for _, v in pairs(tmp[2]) do
-						for _, p in pairs(KEYS) do
+						for _, p in pairs(ARGV) do
 							if string.match(v, p) then
 								redis.call('{$delete_cmd}', v)
 								i = i + 1
@@ -1618,11 +1618,15 @@ class Frl_Cache_Manager {
 LUA;
 
 		try {
+			// Patterns are passed as ARGV (num_keys = 0): Redis 7 ACLs key-check
+			// the declared KEYS against the user's key glob, and a Lua pattern
+			// (e.g. "^prefix:group:.*") is not a valid key name. ARGV is never
+			// key-checked; only real keys returned by SCAN are accessed.
 			if ( is_a( $redis, 'Predis\Client' ) ) {
-				$deleted = $redis->eval( $script, count( $patterns ), ...$patterns );
+				$deleted = $redis->eval( $script, 0, ...$patterns );
 			} else {
 				// PhpRedis: eval( string $script, array $args = [], int $num_keys = 0 ).
-				$deleted = $redis->eval( $script, $patterns, count( $patterns ) );
+				$deleted = $redis->eval( $script, $patterns, 0 );
 			}
 		} catch ( \Throwable $e ) {
 			frl_log(
@@ -1688,13 +1692,13 @@ LUA;
 		$script = <<<LUA
 			local cur = 0
 			local counts = {}
-			for i = 1, #KEYS do counts[i] = 0 end
+			for i = 1, #ARGV do counts[i] = 0 end
 			repeat
 				local tmp = redis.call('SCAN', cur)
 				cur = tonumber(tmp[1])
 				if tmp[2] then
 					for _, v in pairs(tmp[2]) do
-						for i, p in ipairs(KEYS) do
+						for i, p in ipairs(ARGV) do
 							if string.match(v, p) then
 								counts[i] = counts[i] + 1
 								break
@@ -1707,11 +1711,12 @@ LUA;
 LUA;
 
 		try {
+			// Patterns via ARGV (num_keys = 0) — see flush_groups_redis() for why.
 			if ( is_a( $redis, 'Predis\Client' ) ) {
-				$result = $redis->eval( $script, count( $patterns ), ...$patterns );
+				$result = $redis->eval( $script, 0, ...$patterns );
 			} else {
 				// PhpRedis: eval( string $script, array $args = [], int $num_keys = 0 ).
-				$result = $redis->eval( $script, $patterns, count( $patterns ) );
+				$result = $redis->eval( $script, $patterns, 0 );
 			}
 		} catch ( \Throwable $e ) {
 			frl_log(
@@ -1779,7 +1784,10 @@ LUA;
 		}
 
 		// MEMORY USAGE (Redis >= 4) reflects the real footprint; STRLEN is the fallback.
-		$version   = self::redis_backend_version( $backend );
+		// Object Cache Pro sites commonly run a restricted Redis ACL that forbids
+		// MEMORY USAGE (and often INFO), so use the broadly-allowed STRLEN there and
+		// skip the version probe entirely.
+		$version   = ( 'ocp' === $backend['flavor'] ) ? '' : self::redis_backend_version( $backend );
 		$size_expr = ( $version !== '' && version_compare( $version, '4.0.0', '>=' ) )
 			? "redis.call('MEMORY', 'USAGE', v)"
 			: "redis.call('STRLEN', v)";
@@ -1788,13 +1796,13 @@ LUA;
 		$script = <<<LUA
 			local cur = 0
 			local sizes = {}
-			for i = 1, #KEYS do sizes[i] = 0 end
+			for i = 1, #ARGV do sizes[i] = 0 end
 			repeat
 				local tmp = redis.call('SCAN', cur)
 				cur = tonumber(tmp[1])
 				if tmp[2] then
 					for _, v in pairs(tmp[2]) do
-						for i, p in ipairs(KEYS) do
+						for i, p in ipairs(ARGV) do
 							if string.match(v, p) then
 								local sz = {$size_expr}
 								if sz then sizes[i] = sizes[i] + sz end
@@ -1808,11 +1816,12 @@ LUA;
 LUA;
 
 		try {
+			// Patterns via ARGV (num_keys = 0) — see flush_groups_redis() for why.
 			if ( is_a( $redis, 'Predis\Client' ) ) {
-				$result = $redis->eval( $script, count( $patterns ), ...$patterns );
+				$result = $redis->eval( $script, 0, ...$patterns );
 			} else {
 				// PhpRedis: eval( string $script, array $args = [], int $num_keys = 0 ).
-				$result = $redis->eval( $script, $patterns, count( $patterns ) );
+				$result = $redis->eval( $script, $patterns, 0 );
 			}
 		} catch ( \Throwable $e ) {
 			frl_log(
