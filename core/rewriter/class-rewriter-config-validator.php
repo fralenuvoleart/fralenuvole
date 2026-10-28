@@ -54,7 +54,7 @@ class Frl_Rewriter_Config_Validator {
 	 */
 	private static function warn_missing_cpt_mappings_when_post_base_set(): array {
 		$warnings    = array();
-		$post_config = (string) frl_get_option( 'translate_post_base' );
+		$post_config = (string) frl_get_option( 'rewriter_translate_post_base' );
 		if ( empty( trim( $post_config ) ) ) {
 			return $warnings;
 		}
@@ -64,7 +64,7 @@ class Frl_Rewriter_Config_Validator {
 		}
 
 		foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
-			$cpt_cfg = (string) frl_get_option( "translate_cpt_slugs_{$cpt_slug}" );
+			$cpt_cfg = (string) frl_get_option( "rewriter_translate_cpt_slugs_{$cpt_slug}" );
 			if ( empty( trim( $cpt_cfg ) ) ) {
 				$warnings[] = "CPT '{$cpt_slug}' has no translations set (translate_cpt_slugs_{$cpt_slug}) while post base translation is enabled. URLs like /lang/base/<{$cpt_slug}-slug>/ will not resolve.";
 			}
@@ -130,7 +130,7 @@ class Frl_Rewriter_Config_Validator {
 		$all_translations = array();
 
 		// Collect post base translations
-		$post_config = frl_get_option( 'translate_post_base' );
+		$post_config = frl_get_option( 'rewriter_translate_post_base' );
 		if ( ! empty( $post_config ) ) {
 			$post_mappings = frl_textlist_to_array( $post_config );
 			foreach ( $post_mappings as $mapping ) {
@@ -145,7 +145,7 @@ class Frl_Rewriter_Config_Validator {
 		// Collect CPT translations
 		if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
 			foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
-				$cpt_config = frl_get_option( "translate_cpt_slugs_{$cpt_slug}" );
+				$cpt_config = frl_get_option( "rewriter_translate_cpt_slugs_{$cpt_slug}" );
 				if ( ! empty( $cpt_config ) ) {
 					$cpt_mappings = frl_textlist_to_array( $cpt_config );
 					foreach ( $cpt_mappings as $mapping ) {
@@ -181,7 +181,7 @@ class Frl_Rewriter_Config_Validator {
 		$warnings = array();
 
 		// Check if category names match CPT slugs
-		$remove_tax_base = frl_get_option( 'remove_tax_base' );
+		$remove_tax_base = frl_get_option( 'rewriter_remove_tax_base' );
 		if ( str_contains( $remove_tax_base, 'category' ) ) {
 			$categories = get_categories( array( 'hide_empty' => false ) );
 

@@ -69,7 +69,7 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base 
 	 * @return void
 	 */
 	public function load_configuration(): void {
-		$this->mappings = Frl_Rewriter_Path_Utils::parse_lang_mapping_option( "translate_cpt_slugs_{$this->cpt_slug}" );
+		$this->mappings = Frl_Rewriter_Path_Utils::parse_lang_mapping_option( "rewriter_translate_cpt_slugs_{$this->cpt_slug}" );
 	}
 
 	/**

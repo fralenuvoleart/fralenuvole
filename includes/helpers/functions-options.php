@@ -563,7 +563,7 @@ function frl_load_runtime_cpt_options_fields() {
 			$autoload   = 'no'; // Default autoload for runtime options
 
 			foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $slug ) {
-				$opt_key = 'translate_cpt_slugs_' . $slug;
+				$opt_key = 'rewriter_translate_cpt_slugs_' . $slug;
 
 				// Build 'fields' format
 				$fields[] = array(

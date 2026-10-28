@@ -128,7 +128,7 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 	 * @return void
 	 */
 	public function load_configuration(): void {
-		$config = $this->get_option( 'remove_tax_base' );
+		$config = $this->get_option( 'rewriter_remove_tax_base' );
 		if ( empty( trim( $config ) ) ) {
 			return;
 		}

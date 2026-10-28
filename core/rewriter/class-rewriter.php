@@ -373,7 +373,7 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 
 				if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
 					foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
-						$option = frl_get_option( "translate_cpt_slugs_{$cpt_slug}" );
+						$option = frl_get_option( "rewriter_translate_cpt_slugs_{$cpt_slug}" );
 						if ( ! empty( trim( (string) $option ) ) ) {
 							$cpts[] = $cpt_slug;
 						}
@@ -454,6 +454,30 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 	}
 
 	/**
+	 * Clear rewriter caches when a rewriter-owned option changes.
+	 *
+	 * Plugin options are stored prefixed (frl_rewriter_*), so a single O(1)
+	 * prefix check on 'updated_option' covers remove_cpt_base, remove_tax_base,
+	 * translate_post_base, and every translate_cpt_slugs_{cpt}. This replaces the
+	 * previous per-option hooks, which used unprefixed names and therefore never
+	 * fired for frl_-prefixed option writes.
+	 *
+	 * @param string $option    Option name (prefixed).
+	 * @param mixed  $old_value Previous value.
+	 * @param mixed  $new_value New value.
+	 * @return void
+	 */
+	public static function maybe_clear_rewriter_caches_on_option_change( $option, $old_value, $new_value ): void {
+		if ( $old_value === $new_value ) {
+			return;
+		}
+		if ( ! str_starts_with( (string) $option, frl_prefix( 'rewriter_' ) ) ) {
+			return;
+		}
+		self::clear_rewriter_caches();
+	}
+
+	/**
 	 * Register cache invalidation hooks.
 	 * Called during plugin initialization.
 	 *
@@ -479,16 +503,11 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 				// those options on the Permalink Settings page.
 				add_action( 'flush_rewrite_rules', array( self::class, 'invalidate_rewriter_caches' ), 10, 1 );
 
-				add_action( 'update_option_remove_cpt_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
-				add_action( 'update_option_remove_tax_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
-				// Post base translation affects get_post_base_mappings(), taxonomy rules, and catch-all exclusions.
-				add_action( 'update_option_translate_post_base', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
-
-				if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
-					foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
-						add_action( "update_option_translate_cpt_slugs_{$cpt_slug}", array( self::class, 'clear_rewriter_caches' ), 10, 1 );
-					}
-				}
+				// Any rewriter-owned option (prefixed frl_rewriter_*) invalidates the
+				// rewriter caches. Post base translation affects get_post_base_mappings(),
+				// taxonomy rules, and catch-all exclusions; base removals and CPT slug
+				// translations likewise. One O(1) prefix test replaces the old per-option hooks.
+				add_action( 'updated_option', array( self::class, 'maybe_clear_rewriter_caches_on_option_change' ), 10, 3 );
 
 				// Invalidate cached exclusion patterns when Polylang languages are
 				// added, updated, or when the default language changes. Without these

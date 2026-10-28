@@ -361,7 +361,15 @@ class Frl_Cache_Display {
 		}
 
 		// Bypass table cache since parent widget is already cached
-		return frl_ui_render_table( 'cache-groups-table', $groups_table_rows, 'multicolumn-table', HOUR_IN_SECONDS, true );
+		$table = frl_ui_render_table( 'cache-groups-table', $groups_table_rows, 'multicolumn-table', HOUR_IN_SECONDS, true );
+
+		// Self-documenting note so the Count/Size provenance isn't forgotten.
+		$note = '<p class="description frl-cache-metrics-note">' . esc_html__(
+			'Count: adminui ≈1 h (refreshes with dashboard). Size: staticdata 24 h (heavy computation, survives dashboard refreshes).',
+			FRL_PREFIX
+		) . '</p>';
+
+		return $table . $note;
 	}
 
 	/**
@@ -549,6 +557,43 @@ class Frl_Cache_Display {
 		$config           = frl_cache_get_config();
 		$cache_functional = frl_is_object_cache_functional();
 
+		// On a functional Redis object cache, show the true persistent per-group
+		// count instead of the per-request runtime count. The keyspace SCAN is
+		// expensive, so it runs ONLY inside the plugin UI (frl_is_plugin_context())
+		// and its result is cached in the 'adminui' group to avoid re-scanning.
+		$persistent_counts = null;
+		if ( $cache_functional && frl_is_plugin_context() ) {
+			$cached_counts = frl_cache_remember(
+				'adminui',
+				'redis_group_counts',
+				static function () use ( $persistent_groups ) {
+					return Frl_Cache_Manager::count_groups_redis( $persistent_groups );
+				},
+				HOUR_IN_SECONDS
+			);
+			if ( is_array( $cached_counts ) ) {
+				$persistent_counts = $cached_counts;
+			}
+		}
+
+		// Sizes are the expensive part (one MEMORY USAGE per key), so they are
+		// cached separately in the 'staticdata' group with a long TTL — the
+		// existing "Refresh Dashboard" clears 'adminui' but leaves this intact.
+		$persistent_sizes = null;
+		if ( $cache_functional && frl_is_plugin_context() ) {
+			$cached_sizes = frl_cache_remember(
+				'staticdata',
+				'redis_group_sizes',
+				static function () use ( $persistent_groups ) {
+					return Frl_Cache_Manager::measure_groups_redis( $persistent_groups );
+				},
+				DAY_IN_SECONDS
+			);
+			if ( is_array( $cached_sizes ) ) {
+				$persistent_sizes = $cached_sizes;
+			}
+		}
+
 		// If no specific group requested, return all groups with comprehensive info
 		if ( $group === null ) {
 			$groups_info = array();
@@ -560,7 +605,7 @@ class Frl_Cache_Display {
 			$dependencies    = $config['cache_dependencies'];
 
 			foreach ( $persistent_groups as $group_name ) {
-				$group_info = self::get_group_info( $group_name, $config, $cache_functional );
+				$group_info = self::get_group_info( $group_name, $config, $cache_functional, $persistent_counts, $persistent_sizes );
 				if ( $group_info ) {
 					// Add metadata to each group
 					$group_info['is_heavy']     = in_array( $group_name, $heavy_groups, true );
@@ -598,9 +643,11 @@ class Frl_Cache_Display {
 	 * @param string $group The cache group.
 	 * @param array $config The cache configuration.
 	 * @param bool $cache_functional Whether the object cache is functional.
+	 * @param array<string,int>|null $persistent_counts Optional Redis per-group persistent counts.
+	 * @param array<string,int>|null $persistent_sizes Optional Redis per-group persistent sizes (bytes).
 	 * @return array Group info array.
 	 */
-	private static function get_group_info( string $group, array $config, bool $cache_functional ) {
+	private static function get_group_info( string $group, array $config, bool $cache_functional, ?array $persistent_counts = null, ?array $persistent_sizes = null ) {
 		// Get comprehensive info for specific group
 		$runtime_data = frl_cache_get_runtime_data();
 
@@ -613,9 +660,12 @@ class Frl_Cache_Display {
 			}
 		}
 
-		// Get actual count
+		// Get actual count.
 		$count = $runtime_count;
-		if ( ! $cache_functional && in_array( $group, $config['persistent_groups'], true ) ) {
+		if ( is_array( $persistent_counts ) && isset( $persistent_counts[ $group ] ) ) {
+			// True persistent count from the Redis keyspace (plugin UI only).
+			$count = (int) $persistent_counts[ $group ];
+		} elseif ( ! $cache_functional && in_array( $group, $config['persistent_groups'], true ) ) {
 			global $wpdb;
 			$transient_prefix = '_transient_' . $config['PREFIX'] . $group . '_';
 
@@ -637,9 +687,14 @@ class Frl_Cache_Display {
 		// Get TTL
 		$ttl = $config['TTL'][ $group ] ?? $config['TTL']['default'] ?? 0;
 
-		// Get size (only for transients)
+		// Get size: Redis persistent size (plugin UI only) when available, else
+		// the transient SQL size below.
 		$size = '';
-		if ( ! $cache_functional && in_array( $group, $config['persistent_groups'], true ) ) {
+		if ( is_array( $persistent_sizes ) && isset( $persistent_sizes[ $group ] ) ) {
+			$size = $persistent_sizes[ $group ] > 0
+				? round( $persistent_sizes[ $group ] / 1024, 1 ) . ' KB'
+				: '0 KB';
+		} elseif ( ! $cache_functional && in_array( $group, $config['persistent_groups'], true ) ) {
 			global $wpdb;
 			$transient_prefix = '_transient_' . $config['PREFIX'] . $group . '_';
 

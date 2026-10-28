@@ -325,7 +325,7 @@ function frl_render_rewrite_multilingual_cpts( $disabled_attr = '' ) {
 		$cpt_object = get_post_type_object( $cpt_slug );
 		$cpt_name   = $cpt_object ? $cpt_object->labels->singular_name : $cpt_slug;
 
-		$field_key  = 'translate_cpt_slugs_' . esc_attr( $cpt_slug );
+		$field_key  = 'rewriter_translate_cpt_slugs_' . esc_attr( $cpt_slug );
 		$field_name = frl_prefix( $field_key ); // direct option field
 		$field_id   = esc_attr( frl_prefix( $field_key ) );
 		$value      = frl_get_option( $field_key );

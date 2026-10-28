@@ -358,14 +358,14 @@ class Frl_Rewriter_Coordinator {
 
 		// Include the option values that drive feature behaviour.
 		$config_data['options'] = array(
-			'remove_cpt_base'     => frl_get_option( 'remove_cpt_base' ),
-			'remove_tax_base'     => frl_get_option( 'remove_tax_base' ),
-			'translate_post_base' => frl_get_option( 'translate_post_base' ),
+			'rewriter_remove_cpt_base'     => frl_get_option( 'rewriter_remove_cpt_base' ),
+			'rewriter_remove_tax_base'     => frl_get_option( 'rewriter_remove_tax_base' ),
+			'rewriter_translate_post_base' => frl_get_option( 'rewriter_translate_post_base' ),
 		);
 
 		if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
 			foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
-				$config_data['options'][ 'translate_cpt_slugs_' . $cpt_slug ] = frl_get_option( 'translate_cpt_slugs_' . $cpt_slug );
+				$config_data['options'][ 'rewriter_translate_cpt_slugs_' . $cpt_slug ] = frl_get_option( 'rewriter_translate_cpt_slugs_' . $cpt_slug );
 			}
 		}
 

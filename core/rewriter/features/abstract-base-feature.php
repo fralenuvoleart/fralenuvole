@@ -734,14 +734,14 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
 		// Add global configuration that affects this feature
 		$config_data['global_config'] = array(
-			'remove_tax_base' => frl_get_option( 'remove_tax_base' ),
-			'remove_cpt_base' => frl_get_option( 'remove_cpt_base' ),
+			'rewriter_remove_tax_base' => frl_get_option( 'rewriter_remove_tax_base' ),
+			'rewriter_remove_cpt_base' => frl_get_option( 'rewriter_remove_cpt_base' ),
 		);
 
 		// Add CPT translation configs if applicable
 		if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
 			foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
-				$config_data['global_config'][ "translate_cpt_slugs_{$cpt_slug}" ] = frl_get_option( "translate_cpt_slugs_{$cpt_slug}" );
+				$config_data['global_config'][ "rewriter_translate_cpt_slugs_{$cpt_slug}" ] = frl_get_option( "rewriter_translate_cpt_slugs_{$cpt_slug}" );
 			}
 		}
 

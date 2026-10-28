@@ -1,5 +1,25 @@
 # Active Context
 
+## Latest: Rewriter options namespaced + precise invalidation; rewriter dropped from options cache deps (2026-10-28)
+
+Rewriter-owned options were renamed into the `rewriter_*` namespace so a single hook can invalidate rewriter caches precisely, instead of relying on the broad `options` cache-group cascade (which cleared the heavy `rewriter`/`permalinks` groups on every settings save).
+
+- **Rename + migration:** `remove_cpt_base`→`rewriter_remove_cpt_base`, `remove_tax_base`→`rewriter_remove_tax_base`, `translate_post_base`→`rewriter_translate_post_base`, `translate_cpt_slugs_{cpt}`→`rewriter_translate_cpt_slugs_{cpt}`, plus `translate_cpt_slugs`/`translate_cpt_slugs_service`→`rewriter_*`. New [`frl_migrate_rewriter_option_names()`](../includes/plugin-lifecycle.php:120) runs on activation (direct `$wpdb` rename, preserves value/autoload, idempotent). **Deploy: re-activate once.**
+- **Detection bug fixed:** the old per-option hooks (`update_option_remove_cpt_base`, …) used *unprefixed* names, but plugin options are stored `frl_`-prefixed — so they never fired. Replaced by one `updated_option` hook: [`maybe_clear_rewriter_caches_on_option_change()`](../core/rewriter/class-rewriter.php:456) — O(1) `frl_rewriter_` prefix test → `clear_rewriter_caches()`.
+- **Cache deps:** `rewriter` removed from `FRL_CACHE_DEPENDENCIES['options']` ([`config-cache.php`](../config/config-cache.php:89)); `rewriter → permalinks` kept. Rewriter invalidation now comes only from the `frl_rewriter_*` option hook and `flush_rewrite_rules`.
+- All read sites updated (path-utils, config-validator, coordinator, features, options UI/runtime builders); docs updated. `php -l` clean on every touched file.
+
+## Latest: Redis persistent per-group count & size in the cache groups table (2026-10-28)
+
+The admin "Cache Groups" table previously showed a per-request **runtime** count whenever a functional object cache was active (`get_group_info()` counted only `runtime_cache` keys) — so groups like `permalinks`/`adminui` that aren't read during a dashboard request appeared empty even when populated in Redis.
+
+- New [`Frl_Cache_Manager::count_groups_redis()`](../core/cache/class-cache-manager.php:1529) — read-only twin of `flush_groups_redis()`: ONE keyspace `SCAN` with one anchored Lua pattern per group (built via the drop-in's `build_key()`), tallying matches per group without deleting. Returns `null` on non-Redis / missing drop-in API / eval failure.
+- New [`Frl_Cache_Manager::measure_groups_redis()`](../core/cache/class-cache-manager.php:1621) — same single `SCAN`, accumulating `MEMORY USAGE` (Redis ≥ 4) / `STRLEN` per group.
+- [`Frl_Cache_Display::get_groups_info()`](../admin/components/class-display-cache.php:542) computes both **once** for all groups and passes them into [`get_group_info()`](../admin/components/class-display-cache.php:623) (new optional `$persistent_counts` + `$persistent_sizes` params), which prefer them over the runtime count / SQL size.
+- **Scoped to the plugin UI only:** both scans run only when `$cache_functional && frl_is_plugin_context()`. Counts are cached in the `adminui` group (`redis_group_counts`, `HOUR_IN_SECONDS`) so "Refresh Dashboard" (clears `adminui`) recomputes them; **sizes** are cached separately in the **`staticdata`** group (`redis_group_sizes`, `DAY_IN_SECONDS`) so the existing refresh leaves sizes intact — sizes are expensive, so they refresh on their own long TTL rather than per render. A caption under the table documents the provenance. Non-Redis backends and transient-only sites keep the existing behavior unchanged.
+
+Verified `php -l`. No cache key/group shape changed.
+
 ## Latest: Autoload keep-list const + migration fix (2026-10-27)
 
 Fixed a bug where activating the plugin reset `disable_environment`, `disable_rewriter`, and `disable_translator` to `autoload = 'no'`, silently undoing the bootstrap-gate autoload change.

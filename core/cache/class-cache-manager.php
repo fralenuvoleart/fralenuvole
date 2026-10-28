@@ -1516,7 +1516,220 @@ LUA;
 	}
 
 	/**
-	 * Clear runtime cache for a group.
+		* Count persistent cache keys per group on the Redis backend.
+		*
+		* Read-only twin of flush_groups_redis(): a single keyspace SCAN tallies
+		* matches per group pattern without deleting anything. Returns null when the
+		* backend is not Redis or the drop-in lacks the required API, so callers can
+		* fall back to the per-request runtime count.
+		*
+		* @param string[] $groups Cache groups to count.
+		* @return array<string,int>|null Map of group => key count, or null if unavailable.
+		*/
+	public static function count_groups_redis( array $groups ): ?array {
+		global $wp_object_cache;
+
+		if ( empty( $groups ) || ! self::is_object_cache_truly_functional() ) {
+			return null;
+		}
+
+		$provider = self::get_provider_details();
+		if ( ! str_contains( strtolower( (string) ( $provider['slug'] ?? '' ) ), 'redis' ) ) {
+			return null;
+		}
+
+		if ( ! is_object( $wp_object_cache )
+			|| ! method_exists( $wp_object_cache, 'redis_instance' )
+			|| ! method_exists( $wp_object_cache, 'build_key' )
+			|| ! method_exists( $wp_object_cache, 'redis_status' )
+			|| ! $wp_object_cache->redis_status()
+		) {
+			return null;
+		}
+
+		$redis = $wp_object_cache->redis_instance();
+		if ( ! is_object( $redis ) || ! method_exists( $redis, 'eval' ) ) {
+			return null;
+		}
+
+		$groups = array_values( $groups );
+
+		// One anchored Lua pattern per group. build_key() supplies the drop-in's
+		// salt/blog prefix so we never reconstruct them.
+		$patterns = array();
+		foreach ( $groups as $group ) {
+			$literal    = substr( $wp_object_cache->build_key( '*', self::PREFIX . $group ), 0, -1 );
+			$patterns[] = '^' . preg_replace( '/([%(%)%.%%%+%-%?%[%]%^%$])/', '%%%1', $literal ) . '.*';
+		}
+
+		// Single SCAN; tally matches per pattern index. Each key matches at most
+		// one group (patterns are anchored and mutually exclusive).
+		$script = <<<LUA
+			local cur = 0
+			local counts = {}
+			for i = 1, #KEYS do counts[i] = 0 end
+			repeat
+				local tmp = redis.call('SCAN', cur)
+				cur = tonumber(tmp[1])
+				if tmp[2] then
+					for _, v in pairs(tmp[2]) do
+						for i, p in ipairs(KEYS) do
+							if string.match(v, p) then
+								counts[i] = counts[i] + 1
+								break
+							end
+						end
+					end
+				end
+			until 0 == cur
+			return counts
+LUA;
+
+		try {
+			if ( is_a( $redis, 'Predis\Client' ) ) {
+				$result = $redis->eval( $script, count( $patterns ), ...$patterns );
+			} else {
+				// PhpRedis: eval( string $script, array $args = [], int $num_keys = 0 ).
+				$result = $redis->eval( $script, $patterns, count( $patterns ) );
+			}
+		} catch ( \Throwable $e ) {
+			frl_log(
+				'FRL Cache: Redis group count failed, falling back to runtime count: {error}',
+				array( 'error' => $e->getMessage() ),
+				false
+			);
+			return null;
+		}
+
+		if ( ! is_array( $result ) ) {
+			return null;
+		}
+
+		// Map the ordered Lua result array back to group names.
+		$counts = array();
+		$i      = 0;
+		foreach ( $result as $value ) {
+			if ( isset( $groups[ $i ] ) ) {
+				$counts[ $groups[ $i ] ] = (int) $value;
+			}
+			++$i;
+		}
+
+		return $counts;
+	}
+
+	/**
+		* Measure persistent cache size per group on the Redis backend.
+		*
+		* Read-only twin of flush_groups_redis(): ONE keyspace SCAN accumulates the
+		* per-group footprint via MEMORY USAGE (Redis >= 4) or STRLEN, without
+		* deleting anything. Returns null when the backend is not Redis / the drop-in
+		* lacks the required API / eval fails, so callers fall back to the transient
+		* SQL size.
+		*
+		* @param string[] $groups Cache groups to measure.
+		* @return array<string,int>|null Map of group => bytes, or null if unavailable.
+		*/
+	public static function measure_groups_redis( array $groups ): ?array {
+		global $wp_object_cache;
+
+		if ( empty( $groups ) || ! self::is_object_cache_truly_functional() ) {
+			return null;
+		}
+
+		$provider = self::get_provider_details();
+		if ( ! str_contains( strtolower( (string) ( $provider['slug'] ?? '' ) ), 'redis' ) ) {
+			return null;
+		}
+
+		if ( ! is_object( $wp_object_cache )
+			|| ! method_exists( $wp_object_cache, 'redis_instance' )
+			|| ! method_exists( $wp_object_cache, 'build_key' )
+			|| ! method_exists( $wp_object_cache, 'redis_status' )
+			|| ! $wp_object_cache->redis_status()
+		) {
+			return null;
+		}
+
+		$redis = $wp_object_cache->redis_instance();
+		if ( ! is_object( $redis ) || ! method_exists( $redis, 'eval' ) ) {
+			return null;
+		}
+
+		$groups = array_values( $groups );
+
+		// One anchored Lua pattern per group. build_key() supplies the drop-in's
+		// salt/blog prefix so we never reconstruct them.
+		$patterns = array();
+		foreach ( $groups as $group ) {
+			$literal    = substr( $wp_object_cache->build_key( '*', self::PREFIX . $group ), 0, -1 );
+			$patterns[] = '^' . preg_replace( '/([%(%)%.%%%+%-%?%[%]%^%$])/', '%%%1', $literal ) . '.*';
+		}
+
+		// MEMORY USAGE (Redis >= 4) reflects the real footprint; STRLEN is the fallback.
+		$version   = (string) $wp_object_cache->redis_version();
+		$size_expr = ( $version !== '' && version_compare( $version, '4.0.0', '>=' ) )
+			? "redis.call('MEMORY', 'USAGE', v)"
+			: "redis.call('STRLEN', v)";
+
+		// Single SCAN; accumulate per-pattern byte size. Each key matches one group.
+		$script = <<<LUA
+			local cur = 0
+			local sizes = {}
+			for i = 1, #KEYS do sizes[i] = 0 end
+			repeat
+				local tmp = redis.call('SCAN', cur)
+				cur = tonumber(tmp[1])
+				if tmp[2] then
+					for _, v in pairs(tmp[2]) do
+						for i, p in ipairs(KEYS) do
+							if string.match(v, p) then
+								local sz = {$size_expr}
+								if sz then sizes[i] = sizes[i] + sz end
+								break
+							end
+						end
+					end
+				end
+			until 0 == cur
+			return sizes
+LUA;
+
+		try {
+			if ( is_a( $redis, 'Predis\Client' ) ) {
+				$result = $redis->eval( $script, count( $patterns ), ...$patterns );
+			} else {
+				// PhpRedis: eval( string $script, array $args = [], int $num_keys = 0 ).
+				$result = $redis->eval( $script, $patterns, count( $patterns ) );
+			}
+		} catch ( \Throwable $e ) {
+			frl_log(
+				'FRL Cache: Redis group size measurement failed, falling back to transient size: {error}',
+				array( 'error' => $e->getMessage() ),
+				false
+			);
+			return null;
+		}
+
+		if ( ! is_array( $result ) ) {
+			return null;
+		}
+
+		// Map the ordered Lua result array back to group names.
+		$sizes = array();
+		$i     = 0;
+		foreach ( $result as $value ) {
+			if ( isset( $groups[ $i ] ) ) {
+				$sizes[ $groups[ $i ] ] = (int) $value;
+			}
+			++$i;
+		}
+
+		return $sizes;
+	}
+
+	/**
+		* Clear runtime cache for a group.
 	 *
 	 * @param string $group Cache group name.
 	 * @return int Number of items cleared.

@@ -397,7 +397,7 @@ final class Frl_Rewriter_Path_Utils {
 			'rewriter',
 			'translate_post_base',
 			function () {
-				$post_base_config = frl_get_option( 'translate_post_base' );
+				$post_base_config = frl_get_option( 'rewriter_translate_post_base' );
 				if ( empty( $post_base_config ) ) {
 					return array();
 				}
@@ -417,7 +417,7 @@ final class Frl_Rewriter_Path_Utils {
 			'rewriter',
 			"translate_cpt_slug_{$cpt_slug}",
 			function () use ( $cpt_slug ) {
-				$cpt_config = frl_get_option( "translate_cpt_slugs_{$cpt_slug}" );
+				$cpt_config = frl_get_option( "rewriter_translate_cpt_slugs_{$cpt_slug}" );
 				if ( empty( $cpt_config ) ) {
 					return array();
 				}
@@ -543,7 +543,7 @@ final class Frl_Rewriter_Path_Utils {
 				$all = array();
 				if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
 					foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
-						$option_name         = "translate_cpt_slugs_{$cpt_slug}";
+						$option_name         = "rewriter_translate_cpt_slugs_{$cpt_slug}";
 						$all[ $option_name ] = self::parse_lang_mapping_value( frl_get_option( $option_name ) );
 					}
 				}

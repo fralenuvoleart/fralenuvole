@@ -48,7 +48,7 @@ const FRL_CACHE_TTL = array(
 	'shortcodes'   => WEEK_IN_SECONDS,     // 1 week
 	// 'options' actively invalidated by frl_update_option() + cache-cleanup hooks;
 	// TTL is only a safety net for DB edits.
-	'options'      => WEEK_IN_SECONDS,     // 1 day
+	'options'      => WEEK_IN_SECONDS,     // 1 week
 	'adminui'      => DAY_IN_SECONDS,      // 1 day (UI assembly data)
 	'versions'     => HOUR_IN_SECONDS,     // 1 hour
 	'environment'  => HOUR_IN_SECONDS,     // 1 hour
@@ -87,15 +87,13 @@ const FRL_CACHE_HEAVY_GROUPS = array(
 
 // Cache dependencies between groups
 const FRL_CACHE_DEPENDENCIES = array(
-	// Groups with dependencies
-	// Options affect core functionality except translations
+	// for 'options', 'rewriter' is intentionally NOT a dependency: they are invalidated by the rewriter-owned option keys via the 'updated_option' hook in Frl_Rewriter.
 	'options'      => array(
 		'theme',
 		'html',
 		'environment',
 		'admin',
 		'adminui',
-		'rewriter',
 	),
 	// Rewriter needs to refresh permalinks
 	'rewriter'     => array(

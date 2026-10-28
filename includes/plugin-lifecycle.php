@@ -43,6 +43,11 @@ function frl_activate_plugin(): void {
 
 	frl_update_option( 'plugin_version', FRL_VERSION );
 
+	// Rename legacy rewriter options BEFORE seeding defaults: seeding creates any
+	// missing field key with its default, so if it ran first it would create the
+	// new (empty) rewriter_* keys, and the migration would then find the target
+	// present and drop the legacy row — silently losing the saved value.
+	frl_migrate_rewriter_option_names();
 	frl_seed_option_defaults();
 	frl_migrate_option_autoload();
 }
@@ -118,7 +123,83 @@ function frl_migrate_option_autoload(): void {
 }
 
 /**
- * Automatically backs up plugin settings when a version upgrade is detected.
+	* Rename legacy rewriter options into the rewriter_* namespace (one-time).
+	*
+	* Plugin options are stored prefixed (frl_<key>). Rewriter-owned options were
+	* renamed so a single updated_option( frl_rewriter_* ) hook can invalidate the
+	* rewriter caches precisely (instead of every options-group save). A direct
+	* $wpdb rename is used to avoid firing update_option() hooks — and therefore
+	* rewrite-rule flushes — during activation.
+	*
+	* Idempotent: a row is renamed only when the target does not already exist.
+	*
+	* @return void
+	*/
+function frl_migrate_rewriter_option_names(): void {
+	$renames = array(
+		'remove_cpt_base'             => 'rewriter_remove_cpt_base',
+		'remove_tax_base'             => 'rewriter_remove_tax_base',
+		'translate_post_base'         => 'rewriter_translate_post_base',
+		'translate_cpt_slugs_service' => 'rewriter_translate_cpt_slugs_service',
+	);
+
+	if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
+		foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
+			$renames[ 'translate_cpt_slugs_' . $cpt_slug ] = 'rewriter_translate_cpt_slugs_' . $cpt_slug;
+		}
+	}
+
+	foreach ( $renames as $old_key => $new_key ) {
+		frl_rename_plugin_option( $old_key, $new_key );
+	}
+
+	// Drop request-static option snapshots so any later read in this request
+	// (e.g. frl_seed_option_defaults()) sees the renamed keys, not a stale
+	// pre-migration snapshot.
+	frl_cache_clear( 'options' );
+	frl_get_option( '__reset__' );
+}
+
+/**
+	* Rename a single plugin option row in the DB, preserving its value and autoload.
+	*
+	* @param string $old_key Unprefixed legacy option key.
+	* @param string $new_key Unprefixed target option key.
+	* @return void
+	*/
+function frl_rename_plugin_option( $old_key, $new_key ): void {
+	global $wpdb;
+
+	$old_name = frl_prefix( $old_key );
+	$new_name = frl_prefix( $new_key );
+
+	if ( $old_name === $new_name ) {
+		return;
+	}
+
+	// Nothing to migrate if the legacy row is absent.
+	$old_exists = $wpdb->get_var( $wpdb->prepare( "SELECT option_id FROM {$wpdb->options} WHERE option_name = %s LIMIT 1", $old_name ) );
+	if ( null === $old_exists ) {
+		return;
+	}
+
+	// Target already present: this happens when the write-on-read fallback seeded
+	// the new key with its default before activation (the rewriter config hash reads
+	// these options on every request). The legacy row holds the authentic pre-rename
+	// value, so copy it over the new row, then drop the legacy one.
+	$new_exists = $wpdb->get_var( $wpdb->prepare( "SELECT option_id FROM {$wpdb->options} WHERE option_name = %s LIMIT 1", $new_name ) );
+	if ( null !== $new_exists ) {
+		$legacy_value = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1", $old_name ) );
+		$wpdb->update( $wpdb->options, array( 'option_value' => $legacy_value ), array( 'option_name' => $new_name ) );
+		$wpdb->delete( $wpdb->options, array( 'option_name' => $old_name ) );
+		return;
+	}
+
+	$wpdb->update( $wpdb->options, array( 'option_name' => $new_name ), array( 'option_name' => $old_name ) );
+}
+
+/**
+	* Automatically backs up plugin settings when a version upgrade is detected.
  *
  * Maintains a rolling history of the last 5 backups in the plugin's backup directory.
  *

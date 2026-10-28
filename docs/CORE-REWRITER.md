@@ -69,10 +69,10 @@ CPT translation features (Archive + Single) are instantiated per CPT in `FRL_REW
 
 | Option | Used by | Format |
 |--------|---------|--------|
-| `translate_cpt_slugs_{cpt}` | CPT Archive & Single Translation | `lang\|slug` per line |
-| `remove_tax_base` | Taxonomy Base Removal | one slug per line |
-| `remove_cpt_base` | CPT Base Removal | one slug per line |
-| `translate_post_base` | Exclusion patterns + taxonomy URL parsing | `lang\|base` per line |
+| `rewriter_translate_cpt_slugs_{cpt}` | CPT Archive & Single Translation | `lang\|slug` per line |
+| `rewriter_remove_tax_base` | Taxonomy Base Removal | one slug per line |
+| `rewriter_remove_cpt_base` | CPT Base Removal | one slug per line |
+| `rewriter_translate_post_base` | Exclusion patterns + taxonomy URL parsing | `lang\|base` per line |
 | `disable_rewriter` | `frl_rewriter_is_loaded()` | boolean |
 
 ## Bootstrap & Hook Timeline
@@ -137,11 +137,11 @@ Abstract methods: `is_enabled()`, `generate_rules()`, `applies_to_request()`, `r
 
 ### `invalidate_rewriter_caches()` (cache-only)
 
-Hooked to `flush_rewrite_rules`. Clears `options` cache group (cascades to `rewriter` → `permalinks` via `FRL_CACHE_DEPENDENCIES`) + deletes `frl_rewriter_excl_patterns` transient. Has `frl_is_already_running` guard.
+Hooked to `flush_rewrite_rules`. Clears the `rewriter` cache group (cascades to `permalinks` via `FRL_CACHE_DEPENDENCIES`) + deletes `frl_rewriter_excl_patterns` transient. Has `frl_is_already_running` guard.
 
 ### `clear_rewriter_caches()` (cache + hard flush)
 
-Called by `update_option_*` hooks and Polylang language hooks. Calls `invalidate_rewriter_caches()` then `flush_rewrite_rules(true)`. Guard prevents duplicate work when `flush_rewrite_rules` hook re-fires `invalidate_rewriter_caches()`.
+Called by the single `updated_option` hook (any `frl_rewriter_*` option change) and Polylang language hooks. Calls `invalidate_rewriter_caches()` then `flush_rewrite_rules(true)`. Guard prevents duplicate work when `flush_rewrite_rules` hook re-fires `invalidate_rewriter_caches()`.
 
 ### `force_rules_refresh()`
 
@@ -152,10 +152,7 @@ Invalidates coordinator's in-memory config hash, calls `frl_flush_rewrite_rules(
 | Hook | Calls |
 |------|-------|
 | `flush_rewrite_rules` | `invalidate_rewriter_caches()` |
-| `update_option_remove_cpt_base` | `clear_rewriter_caches()` |
-| `update_option_remove_tax_base` | `clear_rewriter_caches()` |
-| `update_option_translate_post_base` | `clear_rewriter_caches()` |
-| `update_option_translate_cpt_slugs_{cpt}` | `clear_rewriter_caches()` |
+| `updated_option` (name starts with `frl_rewriter_`) | `maybe_clear_rewriter_caches_on_option_change()` → `clear_rewriter_caches()` |
 | `pll_add_language` | `clear_rewriter_caches()` |
 | `pll_update_language` | `clear_rewriter_caches()` |
 | `pll_update_default_lang` | `clear_rewriter_caches()` |
@@ -168,7 +165,7 @@ Invalidates coordinator's in-memory config hash, calls `frl_flush_rewrite_rules(
 
 `Frl_Rewriter_Path_Utils::compute_exclusion_patterns()` aggregates:
 
-1. Post-base prefixes from `translate_post_base` (e.g., `blog`, `en/blog`)
+1. Post-base prefixes from `rewriter_translate_post_base` (e.g., `blog`, `en/blog`)
 2. CPT archive translated prefixes via `frl_rewriter_url_prefixes` filter
 3. All public CPT rewrite slugs (with language-prefixed variants)
 4. All public taxonomy rewrite bases

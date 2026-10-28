@@ -137,7 +137,7 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			return;
 		}
 
-		$config = $this->get_option( 'remove_cpt_base' );
+		$config = $this->get_option( 'rewriter_remove_cpt_base' );
 		if ( ! empty( trim( $config ) ) ) {
 			$parsed = frl_textlist_to_array( $config );
 			foreach ( $parsed as $line ) {

@@ -96,8 +96,8 @@ These lists are a **transient-path** optimization. On a functional object cache,
 ### Dependency Graph
 
 ```
-options       → theme, html, environment, admin, adminui, rewriter
-rewriter      → permalinks
+options       → theme, html, environment, admin, adminui
+rewriter      → permalinks   (rewriter is NOT an options dependency; invalidated by the frl_rewriter_* option hook + flush_rewrite_rules)
 translations  → metafields
 environment   → adminui, admin
 staticdata    → adminui
@@ -201,7 +201,7 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 | `clear_hard` | `Frl_Cache_Manager::hard_cache_reset()` |
 | `clear_all` | `Frl_Cache_Manager::purge_all()` |
 | `clear_light` | `Frl_Cache_Manager::purge_light()` |
-| `clear_options` | `clear_group_with_dependencies('options')` → cascades to theme, html, environment, admin, adminui, rewriter → permalinks |
+| `clear_options` | `clear_group_with_dependencies('options')` → cascades to theme, html, environment, admin, adminui |
 | `clear_rewriter` | `clear_group_with_dependencies('rewriter')` → cascades to permalinks |
 | `action_hard` | `frl_cache_clear('hard')` → `frl_flush_rewrite_rules()` |
 | `action_flush_rewrite_rules` | `frl_flush_rewrite_rules()` |

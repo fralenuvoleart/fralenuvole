@@ -23,7 +23,7 @@ const FRL_OPTIONS_RUNTIME = array(
 		'type'    => 'text',
 		'default' => 1,
 	),
-	'translate_cpt_slugs_service' => array(
+	'rewriter_translate_cpt_slugs_service' => array(
 		'type'    => 'textlist',
 		'default' => '',
 	),
@@ -671,7 +671,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'description' => 'Custom rewriter features with priority-based URL processing',
 				'type'        => 'section_title',
 			),
-			'translate_post_base'               => array(
+			'rewriter_translate_post_base'     => array(
 				'label'             => 'Post Base Translation',
 				'description'       => 'Add language-specific post base to URLs. Adapts to permalink structure: with %category% creates /en/news/tech/article-name, without creates /en/news/article-name. Format: lang|base per line. Priorities: 10 (Archives) & 20 (Singles).',
 				'placeholder'       => "en|news\nit|notizie",
@@ -680,7 +680,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'restricted'        => true,
 			),
-			'translate_cpt_slugs'               => array(
+			'rewriter_translate_cpt_slugs'     => array(
 				'label'       => 'CPT Base Translation',
 				'description' => 'Translate CPT base in URLs for multilingual sites. Each CPT requires configuration in FRL_REWRITER_MULTILINGUAL_CPT constant. Format: lang|slug per line. Priorities: 15 (Archives) & 25 (Singles).',
 				'placeholder' => "en|services\nit|servizi",
@@ -688,7 +688,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'callback'    => 'frl_render_rewrite_multilingual_cpts',
 				'restricted'  => true,
 			),
-			'remove_tax_base'                   => array(
+			'rewriter_remove_tax_base'         => array(
 				'label'             => 'Taxonomy Base Removal',
 				'description'       => 'Remove taxonomy base from categories and custom taxonomies (e.g., /tech/ instead of /category/tech/). One taxonomy per line. Priority 35.',
 				'type'              => 'textlist',
@@ -697,7 +697,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'restricted'        => true,
 			),
-			'remove_cpt_base'                   => array(
+			'rewriter_remove_cpt_base'         => array(
 				'label'             => 'CPT Base Removal',
 				'description'       => 'Remove CPT base from URLs (e.g., /my-service/ instead of /service/my-service/). One CPT slug per line. Priority 40.',
 				'type'              => 'textlist',
