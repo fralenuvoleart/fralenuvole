@@ -129,9 +129,9 @@ function frl_render_clear_cache_buttons() {
 
 	$output .= frl_render_action_button(
 		'clear_cache_light',
-		'clear_cache_light button-secondary',
+		'clear_cache_light button-primary',
 		'Clear Caches (Light)',
-		'Clear all plugin caches except Heavy Groups'
+		'Clear Plugin Light Cache Groups'
 	);
 
 	$output .= frl_render_action_button(
