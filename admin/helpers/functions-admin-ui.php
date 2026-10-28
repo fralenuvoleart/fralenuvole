@@ -202,7 +202,7 @@ function frl_render_admin_actions_buttons() {
 		'clear_wp_alloptions',
 		'clear_wp_alloptions button-secondary',
 		'Clear Alloptions Cache',
-		'Flushes WordPress alloptions (autoloaded options).',
+		'Clear WP alloptions (autoloaded options).',
 		'',
 		'superadmin',
 	);
@@ -211,7 +211,7 @@ function frl_render_admin_actions_buttons() {
 		'clear_website_transients',
 		'clear_website_transients button-secondary',
 		'Clear Website Transients',
-		'Clear all Website Transients from the database'
+		'Clear all WP Transients from the database'
 	);
 
 	$output .= frl_render_action_button(
