@@ -155,21 +155,40 @@ function frl_render_admin_actions_buttons() {
 
 	// Plugin Admin only (delete_plugins via empty string)
 	$output .= frl_render_action_button(
-		'clear_cache_hard',
-		'reset_plugin button-primary',
-		'Clear Caches (Hard)',
-		'Clears all Plugin Caches, Plugin Transients, and flushes rewrite rules.',
-		'',
-		'superadmin',
-	);
-
-	$output .= frl_render_action_button(
 		'reset_plugin',
 		'reset_plugin button-primary',
 		'Reset Plugin',
 		'WARNING: Resets all plugin settings to their default values.',
 		'',
 		'superadmin',
+	);
+
+	$output .= frl_render_action_button(
+		'delete_orphan_options',
+		'delete_orphan_options button-secondary',
+		'Delete Orphan Options',
+		'Delete orphaned options from the database'
+	);
+
+	$output .= frl_render_action_button(
+		'clear_plugin_transients',
+		'clear_plugin_transients button-secondary',
+		'Clear Plugin Transients',
+		'Delete all ' . frl_name() . ' plugin options from the database'
+	);
+
+	$output .= frl_render_action_button(
+		'reset_environment',
+		'reset_environment button-secondary',
+		'Reset Environment',
+		'Resets current environment to its default configuration'
+	);
+
+	$output .= frl_render_action_button(
+		'reset_environment_ignored',
+		'reset_environment_ignored button-secondary',
+		'Reset Ignored Plugins',
+		'Resets manually ignored plugins.'
 	);
 
 	$output .= frl_render_action_button(
@@ -189,31 +208,12 @@ function frl_render_admin_actions_buttons() {
 	);
 
 	$output .= frl_render_action_button(
-		'reset_environment',
-		'reset_environment button-secondary',
-		'Reset Environment',
-		'Resets current environment to its default configuration'
-	);
-
-	$output .= frl_render_action_button(
-		'reset_environment_ignored',
-		'reset_environment_ignored button-secondary',
-		'Reset Ignored Plugins',
-		'Resets manually ignored plugins.'
-	);
-
-	$output .= frl_render_action_button(
-		'delete_orphan_options',
-		'delete_orphan_options button-secondary',
-		'Delete Orphan Options',
-		'Delete orphaned options from the database'
-	);
-
-	$output .= frl_render_action_button(
-		'clear_plugin_transients',
-		'clear_plugin_transients button-secondary',
-		'Clear Plugin Transients',
-		'Delete all ' . frl_name() . ' plugin options from the database'
+		'clear_wp_alloptions',
+		'clear_wp_alloptions button-secondary',
+		'Clear Alloptions Cache',
+		'Flushes WordPress alloptions (autoloaded options).',
+		'',
+		'superadmin',
 	);
 
 	$output .= frl_render_action_button(

@@ -20,11 +20,11 @@
 - **`frl_cache_remember()` Never Reads Options:** it uses object cache/transients — never `get_option()`/`get_site_option()` — so it is safe inside `pre_option_*` filters. The only option read in the cache-bypass check is `get_option('frl_disable_plugin')`, a completely unrelated option. The third-party active-plugins cache (`thirdparty_active_plugins`) is invalidated on `activated_plugin`/`deactivated_plugin` by `frl_purge_active_plugins_cache()` (the former MU exclusion system was removed 2026-10-24).
 - **Access Control TTL Consistency:** `frl_has_access()` uses a **300s TTL** for its cache.
 - **Cache Operations:** `Frl_Cache_Operations` (`core/cache/class-cache-operations.php`) dispatches multi-step cache operations defined in the `FRL_CACHE_OPERATIONS` constant (`config/config-cache-operations.php`). Three tiers:
-  - **`clear_*`** — helper-level operations that `frl_cache_clear()` delegates to for composite groups (`hard`, `all`, `light`, `options`, `rewriter`).
+  - **`clear_*`** — helper-level operations that `frl_cache_clear()` delegates to for composite groups (`all`, `light`, `options`, `rewriter`).
   - **`action_*`** — admin-action-level operations called from action handlers.
   - **`env_*`** — Environment Manager enforcement-decision operations.
   - Sequential execution, no abort — every step always runs; the caller inspects per-step results.
-  - `fn` supports callable arrays (`['Frl_Cache_Manager', 'hard_cache_reset']`), validated via `is_callable()`.
+  - `fn` supports callable arrays (`['Frl_Cache_Manager', 'purge_all']`), validated via `is_callable()`.
   - All existing standalone helper functions (`frl_cache_clear()`, `frl_flush_rewrite_rules()`) remain independently callable outside the orchestrator.
 - **Cache Group Semantics:** Data originating from `wp_options`/`wp_sitemeta` uses the `options` group. Stable, infrequently-changing data (e.g., `active_plugins` list) uses a longer custom TTL (`WEEK_IN_SECONDS`) rather than the group's default.
 - **Cache-Clear Diagnostics:** `Frl_Cache_Manager::purge_group_storage()` sets a canary key before calling `wp_cache_flush_group()` and checks afterward whether it survived — if so, it logs a diagnostic warning that the active object-cache backend doesn't actually support group-scoped flushing. This is diagnostic-only; it never changes the function's return value or caller-visible behavior. The canary set/verify itself runs at most once per request (`static $canary_checked`) — backend flush-group support doesn't vary per group, so re-running it for every group in a `purge_all()`/`purge_light()` batch would add redundant object-cache round-trips with no additional signal.

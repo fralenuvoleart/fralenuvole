@@ -1,5 +1,15 @@
 # Active Context
 
+## Latest: Admin hard-reset replaced by "Clear Alloptions Cache" (`clear_wp_alloptions`) (2026-10-28)
+
+The admin button `clear_cache_hard` (Hard Cache Reset) was replaced with `clear_wp_alloptions`, which clears only WordPress's cached `alloptions` entry. The hard-reset feature was then removed after verifying it had no callers.
+
+- Button: [`frl_render_admin_actions_buttons()`](../admin/helpers/functions-admin-ui.php:157) renders `clear_wp_alloptions` ("Clear Alloptions Cache", `button-secondary`, `superadmin` cap preserved).
+- Handler: [`frl_handle_action_clear_wp_alloptions()`](../includes/helpers/functions-action-handlers.php:327) — `wp_cache_delete( 'alloptions', 'options' )`; registry entry at [`:48`](../includes/helpers/functions-action-handlers.php:48).
+- **Removed (orphaned — verified no callers):** `Frl_Cache_Manager::hard_cache_reset()`, the `clear_hard`/`action_hard` operations ([`config-cache-operations.php`](../config/config-cache-operations.php:44)), the `'hard' => 'clear_hard'` mapping in [`frl_cache_clear()`](../includes/helpers/functions-class-helpers.php:186), and the `{FRL_CACHE_PREFIX}_after_hard_cache_reset` warmer listener ([`thirdparty.php`](../modules/thirdparty/thirdparty.php:25)).
+- Docs updated: [`docs/CORE-CACHE.md`](../docs/CORE-CACHE.md), [`docs/PLUGIN-PERMISSIONS.md`](../docs/PLUGIN-PERMISSIONS.md); [`systemPatterns.md`](systemPatterns.md:23).
+- Behavior note: `frl_cache_clear('hard')` is no longer a recognized composite group — it falls through to `clear_group_with_dependencies('hard')` (non-existent group → no-op that logs "unrecognized group").
+
 ## Latest: Human-friendly cache-provider labels + "Backend Class" → "PHP Class" (2026-10-28)
 
 The Cache System Details table's **Cache Provider** label leaked PHP class names (`Redis (WP_Object_Cache)`) and used inconsistent casing. Labels are now technology-first / product-second, and the raw class name lives only in the renamed **PHP Class** row.

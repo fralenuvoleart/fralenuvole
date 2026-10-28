@@ -199,7 +199,7 @@ Hooked at `init:12`. Processes actions from admin bar cache links and other GET-
 frl_has_access()
 ```
 
-Registered actions: `clear_dashboard`, `clear_cache_light`, `clear_cache_all`, `clear_cache_hard`, `clear_plugin_transients`, `clear_website_transients`, `clear_scripts_tags`, `clear_shortcodes`, `reset_environment`, `reset_environment_ignored`, `reset_debug_config`, `reset_plugin`, `delete_mu_plugins`, `delete_orphan_options`, `sync_mu_plugins`, `flush_rewrite_rules`, `trigger_cache_warmer`, plus dynamic `clear_cache_{group}`.
+Registered actions: `clear_dashboard`, `clear_cache_light`, `clear_cache_all`, `clear_wp_alloptions`, `clear_plugin_transients`, `clear_website_transients`, `clear_scripts_tags`, `clear_shortcodes`, `reset_environment`, `reset_environment_ignored`, `reset_debug_config`, `reset_plugin`, `delete_mu_plugins`, `delete_orphan_options`, `sync_mu_plugins`, `flush_rewrite_rules`, `trigger_cache_warmer`, plus dynamic `clear_cache_{group}`.
 
 ### Admin-Post Actions (`frl_post_*`)
 

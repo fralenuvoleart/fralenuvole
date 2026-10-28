@@ -24,9 +24,6 @@ add_filter( 'wp_rest_cache/display_clear_cache_button', '__return_false', 10, 1 
 
 // Kinsta full purge → schedule the external cache warmer.
 add_action( 'kinsta_purge_complete_caches_happened', 'frl_thirdparty_schedule_cache_warmer', 10, 0 );
-// Mirror Kinsta purges: a plugin-initiated hard reset (Frl_Cache_Manager::hard_cache_reset)
-// should schedule the warmer too. Hook name mirrors the firing code's self::PREFIX (FRL_CACHE_PREFIX).
-add_action( FRL_CACHE_PREFIX . '_after_hard_cache_reset', 'frl_thirdparty_schedule_cache_warmer', 10, 0 );
 
 add_action( 'frl_thirdparty_trigger_cache_warmer', 'frl_thirdparty_run_cache_warmer', 10, 0 );
 

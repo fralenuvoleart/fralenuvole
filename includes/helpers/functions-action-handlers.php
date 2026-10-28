@@ -45,7 +45,7 @@ function frl_process_plugin_actions() {
 		'clear_dashboard'           => 'frl_handle_action_clear_dashboard',
 		'clear_cache_light'         => 'frl_handle_action_clear_cache_light',
 		'clear_cache_all'           => 'frl_handle_action_clear_cache_all',
-		'clear_cache_hard'          => 'frl_handle_action_clear_cache_hard',
+		'clear_wp_alloptions'        => 'frl_handle_action_clear_wp_alloptions',
 		'clear_plugin_transients'   => 'frl_handle_action_clear_plugin_transients',
 		'clear_website_transients'  => 'frl_handle_action_clear_website_transients',
 		'clear_scripts_tags'        => 'frl_handle_action_clear_scripts_tags',
@@ -317,13 +317,14 @@ function frl_handle_action_clear_cache_all() {
 }
 
 /**
- * Handle the 'clear_cache_hard' action.
+ * Handle the 'clear_wp_alloptions' action.
  *
- * Calls the most comprehensive cache reset in Frl_Cache_Manager.
+ * Deletes WordPress's cached `alloptions` entry only, so the next
+ * wp_load_alloptions() call rebuilds it from the database.
  *
  * @return array{success: bool, message_parts: string[], notice_type: string} Result array.
  */
-function frl_handle_action_clear_cache_hard() {
+function frl_handle_action_clear_wp_alloptions() {
 	if ( ! frl_has_access() ) { // Ensure user has capabilities
 		return array(
 			'success'       => false,
@@ -332,41 +333,17 @@ function frl_handle_action_clear_cache_hard() {
 		);
 	}
 
-	$orchestrated = Frl_Cache_Operations::run( 'action_hard' );
-
-	// Step 0: frl_cache_clear('hard') — provides detailed stats for the UI message.
-	$stats = $orchestrated['steps'][0]['result'] ?? array();
-
-	$message_parts = array( '<strong>' . __( 'Hard Cache Reset', FRL_PREFIX ) . '</strong>' );
-	$notice_type   = 'success';
-
-	// Plugin Internal Purge (from purge_all)
-	if ( frl_is_array_not_empty( $stats, 'plugin_internal_purge' ) ) {
-		$purge_all_stats = $stats['plugin_internal_purge'];
-		$message_parts[] = sprintf(
-			__( '- Plugin Internal Caches: %1$d runtime, %2$d object/transient items (approx), %3$d WP Core items.', FRL_PREFIX ),
-			$purge_all_stats['runtime'] ?? 0,
-			( $purge_all_stats['object_cache'] ?? 0 ) + ( $purge_all_stats['transients'] ?? 0 ), // Combine object and transient count from purge_all
-			$purge_all_stats['wordpress'] ?? 0
-		);
-	} else {
-		$message_parts[] = __( '- Plugin Internal Caches: Purged (details unavailable).', FRL_PREFIX );
-	}
-
-	// Plugin Transients (scoped to this plugin only — other plugins'/themes'
-	// transients are intentionally left untouched by this action)
-	if ( isset( $stats['plugin_transients_deleted']['transients'] ) ) {
-		$message_parts[] = sprintf( __( '- Plugin Transients: %d deleted.', FRL_PREFIX ), $stats['plugin_transients_deleted']['transients'] );
-	} else {
-		$message_parts[] = __( '- Plugin Transients: Cleared (details unavailable).', FRL_PREFIX );
-	}
-
-	$message_parts[] = __( '- WordPress rewrite rules flushed.', FRL_PREFIX );
+	// Clear only WordPress's autoloaded-options cache; plugin caches,
+	// transients, and rewrite rules are intentionally left untouched.
+	wp_cache_delete( 'alloptions', 'options' );
 
 	return array(
 		'success'       => true,
-		'message_parts' => $message_parts,
-		'notice_type'   => $notice_type,
+		'message_parts' => array(
+			'<strong>' . __( 'Alloptions Cache', FRL_PREFIX ) . '</strong>',
+			__( '- WordPress alloptions cache cleared; it will reload from the database.', FRL_PREFIX ),
+		),
+		'notice_type'   => 'success',
 	);
 }
 

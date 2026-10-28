@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Cache Operations executor.
  *
  * Usage:
- *   $results = Frl_Cache_Operations::run( 'action_hard' );
+ *   $results = Frl_Cache_Operations::run( 'clear_all' );
  *
  * Operation results are keyed by step index so callers can extract
  * the specific result they need for UI messages.

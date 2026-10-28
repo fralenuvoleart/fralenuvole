@@ -158,21 +158,18 @@ Groups in `FRL_CACHE_PERSISTENT_GROUPS` use transients when object cache is abse
 
 A provider is "effectively functional" only if its plugin is active AND detection confirms it's running. Provider details are cached in a core transient with `WEEK_IN_SECONDS` TTL.
 
-### Three Clearing Tiers
+### Clearing Tiers
 
 | Tier | Method | What It Clears | Dependencies | Heavy Groups |
 |---|---|---|---|---|
 | Light | `purge_light()` | All groups except heavy | No | Skipped |
 | All | `purge_all()` | All groups | Yes | Cleared |
-| Hard | `hard_cache_reset()` | `purge_all()` + plugin transients + action hook | Yes | Cleared |
 
 **`purge_all()`:** Resets runtime state, batch-deletes plugin transients from DB (if transient fallback), iterates all groups with dependency cascade. Wrapped in `with_auth_preservation()`. On Redis, all groups are storage-flushed in ONE keyspace scan first (`flush_groups_redis()`), and the per-group loop skips storage via the `$storage_batch_flushed` map.
 
 **`purge_light()`:** Iterates all groups skipping `FRL_CACHE_HEAVY_GROUPS`, clears each WITHOUT dependencies. Uses the same single-scan Redis batch for the light groups.
 
 **`purge_groups(array $groups)`:** Generic multi-group batch (helper: `frl_cache_clear_groups()`). One Redis scan for K groups; per-group fallback on other backends. Used by `action_clear_scripts_tags`.
-
-**`hard_cache_reset()`:** Calls `purge_all()` → `clear_transients()` (plugin-prefixed only, NOT all website transients) → fires `frl_cache__after_hard_cache_reset` action. Does **not** call `wp_cache_flush()` or `clear_all_website_transients()`.
 
 ### Race Condition Prevention
 
@@ -190,7 +187,7 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 
 | Tier | Prefix | Purpose | Called By |
 |---|---|---|---|
-| Helper | `clear_*` | Low-level composite clears | `frl_cache_clear('hard'/'all'/'light'/'options'/'rewriter')` |
+| Helper | `clear_*` | Low-level composite clears | `frl_cache_clear('all'/'light'/'options'/'rewriter')` |
 | Action | `action_*` | Admin-facing operations | Action handlers in `functions-action-handlers.php` |
 | Environment | `env_*` | Environment Manager enforcement | `Frl_Environment_Manager::enforce_environment_settings()` |
 
@@ -198,12 +195,10 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 
 | Operation | Steps |
 |---|---|
-| `clear_hard` | `Frl_Cache_Manager::hard_cache_reset()` |
 | `clear_all` | `Frl_Cache_Manager::purge_all()` |
 | `clear_light` | `Frl_Cache_Manager::purge_light()` |
 | `clear_options` | `clear_group_with_dependencies('options')` → cascades to theme, html, environment, admin, adminui |
 | `clear_rewriter` | `clear_group_with_dependencies('rewriter')` → cascades to permalinks |
-| `action_hard` | `frl_cache_clear('hard')` → `frl_flush_rewrite_rules()` |
 | `action_flush_rewrite_rules` | `frl_flush_rewrite_rules()` |
 | `action_clear_plugin_transients` | `frl_cache_clear('plugin_transients')` → `frl_cache_clear('adminui')` |
 | `action_clear_website_transients` | `frl_cache_clear('website_transients')` → `frl_cache_clear('adminui')` |
@@ -277,13 +272,9 @@ frl_cache_clear($group, $key, $include_dependencies)
 
 `frl_cache_clear('options')` — checks `$groups_cleared` dedup, purges persistent + runtime storage, resets the plugin's `frl_get_option` static cache, cascades to dependencies, sends browser headers if the group is in `FRL_CACHE_BROWSER_GROUPS`. It deliberately does **not** clear WordPress's own `alloptions` cache (that would force a full autoloaded-options reload site-wide), and it does **not** remove `pre_option_frl_*` filters — those are managed per-write by `frl_update_option()` / `frl_delete_option()`.
 
-### Hard Cache Reset (Action)
+### Alloptions Cache Clear (Action)
 
-`frl_handle_action_clear_cache_hard()` → `Frl_Cache_Operations::run('action_hard')`:
-1. `frl_cache_clear('hard')` → `hard_cache_reset()`: `purge_all()` + `clear_transients()` (plugin-prefixed only) + `do_action('frl_cache__after_hard_cache_reset')`
-2. `frl_flush_rewrite_rules()` → fires `update_option_permalink_structure` → `flush_rewrite_rules(true)` → Polylang `clean_languages_cache()`
-
-Step order is deliberate: caches are purged before rewrite rules are regenerated.
+`frl_handle_action_clear_wp_alloptions()` deletes only WordPress's cached `alloptions` entry (`wp_cache_delete('alloptions', 'options')`), so the next `wp_load_alloptions()` call rebuilds it from the database. It does not touch plugin caches, transients, or rewrite rules.
 
 ## The Options Read/Write Path
 

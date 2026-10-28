@@ -44,23 +44,8 @@ const FRL_CACHE_SCRIPTS_GROUPS = array(
 const FRL_CACHE_OPERATIONS = array(
 
 	// =====================================================================
-	// HELPER OPERATIONS — frl_cache_clear() delegates here for 'hard'/'all'/'light'/'options'/'rewriter'
+	// HELPER OPERATIONS — frl_cache_clear() delegates here for 'all'/'light'/'options'/'rewriter'
 	// =====================================================================
-
-	'clear_hard'                      => array(
-		'label' => 'Helper: frl_cache_clear("hard")',
-		'steps' => array(
-			array(
-				'fn'   => array( 'Frl_Cache_Manager', 'hard_cache_reset' ),
-				'args' => array(),
-				'note' => 'Fully reset plugin caches: purge_all() (all groups + dependencies via FRL_CACHE_DEPENDENCIES), clear_transients() (plugin-prefixed transients only — other plugins\' transients are untouched)',
-			),
-		),
-		'hooks' => array(
-			'before' => 'frl_before_cache_operation_clear_hard',
-			'after'  => 'frl_after_cache_operation_clear_hard',
-		),
-	),
 
 	'clear_all'                       => array(
 		'label' => 'Helper: frl_cache_clear("all")',
@@ -125,26 +110,6 @@ const FRL_CACHE_OPERATIONS = array(
 	// =====================================================================
 	// ACTION OPERATIONS — admin action handlers call here
 	// =====================================================================
-
-	'action_hard'                     => array(
-		'label' => 'Admin: Hard Cache Reset',
-		'steps' => array(
-			array(
-				'fn'   => 'frl_cache_clear',
-				'args' => array( 'hard' ),
-				'note' => '→ delegates to clear_hard operation: Frl_Cache_Manager::hard_cache_reset()',
-			),
-			array(
-				'fn'   => 'frl_flush_rewrite_rules',
-				'args' => array(),
-				'note' => 'Mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ clear_rewriter_caches() clears options→rewriter→permalinks + deletes exclusion patterns transient + flush_rewrite_rules(true); → Polylang cleans language cache) + fires permalink_structure_changed',
-			),
-		),
-		'hooks' => array(
-			'before' => 'frl_before_cache_operation_action_hard',
-			'after'  => 'frl_after_cache_operation_action_hard',
-		),
-	),
 
 	'action_flush_rewrite_rules'      => array(
 		'label' => 'Admin: Flush Rewrite Rules',

@@ -184,7 +184,6 @@ function frl_cache_clear( string $group, ?string $key = null, bool $include_depe
 
 	// Delegate composite operations to the orchestrator for full visibility.
 	$orchestrated_groups = array(
-		'hard'     => 'clear_hard',
 		'all'      => 'clear_all',
 		'light'    => 'clear_light',
 		'options'  => 'clear_options',
