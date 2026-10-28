@@ -59,7 +59,7 @@ trait Frl_Cache_Diagnostics_Trait {
 
 		if ( ! $has_drop_in ) {
 			$provider_info['slug']  = 'transients';
-			$provider_info['label'] = 'WordPress Transients — no object cache';
+			$provider_info['label'] = 'WordPress Transients - no object cache';
 			return self::finalize_provider_details( $provider_info, $transient_key );
 		}
 
@@ -129,7 +129,7 @@ trait Frl_Cache_Diagnostics_Trait {
 		if ( $cache_class_name && str_contains( strtolower( $cache_class_name ), 'redis' ) ) {
 			$provider_info['slug']                      = 'redis_active';
 			$provider_info['label']                     = str_contains( strtolower( $cache_class_name ), 'rediscachepro' )
-				? 'Redis — Object Cache Pro'
+				? 'Redis - Object Cache Pro'
 				: 'Redis';
 			$provider_info['is_effectively_functional'] = true;
 			return self::finalize_provider_details( $provider_info, $transient_key );
@@ -154,12 +154,12 @@ trait Frl_Cache_Diagnostics_Trait {
 				// Distinguish the free "Redis Object Cache" plugin from a host drop-in
 				// (Kinsta/Cloudways/GridPane) — both use the generic WP_Object_Cache class.
 				$provider_info['label']                     = self::_is_plugin_globally_active( 'redis-cache/redis-cache.php' )
-					? 'Redis — Redis Object Cache'
-					: 'Redis — host drop-in';
+					? 'Redis - Redis Object Cache'
+					: 'Redis - host drop-in';
 				$provider_info['is_effectively_functional'] = true;
 			} else {
 				$provider_info['slug']  = 'wp_object_cache_dropin';
-				$provider_info['label'] = 'WordPress Object Cache — inactive drop-in';
+				$provider_info['label'] = 'WordPress Object Cache - inactive drop-in';
 			}
 		} elseif ( $cache_class_name ) {
 			$provider_info['slug']  = 'unknown_dropin';
