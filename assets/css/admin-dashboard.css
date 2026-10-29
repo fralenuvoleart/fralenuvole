@@ -678,18 +678,11 @@
 
 #cache-groups-table.multicolumn-table .widget-table-cell-name {
     flex-direction: column;
-    flex-basis: 28%;
+    flex-basis: 22%;
 }
 
-#cache-groups-table.multicolumn-table .widget-table-cell-value-1 {
-    flex-basis: 12%;
-}
-
-#cache-groups-table.multicolumn-table .widget-table-cell-value-2,
-#cache-groups-table.multicolumn-table .widget-table-cell-value-3,
-#cache-groups-table.multicolumn-table .widget-table-cell-value-4 {
-        flex-basis: 8%;
-        flex-grow: 0;
+#cache-groups-table.multicolumn-table .widget-table-cell-value {
+    flex-basis: 10%;
 }
 
 /* Column 1: Hook Name */
