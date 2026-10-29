@@ -313,7 +313,7 @@ class Frl_Cache_Display {
 		$groups_info       = self::get_groups_info();
 		$groups_table_rows = '';
 
-		// Order: heavy groups first, then by count descending (largest first).
+		// Order: heavy groups first, then by size descending (largest first).
 		usort(
 			$groups_info,
 			function ( $a, $b ) {
@@ -321,16 +321,16 @@ class Frl_Cache_Display {
 				if ( $heavy_comparison !== 0 ) {
 					return $heavy_comparison;
 				}
-				return $b['count'] <=> $a['count'];
+				return ( $b['size_bytes'] ?? 0 ) <=> ( $a['size_bytes'] ?? 0 );
 			}
 		);
 
 		// Calculate total count for header
 		$total_count = array_sum( array_column( $groups_info, 'count' ) );
 
-		// Header for groups table - now 7 columns with total in Count column
+		// Header for groups table - 7 columns with total in Count column
 		$groups_table_rows .= frl_ui_render_multi_column_header(
-			array( 'Cache Group', 'Count (' . number_format( $total_count ) . ')', 'Heavy Group', 'Language Group', 'Browser Group', 'TTL', 'Size' ),
+			array( 'Cache Group', 'Heavy Group', 'Language Group', 'Browser Group', 'TTL', 'Count (' . number_format( $total_count ) . ')', 'Size' ),
 			'groups-header-row'
 		);
 
@@ -348,11 +348,11 @@ class Frl_Cache_Display {
 			$groups_table_rows .= frl_ui_render_multi_column_row(
 				array(
 					$group_display,
-					number_format( $group_info['count'] ),
 					frl_ui_render_status_dot_boolean( $group_info['is_heavy'], '', false ),
 					frl_ui_render_status_dot_boolean( $group_info['is_language'], '', false ),
 					frl_ui_render_status_dot_boolean( $group_info['is_browser'], '', false ),
 					$this->format_ttl( $group_info['ttl'] ),
+					number_format( $group_info['count'] ),
 					$group_info['size'],
 				),
 				false,
@@ -688,17 +688,19 @@ class Frl_Cache_Display {
 		$ttl = $config['TTL'][ $group ] ?? $config['TTL']['default'] ?? 0;
 
 		// Get size: Redis persistent size (plugin UI only) when available, else
-		// the transient SQL size below.
-		$size = '';
+		// the transient SQL size below. Raw bytes kept for sorting.
+		$size       = '';
+		$size_bytes = 0;
 		if ( is_array( $persistent_sizes ) && isset( $persistent_sizes[ $group ] ) ) {
-			$size = $persistent_sizes[ $group ] > 0
-				? round( $persistent_sizes[ $group ] / 1024, 1 ) . ' KB'
+			$size_bytes = (int) $persistent_sizes[ $group ];
+			$size       = $size_bytes > 0
+				? round( $size_bytes / 1024, 1 ) . ' KB'
 				: '0 KB';
 		} elseif ( ! $cache_functional && in_array( $group, $config['persistent_groups'], true ) ) {
 			global $wpdb;
 			$transient_prefix = '_transient_' . $config['PREFIX'] . $group . '_';
 
-			$size_bytes = frl_cache_safe_db_get_var(
+			$size_bytes = (int) frl_cache_safe_db_get_var(
 				$wpdb->prepare(
 					"SELECT SUM(LENGTH(option_value)) FROM $wpdb->options
                 WHERE option_name LIKE %s AND option_name NOT LIKE %s",
@@ -713,10 +715,11 @@ class Frl_Cache_Display {
 		}
 
 		return array(
-			'name'  => $group,
-			'count' => $count,
-			'ttl'   => $ttl,
-			'size'  => $size,
+			'name'       => $group,
+			'count'      => $count,
+			'ttl'        => $ttl,
+			'size'       => $size,
+			'size_bytes' => $size_bytes,
 		);
 	}
 

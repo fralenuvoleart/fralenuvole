@@ -40,7 +40,12 @@ Rewriter-owned options were renamed into the `rewriter_*` namespace so a single 
 - **Cache deps:** `rewriter` removed from `FRL_CACHE_DEPENDENCIES['options']` ([`config-cache.php`](../config/config-cache.php:89)); `rewriter → permalinks` kept. Rewriter invalidation now comes only from the `frl_rewriter_*` option hook and `flush_rewrite_rules`.
 - All read sites updated (path-utils, config-validator, coordinator, features, options UI/runtime builders); docs updated. `php -l` clean on every touched file.
 
-## Latest: Redis persistent per-group count & size in the cache groups table (2026-10-28)
+## Latest: Cache groups table — Count column moved before Size, secondary sort by size (2026-10-29)
+
+- [`Frl_Cache_Display::render_cache_groups_table()`](../admin/components/class-display-cache.php:312) column order is now `Cache Group, Heavy, Language, Browser, TTL, Count, Size` (Count moved from 2nd to 6th, before Size). Secondary ordering (after heavy-first) is now **size descending** instead of count.
+- [`get_group_info()`](../admin/components/class-display-cache.php:650) now also returns a raw `size_bytes` int (Redis `MEMORY USAGE`/`STRLEN` sum or transient `SUM(LENGTH())`) so sorting is numeric — the `size` display field stays a formatted `"N KB"` string.
+
+## Previous: Redis persistent per-group count & size in the cache groups table (2026-10-28)
 
 The admin "Cache Groups" table previously showed a per-request **runtime** count whenever a functional object cache was active (`get_group_info()` counted only `runtime_cache` keys) — so groups like `permalinks`/`adminui` that aren't read during a dashboard request appeared empty even when populated in Redis.
 
