@@ -678,7 +678,7 @@
 
 #cache-groups-table.multicolumn-table .widget-table-cell-name {
     flex-direction: column;
-    flex-basis: 22%;
+    flex-basis: 252%;
 }
 
 #cache-groups-table.multicolumn-table .widget-table-cell-value {
