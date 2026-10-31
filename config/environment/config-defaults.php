@@ -52,7 +52,6 @@ const FRL_ENV_DEFAULT = array(
 		'header_html'         => '',
 		'header_html_php'     => false,
 		'footer_html'         => 'file',
-		'footer_html_php'     => false,
 		'debug'               => false,
 		'schema_founder_name' => '',
 		'schema_founder_url'  => '',
