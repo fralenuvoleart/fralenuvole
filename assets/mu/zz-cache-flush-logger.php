@@ -9,7 +9,9 @@
  *   container; slow requests always report the ACPT driver in their summary line).
  * - Per DB query: one microtime() call and a few comparisons (no SAVEQUERIES, no query copies kept beyond the top 5).
  * - Per request at shutdown: one static getter call + class-name check for the ACPT driver (~1 µs).
- *   Only on the fallback path: one filemtime() on a flag file in the system temp dir.
+ *   Only on the fallback path: one filemtime() on a flag file in the system temp dir, and, when a
+ *   line is written (max once per 5 min unless the request is slow), one ACPT settings query plus
+ *   one Redis connection test to report why ACPT fell back.
  * - No DB writes, no option/transient reads, no extra HTTP requests.
  * - URLs are logged with their query string; values of credential-like parameters
  *   (pass, pwd, token, secret, key, auth, code, signature, nonce) are masked as ***.
@@ -339,14 +341,52 @@ final class FRL_Diag {
 		self::log(
 			'acpt-files',
 			sprintf(
-				'ACPT using Files cache driver | %s %s | %.2fs | last_db_error=%s%s',
+				'ACPT using Files cache driver | %s %s | %.2fs | last_db_error=%s | %s%s',
 				$_SERVER['REQUEST_METHOD'] ?? '-',
 				self::request_path(),
 				$total,
 				isset( $wpdb->last_error ) && '' !== $wpdb->last_error ? $wpdb->last_error : '-',
+				self::acpt_fallback_reason(),
 				$slow ? '' : ' | further non-slow occurrences suppressed for 5 min'
 			)
 		);
+	}
+
+	/**
+	 * Re-runs ACPT's own driver setup inside this PHP-FPM request to show why it
+	 * fell back: the stored driver/config, whether phpredis is loaded, and the
+	 * exception ACPT_Cache swallows. Only called on the (rate-limited) fallback
+	 * path: one settings query + one Redis connect attempt.
+	 */
+	private static function acpt_fallback_reason() {
+		$out = 'phpredis=' . ( class_exists( 'Redis' ) ? 'yes' : 'no' );
+
+		$repo     = '\ACPT\Core\Repository\SettingsRepository';
+		$settings = '\ACPT\Utils\Settings\Settings';
+		$cache    = '\ACPT\Includes\ACPT_Cache';
+		if ( ! is_callable( array( $repo, 'get' ) ) || ! is_callable( array( $settings, 'fromSettings' ) ) || ! class_exists( $cache ) ) {
+			return $out . ' | reason=ACPT classes not found';
+		}
+
+		try {
+			$stored = call_user_func( array( $repo, 'get' ) );
+			$driver = call_user_func( array( $settings, 'fromSettings' ), 'cache_driver', $stored );
+			$config = (array) call_user_func( array( $settings, 'fromSettings' ), 'cache_config', $stored );
+			unset( $config['redis_password'], $config['password'] );
+
+			$out .= ' | settings_rows=' . ( is_array( $stored ) ? count( $stored ) : 0 );
+			$out .= ' | driver=' . ( null === $driver ? 'null(default files)' : (string) $driver );
+			$out .= ' | config=' . wp_json_encode( $config );
+
+			if ( 'redis' === $driver ) {
+				( new $cache( $driver, $config ) )->testConnection();
+				$out .= ' | redis_test=OK now';
+			}
+		} catch ( \Throwable $e ) {
+			$out .= ' | redis_test=FAIL ' . get_class( $e ) . ': ' . $e->getMessage();
+		}
+
+		return $out;
 	}
 
 	/* ------------------------------------------------------------------ */
