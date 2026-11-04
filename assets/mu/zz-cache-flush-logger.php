@@ -4,8 +4,12 @@
  * Description: Logs full object-cache flushes and slow requests (where the time went: load phases, longest DB gaps, DB errors, slow outbound HTTP, cron hooks) to the PHP error log. Remove once the cause is found.
  *
  * Production impact:
- * - Nothing is written unless a request exceeds the threshold or a full cache flush happens.
+ * - Log lines are written only when: a request exceeds the threshold, a full cache flush happens,
+ *   or ACPT falls back to its Files cache driver (rate-limited to one line per 5 minutes per
+ *   container; slow requests always report the ACPT driver in their summary line).
  * - Per DB query: one microtime() call and a few comparisons (no SAVEQUERIES, no query copies kept beyond the top 5).
+ * - Per request at shutdown: one static getter call + class-name check for the ACPT driver (~1 µs).
+ *   Only on the fallback path: one filemtime() on a flag file in the system temp dir.
  * - No DB writes, no option/transient reads, no extra HTTP requests.
  * - URLs are logged with their query string; values of credential-like parameters
  *   (pass, pwd, token, secret, key, auth, code, signature, nonce) are masked as ***.
@@ -35,7 +39,9 @@ final class FRL_Diag {
 	const MAX_ITEMS  = 20;   // cap for HTTP / cron / error lists.
 	const LINE_LIMIT = 900;  // PHP-FPM truncates log lines at 1024 bytes by default.
 
+	/** @var string */
 	private static $id;
+	/** @var float */
 	private static $start;
 	private static $marks       = array();
 	private static $query_count = 0;
@@ -86,6 +92,7 @@ final class FRL_Diag {
 		add_action( 'shutdown', array( __CLASS__, 'on_shutdown' ), PHP_INT_MAX );
 	}
 
+	/** @param string $name */
 	public static function mark( $name ) {
 		if ( ! isset( self::$marks[ $name ] ) ) {
 			self::$marks[ $name ] = microtime( true ) - self::$start;
@@ -96,6 +103,7 @@ final class FRL_Diag {
 	/* Collectors (hot path: keep cheap)                                   */
 	/* ------------------------------------------------------------------ */
 
+	/** @param string $sql */
 	public static function on_query( $sql ) {
 		$now = microtime( true );
 
@@ -119,6 +127,11 @@ final class FRL_Diag {
 		return $sql;
 	}
 
+	/**
+	 * @param float  $seconds
+	 * @param string $sql
+	 * @param string $until
+	 */
 	private static function add_gap( $seconds, $sql, $until ) {
 		self::$gaps[] = array( $seconds, self::short( $sql, 300 ), $until );
 		if ( count( self::$gaps ) > self::TOP_GAPS ) {
@@ -132,11 +145,23 @@ final class FRL_Diag {
 		}
 	}
 
+	/**
+	 * @param mixed  $pre
+	 * @param array  $args
+	 * @param string $url
+	 */
 	public static function on_http_start( $pre, $args, $url ) {
 		self::$http_start[ $url ] = microtime( true );
 		return $pre;
 	}
 
+	/**
+	 * @param mixed  $response
+	 * @param string $context
+	 * @param string $class
+	 * @param array  $args
+	 * @param string $url
+	 */
 	public static function on_http_end( $response, $context, $class, $args, $url ) {
 		if ( ! isset( self::$http_start[ $url ] ) ) {
 			return;
@@ -153,6 +178,11 @@ final class FRL_Diag {
 		self::$http[] = sprintf( '%.2fs %s %s', $took, self::redact( preg_replace( '#^https?://#i', '', $url ) ), $status );
 	}
 
+	/**
+	 * @param mixed  $pre
+	 * @param int    $timestamp
+	 * @param string $hook
+	 */
 	public static function on_cron_event( $pre, $timestamp, $hook ) {
 		if ( count( self::$cron ) < self::MAX_ITEMS ) {
 			self::$cron[] = sprintf( '%s@%.1fs', $hook, microtime( true ) - self::$start );
@@ -165,10 +195,15 @@ final class FRL_Diag {
 	/* ------------------------------------------------------------------ */
 
 	public static function on_shutdown() {
-		self::check_acpt_driver();
-
 		$total = microtime( true ) - self::$start;
-		if ( $total < (float) FRL_DIAG_SLOW_THRESHOLD ) {
+		$acpt  = self::acpt_driver();
+		$slow  = $total >= (float) FRL_DIAG_SLOW_THRESHOLD;
+
+		if ( 'files' === $acpt ) {
+			self::log_acpt_files( $total, $slow );
+		}
+
+		if ( ! $slow ) {
 			return;
 		}
 
@@ -195,7 +230,7 @@ final class FRL_Diag {
 		self::log(
 			'slow-req',
 			sprintf(
-				'%.2fs | %s %s | action=%s | user=%d | cron=%d | ajax=%d | rest=%d | queries=%d | peak_mem=%dMB | phases: %s',
+				'%.2fs | %s %s | action=%s | user=%d | cron=%d | ajax=%d | rest=%d | queries=%d | peak_mem=%dMB | acpt=%s | phases: %s',
 				$total,
 				$_SERVER['REQUEST_METHOD'] ?? '-',
 				self::request_path(),
@@ -206,6 +241,7 @@ final class FRL_Diag {
 				( defined( 'REST_REQUEST' ) && REST_REQUEST ) ? 1 : 0,
 				self::$query_count,
 				(int) round( memory_get_peak_usage( true ) / 1048576 ),
+				'' === $acpt ? '-' : $acpt,
 				implode( ' ', $marks )
 			)
 		);
@@ -224,6 +260,13 @@ final class FRL_Diag {
 		}
 	}
 
+	/**
+	 * @param array  $results
+	 * @param int    $delay
+	 * @param bool   $selective
+	 * @param string $salt
+	 * @param float  $execute_time
+	 */
 	public static function on_flush( $results, $delay, $selective, $salt, $execute_time ) {
 		$trace = array();
 		foreach ( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS ) as $frame ) {
@@ -252,30 +295,58 @@ final class FRL_Diag {
 
 	/**
 	 * ACPT is set to Redis but silently falls back to the Files driver when its
-	 * settings query fails or Redis throws. Log when that happens.
+	 * settings query fails or Redis throws. Returns 'files', 'redis', 'other', or ''
+	 * (ACPT not loaded / cache disabled). ACPT_Plugin::getCache() is a static getter.
 	 */
-	private static function check_acpt_driver() {
+	private static function acpt_driver() {
 		if ( ! is_callable( array( '\ACPT\Includes\ACPT_Plugin', 'getCache' ) ) ) {
-			return;
+			return '';
 		}
 		try {
-			$cache = \ACPT\Includes\ACPT_Plugin::getCache();
+			$cache = call_user_func( array( '\ACPT\Includes\ACPT_Plugin', 'getCache' ) );
 		} catch ( \Throwable $e ) {
-			return;
+			return '';
 		}
-		if ( is_object( $cache ) && false !== stripos( get_class( $cache ), 'Files' ) ) {
-			global $wpdb;
-			self::log(
-				'acpt-files',
-				sprintf(
-					'ACPT using Files cache driver | %s %s | %.2fs | last_db_error=%s',
-					$_SERVER['REQUEST_METHOD'] ?? '-',
-					self::request_path(),
-					microtime( true ) - self::$start,
-					isset( $wpdb->last_error ) && '' !== $wpdb->last_error ? $wpdb->last_error : '-'
-				)
-			);
+		if ( ! is_object( $cache ) ) {
+			return '';
 		}
+		$class = get_class( $cache );
+		if ( false !== stripos( $class, 'Files' ) ) {
+			return 'files';
+		}
+		return ( false !== stripos( $class, 'Redis' ) ) ? 'redis' : 'other';
+	}
+
+	/**
+	 * Logs a Files-driver fallback. Slow requests always log it (they are rare by
+	 * definition); otherwise at most one line per 5 minutes per container, so a
+	 * persistent fallback cannot flood the log.
+	 *
+	 * @param float $total
+	 * @param bool  $slow
+	 */
+	private static function log_acpt_files( $total, $slow ) {
+		if ( ! $slow ) {
+			$flag = rtrim( sys_get_temp_dir(), '/\\' ) . '/frl-diag-acpt-files-' . md5( ABSPATH );
+			$last = @filemtime( $flag ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			if ( $last && ( time() - $last ) < 300 ) {
+				return;
+			}
+			@touch( $flag ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		}
+
+		global $wpdb;
+		self::log(
+			'acpt-files',
+			sprintf(
+				'ACPT using Files cache driver | %s %s | %.2fs | last_db_error=%s%s',
+				$_SERVER['REQUEST_METHOD'] ?? '-',
+				self::request_path(),
+				$total,
+				isset( $wpdb->last_error ) && '' !== $wpdb->last_error ? $wpdb->last_error : '-',
+				$slow ? '' : ' | further non-slow occurrences suppressed for 5 min'
+			)
+		);
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -294,23 +365,38 @@ final class FRL_Diag {
 	 * operations) but masks the values of credential-like parameters, e.g. OAuth
 	 * tokens in outbound requests or passwords in login URLs. Only runs when a
 	 * line is actually logged.
+	 *
+	 * @param string $url
+	 * @return string
 	 */
 	private static function redact( $url ) {
 		if ( false === strpos( $url, '?' ) ) {
 			return $url;
 		}
-		return preg_replace(
-			'/([?&][^=&#]*(?:pass|pwd|token|secret|key|auth|code|signature|nonce)[^=&#]*=)[^&#]*/i',
-			'$1***',
+		return preg_replace_callback(
+			'/([?&])([^=&#]+)=([^&#]*)/',
+			static function ( $m ) {
+				$sensitive = preg_match( '/(?:^|_)(?:pass|password|pwd|token|secret|key|apikey|auth|code|signature|sig|nonce|wpnonce)(?:$|_)|token|secret|password|nonce/i', $m[2] );
+				return $m[1] . $m[2] . '=' . ( $sensitive ? '***' : $m[3] );
+			},
 			$url
 		);
 	}
 
+	/**
+	 * @param string $sql
+	 * @param int    $len
+	 * @return string
+	 */
 	private static function short( $sql, $len ) {
 		$sql = preg_replace( '/\s+/', ' ', trim( (string) $sql ) );
 		return strlen( $sql ) > $len ? substr( $sql, 0, $len ) . '…' : $sql;
 	}
 
+	/**
+	 * @param string $tag
+	 * @param string $message
+	 */
 	private static function log( $tag, $message ) {
 		$prefix = '[' . $tag . '] ' . gmdate( 'Y-m-d H:i:s' ) . ' UTC #' . self::$id . ' ';
 		$room   = self::LINE_LIMIT - strlen( $prefix );
