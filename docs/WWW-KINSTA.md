@@ -1,23 +1,23 @@
-# Kinsta MU Plugin
+# Kinsta Server
 
+## Kinsta MU Plugin
 **Version:** v3.7.0.
 
-**Kinsta SSH:** `ssh pbservicesge@89.168.108.245 -p 51137`
+### Quick actions
 
-**Manual single-URL purge:** `https://example.com/kinsta-clear-cache/path/`.
+- **Manual single-URL purge:** `https://example.com/kinsta-clear-cache/path/`
+- **Hierarchical posts**: `https://example.com/kinsta-clear-cache/page-slug/subpage-slug/`.
 
-**Hierarchical posts**: `https://example.com/kinsta-clear-cache/page-slug/subpage-slug/`.
-
-## Cache types
+### Cache Flush types
 
 | Type | Mechanism |
 |---|---|
 | **Object** | `wp_cache_flush()` |
-| **Site** (full-page, includes Edge) | `GET https://localhost/kinsta-clear-cache-all` |
+| **Site** (includes Edge) | `GET https://localhost/kinsta-clear-cache-all` |
 | **CDN** | `GET https://localhost/kinsta-clear-cache-cdn` |
 | **Selective** | `POST` to `/kinsta-clear-cache/v2/immediate` + `/v2/throttled` for specific URLs |
 
-**Naming note:** the `kinsta-clear-cache-all` endpoint clears the **site/full-page cache** (all pages, including Edge) — "all" means all pages, not all cache types. It does **not** clear the object cache or the CDN. A full purge calls all three separately.
+**Naming note:** the `kinsta-clear-cache-all` endpoint clears the **site/full-page cache + Edge** — "all" means all pages, not all cache types. It does **not** clear the object cache or the CDN. A full purge calls all three separately.
 
 **Global gate:** automatic purges run only when global autopurge is ON (`KINSTAMU_DISABLE_AUTOPURGE` ≠ `true`). Controller-based triggers also require that controller ON.
 
@@ -27,9 +27,9 @@
 
 ---
 
-## Automatic purge triggers
+### Automatic purge triggers
 
-### Full purge — Object + Site + CDN
+#### Full purge — Object + Site + CDN
 
 | Trigger (hook) | Controller / condition |
 |---|---|
@@ -41,7 +41,7 @@
 | Theme custom header changed (`update_option_theme_mods_{stylesheet}`) | `WPThemeHeaderController` (theme supports `custom-header`) |
 | Nav menu updated (`wp_update_nav_menu`) | `Cache_Purge::purge_complete_caches` — **not gated by any controller** |
 
-### Selective purge — specific URLs
+#### Selective purge — specific URLs
 
 | Trigger (hook) | Controller / condition |
 |---|---|
@@ -53,7 +53,7 @@
 
 All selective purges are gated by `wp_post_controller`.
 
-### CDN only
+#### CDN only
 
 | Trigger (hook) | Controller / condition |
 |---|---|
@@ -61,7 +61,7 @@ All selective purges are gated by `wp_post_controller`.
 
 ---
 
-## Autopurge controllers
+### Autopurge controllers
 
 | Controller | Description | Live | Default |
 |---|---|---|---|
@@ -75,7 +75,7 @@ All selective purges are gated by `wp_post_controller`.
 
 ---
 
-## Key constants
+### Key constants
 
 | Constant | Effect |
 |---|---|
@@ -87,7 +87,7 @@ All selective purges are gated by `wp_post_controller`.
 
 ---
 
-## Hooks
+### Hooks
 
 **Actions fired (no arguments):**
 
@@ -165,9 +165,13 @@ No hooks exist for site-only, edge-only, CDN-only, or object-only purges.
 
 **No meaningful front-end impact.** `debug_log()` does one synchronous file append per purge event (not per request). Caveats: unbounded log growth; per-event disk I/O.
 
-### 12. Autoptimize ↔ Kinsta: what triggers what?
+### 12. Kinsta Cache: Which Plugins can trigger a flush?
 
-Whenever AO's cache is cleared, `autoptimizeCache::flushPageCache()` detects `KINSTA_CACHE_ZONE` and fires `GET localhost/kinsta-clear-cache-all` — a **sitewide page + edge purge** (not object, not CDN), independent of the MU controllers.
+Everything in the plugin stack that can run cache flushes, and when.
+
+#### Sitewide Cache Purges
+
+**Autoptimize**: Whenever AO's cache is cleared or settings saved, fires a **sitewide page + edge purge** (not object, not CDN), independent of the MU controllers.
 
 | Trigger | AO cache cleared | Kinsta sitewide purge |
 |---|---|---|
@@ -176,3 +180,16 @@ Whenever AO's cache is cleared, `autoptimizeCache::flushPageCache()` detects `KI
 | AO version update | Yes | Yes |
 | Other cache plugins' purge actions (WP Rocket, W3TC, WP-Optimize, nginx-helper) | Yes | Yes |
 | Third-party code calling `autoptimizeCache::clearall()` or firing `autoptimize_action_cachepurgedall` | Yes | Yes |
+
+#### Redis Object Cache Flushes
+
+- **WordPress core**: only during a core database upgrade or a fresh install. Never on a template or post save.
+- **Kinsta MU plugin**: its “Clear caches” or “Clear object cache” buttons, wp kinsta cache purge, and autopurge (the per-type controllers). Autopurge runs only if global autopurge is on.
+- **Redis Object Cache**: its Flush buttons and deactivating the plugin, or wp cache flush / wp redis flush.
+- **WS Form Pro**: after any WS Form update or edition change.
+- **The SEO Framework**: when it upgrades its database after an update.
+- **Index WP MySQL for Speed**: when you add or remove indexes.
+- **FDP**: before it installs a plugin from its own screen.
+- **Fralenuvole**: only per-group flushes, never FLUSHDB.
+
+
