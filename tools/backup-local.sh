@@ -5,7 +5,7 @@
 # still fails loudly if the resulting path does not exist.
 CODE_ROOT="${CODE_ROOT:-$HOME/code}"
 WORKSPACE_DIR="$CODE_ROOT/pbservices/wp-content/plugins/fralenuvole/"
-BACKUP_DIR="${BACKUP_DIR:-/mnt/backup/BACKUP/WEB/FRL-BACKUP}"   # where the older plugin zips already live
+BACKUP_DIR="${BACKUP_DIR:-/mnt/backup/BACKUP/WEB}"   # plugin zips live here
 MAIN_PLUGIN_FILE="$WORKSPACE_DIR/fralenuvole.php"
 
 # Local-only guard: WORKSPACE_DIR is a hardcoded absolute path specific to
