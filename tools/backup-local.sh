@@ -1,8 +1,11 @@
 #!/bin/bash
 
 # --- CONFIGURATION ---
-WORKSPACE_DIR="/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/fralenuvole/"
-BACKUP_DIR="/mnt/backup/BACKUP/WEB-BACKUP/FRL-BACKUP"
+# Repository root. Override CODE_ROOT when the workspace moves; the guard below
+# still fails loudly if the resulting path does not exist.
+CODE_ROOT="${CODE_ROOT:-$HOME/code}"
+WORKSPACE_DIR="$CODE_ROOT/pbservices/wp-content/plugins/fralenuvole/"
+BACKUP_DIR="${BACKUP_DIR:-/mnt/backup/BACKUP/WEB-BACKUP/FRL-BACKUP}"
 MAIN_PLUGIN_FILE="$WORKSPACE_DIR/fralenuvole.php"
 
 # Local-only guard: WORKSPACE_DIR is a hardcoded absolute path specific to

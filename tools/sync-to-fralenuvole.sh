@@ -6,8 +6,10 @@ set -euo pipefail
 # Fralenuvole.art repo intentionally does not track (mirrors deploy-remote.sh
 # prune list, plus IDE artifacts).
 
-SOURCE_DIR="/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/fralenuvole"
-TARGET_DIR="/mnt/backup/BACKUP/WWW/FRALENUVOLE/fralenuvole.art/wp-content/plugins/fralenuvole"
+# Repository root. Override CODE_ROOT when the workspace moves.
+CODE_ROOT="${CODE_ROOT:-$HOME/code}"
+SOURCE_DIR="$CODE_ROOT/pbservices/wp-content/plugins/fralenuvole"
+TARGET_DIR="$CODE_ROOT/fralenuvole.art/wp-content/plugins/fralenuvole"
 
 DRY_RUN=false
 DO_PUSH=false
