@@ -3,3 +3,6 @@
 /logs/
 /phpcs.xml
 /.roo*
+
+# KDE folder metadata
+.directory
