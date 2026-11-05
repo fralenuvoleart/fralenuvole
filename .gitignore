@@ -6,3 +6,6 @@
 
 # KDE folder metadata
 .directory
+
+# Roo Code removed 2026-11-05
+.roo/
