@@ -33,7 +33,7 @@ if (!defined('WP_PLUGIN_URL'))     { define('WP_PLUGIN_URL', '/wp-content/plugin
 // Plugin constants - define before includes/bootstrap.php loads
 // FRL_DIR_PATH: absolute path to the plugin directory
 if (!defined('FRL_DIR_PATH')) {
-    define('FRL_DIR_PATH', '/mnt/backup/BACKUP/WWW/PBS/public_html/wp-content/plugins/fralenuvole/');
+    define('FRL_DIR_PATH', dirname(__DIR__) . '/');  // derived, so the workspace can move
 }
 if (!defined('FRL_DIR_URL')) {
     define('FRL_DIR_URL', 'https://example.com/wp-content/plugins/fralenuvole/');
