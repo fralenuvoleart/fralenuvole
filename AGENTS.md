@@ -15,9 +15,9 @@ Do not guess, speculate, extrapolate, or assume.
 
 # ⚙️ Project & Environment Conventions
 - **Plan Storage:** Always save plan files in `plans/` in the workspace root.
-- **Memory Bank Synchronization:** You MUST read the `/memory-bank` directory before every task as your primary source of truth.
+- **Memory Bank Synchronization:** You MUST read `~/code/knowledge/projects/fralenuvole/` before every task as your primary source of truth.
 - **Auto-Update Protocol:** Update `activeContext.md` and `progress.md` after every significant change without being prompted.
-- **Deep Scan Initialization:** If no `memory-bank/` exists, offer to initialize it by scanning `docs/` and the codebase.
+- **Deep Scan Initialization:** If no `~/code/knowledge/projects/fralenuvole/` exists, offer to initialize it by scanning `docs/` and the codebase.
 
 ---
 
