@@ -22,6 +22,8 @@ add_filter( 'rest_endpoints', 'frl_greenshift_fix_rest_schemas', 10, 1 );
 
 add_filter( 'wp_rest_cache/display_clear_cache_button', '__return_false', 10, 1 );
 
+add_filter( 'autoptimize_filter_css_fixurl_newurl', 'frl_thirdparty_autoptimize_absolute_css_urls', 10, 1 );
+
 // Kinsta full purge → schedule the external cache warmer.
 add_action( 'kinsta_purge_complete_caches_happened', 'frl_thirdparty_schedule_cache_warmer', 10, 0 );
 
@@ -39,6 +41,26 @@ add_filter(
 	}
 );
 */
+
+/**
+ * Force absolute https:// URLs in Autoptimize's rewritten CSS url() values.
+ *
+ * Autoptimize strips the scheme from relative URLs (autoptimizeStyles.php fixurls()),
+ * emitting protocol-relative `//host/path` values. Some mobile browsers and in-app
+ * webviews resolve those as a same-origin path, producing 404s such as
+ * `//example.com/wp-content/...woff2`. The site redirects http→https, so hardcoding
+ * the scheme is safe.
+ *
+ * @param string $url Rewritten URL from Autoptimize.
+ * @return string URL with an explicit https: scheme.
+ */
+function frl_thirdparty_autoptimize_absolute_css_urls( $url ) {
+	if ( ! is_string( $url ) || ! str_starts_with( $url, '//' ) ) {
+		return $url;
+	}
+
+	return 'https:' . $url;
+}
 
 /**
  * Enqueue thirdparty-specific styles and scripts
