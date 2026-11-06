@@ -39,7 +39,7 @@ fralenuvole.php
 | `config/` | All PHP constants loaded by `config/config.php` in order: MU, base, options, fields, cache, rewriter, environment, translator, schema, themekit, channel-tracking, message-templates |
 | `assets/` | Static assets: CSS (`admin.css`, `admin-ui.css`, `public-login.css`, etc.), JS (`admin.js`, `public.js`, `scroll-listener.js`, etc.), lib (`parsedown/`, `prism/`), email templates (`templates/emails/`), MU plugin (`mu/frl-mu-plugin.php`) |
 | `docs/` | Reference documentation — one file per subsystem |
-| `memory-bank/` | Architectural invariants (`systemPatterns.md`), product context, active context, progress log |
+| `~/code/knowledge/projects/fralenuvole/` | Architectural invariants (`systemPatterns.md`), product context, active context, progress log |
 
 ## Load Order
 

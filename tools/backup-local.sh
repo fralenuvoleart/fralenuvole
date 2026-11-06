@@ -35,7 +35,6 @@ EXCLUDE_LIST=(
     "vendor"
     "composer*"
     "plans"
-    "memory-bank"
     "phpcs.xml"
     "logs"
     "AGENTS.md"
