@@ -40,7 +40,6 @@ const FRL_CACHE_TTL = array(
 	'theme'        => WEEK_IN_SECONDS,     // 1 week (for stable data)
 	'rewriter'     => WEEK_IN_SECONDS,     // 1 week (rewriter data is stable)
 	'translations' => WEEK_IN_SECONDS,     // 1 week
-	'permalinks'   => WEEK_IN_SECONDS,     // 1 week
 	'postdata'     => WEEK_IN_SECONDS,     // 1 week (post-specific data
 	'metafields'   => WEEK_IN_SECONDS,     // 1 week
 	'html'         => WEEK_IN_SECONDS,     // 1 week
@@ -49,6 +48,7 @@ const FRL_CACHE_TTL = array(
 	// 'options' actively invalidated by frl_update_option() + cache-cleanup hooks;
 	// TTL is only a safety net for DB edits.
 	'options'      => WEEK_IN_SECONDS,     // 1 week
+	'permalinks'   => DAY_IN_SECONDS,      // 1 day
 	'adminui'      => DAY_IN_SECONDS,      // 1 day (UI assembly data)
 	'versions'     => HOUR_IN_SECONDS,     // 1 hour
 	'environment'  => HOUR_IN_SECONDS,     // 1 hour
