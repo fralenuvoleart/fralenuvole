@@ -167,11 +167,9 @@ function frl_is_admin_page( $page, $param = 'page' ) {
  * @return bool True if on a post edit or post creation screen, false otherwise.
  */
 function frl_is_post_edit_screen(): bool {
-	if ( ! function_exists( 'get_current_screen' ) ) {
-		return false;
-	}
-	$screen = get_current_screen();
-	return $screen && $screen->base === 'post' && in_array( $screen->action, array( 'add', 'edit' ), true );
+	global $pagenow;
+	// $pagenow is set early (unlike the current screen, which admin_menu and heartbeat_settings can precede).
+	return is_admin() && in_array( $pagenow, array( 'post.php', 'post-new.php' ), true );
 }
 
 /**

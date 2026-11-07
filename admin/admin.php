@@ -141,13 +141,6 @@ function frl_add_column_featured_image( $column_name, $post_id ) {
 function frl_set_custom_admin_menu() {
 	// Add the main plugin settings page (needed on all admin pages).
 	frl_add_plugin_menu();
-
-	// Post edit screens only need the plugin menu — skip translation menu
-	// addition and menu item removal which are unnecessary when editing posts.
-	if ( frl_is_post_edit_screen() ) {
-		return;
-	}
-
 	frl_add_translation_menu();
 	frl_remove_admin_menus();
 }
