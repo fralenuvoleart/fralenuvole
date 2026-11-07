@@ -316,8 +316,10 @@ function frl_heartbeat_init(): void {
 }
 
 /**
-	* Re-applies the editor interval after core's post.js, which forces 10 s
-	* on screens with post-lock dialogs (i.e. editors with meta boxes).
+	* Re-applies the editor interval after core forces 10 s on post screens:
+	* the block editor via an inline script on 'heartbeat' (edit-form-blocks.php),
+	* the classic editor via post.js. Both run in jQuery ready handlers, so ours
+	* defers to the end of the ready queue with setTimeout( 0 ).
 	*
 	* @return void
 	*/
@@ -326,10 +328,9 @@ function frl_heartbeat_editor_override(): void {
 		return;
 	}
 	$interval = max( 15, (int) frl_get_option( 'heartbeat_editor_interval' ) );
-	// Ready handler registered after post.js's own, so it runs after it.
 	wp_add_inline_script(
-		'post',
-		sprintf( 'jQuery(function(){if(window.wp&&wp.heartbeat){wp.heartbeat.interval(%d);}});', $interval ),
+		'heartbeat',
+		sprintf( 'jQuery(function(){setTimeout(function(){if(window.wp&&wp.heartbeat){wp.heartbeat.interval(%d);}},0);});', $interval ),
 		'after'
 	);
 }
