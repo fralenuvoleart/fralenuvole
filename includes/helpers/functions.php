@@ -263,6 +263,28 @@ function frl_enqueue_scripts( $assets, $assets_key, $deps = array() ) {
 }
 
 /**
+ * Returns the plugin's uploads folder: uploads/<FRL_NAME>[/<subdir>]. Does not create it.
+ * Resolved per call, since the uploads URL depends on the environment's domain.
+ *
+ * @param string $subdir Optional subfolder (e.g. 'js').
+ * @return array{dir: string, url: string}|null Null if the uploads location is unavailable.
+ */
+function frl_get_uploads_location( string $subdir = '' ): ?array {
+	$uploads = wp_upload_dir( null, false );
+	if ( ! empty( $uploads['error'] ) ) {
+		return null;
+	}
+
+	$subdir = trim( $subdir, '/' );
+	$path   = '/' . FRL_NAME . ( '' !== $subdir ? '/' . $subdir : '' );
+
+	return array(
+		'dir' => $uploads['basedir'] . $path,
+		'url' => $uploads['baseurl'] . $path,
+	);
+}
+
+/**
  * Determines the appropriate image size for featured images based on post type.
  *
  * @param WP_Post|int $post The post object or post ID.

@@ -69,4 +69,11 @@ $frl_wsform_default_fields = array(
 		'sanitize_callback' => 'absint',
 		'restricted'        => true,
 	),
+	'wsform_external_footer'      => array(
+		'label'             => 'Externalize Footer Config',
+		'description'       => 'Serve WS Form\'s inline footer config (~150 KB) as a cached static file instead of inline HTML.',
+		'type'              => 'checkbox',
+		'default'           => 1,
+		'sanitize_callback' => 'absint',
+	),
 );

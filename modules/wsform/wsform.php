@@ -20,6 +20,11 @@ if ( frl_get_option( 'wsform_phone_validation' ) ) {
 	require_once __DIR__ . '/phone/phone-validation.php';
 }
 
+// Serve WS Form's inline footer config as a cached static file.
+if ( frl_get_option( 'wsform_external_footer' ) ) {
+	require_once __DIR__ . '/external-footer-wsform.php';
+}
+
 // Register WS Form Stats widget and tab
 add_action(
 	'plugins_loaded',
