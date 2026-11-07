@@ -124,7 +124,7 @@ function frl_wsf_split_footer( string $js ): ?array {
  * @return bool True if the file is available.
  */
 function frl_wsf_ensure_footer_file( string $dir, string $file, string $js ): bool {
-	$mtime = @filemtime( $file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+	$mtime = is_file( $file ) ? filemtime( $file ) : false; // Same stat call: PHP caches it.
 
 	if ( false !== $mtime ) {
 		if ( $mtime < time() - DAY_IN_SECONDS ) {
