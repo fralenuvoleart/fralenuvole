@@ -353,20 +353,6 @@ ul.subsubsub {
     height: auto !important;
 }
 
-.wp-block-shortcode .components-placeholder {
-    padding: 8px;
-    gap:5;
-}
-
-.topbar .wp-block-shortcode .components-placeholder__label {
-    display: none;
-}
-
-.topbar .wp-block-shortcode .blocks-shortcode__textarea {
-    height: auto !important;
-    padding: 5px !important
-}
-
 .edit-site-editor__view-mode-toggle .edit-site-editor__view-mode-toggle-icon img {
     background-color: transparent;
 }

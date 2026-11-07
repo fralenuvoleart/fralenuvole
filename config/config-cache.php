@@ -145,15 +145,7 @@ const FRL_CACHE_PRELOAD_BACKEND_GROUPS = array(
 	'admin',        // Admin metadata
 );
 
-// Groups that affect page rendering and need immediate browser refresh
 const FRL_CACHE_RUNTIME_MAX_ITEMS = 1000;
-
-const FRL_CACHE_BROWSER_GROUPS = array(
-	'html',         // HTML fragments
-	'permalinks',   // Permalinks
-	'options',      // Plugin settings
-	'shortcodes',   // Shortcodes
-);
 
 // Lock TTL for atomic operations
 const FRL_CACHE_LOCK_TTL = 2;

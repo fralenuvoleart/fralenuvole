@@ -46,9 +46,6 @@ class Frl_Cache_Manager {
 
 	const LOCK_TTL = FRL_CACHE_LOCK_TTL;
 
-	/** Groups that trigger browser cache-clear headers. */
-	private const BROWSER_CACHE_GROUPS = FRL_CACHE_BROWSER_GROUPS;
-
 	private static array $cache_dependencies = FRL_CACHE_DEPENDENCIES;
 
 	/** Groups cleared this request (dedup). */
@@ -67,7 +64,6 @@ class Frl_Cache_Manager {
 	private static array $persistent_groups_map = array();
 	private static array $language_groups_map   = array();
 	private static array $heavy_groups_map      = array();
-	private static array $browser_groups_map    = array();
 
 	/**
 	 * Initialize lookup maps and auto-preload.
@@ -79,7 +75,6 @@ class Frl_Cache_Manager {
 		self::$persistent_groups_map = array_flip( self::$persistent_groups );
 		self::$language_groups_map   = array_flip( FRL_CACHE_LANGUAGE_GROUPS );
 		self::$heavy_groups_map      = array_flip( FRL_CACHE_HEAVY_GROUPS );
-		self::$browser_groups_map    = array_flip( self::BROWSER_CACHE_GROUPS );
 
 		// Auto-preload cache groups when cache manager is first loaded
 		self::auto_preload();
@@ -1164,29 +1159,6 @@ class Frl_Cache_Manager {
 	}
 
 	/**
-	 * Send browser cache control headers.
-	 *
-	 * @return void
-	 */
-	public static function clear_browser_cache() {
-		// Send once per request: purge_all() triggers this for every browser
-		// group (4×), and identical headers are pure redundancy.
-		static $sent = false;
-		if ( $sent || headers_sent() ) {
-			return;
-		}
-		$sent = true;
-
-		// Clear only the HTTP cache — NOT "storage": wiping localStorage/
-		// IndexedDB/service workers punishes the admin's own browser, and
-		// Chrome blocks the redirect navigation while processing it.
-		header( 'Clear-Site-Data: "cache"' );
-		header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0, private' );
-		header( 'Pragma: no-cache' );
-		header( 'Expires: Wed, 11 Jan 1984 05:00:00 GMT' );
-	}
-
-	/**
 	 * Clear cache group with its dependencies.
 	 *
 	 * @param string $group Cache group name.
@@ -1292,11 +1264,6 @@ class Frl_Cache_Manager {
 						true
 					);
 				}
-			}
-
-			// 4. Handle browser cache for specific groups
-			if ( $key === null && isset( self::$browser_groups_map[ $group ] ) ) {
-				self::clear_browser_cache();
 			}
 		} finally {
 			--self::$cascade_depth;

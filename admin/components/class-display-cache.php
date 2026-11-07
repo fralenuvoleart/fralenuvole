@@ -330,7 +330,7 @@ class Frl_Cache_Display {
 
 		// Header for groups table - 7 columns with total in Count column
 		$groups_table_rows .= frl_ui_render_multi_column_header(
-			array( 'Cache Group', 'Heavy Group', 'Language Group', 'Browser Group', 'TTL', 'Count (' . number_format( $total_count ) . ')', 'Size' ),
+			array( 'Cache Group', 'Heavy Group', 'Language Group', 'TTL', 'Count (' . number_format( $total_count ) . ')', 'Size' ),
 			'groups-header-row'
 		);
 
@@ -350,7 +350,6 @@ class Frl_Cache_Display {
 					$group_display,
 					frl_ui_render_status_dot_boolean( $group_info['is_heavy'], '', false ),
 					frl_ui_render_status_dot_boolean( $group_info['is_language'], '', false ),
-					frl_ui_render_status_dot_boolean( $group_info['is_browser'], '', false ),
 					$this->format_ttl( $group_info['ttl'] ),
 					number_format( $group_info['count'] ),
 					$group_info['size'],
@@ -601,7 +600,6 @@ class Frl_Cache_Display {
 			// Get group metadata once
 			$heavy_groups    = FRL_CACHE_HEAVY_GROUPS;
 			$language_groups = FRL_CACHE_LANGUAGE_GROUPS;
-			$browser_groups  = FRL_CACHE_BROWSER_GROUPS;
 			$dependencies    = $config['cache_dependencies'];
 
 			foreach ( $persistent_groups as $group_name ) {
@@ -610,7 +608,6 @@ class Frl_Cache_Display {
 					// Add metadata to each group
 					$group_info['is_heavy']     = in_array( $group_name, $heavy_groups, true );
 					$group_info['is_language']  = in_array( $group_name, $language_groups, true );
-					$group_info['is_browser']   = in_array( $group_name, $browser_groups, true );
 					$group_info['dependencies'] = $dependencies[ $group_name ] ?? array();
 					$groups_info[]              = $group_info;
 				}

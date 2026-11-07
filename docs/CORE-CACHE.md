@@ -45,7 +45,7 @@ In `includes/bootstrap.php`:
 | `core/cache/trait-cache-diagnostics.php` | Object-cache provider detection and config introspection |
 | `core/cache/class-cache-operations.php` | Orchestrator: multi-step composite operations with lifecycle hooks |
 | `core/cache/cache-cleanup.php` | WordPress event hooks for automatic cache invalidation |
-| `config/config-cache.php` | Group definitions, TTLs, dependencies, preload config, browser groups |
+| `config/config-cache.php` | Group definitions, TTLs, dependencies, preload config |
 | `config/config-cache-operations.php` | Multi-step operation definitions |
 | `includes/helpers/functions-class-helpers.php` | Gate-keeper functions (`frl_cache_is_loaded()`, `frl_cache_get/set/remember/clear`) |
 
@@ -81,10 +81,6 @@ Keys are prefixed: `{group}_{lang}_{key}` (e.g., `permalinks_en_post_42`).
 ### Scripts Groups (cleared on scripts flush)
 
 `versions`, `html`, `shortcodes`
-
-### Browser Cache Groups (trigger `Clear-Site-Data` headers)
-
-`html`, `permalinks`, `options`, `shortcodes`
 
 ### Preload Groups
 
@@ -270,7 +266,7 @@ frl_cache_clear($group, $key, $include_dependencies)
 
 ### Full-Group Clear
 
-`frl_cache_clear('options')` — checks `$groups_cleared` dedup, purges persistent + runtime storage, resets the plugin's `frl_get_option` static cache, cascades to dependencies, sends browser headers if the group is in `FRL_CACHE_BROWSER_GROUPS`. It deliberately does **not** clear WordPress's own `alloptions` cache (that would force a full autoloaded-options reload site-wide), and it does **not** remove `pre_option_frl_*` filters — those are managed per-write by `frl_update_option()` / `frl_delete_option()`.
+`frl_cache_clear('options')` — checks `$groups_cleared` dedup, purges persistent + runtime storage, resets the plugin's `frl_get_option` static cache, cascades to dependencies. It deliberately does **not** clear WordPress's own `alloptions` cache (that would force a full autoloaded-options reload site-wide), and it does **not** remove `pre_option_frl_*` filters — those are managed per-write by `frl_update_option()` / `frl_delete_option()`.
 
 ### Alloptions Cache Clear (Action)
 

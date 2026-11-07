@@ -1,0 +1,15 @@
+/* Block editor canvas (loaded inside the editor iframe via enqueue_block_assets). */
+
+.wp-block-shortcode .components-placeholder {
+    padding: 8px;
+    gap:5;
+}
+
+.topbar .wp-block-shortcode .components-placeholder__label {
+    display: none;
+}
+
+.topbar .wp-block-shortcode .blocks-shortcode__textarea {
+    height: auto !important;
+    padding: 5px !important
+}

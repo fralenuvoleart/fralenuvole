@@ -26,7 +26,7 @@ add_action( 'admin_menu', 'frl_set_custom_admin_menu', 999, 0 );
 add_action( 'init', 'frl_admin_init', 10, 0 );
 add_action( 'current_screen', 'frl_maybe_load_metabox_class', 10, 1 );
 add_action( 'admin_enqueue_scripts', 'frl_admin_scripts', -999, 0 );
-add_action( 'enqueue_block_editor_assets', 'frl_gutenberg_editor_css', 9999, 0 );
+add_action( 'enqueue_block_assets', 'frl_gutenberg_editor_css', 9999, 0 );
 add_filter( 'sanitize_file_name', 'frl_get_file_nicename', 10, 1 );
 add_action( 'add_attachment', 'frl_update_image_metadata', 10, 1 );
 add_filter( 'upload_mimes', 'frl_enable_mime_support', 10, 1 );
@@ -201,14 +201,25 @@ function frl_admin_scripts() {
 }
 
 /**
- * Load theme stylesheets in the Gutenberg editor
+ * Load the theme stylesheet and editor-canvas styles in the block editor.
  *
- * This function is hooked to enqueue_block_editor_assets and
- * loads the theme's main stylesheet in the block editor to ensure styles are
- * consistent between the editor and the frontend.
+ * Hooked to enqueue_block_assets (admin only) so WordPress loads them inside
+ * the editor iframe, keeping the editor consistent with the frontend.
  *
  */
 function frl_gutenberg_editor_css() {
+	if ( ! is_admin() ) {
+		return;
+	}
+
+	// Enqueued directly: WP fires this hook again with a fresh style queue to build the
+	// iframe, and frl_enqueue_scripts() skips groups already enqueued this request.
+	$canvas   = array( 'editor-canvas-css' => 'assets/css/editor-canvas.css' );
+	$versions = frl_get_assets_versions( $canvas, 'editor_canvas_scripts' );
+	if ( isset( $versions['editor-canvas-css'] ) ) {
+		wp_enqueue_style( FRL_PREFIX . '-editor-canvas', FRL_DIR_URL . $canvas['editor-canvas-css'], array(), $versions['editor-canvas-css'] );
+	}
+
 	// Get theme stylesheet path and URL
 	$theme_style_path = get_theme_file_path( 'style.css' );
 	$theme_style_url  = get_stylesheet_uri(); // Theme's main stylesheet URL

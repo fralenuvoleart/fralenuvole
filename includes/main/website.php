@@ -136,6 +136,13 @@ function frl_disable_comments() {
 			remove_post_type_support( $post_type, 'comments' );
 			remove_post_type_support( $post_type, 'trackbacks' );
 		}
+
+		// Editor Notes are stored as comments: without the comments REST route the
+		// editor's notes request 404s on every load, so switch Notes off.
+		$editor = get_all_post_type_supports( $post_type )['editor'] ?? null;
+		if ( is_array( $editor ) && ! empty( $editor[0]['notes'] ) ) {
+			add_post_type_support( $post_type, 'editor', array_merge( $editor[0], array( 'notes' => false ) ) );
+		}
 	}
 
 	// Schedule one-time cron to batch-close comments. Completion marker uses
@@ -305,6 +312,26 @@ function frl_alter_query( WP_Query $query ): void {
 	*/
 function frl_heartbeat_init(): void {
 	add_filter( 'heartbeat_settings', 'frl_heartbeat_settings', 10, 1 );
+	add_action( 'admin_enqueue_scripts', 'frl_heartbeat_editor_override', 20, 0 );
+}
+
+/**
+	* Re-applies the editor interval after core's post.js, which forces 10 s
+	* on screens with post-lock dialogs (i.e. editors with meta boxes).
+	*
+	* @return void
+	*/
+function frl_heartbeat_editor_override(): void {
+	if ( ! frl_is_post_edit_screen() ) {
+		return;
+	}
+	$interval = max( 15, (int) frl_get_option( 'heartbeat_editor_interval' ) );
+	// Ready handler registered after post.js's own, so it runs after it.
+	wp_add_inline_script(
+		'post',
+		sprintf( 'jQuery(function(){if(window.wp&&wp.heartbeat){wp.heartbeat.interval(%d);}});', $interval ),
+		'after'
+	);
 }
 
 /**

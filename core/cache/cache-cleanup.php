@@ -18,7 +18,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 add_action( 'update_option', 'frl_clear_option_transient', 10, 1 );
 add_action( 'pll_save_strings_translations', 'frl_clear_translation_cache', 10, 0 );
-add_action( 'edited_term', 'frl_clear_term_permalink_cache', 10, 1 );
+add_action( 'edit_terms', 'frl_capture_term_route', 10, 2 );
+add_action( 'edited_term', 'frl_clear_term_permalink_cache', 10, 3 );
+add_action( 'created_term', 'frl_clear_permalinks_on_term_event', 10, 3 );
+add_action( 'delete_term', 'frl_clear_permalinks_on_term_event', 10, 3 );
+add_action( 'post_updated', 'frl_clear_permalinks_on_post_route_change', 10, 3 );
+add_action( 'transition_post_status', 'frl_clear_permalinks_on_publish_change', 10, 3 );
+add_action( 'deleted_post', 'frl_clear_permalinks_on_post_delete', 10, 2 );
+add_action( 'set_object_terms', 'frl_clear_permalinks_on_terms_change', 10, 6 );
 add_action( 'save_post', 'frl_clear_post_cache', 10, 1 );
 add_action( 'save_post_wp_navigation', 'frl_clear_navigation_cache', 10, 1 );
 add_action( 'wp_update_nav_menu', 'frl_clear_menu_cache', 10, 1 );
@@ -216,22 +223,177 @@ function frl_clear_menu_cache( $menu_id ) {
 }
 
 /**
- * Clear permalink and tracked meta caches when a term is saved.
+ * Term signatures (fields cached in the permalinks group) captured before an update, keyed by term ID.
  *
- * @param int $term_id Term ID.
+ * @return array<int, string>
+ */
+function &frl_term_routes(): array {
+	static $routes = array();
+	return $routes;
+}
+
+/**
+ * Signature of the term fields cached in the permalinks group (links and frl_get_post_terms()).
+ *
+ * @param WP_Term $term Term.
+ * @return string
+ */
+function frl_term_signature( WP_Term $term ): string {
+	return $term->slug . '|' . $term->parent . '|' . $term->name . '|' . $term->description;
+}
+
+/**
+ * Capture a term's signature before wp_update_term() writes it.
+ *
+ * @param int    $term_id  Term ID.
+ * @param string $taxonomy Taxonomy slug.
  * @return void
  */
-function frl_clear_term_permalink_cache( $term_id ) {
-	// Get term data
-	$term = get_term( $term_id );
-	if ( ! $term || is_wp_error( $term ) ) {
+function frl_capture_term_route( $term_id, $taxonomy ) {
+	if ( ! is_taxonomy_viewable( $taxonomy ) ) {
+		return;
+	}
+	$term = get_term( $term_id, $taxonomy );
+	if ( $term instanceof WP_Term ) {
+		$routes             = &frl_term_routes();
+		$routes[ $term_id ] = frl_term_signature( $term );
+	}
+}
+
+/**
+ * Clear permalink and tracked meta caches when a term is saved.
+ *
+ * Skips taxonomies without public URLs (e.g. Polylang's post_translations,
+ * rewritten on every post save) and clears permalinks only when a cached
+ * term field (slug, parent, name, description) actually changed.
+ *
+ * @param int    $term_id  Term ID.
+ * @param int    $tt_id    Term taxonomy ID.
+ * @param string $taxonomy Taxonomy slug.
+ * @return void
+ */
+function frl_clear_term_permalink_cache( $term_id, $tt_id = 0, $taxonomy = '' ) {
+	if ( ! is_taxonomy_viewable( $taxonomy ) ) {
+		return;
+	}
+	$term = get_term( $term_id, $taxonomy );
+	if ( ! $term instanceof WP_Term ) {
 		return;
 	}
 
-	frl_cache_clear( 'permalinks' );
+	$routes = &frl_term_routes();
+	$before = $routes[ $term_id ] ?? null;
+	unset( $routes[ $term_id ] );
+
+	// Unknown previous state: clear to be safe.
+	if ( null === $before || $before !== frl_term_signature( $term ) ) {
+		frl_cache_clear( 'permalinks' );
+	}
 
 	// Also clear any tracked meta fields for this term.
 	frl_clear_tracked_meta_cache( 'term', $term->term_id );
+}
+
+/**
+ * Clear permalinks when a term with public URLs is created or deleted.
+ *
+ * @param int    $term_id  Term ID.
+ * @param int    $tt_id    Term taxonomy ID.
+ * @param string $taxonomy Taxonomy slug.
+ * @return void
+ */
+function frl_clear_permalinks_on_term_event( $term_id, $tt_id = 0, $taxonomy = '' ) {
+	if ( is_taxonomy_viewable( $taxonomy ) ) {
+		frl_cache_clear( 'permalinks' );
+	}
+}
+
+/**
+ * Clear permalinks when a post enters or leaves 'publish' (incl. scheduled publishing and trash).
+ *
+ * @param string  $new_status New status.
+ * @param string  $old_status Old status.
+ * @param WP_Post $post       Post.
+ * @return void
+ */
+function frl_clear_permalinks_on_publish_change( $new_status, $old_status, $post ) {
+	if ( ( 'publish' === $new_status ) !== ( 'publish' === $old_status )
+		&& $post instanceof WP_Post && is_post_type_viewable( $post->post_type ) ) {
+		frl_cache_clear( 'permalinks' );
+	}
+}
+
+/**
+ * Clear permalinks when a published post is deleted without going through the trash.
+ *
+ * @param int     $post_id Post ID.
+ * @param WP_Post $post    Deleted post.
+ * @return void
+ */
+function frl_clear_permalinks_on_post_delete( $post_id, $post = null ) {
+	if ( $post instanceof WP_Post && 'publish' === $post->post_status && is_post_type_viewable( $post->post_type ) ) {
+		frl_cache_clear( 'permalinks' );
+	}
+}
+
+/**
+ * Clear permalinks when a published post's route changes (slug or parent).
+ *
+ * @param int     $post_id     Post ID.
+ * @param WP_Post $post_after  Post after the update.
+ * @param WP_Post $post_before Post before the update.
+ * @return void
+ */
+function frl_clear_permalinks_on_post_route_change( $post_id, $post_after, $post_before ) {
+	if ( ! $post_after instanceof WP_Post || ! $post_before instanceof WP_Post || ! is_post_type_viewable( $post_after->post_type ) ) {
+		return;
+	}
+
+	// Status changes are handled by frl_clear_permalinks_on_publish_change().
+	if ( 'publish' !== $post_before->post_status && 'publish' !== $post_after->post_status ) {
+		return;
+	}
+
+	if ( $post_before->post_name !== $post_after->post_name
+		|| (int) $post_before->post_parent !== (int) $post_after->post_parent ) {
+		frl_cache_clear( 'permalinks' );
+	}
+}
+
+/**
+ * Clear permalinks when an object's terms actually change (frl_get_post_terms() caches them).
+ *
+ * Skips taxonomies without public URLs (Polylang's translation groups), except
+ * 'language', whose assignment sets the post's URL prefix.
+ *
+ * @param int    $object_id  Object ID.
+ * @param array  $terms      Terms passed in.
+ * @param array  $tt_ids     Term taxonomy IDs set.
+ * @param string $taxonomy   Taxonomy slug.
+ * @param bool   $append     Whether terms were appended.
+ * @param array  $old_tt_ids Previous term taxonomy IDs.
+ * @return void
+ */
+function frl_clear_permalinks_on_terms_change( $object_id, $terms, $tt_ids, $taxonomy, $append, $old_tt_ids ) {
+	if ( 'language' !== $taxonomy && ! is_taxonomy_viewable( $taxonomy ) ) {
+		return;
+	}
+
+	// Unpublished posts are not on the frontend; publishing clears permalinks anyway.
+	$status = get_post_status( $object_id );
+	if ( false !== $status && 'publish' !== $status ) {
+		return;
+	}
+
+	$new = array_map( 'intval', (array) $tt_ids );
+	$old = array_map( 'intval', (array) $old_tt_ids );
+	sort( $new );
+	sort( $old );
+
+	$changed = $append ? (bool) array_diff( $new, $old ) : $new !== $old;
+	if ( $changed ) {
+		frl_cache_clear( 'permalinks' );
+	}
 }
 
 /**

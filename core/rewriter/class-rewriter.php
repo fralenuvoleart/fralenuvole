@@ -565,14 +565,17 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 						}
 					}
 				);
-				// Term events can change language slugs (patterns include lang-prefixed
-				// variants): bump the version, but no flush needed — term archives have
-				// their own rules; only the exclusion alternation changes.
+				// Only language terms feed the patterns (lang-prefixed variants): bump the
+				// version, no flush needed. Other taxonomies' terms never appear in them.
 				add_action(
 					'created_term',
-					function () {
-						Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns();
-					}
+					function ( $term_id, $tt_id, $taxonomy ) {
+						if ( 'language' === $taxonomy ) {
+							Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns();
+						}
+					},
+					10,
+					3
 				);
 				add_action(
 					'deleted_term',
@@ -591,9 +594,13 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 				);
 				add_action(
 					'edited_term',
-					function () {
-						Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns();
-					}
+					function ( $term_id, $tt_id, $taxonomy ) {
+						if ( 'language' === $taxonomy ) {
+							Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns();
+						}
+					},
+					10,
+					3
 				);
 
 				// Repair absent rewrite_rules (normal WP state during any flush cycle).
