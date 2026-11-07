@@ -84,15 +84,16 @@ function frl_wsf_externalize_footer( $tag, string $handle ) {
  * @return array{vars: string, static: string}|null Null if the config is not found or not parseable.
  */
 function frl_wsf_split_footer( string $js ): ?array {
-	$prefix = 'window.wsf_form_json_config=';
-	$start  = strpos( $js, $prefix );
-	$end    = false !== $start ? strpos( $js, ';window.wsf_form_json=', $start ) : false;
-
-	if ( false === $end ) {
+	if ( ! preg_match( '#window\.wsf_form_json_config\s*=\s*#', $js, $s, PREG_OFFSET_CAPTURE ) ) {
 		return null;
 	}
+	$from = $s[0][1] + strlen( $s[0][0] );
 
-	$from   = $start + strlen( $prefix );
+	if ( ! preg_match( '#;\s*window\.wsf_form_json\s*=#', $js, $e, PREG_OFFSET_CAPTURE, $from ) ) {
+		return null;
+	}
+	$end = $e[0][1];
+
 	$config = json_decode( substr( $js, $from, $end - $from ) );
 
 	if ( ! is_object( $config ) || ! isset( $config->parse_variables ) ) {
