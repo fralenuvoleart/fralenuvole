@@ -23,11 +23,27 @@ if ( frl_is_valid_frontend_page_request() ) {
 		20,
 		2
 	);
+	add_filter( 'autoptimize_filter_js_dontmove', 'frl_wsf_autoptimize_exclude_defer', 10, 1 );
+}
+
+/**
+ * Keeps Autoptimize from deferring (and minifying) the footer file.
+ * Deferred, it ran after WS Form's deferred scripts, so WS Form found no config and
+ * fell back to REST (/ws-form/v1/form/<id>/full → 401). Not deferred, it runs during
+ * parsing like the original inline script, before WS Form's deferred scripts.
+ *
+ * @param array $dontmove Autoptimize "don't move / don't defer" patterns.
+ * @return array
+ */
+function frl_wsf_autoptimize_exclude_defer( $dontmove ) {
+	$dontmove   = (array) $dontmove;
+	$dontmove[] = basename( frl_wsf_footer_file( '', '' ), '.js' );
+	return $dontmove;
 }
 
 /**
  * Replaces WS Form's inline footer script with an inline parse_variables script and a src
- * to the hashed file. Order is kept with or without defer. Any failure returns the original tag.
+ * to the hashed file (not deferred: see frl_wsf_autoptimize_exclude_defer()). Any failure returns the original tag.
  *
  * @param mixed  $tag    Script tag HTML (another filter may have broken it).
  * @param string $handle Script handle ('ws-form-footer' for WS Form's footer config).
@@ -101,9 +117,9 @@ function frl_wsf_split_footer( string $js ): ?array {
 	}
 
 	// JSON_HEX_TAG: values may contain HTML; keeps '</script>' from closing the inline tag.
-	$vars = wp_json_encode( $config->parse_variables, JSON_HEX_TAG );
+	$vars                    = wp_json_encode( $config->parse_variables, JSON_HEX_TAG );
 	$config->parse_variables = null; // Keeps key order; set from the inline script.
-	$static = wp_json_encode( $config );
+	$static                  = wp_json_encode( $config );
 
 	if ( false === $vars || false === $static ) {
 		return null;
