@@ -676,7 +676,8 @@ function frl_validate_html_fragment( string $html ): string {
  * @return bool True if autoload is enabled, false otherwise.
  */
 function frl_normalize_autoload( $value ) {
-	return $value === 'yes';
+	// Booleans pass through: the defaults map already stores a normalised bool.
+	return is_bool( $value ) ? $value : $value === 'yes';
 }
 
 /**
@@ -767,65 +768,6 @@ function frl_get_request_url(): string {
 	}
 
 	return $scheme . '://' . $host . $path;
-}
-
-/**
- * Strip known environment and canonical prefixes from a domain.
- *
- * Strips in order:
- * 1. Staging prefixes defined in FRL_ENV_STAGING_PREFIXES (e.g., staging., dev.).
- * 2. The 'www.' prefix.
- *
- * @param string $domain The domain to strip.
- * @return string The base domain.
- */
-function frl_strip_env_prefix( string $domain ): string {
-	foreach ( FRL_ENV_STAGING_PREFIXES as $prefix ) {
-		if ( stripos( $domain, $prefix ) === 0 ) {
-			$domain = substr( $domain, strlen( $prefix ) );
-			break;
-		}
-	}
-
-	// www. is the only conventional canonical prefix; not config-driven
-	if ( stripos( $domain, 'www.' ) === 0 ) {
-		$domain = substr( $domain, 4 );
-	}
-
-	return $domain;
-}
-
-/**
- * Extract the domain from a URL or string.
- *
- * @param string $domain The string to extract the domain from.
- * @return string The extracted domain, or the original string if no match is found.
- */
-function frl_extract_domain( $domain ) {
-	if ( preg_match( '/(?P<domain>[a-z0-9][a-z0-9\-]{1,63}\.[a-z\.]{2,6})$/i', $domain, $matches ) ) {
-		return $matches['domain'];
-	} else {
-		return $domain;
-	}
-}
-
-/**
- * Extract the subdomain from a domain string.
- *
- * @param string $domain The domain to extract the subdomain from.
- * @return string The extracted subdomain, or 'www' if none is found.
- */
-function frl_extract_subdomain( $domain ) {
-	$subdomain = $domain;
-	$domain    = frl_extract_domain( $subdomain );
-
-	$subdomain = rtrim( strstr( $subdomain, $domain, true ), '.' );
-
-	if ( ! $subdomain ) {
-		$subdomain = 'www';
-	}
-
-	return $subdomain;
 }
 
 /**

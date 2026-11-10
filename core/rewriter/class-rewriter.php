@@ -422,21 +422,37 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 	 * when a settings page saves several fields simultaneously. The guard ensures
 	 * flush_rewrite_rules() and the third-party notification run exactly once.
 	 */
-	public static function clear_rewriter_caches(): void {
-		if ( frl_is_already_running( __METHOD__ ) ) {
+	public static function clear_rewriter_caches( bool $cron_flush = false ): void {
+		if ( ! frl_is_already_running( __METHOD__ ) ) {
+			// Settings changed: option-derived config hashes must refresh before invalidating.
+			frl_cache_clear( 'options' );
+
+			// Invalidate first so the flush regenerates rules with fresh exclusions.
+			self::invalidate_rewriter_caches();
+		}
+
+		// Option changes flush from a later request; explicit flushes flush here.
+		if ( $cron_flush ) {
+			frl_schedule_rewrite_flush();
 			return;
 		}
 
-		// Settings changed: option-derived config hashes must refresh before invalidating.
-		frl_cache_clear( 'options' );
+		// One flush per request, deferred to shutdown so it runs after every option
+		// write: a settings form saves several frl_rewriter_* options, and flushing
+		// on the first one persisted rules built from a partially-saved set.
+		static $flush_scheduled = false;
+		if ( $flush_scheduled ) {
+			return;
+		}
+		$flush_scheduled = true;
 
-		// Invalidate caches first so the subsequent flush_rewrite_rules() call
-		// regenerates rules with fresh exclusion patterns. When flush_rewrite_rules
-		// fires the 'flush_rewrite_rules' hook, invalidate_rewriter_caches() runs
-		// again but its own frl_is_already_running guard blocks the duplicate work.
-		self::invalidate_rewriter_caches();
-
-		flush_rewrite_rules( true );
+		add_action(
+			'shutdown',
+			static function (): void {
+				flush_rewrite_rules( true );
+			},
+			0
+		);
 	}
 
 	/**
@@ -474,7 +490,8 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 		if ( ! str_starts_with( (string) $option, frl_prefix( 'rewriter_' ) ) ) {
 			return;
 		}
-		self::clear_rewriter_caches();
+		// Cron flush: rules were built at init from the old option values.
+		self::clear_rewriter_caches( true );
 	}
 
 	/**
@@ -503,6 +520,11 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 				// those options on the Permalink Settings page.
 				add_action( 'flush_rewrite_rules', array( self::class, 'invalidate_rewriter_caches' ), 10, 1 );
 
+				// A permalink-structure change must regenerate the rules. WordPress fires
+				// this when the option is updated, and frl_flush_rewrite_rules() fires it
+				// directly.
+				add_action( 'update_option_permalink_structure', array( self::class, 'clear_rewriter_caches' ), 10, 0 );
+
 				// Any rewriter-owned option (prefixed frl_rewriter_*) invalidates the
 				// rewriter caches. Post base translation affects get_post_base_mappings(),
 				// taxonomy rules, and catch-all exclusions; base removals and CPT slug
@@ -515,9 +537,9 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 				// for new languages persist until the next permalink structure change.
 				// Language deletion is covered by the 'deleted_term' hook below
 				// (Polylang calls wp_delete_term() which fires 'deleted_term').
-				add_action( 'pll_add_language', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
-				add_action( 'pll_update_language', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
-				add_action( 'pll_update_default_lang', array( self::class, 'clear_rewriter_caches' ), 10, 1 );
+				add_action( 'pll_add_language', array( self::class, 'clear_rewriter_caches' ), 10, 0 );
+				add_action( 'pll_update_language', array( self::class, 'clear_rewriter_caches' ), 10, 0 );
+				add_action( 'pll_update_default_lang', array( self::class, 'clear_rewriter_caches' ), 10, 0 );
 
 				// Page lifecycle: top-level page slugs are part of the exclusion
 				// patterns, and routing uses the flushed rewrite_rules snapshot —

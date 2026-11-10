@@ -30,7 +30,6 @@ if ( frl_is_logged_in() ) {
 // Priority 12: after environment enforcement (10), before rewriter (15).
 add_action( 'init', 'frl_log_capture', 12, 0 );
 add_filter( 'auth_cookie_expiration', 'frl_extend_admin_cookie', 10, 1 );
-add_action( 'shutdown', 'frl_cache_process_deferred_writes', 10, 0 );
 
 /**
  * Trigegrs to capture debug log diagnostic data

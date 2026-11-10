@@ -47,7 +47,8 @@
                 url: baseUrl,
                 type: 'POST',
                 data: {
-                    frl_tag_validator_url: urlToValidate
+                    frl_tag_validator_url: urlToValidate,
+                    nonce: frlTagValidator.nonce
                 },
                 success: function(response) {
                     // Extract only the results container from the response

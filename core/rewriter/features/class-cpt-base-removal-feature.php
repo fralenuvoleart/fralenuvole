@@ -83,6 +83,11 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			return;
 		}
 
+		// A page or post WordPress already matched wins over base removal.
+		if ( $this->query_vars_already_resolve( $query->query_vars ) ) {
+			return;
+		}
+
 		// Inject resolved vars.
 		foreach ( $vars as $key => $value ) {
 			$query->set( $key, $value );
@@ -260,41 +265,71 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 	private function resolve_multi_cpt_slug( string $slug ): array {
 		static $multi_index = array();
 
-		if ( ! array_key_exists( $slug, $multi_index ) ) {
-			$multi_index[ $slug ] = frl_cache_remember(
-				'permalinks',
-				'rewriter_cpt_multislug_' . md5( $slug ),
-				function () use ( $slug ) {
-					// Single direct query instead of get_page_by_path() multi-query approach
-					$posts = get_posts(
-						array(
-							'name'           => $slug,
-							'post_type'      => $this->cpt_slugs,
-							'post_status'    => 'publish',
-							'posts_per_page' => 1,
-							'fields'         => 'ids',
-						)
-					);
-					if ( ! empty( $posts ) ) {
-						$post = get_post( $posts[0] );
-						return ( $post && isset( $post->ID, $post->post_type ) )
-							? array(
-								'cpt'  => $post->post_type,
-								'id'   => (int) $post->ID,
-								'name' => basename( $slug ),
-							)
-							: array();
-					}
-					return array();
-				}
-			);
+		if ( array_key_exists( $slug, $multi_index ) ) {
+			return $multi_index[ $slug ];
+		}
 
-			if ( count( $multi_index ) > 4096 ) {
-				$multi_index = array();
+		$context   = 'multicpt';
+		$index_key = frl_get_language() . '|' . $slug;
+
+		// Known miss: no query, and no per-URL cache key created.
+		if ( frl_slug_negative_get( $context, $index_key ) ) {
+			$multi_index[ $slug ] = array();
+			return $multi_index[ $slug ];
+		}
+
+		$cache_key = 'rewriter_cpt_multislug_' . md5( $slug );
+		$cached    = frl_cache_get( 'permalinks', $cache_key, null );
+		if ( is_array( $cached ) ) {
+			$multi_index[ $slug ] = $cached;
+			return $multi_index[ $slug ];
+		}
+
+		// Single direct query instead of get_page_by_path() multi-query approach
+		$posts = get_posts(
+			array(
+				'name'           => $slug,
+				'post_type'      => $this->cpt_slugs,
+				'post_status'    => 'publish',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+			)
+		);
+
+		$match = array();
+		if ( ! empty( $posts ) ) {
+			$post = get_post( $posts[0] );
+			if ( $post && isset( $post->ID, $post->post_type ) ) {
+				$match = array(
+					'cpt'  => $post->post_type,
+					'id'   => (int) $post->ID,
+					'name' => basename( $slug ),
+				);
 			}
 		}
 
+		if ( $match ) {
+			frl_cache_set( 'permalinks', $cache_key, $match );
+		} else {
+			frl_slug_negative_mark( $context, $index_key );
+		}
+
+		$multi_index[ $slug ] = $match;
+
+		if ( count( $multi_index ) > 4096 ) {
+			$multi_index = array( $slug => $match );
+		}
+
 		return $multi_index[ $slug ];
+	}
+
+	/**
+	 * A page or post WordPress already matched always wins over base removal.
+	 *
+	 * @return bool True.
+	 */
+	protected function should_defer_to_matched_object(): bool {
+		return true;
 	}
 
 	/**
@@ -546,7 +581,7 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 	 * Redirect legacy URLs that still contain the CPT base slug to the canonical URL without base.
 	 */
 	public function maybe_redirect_canonical(): void {
-		if ( ! $this->is_enabled() || ! is_singular( $this->cpt_slugs ) ) {
+		if ( ! $this->is_enabled() || ! is_singular( $this->cpt_slugs ) || ! $this->is_canonicalisable_request() ) {
 			return;
 		}
 

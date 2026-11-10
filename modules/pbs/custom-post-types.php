@@ -431,7 +431,8 @@ function frl_pbs_custom_post_type_university() {
 // Remove Service taxonomy in frontend
 function frl_pbs_kill_taxonomy_archives( $query ) {
 
-	if ( frl_is_admin() || ! is_archive() ) {
+	// Main query only: secondary queries (related services, REST) must keep resolving.
+	if ( ! ( $query instanceof WP_Query ) || frl_is_admin() || ! $query->is_main_query() || ! $query->is_archive() ) {
 		return;
 	}
 

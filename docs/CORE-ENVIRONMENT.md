@@ -74,7 +74,7 @@ Layer 4: Instance constant        ← The specific constant from FRL_ENV_MAP
 | `active` / `inactive` | Full replacement at this layer |
 | `active_add` / `inactive_add` | Additive: merged with current list |
 
-After all layers resolve, active plugins are removed from the inactive list and vice versa.
+After all layers resolve, active plugins are removed from the inactive list; on conflict, active wins.
 
 ### Default Configuration Sections
 

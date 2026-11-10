@@ -71,6 +71,8 @@ class Frl_UI_Renderer {
 	/**
 	 * Renders the main plugin settings page header, including its standard actions.
 	 *
+	 * BY DESIGN: Accepted because the button markup is to clear the cache group adminui for the plugin UI only.
+	 *
 	 * @return string HTML for the plugin settings page header.
 	 */
 	public static function render_plugin_settings_header() {
@@ -131,51 +133,50 @@ class Frl_UI_Renderer {
 		$class_name = '',
 		$ttl = HOUR_IN_SECONDS,
 		$bypass_cache = false,
-		$group = 'adminui'
+		$group = 'adminui',
+		array $options = array()
 	) {
 		// Sanitize the ID first using the helper method
 		$sanitized_id = self::_sanitize_table_id( $id );
 
-		if ( $bypass_cache ) {
-			// Bypass cache: Generate HTML directly
+		// content_cb: built inside the cache callback. cache_key_suffix: per-user scope.
+		$content_cb = ( isset( $options['content_cb'] ) && is_callable( $options['content_cb'] ) ) ? $options['content_cb'] : null;
+		$suffix     = isset( $options['cache_key_suffix'] ) ? (string) $options['cache_key_suffix'] : '';
+
+		$build = static function () use ( $content, $content_cb ) {
+			return null !== $content_cb ? (string) call_user_func( $content_cb ) : (string) $content;
+		};
+
+		$wrap = static function ( string $body ) use ( $sanitized_id, $class_name, $title ) {
 			$widget_class = 'frl-widget ' . $sanitized_id;
 			if ( ! empty( $class_name ) && $class_name !== $sanitized_id ) {
 				$widget_class .= ' ' . $class_name;
 			}
 
-			$widget_html = "<div id='{$sanitized_id}' class='{$widget_class}'>";
+			$html = "<div id='{$sanitized_id}' class='{$widget_class}'>";
 			if ( ! empty( $title ) ) {
-				$widget_html .= "<h3 class='frl-widget-title'>" . $title . '</h3>';
+				$html .= "<h3 class='frl-widget-title'>" . $title . '</h3>';
 			}
-			$widget_html .= "<div class='frl-widget-content'>{$content}</div>";
-			$widget_html .= '</div>';
-		} else {
-			// Use cache: Remember or retrieve the generated HTML
-			$cache_key   = 'ui_widget_' . $sanitized_id;
-			$widget_html = frl_cache_remember(
-				$group,
-				$cache_key,
-				function () use ( $sanitized_id, $content, $title, $class_name ) {
-					// Construct the full widget HTML inside the cache callback
-					$widget_class = 'frl-widget ' . $sanitized_id;
-					if ( ! empty( $class_name ) && $class_name !== $sanitized_id ) {
-						$widget_class .= ' ' . $class_name;
-					}
+			$html .= "<div class='frl-widget-content'>{$body}</div>";
+			$html .= '</div>';
 
-					$output = "<div id='{$sanitized_id}' class='{$widget_class}'>";
-					if ( ! empty( $title ) ) {
-						$output .= "<h3 class='frl-widget-title'>" . $title . '</h3>';
-					}
-					$output .= "<div class='frl-widget-content'>{$content}</div>";
-					$output .= '</div>'; // Close frl-widget div
-					return $output;
-				},
-				$ttl
-			); // Use the passed or default TTL
+			return $html;
+		};
+
+		if ( $bypass_cache ) {
+			return $wrap( $build() );
 		}
 
-		// Return the generated or cached HTML
-		return $widget_html;
+		$cache_key = 'ui_widget_' . $sanitized_id . ( $suffix !== '' ? '_' . $suffix : '' );
+
+		return frl_cache_remember(
+			$group,
+			$cache_key,
+			static function () use ( $wrap, $build ) {
+				return $wrap( $build() );
+			},
+			$ttl
+		);
 	}
 
 	/**
@@ -360,6 +361,9 @@ class Frl_UI_Renderer {
 	 * @param bool   $is_header Whether this is a header row.
 	 * @param string $row_class Optional additional CSS class.
 	 * @return string Rendered row HTML.
+	 *
+	 * By design: $name/$value are output unescaped; callers pass trusted,
+	 * already-rendered admin markup.
 	 */
 	public static function render_table_row(
 		$name,

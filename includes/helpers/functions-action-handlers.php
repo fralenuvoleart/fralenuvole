@@ -14,6 +14,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Action names that require a valid nonce before dispatch.
+ *
+ * Cache-purge actions are deliberately absent: the admin-bar links carry no nonce.
+ *
+ * @return string[] Action names.
+ */
+function frl_actions_requiring_nonce(): array {
+	$actions = array(
+		'reset_plugin',
+		'reset_environment',
+		'reset_environment_ignored',
+		'reset_debug_config',
+		'delete_mu_plugins',
+		'sync_mu_plugins',
+		'delete_orphan_options',
+		'flush_rewrite_rules',
+		'clear_wp_alloptions',
+	);
+
+	return (array) apply_filters( 'frl_actions_requiring_nonce', $actions );
+}
+
+/**
  * Handle admin actions dispatched via GET requests.
  *
  * Processes direct GET requests with the `frl_action` parameter.
@@ -40,12 +63,20 @@ function frl_process_plugin_actions() {
 	$is_processing = true;
 	$result        = array();
 
+	// Destructive actions must present the nonce the button builder emits.
+	// The cache-purge actions stay capability-only: the admin-bar links
+	// (logged-user.php) carry no nonce by design.
+	if ( in_array( $action, frl_actions_requiring_nonce(), true ) && ! frl_verify_plugin_action_nonce( $action ) ) {
+		frl_add_admin_notice( __( 'Security check failed. Please try again.', FRL_PREFIX ), 'error' );
+		frl_safe_redirect();
+	}
+
 	// Define the action registry
 	$action_registry = array(
 		'clear_dashboard'           => 'frl_handle_action_clear_dashboard',
 		'clear_cache_light'         => 'frl_handle_action_clear_cache_light',
 		'clear_cache_all'           => 'frl_handle_action_clear_cache_all',
-		'clear_wp_alloptions'        => 'frl_handle_action_clear_wp_alloptions',
+		'clear_wp_alloptions'       => 'frl_handle_action_clear_wp_alloptions',
 		'clear_plugin_transients'   => 'frl_handle_action_clear_plugin_transients',
 		'clear_website_transients'  => 'frl_handle_action_clear_website_transients',
 		'clear_scripts_tags'        => 'frl_handle_action_clear_scripts_tags',

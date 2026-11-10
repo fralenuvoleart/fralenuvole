@@ -14,13 +14,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Load configuration and helpers always
 require_once __DIR__ . '/config-constants-acf.php';
 
-// Shortcodes work without ACF when id=... is used
-require_once __DIR__ . '/acf-shortcodes.php';
-
-// If ACF is not available, skip ACF-only integrations
+// If ACF is not available, skip ACF-only integrations.
+// The shortcodes file must come AFTER this: its callbacks call get_field().
 if ( ! function_exists( 'get_field' ) ) {
 	return;
 }
+
+require_once __DIR__ . '/acf-shortcodes.php';
 
 // Compute and persist configured calculated ACF option fields on ACF Options save
 add_action(

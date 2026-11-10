@@ -33,7 +33,7 @@ class Frl_Environment_Manager {
 	public static function init() {
 		if ( ! frl_is_already_running( __METHOD__ ) ) {
 			// Check URLs for environment with proper access control
-			// Note: frl_has_access() now returns true if FRL_MODE === 'migrate'
+			// Note: frl_has_access() returns true if FRL_MODE === 'migrate'
 			if ( frl_has_access() ) {
 				// If force reload flag is set (now using stable cookie-based check)
 				if ( frl_check_and_clear_force_reload_flag() ) {
@@ -242,11 +242,17 @@ class Frl_Environment_Manager {
 
 			// Website transients purge moved to final state_changed block after operations
 
-			// Apply WordPress options from config
-			Frl_Environment_Applier::apply_wordpress_options( $config, $results, $force ); // Pass force
+			// Suppress manual-edit tracking: these writes are the config being applied.
+			Frl_Environment_Monitor::suppress_tracking( true );
+			try {
+				// Apply WordPress options from config
+				Frl_Environment_Applier::apply_wordpress_options( $config, $results, $force ); // Pass force
 
-			// Apply domain-specific configuration
-			Frl_Environment_Applier::apply_plugin_options( $config, $results, $force ); // Pass force
+				// Apply domain-specific configuration
+				Frl_Environment_Applier::apply_plugin_options( $config, $results, $force ); // Pass force
+			} finally {
+				Frl_Environment_Monitor::suppress_tracking( false );
+			}
 
 			// Apply plugin management
 			Frl_Environment_Plugin_Manager::apply_plugins_activation_status( $config, $results );

@@ -22,7 +22,7 @@ class Frl_Rewriter_CLI {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp frl rewrites test
+	 *     wp frl-rewrites test
 	 *
 	 * @param array $args Array of positional arguments
 	 * @param array $assoc_args Array of associative arguments
@@ -53,4 +53,4 @@ class Frl_Rewriter_CLI {
 	}
 }
 
-WP_CLI::add_command( 'frl rewrites', 'Frl_Rewriter_CLI' );
+WP_CLI::add_command( 'frl-rewrites', 'Frl_Rewriter_CLI' );

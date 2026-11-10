@@ -2,6 +2,8 @@
 
 /**
  * PB Nova module constants
+ *
+ * Kept on purpose — not auto-loaded, kept as reference snippets.
  */
 
 // Exit if accessed directly.

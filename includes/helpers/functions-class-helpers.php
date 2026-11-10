@@ -182,7 +182,9 @@ function frl_cache_clear( string $group, ?string $key = null, bool $include_depe
 		return false;
 	}
 
-	// Delegate composite operations to the orchestrator for full visibility.
+	// Orchestrate only the full-group form. A keyed or dependency-free clear must
+	// reach Frl_Cache_Manager directly, because the operation definitions take no
+	// arguments and would silently widen it to the whole group + its dependencies.
 	$orchestrated_groups = array(
 		'all'      => 'clear_all',
 		'light'    => 'clear_light',
@@ -190,7 +192,7 @@ function frl_cache_clear( string $group, ?string $key = null, bool $include_depe
 		'rewriter' => 'clear_rewriter',
 	);
 
-	if ( isset( $orchestrated_groups[ $group ] ) ) {
+	if ( $key === null && $include_dependencies && isset( $orchestrated_groups[ $group ] ) ) {
 		$result = Frl_Cache_Operations::run( $orchestrated_groups[ $group ] );
 		// Return the result from the primary cache step (step 0) for backward compatibility.
 		return $result['steps'][0]['result'] ?? array();
@@ -227,61 +229,14 @@ function frl_cache_clear_groups( array $groups ): array|false {
 	*
 	* @param string $group Cache group
 	* @param array<int,string> $keys Keys to clear
+	* @param bool $all_languages For language groups, clear every active language
 	* @return int Number of keys cleared
 	*/
-function frl_cache_clear_keys( string $group, array $keys ): int {
+function frl_cache_clear_keys( string $group, array $keys, bool $all_languages = false ): int {
 	if ( ! frl_cache_is_loaded() ) {
 		return 0;
 	}
-	return Frl_Cache_Manager::clear_keys( $group, $keys );
-}
-
-/**
- * Get deferred writes from cache manager
- * @return array Deferred writes
- */
-function frl_cache_get_deferred_writes(): array {
-	if ( ! frl_cache_is_loaded() ) {
-		return array();
-	}
-	return Frl_Cache_Manager::$deferred_writes;
-}
-
-/**
- * Clear deferred cache writes
- * @return void
- */
-function frl_cache_clear_deferred_writes(): void {
-	if ( ! frl_cache_is_loaded() ) {
-		return;
-	}
-	Frl_Cache_Manager::$deferred_writes = array();
-}
-
-/**
- * Add a deferred cache write (for re-queuing failed writes)
- * @param string $group Cache group
- * @param string $key Cache key
- * @param mixed $value Value to cache
- * @return void
- */
-function frl_cache_add_deferred_write( string $group, string $key, mixed $value ): void {
-	if ( ! frl_cache_is_loaded() ) {
-		return;
-	}
-	Frl_Cache_Manager::$deferred_writes[ $group ][ $key ] = $value;
-}
-
-/**
-	* Process and flush deferred cache writes on shutdown.
-	*
-	* @return void
-	*/
-function frl_cache_process_deferred_writes(): void {
-	if ( ! frl_cache_is_loaded() ) {
-		return;
-	}
-	Frl_Cache_Manager::process_deferred_writes();
+	return Frl_Cache_Manager::clear_keys( $group, $keys, $all_languages );
 }
 
 /**

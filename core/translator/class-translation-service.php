@@ -640,23 +640,14 @@ final class Frl_Translation_Service {
 		if ( empty( $this->string_registration_queue ) ) {
 			return;
 		}
-		$source_lang   = $this->get_source_language();
-		$original_lang = $this->get_language();
 
-		// Polylang registers strings in the current language.
-		// We must force the source language context to ensure strings are registered as originals.
-		if ( function_exists( 'pll_set_current_language' ) ) {
-			pll_set_current_language( $source_lang );
-		}
-
+		// Polylang's string registry is language-independent (it stores source
+		// strings in polylang_wpml_strings), so no language switch is needed.
 		try {
 			foreach ( array_keys( $this->string_registration_queue ) as $string ) {
 				$this->register_translation( $string );
 			}
 		} finally {
-			if ( function_exists( 'pll_set_current_language' ) ) {
-				pll_set_current_language( $original_lang );
-			}
 			$this->string_registration_queue = array();
 		}
 	}

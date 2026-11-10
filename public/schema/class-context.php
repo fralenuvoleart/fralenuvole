@@ -39,12 +39,13 @@ class Frl_Schema_Context {
 			return 'search';
 		}
 
-		if ( is_singular() ) {
-			return 'singular';
+		// Posts index only: a static front page is singular and keeps its page schema.
+		if ( is_home() ) {
+			return 'home';
 		}
 
-		if ( is_home() || is_front_page() ) {
-			return 'home';
+		if ( is_singular() ) {
+			return 'singular';
 		}
 
 		if ( is_archive() || is_post_type_archive() ) {

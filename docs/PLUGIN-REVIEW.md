@@ -51,7 +51,7 @@ Verified zero-DB-query warm-cache path in production:
 
 | Category | Features |
 |---|---|
-| Cache | 5-backend unified cache, LRU runtime tier, dependency cascading, language-aware keys, batch preload, deferred writes, composite operations orchestrator |
+| Cache | 5-backend unified cache, LRU runtime tier, dependency cascading, language-aware keys, batch preload, composite operations orchestrator |
 | Environment | Domain→profile mapping, auto-application of WP/plugin options and plugin/module activation, throttled re-enforcement, manual-override tracking, admin bar switcher |
 | Rewriter | Multilingual CPT slug translation, taxonomy/CPT base removal, feature-based self-registering architecture, catch-all exclusion patterns |
 | Translator | Adapter pattern (Polylang), block token translation, field translation with pattern-based caching, deferred string registration |

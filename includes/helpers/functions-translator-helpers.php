@@ -171,55 +171,90 @@ function frl_get_translation_block( string $block_content, array $block ): strin
 	if ( frl_get_option( 'disable_translator' ) ) {
 		return $block_content;
 	} elseif ( ! frl_is_multilingual_plugin_active() ) {
-
-		// Safe Mode: Lightweight processing to remove delimiters without booting the full service.
-		$t_start = FRL_TRANSLATOR_DELIMITER_TEXT['start'];
-		$l_start = FRL_TRANSLATOR_DELIMITER_LINK['start'];
-
-		if ( ! str_contains( $block_content, $t_start ) && ! str_contains( $block_content, $l_start ) ) {
-			return $block_content;
-		}
-
-		// Request-level deduplication only. Persistent caching is intentionally omitted
-		// because $block_content may contain per-request dynamic values (e.g. GeoDirectory
-		// random IDs) that make md5-based keys unstable. A persistent cache with unstable
-		// keys produces 0% hit rate and transient bloat on sites without object cache.
-		static $safe_cache = array();
-		$sig               = md5( $block_content );
-		if ( isset( $safe_cache[ $sig ] ) ) {
-			return $safe_cache[ $sig ];
-		}
-
-		$t_start = preg_quote( FRL_TRANSLATOR_DELIMITER_TEXT['start'], '/' );
-		$t_end   = preg_quote( FRL_TRANSLATOR_DELIMITER_TEXT['end'], '/' );
-		$l_start = preg_quote( FRL_TRANSLATOR_DELIMITER_LINK['start'], '/' );
-		$l_end   = preg_quote( FRL_TRANSLATOR_DELIMITER_LINK['end'], '/' );
-
-		// Strip delimiters in a single pass, honouring FRL_TRANSLATOR_EXCLUDE
-		// so third-party placeholder syntax is left intact.
-		$combined = "/{$t_start}(.*?){$t_end}|{$l_start}(.*?){$l_end}/";
-		$content  = preg_replace_callback(
-			$combined,
-			function ( $m ) {
-				if ( ! empty( $m[1] ) ) {
-					$token = trim( $m[1] );
-					// Excluded tokens: keep delimiters, leave untouched.
-					return frl_is_token_match( $token ) ? $m[0] : $token;
-				}
-				if ( ! empty( $m[2] ) ) {
-					// Permalink patterns: always strip to '#'.
-					return '#';
-				}
-				return $m[0];
-			},
-			$block_content
-		);
-
-		$safe_cache[ $sig ] = $content;
-		return $safe_cache[ $sig ];
+		return frl_translator_safe_mode( $block_content );
 	}
 
 	return Frl_Translation_Service::get_instance()->get_translation_block( $block_content, $block );
+}
+
+/**
+ * Safe Mode: strip translation delimiters when no multilingual plugin is active,
+ * so raw {{...}} / ##...## markers never reach the page.
+ *
+ * @param string $block_content The content of the block.
+ * @return string Content with delimiters stripped.
+ */
+function frl_translator_safe_mode( string $block_content ): string {
+	$t_start = FRL_TRANSLATOR_DELIMITER_TEXT['start'];
+	$l_start = FRL_TRANSLATOR_DELIMITER_LINK['start'];
+
+	if ( ! str_contains( $block_content, $t_start ) && ! str_contains( $block_content, $l_start ) ) {
+		return $block_content;
+	}
+
+	// Request-level deduplication only. Persistent caching is intentionally omitted
+	// because $block_content may contain per-request dynamic values (e.g. GeoDirectory
+	// random IDs) that make md5-based keys unstable.
+	static $safe_cache = array();
+	$sig               = md5( $block_content );
+	if ( isset( $safe_cache[ $sig ] ) ) {
+		return $safe_cache[ $sig ];
+	}
+
+	$t_start = preg_quote( FRL_TRANSLATOR_DELIMITER_TEXT['start'], '/' );
+	$t_end   = preg_quote( FRL_TRANSLATOR_DELIMITER_TEXT['end'], '/' );
+	$l_start = preg_quote( FRL_TRANSLATOR_DELIMITER_LINK['start'], '/' );
+	$l_end   = preg_quote( FRL_TRANSLATOR_DELIMITER_LINK['end'], '/' );
+
+	// Strip delimiters in a single pass, honouring FRL_TRANSLATOR_EXCLUDE
+	// so third-party placeholder syntax is left intact.
+	$combined = "/{$t_start}(.*?){$t_end}|{$l_start}(.*?){$l_end}/";
+	$content  = preg_replace_callback(
+		$combined,
+		function ( $m ) {
+			if ( ! empty( $m[1] ) ) {
+				$token = trim( $m[1] );
+				return frl_is_token_match( $token ) ? $m[0] : $token;
+			}
+			if ( ! empty( $m[2] ) ) {
+				return '#';
+			}
+			return $m[0];
+		},
+		$block_content
+	);
+
+	$safe_cache[ $sig ] = $content;
+	return $safe_cache[ $sig ];
+}
+
+/**
+ * render_block callback for Safe Mode. Registered when the translator is inactive
+ * but not disabled by option — frl_translator_init() is never reached in that case.
+ *
+ * @param mixed $block_content Rendered block content.
+ * @param array $block         Block data.
+ * @return mixed Content with delimiters stripped.
+ */
+function frl_translator_safe_mode_block( $block_content, $block ) {
+	if ( ! is_string( $block_content ) || ! frl_is_valid_frontend_page_request() ) {
+		return $block_content;
+	}
+
+	return frl_translator_safe_mode( $block_content );
+}
+
+/**
+ * Register Safe Mode at init/20, once every plugin has declared itself.
+ *
+ * @return void
+ */
+function frl_translator_register_safe_mode(): void {
+	if ( frl_translator_is_enabled() ) {
+		return; // A multilingual plugin is active: the full translator handles blocks.
+	}
+
+	add_filter( 'render_block', 'frl_translator_safe_mode_block', 10, 2 );
 }
 
 /**
@@ -284,20 +319,6 @@ function frl_get_post_translations( int $post_id ): array {
 		return array( $default_lang => $post_id );
 	}
 	return Frl_Translation_Service::get_instance()->get_post_translations( $post_id );
-}
-
-/**
- * Get term translations IDs for a given term ID.
- *
- * @param int $term_id Term ID.
- * @return array Language-keyed map of term IDs.
- */
-function frl_get_term_translations( int $term_id ): array {
-	if ( ! frl_translator_is_enabled() ) {
-		$default_lang = frl_get_default_language_fallback();
-		return array( $default_lang => $term_id );
-	}
-	return Frl_Translation_Service::get_instance()->get_term_translations( $term_id );
 }
 
 /**

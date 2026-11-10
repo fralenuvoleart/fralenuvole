@@ -39,6 +39,7 @@ function frl_has_access( $capability = FRL_PLUGIN_ACCESS ) {
 		return true;
 	}
 
+	// Only user ID 1 can pass; 'superadmin' is never given to anyone else.
 	if ( $capability === 'superadmin' ) {
 		return $user->ID === FRL_PLUGIN_SUPERADMIN_ID;
 	}
@@ -104,7 +105,8 @@ function frl_is_admin() {
 			$is_admin = true;
 			return $is_admin;
 		}
-		$action = $_REQUEST['action'] ?? '';
+		// is_string(): ?action[]=x would otherwise reach str_starts_with() as an array.
+		$action = isset( $_REQUEST['action'] ) && is_string( $_REQUEST['action'] ) ? $_REQUEST['action'] : '';
 		if ( str_starts_with( $action, 'admin_' ) || str_starts_with( $action, 'settings_' ) ) {
 			$is_admin = true;
 			return $is_admin;
@@ -274,7 +276,7 @@ function frl_is_plugin_context() {
 		return $is_plugin_context;
 	}
 
-	$action            = isset( $_REQUEST['action'] ) ? $_REQUEST['action'] : '';
+	$action            = isset( $_REQUEST['action'] ) && is_string( $_REQUEST['action'] ) ? $_REQUEST['action'] : '';
 	$is_plugin_context = str_starts_with( $action, frl_prefix() );
 	return $is_plugin_context;
 }
@@ -611,4 +613,193 @@ function frl_is_thirdparty_plugin_active( string $plugin_path ): bool {
 		return true;
 	}
 	return false;
+}
+
+/*
+ * Nonce verification helpers.
+ *
+ * Live here (not in admin/) because frl_process_plugin_actions() runs on the
+ * frontend too: the ?frl_action= dispatcher validates nonces there.
+ */
+/**
+ * Verify the nonce for a specific plugin action.
+ *
+ * @param string $action_name The action name to verify the nonce for.
+ * @return bool True if the nonce is valid, false otherwise.
+ */
+function frl_verify_plugin_action_nonce( $action_name ) {
+	return frl_verify_simple_nonce(
+		$action_name,                               // Will be converted to (frl_prefix($action_name) = frl_action_name)
+		frl_prefix( $action_name ) . '_nonce',       // Field name matches frl_render_action_button format
+		'GET',                                      // Data source
+		FRL_PLUGIN_ACCESS,                          // Capability check
+		false                                       // Return bool, don't die
+	);
+}
+
+/**
+ * Verify admin action nonce
+ *
+ * @param string $nonce_field Nonce field name
+ * @param string $nonce_action Nonce action name
+ * @param string $redirect_url_base Base URL for redirect
+ * @param array $redirect_args Additional redirect arguments
+ * @return bool True if nonce is valid
+ */
+function frl_verify_admin_action_nonce( $nonce_field = '_wpnonce', $nonce_action = FRL_PREFIX . '_save_options', $redirect_url_base = '', $redirect_args = array() ) {
+	// Use simple nonce for basic verification (no capability check, return false on failure)
+	$verified = frl_verify_simple_nonce(
+		$nonce_action,    // Use the full action as-is
+		$nonce_field,
+		'POST',
+		null,             // No capability check
+		false,            // Don't die, let us handle errors
+		true              // raw_action = true (don't prefix)
+	);
+
+	if ( ! $verified ) {
+		// Custom error handling with admin notices and redirects
+		frl_add_admin_notice(
+			__( 'Security check failed. The form may have expired. Please try again.', FRL_PREFIX ),
+			'error',
+			30
+		);
+
+		// Redirect if URL provided
+		if ( ! empty( $redirect_url_base ) ) {
+			$redirect_url = add_query_arg(
+				array_merge( array( 'error' => 'nonce' ), $redirect_args ),
+				$redirect_url_base
+			);
+
+			frl_safe_redirect( $redirect_url );
+			exit;
+		}
+
+		// Otherwise, just die
+		wp_die( __( 'Security check failed. Please go back and try again.', FRL_PREFIX ) );
+	}
+
+	return true;
+}
+
+/**
+ * Shared core nonce-verification logic.
+ *
+ * Extracted from frl_verify_simple_nonce() and frl_verify_dynamic_nonce() — both
+ * functions previously duplicated this exact sequence (pick superglobal by
+ * source, check the nonce field exists, verify it, then check capability).
+ * Centralizing it here means a future fix/hardening change only needs to be
+ * made in one place.
+ *
+ * @param string $nonce_action Fully-built nonce action string to verify against.
+ * @param string $nonce_field Field name containing the nonce.
+ * @param string $source Data source: 'GET', 'POST', or 'REQUEST'.
+ * @param string|null $cap Required capability for access, or null to skip the check.
+ * @param bool $should_die Whether to call wp_die() on failure.
+ * @param string $missing_message Message used when the nonce field itself is missing.
+ * @param string $invalid_message Message used when the nonce fails verification.
+ * @param string $cap_message Message used when the capability check fails.
+ * @return bool True if verified, false if $should_die is false and verification failed.
+ */
+function _frl_verify_nonce_core( $nonce_action, $nonce_field, $source, $cap, $should_die, $missing_message, $invalid_message, $cap_message ) {
+	// Get the appropriate superglobal
+	switch ( strtoupper( $source ) ) {
+		case 'GET':
+			$data = $_GET;
+			break;
+		case 'POST':
+			$data = $_POST;
+			break;
+		case 'REQUEST':
+		default:
+			$data = $_REQUEST;
+			break;
+	}
+
+	// Check if nonce field exists
+	if ( ! isset( $data[ $nonce_field ] ) ) {
+		if ( $should_die ) {
+			wp_die( $missing_message );
+		}
+		return false;
+	}
+
+	// Verify the nonce
+	$nonce_verified = wp_verify_nonce( sanitize_text_field( $data[ $nonce_field ] ), $nonce_action );
+
+	if ( ! $nonce_verified ) {
+		if ( $should_die ) {
+			wp_die( $invalid_message );
+		}
+		return false;
+	}
+
+	// Check capability if required
+	if ( $cap !== null && ! frl_has_access( $cap ) ) {
+		if ( $should_die ) {
+			wp_die( $cap_message );
+		}
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Verify a simple static nonce with an optional capability check.
+ *
+ * Helper for standard nonce verification patterns with static action names and managing error handling (either returning false or calling wp_die()).
+ *
+ * @param string $action Action name (will be prefixed with the plugin prefix unless $raw_action is true).
+ * @param string $nonce_field Field name containing the nonce (default: 'nonce').
+ * @param string $source Data source: 'GET', 'POST', or 'REQUEST' (default: 'GET').
+ * @param string|null $cap Required capability for access (default: FRL_PLUGIN_ACCESS).
+ * @param bool $should_die Whether to call wp_die() on failure (default: true).
+ * @param bool $raw_action Whether to use $action as-is without prefixing (default: false).
+ * @return bool True if verified, false if $should_die is false and verification failed.
+ */
+function frl_verify_simple_nonce( $action, $nonce_field = 'nonce', $source = 'GET', $cap = FRL_PLUGIN_ACCESS, $should_die = true, $raw_action = false ) {
+	$nonce_action = $raw_action ? $action : frl_prefix( $action );
+
+	return _frl_verify_nonce_core(
+		$nonce_action,
+		$nonce_field,
+		$source,
+		$cap,
+		$should_die,
+		__( 'Security check failed: Nonce not found.', FRL_PREFIX ),
+		__( 'Security check failed.', FRL_PREFIX ),
+		__( 'You do not have sufficient permissions to access this page.', FRL_PREFIX )
+	);
+}
+
+/**
+ * Verify dynamic nonce
+ *
+ * @param string $pattern Nonce pattern
+ * @param array $replacements Replacements for pattern
+ * @param string $nonce_field Nonce field name
+ * @param string $source Source of nonce (REQUEST, GET, POST)
+ * @param string|null $cap Required capability
+ * @param bool $should_die Whether to die on failure
+ * @return bool True if nonce is valid
+ */
+function frl_verify_dynamic_nonce( $pattern, $replacements = array(), $nonce_field = '_wpnonce', $source = 'REQUEST', $cap = null, $should_die = true ) {
+	// Build the nonce action by replacing placeholders
+	$nonce_action = $pattern;
+	foreach ( $replacements as $key => $value ) {
+		$nonce_action = str_replace( '{' . $key . '}', $value, $nonce_action );
+	}
+
+	return _frl_verify_nonce_core(
+		$nonce_action,
+		$nonce_field,
+		$source,
+		$cap,
+		$should_die,
+		__( 'Security check failed: Nonce not found.', FRL_PREFIX ),
+		__( 'Security check failed.', FRL_PREFIX ),
+		__( 'You do not have permission to perform this action.', FRL_PREFIX )
+	);
 }

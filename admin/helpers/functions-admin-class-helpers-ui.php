@@ -39,12 +39,6 @@ function _frl_ui_dispatch( $class, $method, $args, $fallback, $caller, $static =
 	return $instance->$method( ...$args );
 }
 
-// ─── Frl_Tab_Manager wrappers ────────────────────────────────────────────
-
-function frl_tab_get_registered_tabs( $type = null ): array {
-	return _frl_ui_dispatch( 'Frl_Tab_Manager', 'get_registered_tabs', array( $type ), array(), __FUNCTION__ );
-}
-
 /**
  * Register a new tab in the Tab Manager.
  *
@@ -99,7 +93,10 @@ function frl_tab_render_tab_container_start( $vertical = true, $additional_class
 }
 
 function frl_tab_render_tabs_from_sections( $sections ) {
-	return _frl_ui_dispatch( 'Frl_Tab_Manager', 'render_tabs_from_sections', array( $sections, Frl_Tab_Manager::POSITION_FORM ), null, __FUNCTION__ );
+	// Resolve the constant lazily: referencing it here would throw before the guard runs.
+	$position = defined( 'Frl_Tab_Manager::POSITION_FORM' ) ? Frl_Tab_Manager::POSITION_FORM : 1000;
+
+	return _frl_ui_dispatch( 'Frl_Tab_Manager', 'render_tabs_from_sections', array( $sections, $position ), null, __FUNCTION__ );
 }
 
 function frl_tab_render_all_custom_tabs() {
@@ -124,27 +121,6 @@ function frl_environment_display_get_stats() {
 	return _frl_ui_dispatch( 'Frl_Environment_Display', 'get_environment_stats', array( false ), null, __FUNCTION__, false );
 }
 
-function frl_environment_display_render_config() {
-	return _frl_ui_dispatch( 'Frl_Environment_Display', 'render_full_config_table', array(), null, __FUNCTION__, false );
-}
-
-function frl_get_current_readable_error_level() {
-	return _frl_ui_dispatch( 'Frl_Debug_Display', 'get_current_readable_error_level', array(), null, __FUNCTION__ );
-}
-
-function frl_cache_display_get_dashboard_labels() {
-	return _frl_ui_dispatch(
-		'Frl_Cache_Display',
-		'get_cache_dashboard_labels',
-		array(),
-		array(
-			'persistent' => 'N/A',
-			'runtime'    => 'N/A',
-		),
-		__FUNCTION__
-	);
-}
-
 function frl_cache_display_get_system_details() {
 	return _frl_ui_dispatch( 'Frl_Cache_Display', 'get_cache_system_details', array(), array(), __FUNCTION__ );
 }
@@ -159,10 +135,6 @@ function frl_cache_get_runtime_data() {
 
 function frl_cache_safe_db_get_var( $query, $fallback = 0, $operation = 'cache_var_query' ) {
 	return _frl_ui_dispatch( 'Frl_Cache_Manager', 'safe_db_get_var', array( $query, $fallback, $operation ), null, __FUNCTION__ );
-}
-
-function frl_cache_display_get_groups_info() {
-	return _frl_ui_dispatch( 'Frl_Cache_Display', 'get_groups_info', array(), null, __FUNCTION__ );
 }
 
 function frl_tag_validator_render() {
@@ -187,20 +159,12 @@ function frl_ui_render_plugin_settings_header() {
 	return _frl_ui_dispatch( 'Frl_UI_Renderer', 'render_plugin_settings_header', array(), 'Frl_UI_Renderer not available', __FUNCTION__ );
 }
 
-function frl_ui_render_section_header( $title, $class_name = '' ) {
-	return _frl_ui_dispatch( 'Frl_UI_Renderer', 'render_section_header', array( $title, $class_name ), 'Frl_UI_Renderer not available', __FUNCTION__ );
-}
-
-function frl_ui_render_header_with_action( $title, $button, $class_name = '' ) {
-	return _frl_ui_dispatch( 'Frl_UI_Renderer', 'render_header_with_action', array( $title, $button, $class_name ), 'Frl_UI_Renderer not available', __FUNCTION__ );
-}
-
 function frl_ui_render_flex_layout( $content_items, $columns = 2, $class_name = '' ) {
 	return _frl_ui_dispatch( 'Frl_UI_Renderer', 'render_flex_layout', array( $content_items, $columns, $class_name ), 'Frl_UI_Renderer not available', __FUNCTION__ );
 }
 
-function frl_ui_render_widget( $id, $content, $title = '', $class_name = '', $ttl = HOUR_IN_SECONDS, $bypass_cache = false, $group = 'adminui' ) {
-	return _frl_ui_dispatch( 'Frl_UI_Renderer', 'render_widget', array( $id, $content, $title, $class_name, $ttl, $bypass_cache, $group ), 'Frl_UI_Renderer not available', __FUNCTION__ );
+function frl_ui_render_widget( $id, $content, $title = '', $class_name = '', $ttl = HOUR_IN_SECONDS, $bypass_cache = false, $group = 'adminui', array $options = array() ) {
+	return _frl_ui_dispatch( 'Frl_UI_Renderer', 'render_widget', array( $id, $content, $title, $class_name, $ttl, $bypass_cache, $group, $options ), 'Frl_UI_Renderer not available', __FUNCTION__ );
 }
 
 function frl_ui_render_multi_column_header( $columns, $class_name = '' ) {

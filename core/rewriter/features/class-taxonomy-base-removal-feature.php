@@ -518,10 +518,12 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 		// Only checks 'post' type since this disambiguation handles static base paths
 		// under the post base (e.g., /blog/slug). CPTs have their own base and are not relevant.
 		if ( ! empty( $query_vars['name'] ) ) {
-			$name        = $query_vars['name'];
+			$name = $query_vars['name'];
+			// 'rewriter' is not a language group, and get_posts() below is filtered
+			// by the current language, so the language must be part of the key.
 			$post_exists = frl_cache_remember(
 				'rewriter',
-				'disambig_page_' . md5( $name ),
+				'disambig_page_' . frl_get_language() . '_' . md5( $name ),
 				function () use ( $name ) {
 					$posts = get_posts(
 						array(
@@ -651,9 +653,28 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			return $url; // Unexpected shape – bail early.
 		}
 
-		$path    = substr( $url, strlen( $home ) ); // leading slash included or empty
-		$pattern = '/' . Frl_Rewriter_Path_Utils::escape_for_regex( $tax_base ) . '/';
-		$path    = Frl_Rewriter_Path_Utils::safe_preg_replace( $pattern, '/', $path );
+		$path = substr( $url, strlen( $home ) ); // leading slash included or empty
+
+		// First segment only, after an optional static front and language prefix.
+		$base_esc  = Frl_Rewriter_Path_Utils::escape_for_regex( $tax_base, '#' );
+		$languages = frl_get_active_languages();
+		$lang_alt  = '';
+		if ( ! empty( $languages ) ) {
+			$lang_alt = implode( '|', array_map( static fn( $l ) => preg_quote( (string) $l, '#' ), $languages ) );
+		}
+
+		// Permastructs carry WP_Rewrite::$front when with_front is on (/blog/...).
+		$front = '';
+		if ( preg_match( '#^/([^/%]+)/#', (string) get_option( 'permalink_structure' ), $m ) ) {
+			$front = preg_quote( $m[1], '#' );
+		}
+
+		// Two fixed groups ($1 lang, $2 front) so the replacement is stable.
+		$lang_group  = $lang_alt !== '' ? '(/(?:' . $lang_alt . '))?' : '()';
+		$front_group = $front !== '' ? '(/(?:' . $front . '))?' : '()';
+
+		$pattern = '#^' . $lang_group . $front_group . '/' . $base_esc . '/#';
+		$path    = Frl_Rewriter_Path_Utils::safe_preg_replace( $pattern, '$1$2/', $path );
 		$path    = Frl_Rewriter_Path_Utils::collapse_slashes( $path );
 
 		return $home . $path;
@@ -686,7 +707,7 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 	 * Redirect legacy taxonomy URLs that still contain the base slug to canonical.
 	 */
 	public function maybe_redirect_canonical(): void {
-		if ( ! $this->is_enabled() ) {
+		if ( ! $this->is_enabled() || ! $this->is_canonicalisable_request() ) {
 			return;
 		}
 

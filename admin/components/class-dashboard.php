@@ -34,29 +34,38 @@ class Frl_Admin_Dashboard {
 	 * @return string HTML content.
 	 */
 	public function render( $content = '' ) {
-		// Instantiate the display classes
-		$cache_display = new Frl_Cache_Display();
-		$env_display   = new Frl_Environment_Display();
+		// Per session: nonces are bound to the session token, not just the uid.
+		$session     = function_exists( 'wp_get_session_token' ) ? (string) wp_get_session_token() : '';
+		$user_suffix = 'u' . get_current_user_id() . ( $session !== '' ? '_' . substr( md5( $session ), 0, 10 ) : '' );
 
-		// Get the environment data, as it's needed by both sections
-		$env_data = frl_environment_display_get_stats();
-
-		// --- Render sections from display classes ---
-		$env_widget   = $env_display->render_dashboard_widget( $env_data );
-		$cache_widget = $cache_display->render_dashboard_widget( $env_data );
-
-		// Use the flexible layout renderer for a 2-column layout with only the main content
-		$columns = frl_ui_render_flex_layout(
-			array( $env_widget['main'], $cache_widget['main'] ),
-			2,
-			'dashboard-stats'
-		);
-
-		// Build the complete widget content, appending hidden sections after the columns
+		// Content built inside the cache callback; per-user key since it holds nonces.
 		$widget_content = frl_ui_render_widget(
 			'dashboard-overview',
-			$columns . $env_widget['hidden'] . $cache_widget['hidden'],
+			'',
 			'Environment & Cache',
+			'',
+			10 * MINUTE_IN_SECONDS,
+			false,
+			'adminui',
+			array(
+				'cache_key_suffix' => $user_suffix,
+				'content_cb'       => static function () {
+					$cache_display = new Frl_Cache_Display();
+					$env_display   = new Frl_Environment_Display();
+					$env_data      = frl_environment_display_get_stats();
+
+					$env_widget   = $env_display->render_dashboard_widget( $env_data );
+					$cache_widget = $cache_display->render_dashboard_widget( $env_data );
+
+					$columns = frl_ui_render_flex_layout(
+						array( $env_widget['main'], $cache_widget['main'] ),
+						2,
+						'dashboard-stats'
+					);
+
+					return $columns . $env_widget['hidden'] . $cache_widget['hidden'];
+				},
+			)
 		);
 
 		$widget_content .= frl_ui_render_widget(
@@ -70,12 +79,34 @@ class Frl_Admin_Dashboard {
 
 		$widget_content .= frl_ui_render_widget(
 			'environment-overview',
-			frl_environment_display_render(),
+			'',
+			'',
+			'',
+			10 * MINUTE_IN_SECONDS,
+			false,
+			'adminui',
+			array(
+				'cache_key_suffix' => $user_suffix,
+				'content_cb'       => static function () {
+					return frl_environment_display_render();
+				},
+			)
 		);
 
 		$widget_content .= frl_ui_render_widget(
 			'widget-admin-actions',
-			frl_render_clear_cache_buttons() . frl_render_admin_actions_buttons(),
+			'',
+			'',
+			'',
+			10 * MINUTE_IN_SECONDS,
+			false,
+			'adminui',
+			array(
+				'cache_key_suffix' => $user_suffix,
+				'content_cb'       => static function () {
+					return frl_render_clear_cache_buttons() . frl_render_admin_actions_buttons();
+				},
+			)
 		);
 
 		// Add any additional content

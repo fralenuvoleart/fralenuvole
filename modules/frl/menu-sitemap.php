@@ -54,7 +54,7 @@ function frl_shortcode_menu_sitemap( $atts ) {
 		$heading = 'h2';
 	}
 
-	$cache_key = $menu_sitemap_tag . '_' . md5( $menu_location . '_' . $parent_title . '_' . $title . '_' . $heading );
+	$cache_key = $menu_sitemap_tag . '_' . md5( $menu_location . '_' . $parent_title . '_' . $title . '_' . $heading . '_' . $extra_class );
 
 	return frl_cache_remember(
 		'shortcodes',

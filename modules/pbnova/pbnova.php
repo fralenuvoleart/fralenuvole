@@ -30,10 +30,24 @@ add_filter(
 
 add_action(
 	'wp_after_insert_post',
-	'frl_pbnova__acf_update_has_content',
+	'frl_pbnova_after_insert_post',
 	20,
-	3
+	4
 );
+
+/**
+ * Hook adapter: wp_after_insert_post passes ( $post_id, $post, $update, $post_before ).
+ * Keeps frl_pbnova__acf_update_has_content()'s original 3-argument signature intact.
+ *
+ * @param int          $post_id     Post ID.
+ * @param WP_Post      $post        Post object.
+ * @param bool         $update      Whether this is an existing post being updated.
+ * @param WP_Post|null $post_before Post object before the update.
+ * @return void
+ */
+function frl_pbnova_after_insert_post( $post_id, $post, $update, $post_before ): void {
+	frl_pbnova__acf_update_has_content( $post, $update, $post_before );
+}
 
 add_filter(
 	'frl_breadcrumbs_extra_items',

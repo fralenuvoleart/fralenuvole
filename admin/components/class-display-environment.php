@@ -176,7 +176,8 @@ class Frl_Environment_Display {
 				'action-row'
 			);
 
-			$output .= frl_ui_render_widget( 'env-mu-plugins', $mu_plugins_status . $mu_plugins_action_rows, 'Managed MU Plugins' );
+			// Uncached: the MU-plugin buttons carry per-user nonces.
+			$output .= frl_ui_render_widget( 'env-mu-plugins', $mu_plugins_status . $mu_plugins_action_rows, 'Managed MU Plugins', '', HOUR_IN_SECONDS, true );
 
 			// Modules Status widget
 			$modules_status = $this->get_modules_status( $env_config );

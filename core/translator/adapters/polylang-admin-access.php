@@ -33,8 +33,8 @@ add_action(
 			return;
 		}
 
-		// Only users with edit_pages (Editors and up) get access.
-		if ( ! current_user_can( 'edit_pages' ) ) {
+		// Only users with edit_pages (Editors and up) get access; admins already have Polylang's own page.
+		if ( ! current_user_can( 'edit_pages' ) || current_user_can( 'manage_options' ) ) {
 			return;
 		}
 

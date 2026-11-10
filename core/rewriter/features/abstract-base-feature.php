@@ -145,6 +145,57 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 	}
 
 	/**
+	 * Whether the current request may be canonicalised (301) at all.
+	 *
+	 * Feeds/embeds/robots carry a URL suffix the HTML canonical lacks; rewriting
+	 * them would 301 the feed to the archive.
+	 *
+	 * @return bool True when a canonical redirect may be considered.
+	 */
+	protected function is_canonicalisable_request(): bool {
+		return ! is_feed() && ! is_embed() && ! is_robots();
+	}
+
+	/** Whether an already-matched object wins over this rewrite. */
+	protected function should_defer_to_matched_object(): bool {
+		return false;
+	}
+
+	/**
+	 * Whether query vars already resolve to a published page or post.
+	 *
+	 * @param array $query_vars Request query vars.
+	 * @return bool
+	 */
+	protected function query_vars_already_resolve( array $query_vars ): bool {
+		$name = isset( $query_vars['name'] ) ? (string) $query_vars['name'] : '';
+		if ( $name !== '' ) {
+			$found = get_posts(
+				array(
+					'name'           => $name,
+					'post_type'      => 'any',
+					'post_status'    => 'publish',
+					'posts_per_page' => 1,
+					'fields'         => 'ids',
+				)
+			);
+			if ( ! empty( $found ) ) {
+				return true;
+			}
+		}
+
+		$page_path = isset( $query_vars['pagename'] ) ? (string) $query_vars['pagename'] : '';
+		if ( $page_path !== '' ) {
+			$page = get_page_by_path( $page_path );
+			if ( $page instanceof WP_Post && 'publish' === $page->post_status ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Check if this feature uses catch-all rules
 	 *
 	 * @return bool True if the feature uses catch-all rules
@@ -332,6 +383,13 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 			if ( $this->applies_to_request( $request_uri ) ) {
 				$resolved = $this->resolve_request( $request_uri );
 				if ( ! empty( $resolved ) ) {
+					// A page/post WordPress already matched wins over the rewrite,
+					// so a rewritten CPT never hijacks a same-slug page or post.
+					if ( $this->should_defer_to_matched_object() && $this->query_vars_already_resolve( $query_vars ) ) {
+						unset( $processing_requests[ $feature_key ] );
+						return $query_vars;
+					}
+
 					unset( $processing_requests[ $feature_key ] );
 					return array_merge( $query_vars, $resolved );
 				}

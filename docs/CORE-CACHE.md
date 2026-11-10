@@ -241,6 +241,7 @@ All in `functions-class-helpers.php`. Every function checks `frl_cache_is_loaded
 | `frl_cache_clear($group, $key, $include_dependencies)` | Clear cache — routes to orchestrator or direct manager calls |
 | `frl_cache_clear_keys($group, $keys)` | Batch-clear specific keys via one `wp_cache_delete_multiple()` (per-key fallback on older cores); also drops runtime entries and resets the options static caches for the `options` group |
 | `frl_cache_get_multi($group, $keys, $return_values)` | Batch get multiple keys |
+| `frl_cache_set_multi($group, $items, $ttl)` | Batch set multiple keys |
 | `frl_cache_preload_multi($group, $keys)` | Preload group into runtime cache |
 
 ### `frl_cache_clear()` Routing

@@ -22,6 +22,7 @@ require_once FRL_DIR_PATH . 'includes/helpers/functions-error-log.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-access-control.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-options.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-class-helpers.php';
+require_once FRL_DIR_PATH . 'includes/helpers/functions-slug-helpers.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-translator-helpers.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-modules.php';
 require_once FRL_DIR_PATH . 'includes/helpers/functions-schema.php';
@@ -355,122 +356,6 @@ function frl_get_current_post_id(): int {
 	}
 	global $post;
 	return ( $post && isset( $post->ID ) ) ? (int) $post->ID : 0;
-}
-
-/**
- * Retrieves a post ID based on its slug, with caching.
- *
- * @param string      $slug The post slug or hierarchical path.
- * @param string|null $lang Optional lookup language. Defaults to the current
- *                          request language; pass the source language to resolve
- *                          a source-language slug regardless of request context.
- * @return int The post ID, or 0 if not found.
- */
-function frl_get_post_id_by_slug( $slug, ?string $lang = null ) {
-	$lang = $lang ?? frl_get_language();
-	// Safe cache key — include the lookup language so explicit overrides never
-	// collide with request-language entries under the language-prefixed group.
-	$cache_key = 'postslug2id_' . sanitize_key( $lang ) . '_' . sanitize_key( $slug );
-
-	return frl_cache_remember(
-		'permalinks',
-		$cache_key,
-		function () use ( $slug, $lang ) {
-			// Try 'pagename' for hierarchical slugs — narrow to hierarchical types
-			// only, since pagename resolution requires parent→child path structure
-			// that non-hierarchical post types don't support.
-			$posts = get_posts(
-				array(
-					'post_type'   => get_post_types(
-						array(
-							'public'       => true,
-							'hierarchical' => true,
-						)
-					),
-					'pagename'    => $slug,
-					'post_status' => 'publish',
-					'numberposts' => 1,
-					'lang'        => $lang,
-				)
-			);
-
-			if ( ! empty( $posts ) ) {
-				return $posts[0]->ID;
-			}
-
-			// Fallback for non-hierarchical post types
-			if ( ! str_contains( $slug, '/' ) ) {
-				$posts = get_posts(
-					array(
-						'post_type'   => get_post_types(
-							array(
-								'public'       => true,
-								'hierarchical' => false,
-							)
-						),
-						'name'        => $slug,
-						'post_status' => 'publish',
-						'numberposts' => 1,
-						'lang'        => $lang,
-					)
-				);
-
-				if ( ! empty( $posts ) ) {
-					return $posts[0]->ID;
-				}
-			}
-
-			return 0;
-		}
-	);
-}
-
-/**
- * Retrieves a term ID based on its slug, with caching.
- *
- * @param string $slug     The term slug.
- * @param string $taxonomy The taxonomy slug. Defaults to 'category'.
- * @return int The term ID, or 0 if not found.
- */
-function frl_get_term_id_by_slug( $slug, $taxonomy = 'category' ) {
-	if ( empty( $slug ) ) {
-		return 0;
-	}
-
-	$cache_key = 'termslug2id_' . sanitize_key( $taxonomy ) . '_' . sanitize_key( $slug );
-
-	return frl_cache_remember(
-		'permalinks',
-		$cache_key,
-		function () use ( $slug, $taxonomy ) {
-			$term = get_term_by( 'slug', $slug, $taxonomy );
-			return ( $term && ! is_wp_error( $term ) ) ? (int) $term->term_id : 0;
-		}
-	);
-}
-
-/**
- * Retrieves a Custom Post Type (CPT) post ID based on its slug, with caching.
- *
- * @param string $slug The post slug or hierarchical path.
- * @param string $cpt  The custom post-type slug.
- * @return int The post ID, or 0 if not found.
- */
-function frl_get_cpt_id_by_slug( $slug, $cpt ) {
-	if ( empty( $slug ) || empty( $cpt ) ) {
-		return 0;
-	}
-
-	$cache_key = 'cptslug2id_' . sanitize_key( $cpt ) . '_' . md5( $slug );
-
-	return frl_cache_remember(
-		'permalinks',
-		$cache_key,
-		function () use ( $slug, $cpt ) {
-			$post = get_page_by_path( $slug, OBJECT, $cpt );
-			return ( $post ) ? (int) $post->ID : 0;
-		}
-	);
 }
 
 /**

@@ -1307,6 +1307,28 @@ class Frl_Tag_Validator {
 	}
 
 	/**
+	 * Whether a URL may be fetched: its host must equal this site's host
+	 * (www. treated as the same host).
+	 *
+	 * @param string $url Candidate URL.
+	 * @return bool True if the host matches.
+	 */
+	private function is_allowed_target_url( string $url ): bool {
+		$host      = wp_parse_url( $url, PHP_URL_HOST );
+		$site_host = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
+
+		if ( ! is_string( $host ) || $host === '' || ! is_string( $site_host ) || $site_host === '' ) {
+			return false;
+		}
+
+		$normalize = static function ( string $value ): string {
+			return preg_replace( '/^www\./', '', strtolower( rtrim( $value, '.' ) ) );
+		};
+
+		return $normalize( $host ) === $normalize( $site_host );
+	}
+
+	/**
 	 * Render the tag validator form and results
 	 *
 	 * This method handles both rendering the form and displaying validation results.
@@ -1315,15 +1337,26 @@ class Frl_Tag_Validator {
 	 * @return string HTML content
 	 */
 	public function render() {
-		// Check if we have validator parameters in either POST or GET
-		$post_url = isset( $_POST['frl_tag_validator_url'] ) ? $_POST['frl_tag_validator_url'] : '';
-		$get_url  = isset( $_GET['frl_tag_validator_url'] ) ? $_GET['frl_tag_validator_url'] : '';
+		// Only a nonce-bearing POST may trigger a fetch, and only for this host:
+		// the fetch follows redirects server-side, so a foreign URL is an SSRF vector.
+		$post_url = isset( $_POST['frl_tag_validator_url'] ) && is_string( $_POST['frl_tag_validator_url'] )
+			? (string) wp_unslash( $_POST['frl_tag_validator_url'] )
+			: '';
+		$nonce    = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
 
-		// Determine the URL to validate: only use user-submitted values.
-		// Passive dashboard loads get no default — validation is skipped entirely.
-		$url_to_validate = ! empty( $post_url ) ? $post_url : ( ! empty( $get_url ) ? $get_url : '' );
+		$url_to_validate = '';
+		$reject_reason   = '';
+		if ( $post_url !== '' ) {
+			$nonce_ok = (bool) wp_verify_nonce( $nonce, frl_prefix( 'tag-validator' ) );
+			if ( $nonce_ok && $this->is_allowed_target_url( $post_url ) ) {
+				$url_to_validate = $post_url;
+			} else {
+				$reject_reason = $nonce_ok ? 'host' : 'nonce';
+			}
+		}
+
 		// Input field shows home_url('/') as placeholder default for convenience.
-		$input_url = ! empty( $url_to_validate ) ? $url_to_validate : home_url( '/' );
+		$input_url = $url_to_validate !== '' ? $url_to_validate : home_url( '/' );
 
 		// Fixed set of predefined tags to check
 		$tags_to_check = '#frl-critical-css,#frl-preload-img,#frl-schema';
@@ -1358,6 +1391,11 @@ class Frl_Tag_Validator {
 				5 * MINUTE_IN_SECONDS
 			);
 			$output                 .= $this->render_tag_validation_results( $validation_results, $url_to_validate );
+		} elseif ( $reject_reason !== '' ) {
+			$message = 'nonce' === $reject_reason
+				? __( 'Security check failed. Please reload the page and try again.', FRL_PREFIX )
+				: __( 'That URL cannot be validated. Only pages on this site can be checked.', FRL_PREFIX );
+			$output .= '<p class="tag-validator-error">' . esc_html( $message ) . '</p>';
 		} else {
 			$output .= '<p>Enter a URL and click <strong>Validate Tags</strong> to check for the presence of predefined HTML tags.</p>';
 		}

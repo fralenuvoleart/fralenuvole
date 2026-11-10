@@ -1150,6 +1150,10 @@ function frl_shortcode_breadcrumbs( $atts ) {
 	// Cache key must vary with object + language.
 	$object_id = get_queried_object_id();
 
+	// A post ID and a term ID can be equal, so the type must be part of the key.
+	$queried     = get_queried_object();
+	$object_kind = ( $queried instanceof WP_Term ) ? 't' : ( ( $queried instanceof WP_Post ) ? 'p' : 'o' );
+
 	// Include translation_version: the closure below calls frl_get_translation()
 	// ('Jurisdictions') and frl_get_translation_permalink(), so the cache key must
 	// invalidate when string translations change, not only when the post is saved.
@@ -1157,7 +1161,7 @@ function frl_shortcode_breadcrumbs( $atts ) {
 	$translation_version = frl_get_option( 'translation_version' ) ?: 1;
 	// serialize() is cache-key fingerprinting (pre-lookup), NOT data
 	// serialization for storage — see frl_shortcode_readtime() for rationale.
-	$cache_key = 'breadcrumbs_' . $object_id . '_' .
+	$cache_key = 'breadcrumbs_' . $object_kind . $object_id . '_' .
 			md5( serialize( array( $a['separator'], $a['class'], $show_home, $show_current ) ) ) . $version . '_tv' . $translation_version;
 
 	return frl_cache_remember(

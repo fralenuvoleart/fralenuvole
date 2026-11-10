@@ -196,7 +196,8 @@ function frl_clear_navigation_cache( $post_id ) {
 	// Clear the wp_navigation key within the permalinks group
 	$cache_key = "wp_navigation_{$post_id}";
 
-	frl_cache_clear( 'permalinks', $cache_key );
+	// 'permalinks' is language-prefixed: clear the key in every language.
+	frl_cache_clear_keys( 'permalinks', array( $cache_key ), true );
 
 	// Menu-sitemap shortcode keys embed hashed args and are not enumerable —
 	// purge the whole shortcodes group (menu edits are rare admin events).
@@ -215,7 +216,8 @@ function frl_clear_navigation_cache( $post_id ) {
 function frl_clear_menu_cache( $menu_id ) {
 	$cache_key = "wp_menu_{$menu_id}";
 
-	frl_cache_clear( 'permalinks', $cache_key );
+	// 'permalinks' is language-prefixed: clear the key in every language.
+	frl_cache_clear_keys( 'permalinks', array( $cache_key ), true );
 
 	// Same rationale as frl_clear_navigation_cache(): menu-sitemap shortcode
 	// output depends on classic menus but its keys are not enumerable.
@@ -417,13 +419,16 @@ function frl_clear_tracked_meta_cache( string $type, int $id ) {
 	$tracked_keys = frl_cache_get( 'metafields', $tracking_key, null );
 
 	if ( frl_is_array_not_empty( $tracked_keys ) ) {
+		$cache_keys = array();
 		foreach ( $tracked_keys as $meta_key ) {
-			// Construct the data key for each meta field, including the version, and clear it.
-			$cache_key = "translation_{$type}meta_{$id}_{$meta_key}_{$version}";
-			frl_cache_clear( 'metafields', $cache_key );
+			$cache_keys[] = "translation_{$type}meta_{$id}_{$meta_key}_{$version}";
 		}
-		// After clearing all individual entries, remove the tracking key itself.
-		frl_cache_clear( 'metafields', $tracking_key );
+
+		// Entry keys are language-prefixed, so clear them in every language. Each
+		// language keeps its own tracking list, so only the current one is dropped —
+		// deleting the others would orphan entries they still know about.
+		frl_cache_clear_keys( 'metafields', $cache_keys, true );
+		frl_cache_clear_keys( 'metafields', array( $tracking_key ) );
 	}
 }
 

@@ -2,7 +2,7 @@
 
 /**
  * Core cache manager: runtime (LRU), persistent (object cache/transients),
- * batch loading, dependency cascading, and deferred writes.
+ * batch loading and dependency cascading.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -31,12 +31,6 @@ class Frl_Cache_Manager {
 	private static array $key_cache    = array();
 	public static array $group_keys    = array(); // Index of keys per group for efficient clearing
 	public static array $loaded_groups = array(); // Tracks which groups have been fully loaded this request
-
-	// public by design: the facade helpers in functions-class-helpers.php are the
-	// ONLY external accessors (guarded by frl_cache_is_loaded()). No external code
-	// bypasses the facade. Making this private would require getter/setter methods
-	// that add indirection without gaining safety — the facade IS the guard.
-	public static array $deferred_writes = array();
 
 	/** Groups persisted across requests. */
 	private static array $persistent_groups = FRL_CACHE_PERSISTENT_GROUPS;
@@ -339,7 +333,7 @@ class Frl_Cache_Manager {
 	 * For object-cache backends, this collapses N network round-trips into one via
 	 * wp_cache_set_multiple() (WP 6.0+; falls back to a per-item loop on older cores or
 	 * drop-ins that don't implement it). Intended for callers writing several keys to the
-	 * same group at once (e.g. shutdown-time deferred writes) where the individual TTL is
+	 * same group at once (e.g. a batch write) where the individual TTL is
 	 * uniform. Transient-fallback storage still writes one row-pair per item via
 	 * set_transient() — batching that path would require bypassing WordPress's option
 	 * hooks/autoload/cache-invalidation machinery, which is not done here to avoid
@@ -556,15 +550,33 @@ class Frl_Cache_Manager {
 	 *
 	 * @param string $group Cache group name.
 	 * @param array<int,string> $keys Original (pre-generate_key) keys.
+	 * @param bool $all_languages For language groups, clear the key in every active
+	 *                            language instead of only the current one.
 	 * @return int Number of keys cleared.
 	 */
-	public static function clear_keys( string $group, array $keys ): int {
+	public static function clear_keys( string $group, array $keys, bool $all_languages = false ): int {
 		if ( empty( $keys ) ) {
 			return 0;
 		}
 
 		$cache_keys = array();
+		$languages  = array();
+		if ( $all_languages && isset( self::$language_groups_map[ $group ] ) ) {
+			// Always include the current language: the active list can be empty or
+			// omit it, which would otherwise clear nothing at all.
+			$languages = frl_get_active_languages();
+			$current   = frl_get_language();
+			if ( ! in_array( $current, $languages, true ) ) {
+				$languages[] = $current;
+			}
+		}
 		foreach ( $keys as $key ) {
+			if ( $all_languages && isset( self::$language_groups_map[ $group ] ) ) {
+				foreach ( $languages as $language ) {
+					$cache_keys[] = $group . '_' . $language . '_' . $key;
+				}
+				continue;
+			}
 			$cache_keys[] = self::generate_key( $group, $key );
 		}
 
@@ -820,15 +832,18 @@ class Frl_Cache_Manager {
 	/**
 	 * Purge all cache groups.
 	 *
-	 * @return array|array{runtime: int, persistent: int, WordPress: int, key_cache: int, deferred: int, transients: int, object_cache: int, groups: array} Cache clearing stats, or empty array if already running.
+	 * @return array|array{runtime: int, persistent: int, WordPress: int, key_cache: int, transients: int, object_cache: int, groups: array} Cache clearing stats, or empty array if already running.
 	 */
 	public static function purge_all() {
-		if ( frl_is_already_running( __METHOD__ ) ) {
+		// Capture the key: inside the closure __METHOD__ becomes {closure}.
+		$guard = __METHOD__;
+
+		if ( frl_is_already_running( $guard ) ) {
 			return array();
 		}
 
 		return self::with_auth_preservation(
-			function () {
+			function () use ( $guard ) {
 				try {
 					// Reset the cleared groups tracker for this batch operation
 					self::$groups_cleared = array();
@@ -838,7 +853,6 @@ class Frl_Cache_Manager {
 						'persistent'   => 0,
 						'wordpress'    => 0,
 						'key_cache'    => count( self::$key_cache ),
-						'deferred'     => count( self::$deferred_writes ),
 						'transients'   => 0,     // Add missing key expected by logged-user.php
 						'object_cache' => 0,    // Add missing key expected by logged-user.php
 					);
@@ -847,7 +861,6 @@ class Frl_Cache_Manager {
 					self::$runtime_cache       = array();
 					self::$key_cache           = array();
 					self::$lru['access_order'] = array();
-					self::$deferred_writes     = array();
 					self::$loaded_groups       = array(); // Reset loaded groups tracking
 
 					// Optimization: Perform a single batch transient deletion for all plugin transients
@@ -906,7 +919,7 @@ class Frl_Cache_Manager {
 
 					return $stats;
 				} finally {
-					frl_is_already_running( __METHOD__, true );
+					frl_is_already_running( $guard, true );
 				}
 			}
 		);
@@ -1465,7 +1478,8 @@ class Frl_Cache_Manager {
 			$literal = substr( $wp_object_cache->build_key( '*', self::PREFIX . $group ), 0, -1 );
 		}
 
-		return '^' . preg_replace( '/([%(%)%.%%%+%-%?%[%]%^%$])/', '%%%1', $literal ) . '.*';
+		// Escape Lua magic chars as %<char>; the old class matched nothing.
+		return '^' . preg_replace( '/[%^$()%.\[\]*+\-?]/', '%$0', $literal ) . '.*';
 	}
 
 	/**
@@ -2106,9 +2120,8 @@ LUA;
 				$stats['groups'][ $group ] = $group_stats;
 			}
 
-			// Explicitly clear key/deferred caches if needed, but not full runtime
-			self::$key_cache       = array();
-			self::$deferred_writes = array();
+			// Explicitly clear key caches if needed, but not full runtime
+			self::$key_cache = array();
 
 			// Reset batch flag so a later single-group purge is not skipped.
 			self::$storage_batch_flushed = array();
@@ -2140,65 +2153,5 @@ LUA;
 			'groups_cleared'    => self::$groups_cleared,
 			'max_runtime_items' => self::$max_runtime_items,
 		);
-	}
-
-	/**
-		* Processes and flushes deferred cache writes during the shutdown sequence.
-		*
-		* Merges duplicate writes and handles errors by re-queuing failed items.
-		*
-		* @return void
-		*/
-	public static function process_deferred_writes(): void {
-		frl_flush_db();
-
-		$writes = frl_cache_get_deferred_writes();
-		if ( empty( $writes ) ) {
-			return;
-		}
-
-		// Merge duplicate writes: last write wins
-		$merged = array();
-		foreach ( $writes as $group => $items ) {
-			foreach ( $items as $key => $value ) {
-				$merged[ $group ][ $key ] = $value;
-			}
-		}
-
-		// Process merged writes as one batch per group (via frl_cache_set_multi()) instead of
-		// N individual frl_cache_set() calls — collapses N object-cache round-trips (or N
-		// set_transient() DB writes) per group into a single batched operation.
-		// On failure, the whole group's items are re-queued for the next cycle; re-queuing a
-		// few already-succeeded keys alongside the failed one is harmless since cache writes
-		// are idempotent, and avoids requiring per-key granularity from the batch call.
-		$failed_items = array();
-		foreach ( $merged as $group => $items ) {
-			try {
-				if ( ! frl_cache_set_multi( $group, $items ) ) {
-					$failed_items[ $group ] = $items;
-				}
-			} catch ( Exception $e ) {
-				frl_log(
-					'Error processing deferred write batch for group {group}: {error}',
-					array(
-						'group' => $group,
-						'error' => $e->getMessage(),
-					)
-				);
-				$failed_items[ $group ] = $items;
-			}
-		}
-
-		// Re-queue failed items for the next cycle
-		if ( ! empty( $failed_items ) ) {
-			foreach ( $failed_items as $group => $items ) {
-				foreach ( $items as $key => $value ) {
-					frl_cache_add_deferred_write( $group, $key, $value );
-				}
-			}
-		}
-
-		frl_cache_clear_deferred_writes();
-		frl_flush_db();
 	}
 }

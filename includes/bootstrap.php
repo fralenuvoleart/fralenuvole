@@ -46,6 +46,6 @@ require_once FRL_DIR_PATH . 'core/error-handler.php';
 frl_errors_init();
 
 // Register rewriter CLI commands for WP-CLI
-if ( defined( 'WP_CLI' ) && WP_CLI ) { // @phpstan-ignore-line alwaysFalse
+if ( defined( 'WP_CLI' ) && WP_CLI && ! get_option( frl_prefix( 'disable_rewriter' ), '0' ) ) { // @phpstan-ignore-line alwaysFalse
 	require_once FRL_DIR_PATH . 'core/rewriter/cli/class-rewriter-cli.php';
 }

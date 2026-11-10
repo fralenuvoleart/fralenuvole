@@ -189,7 +189,7 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 	 * the canonical directly from $this->mappings using the current request's language var.
 	 */
 	public function maybe_redirect_canonical(): void {
-		if ( ! $this->is_enabled() || ! post_type_exists( $this->cpt_slug ) ) {
+		if ( ! $this->is_enabled() || ! post_type_exists( $this->cpt_slug ) || ! $this->is_canonicalisable_request() ) {
 			return;
 		}
 
@@ -197,16 +197,43 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 			return;
 		}
 
-		// Determine the language from the already-resolved query var (set by resolve_request()).
-		$lang            = get_query_var( 'lang' ) ?: frl_get_default_language();
+		// Resolve the request path relative to the site root, then use its first
+		// segment as the language prefix only when it really is one.
+		$request_path = Frl_Rewriter_Path_Utils::extract_request_path( (string) ( $_SERVER['REQUEST_URI'] ?? '' ) );
+		$home_path    = trim( (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ), '/' );
+		if ( $home_path !== '' && str_starts_with( $request_path, $home_path . '/' ) ) {
+			$request_path = substr( $request_path, strlen( $home_path ) + 1 );
+		}
+		$first_segment = explode( '/', $request_path )[0];
+		$path_lang     = in_array( $first_segment, frl_get_active_languages(), true ) ? $first_segment : '';
+
+		$lang = (string) get_query_var( 'lang' );
+		if ( $lang === '' ) {
+			$lang = $path_lang !== '' ? $path_lang : frl_get_default_language();
+		}
+
 		$translated_base = $this->mappings[ $lang ] ?? null;
 		if ( empty( $translated_base ) ) {
 			return;
 		}
 
-		// Build the canonical directly from this feature's own configuration.
+		// Prefix the canonical when the request carried one, or when this language is
+		// path-prefixed on this install (its home URL has a deeper path). That keeps
+		// /services/ unprefixed under a hidden default language, while still sending
+		// an unprefixed /services-fr/ to /fr/services-fr/ when the default is visible.
+		$lang_is_prefixed = trim( (string) wp_parse_url( frl_get_home_url( $lang ), PHP_URL_PATH ), '/' )
+			!== $home_path;
+
+		if ( $path_lang !== '' ) {
+			$prefix = '/' . $path_lang;
+		} elseif ( $lang_is_prefixed ) {
+			$prefix = '/' . $lang;
+		} else {
+			$prefix = '';
+		}
+
 		$canonical = Frl_Rewriter_Path_Utils::collapse_slashes(
-			home_url( "/{$lang}/{$translated_base}/" )
+			home_url( $prefix . '/' . $translated_base . '/' )
 		);
 
 		// Preserve pagination for canonical

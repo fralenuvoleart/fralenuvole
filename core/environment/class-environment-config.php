@@ -218,10 +218,9 @@ class Frl_Environment_Config {
 		$final_active_temp   = array_values( array_unique( $final_active ) );
 		$final_inactive_temp = array_values( array_unique( $final_inactive ) );
 
-		// Remove active plugins from the inactive list
+		// Active wins on conflict.
 		$final_inactive = array_diff( $final_inactive_temp, $final_active_temp );
-		// Remove inactive plugins from the active list
-		$final_active = array_diff( $final_active_temp, $final_inactive_temp );
+		$final_active   = $final_active_temp;
 
 		// Final cleanup (re-index) and sorting
 		$final_active   = array_values( $final_active );

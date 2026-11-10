@@ -187,11 +187,11 @@ function frl_translator_pre_option( mixed $pre_value, string $option_name ): mix
  * Dispatcher for ACF Link fields.
  *
  * @param mixed $value Link field value.
- * @param int $post_id Post ID.
+ * @param int|string $post_id ACF object ID (int, 'term_45', 'user_3', 'options').
  * @param array $field Field configuration.
  * @return mixed Translated link value.
  */
-function frl_translator_acf_link( mixed $value, int $post_id, array $field ): mixed {
+function frl_translator_acf_link( mixed $value, int|string $post_id, array $field ): mixed {
 	if ( ! frl_is_valid_frontend_page_request() ) {
 		return $value;
 	}
@@ -228,11 +228,11 @@ function frl_translator_acf_link( mixed $value, int $post_id, array $field ): mi
  * Translates term name/description for enabled fields; preserves return format.
  *
  * @param mixed $value Taxonomy field value.
- * @param int $post_id Post ID.
+ * @param int|string $post_id ACF object ID (int, 'term_45', 'user_3', 'options').
  * @param array $field Field configuration.
  * @return mixed Translated taxonomy value.
  */
-function frl_translator_acf_taxonomy( mixed $value, int $post_id, array $field ): mixed {
+function frl_translator_acf_taxonomy( mixed $value, int|string $post_id, array $field ): mixed {
 	if ( ! frl_is_valid_frontend_page_request() ) {
 		return $value;
 	}
@@ -348,11 +348,11 @@ function frl_translator_filter_get_term( mixed $term, string $taxonomy ): mixed 
  * Dispatcher for ACF Repeater fields.
  *
  * @param mixed $value Repeater field value.
- * @param int $post_id Post ID.
+ * @param int|string $post_id ACF object ID (int, 'term_45', 'user_3', 'options').
  * @param array $field Field configuration.
  * @return mixed Translated repeater value.
  */
-function frl_translator_acf_repeater( mixed $value, int $post_id, array $field ): mixed {
+function frl_translator_acf_repeater( mixed $value, int|string $post_id, array $field ): mixed {
 	if ( ! frl_is_valid_frontend_page_request() ) {
 		return $value;
 	}
@@ -647,15 +647,16 @@ function frl_translator_get_cached_meta( string $meta_type, mixed $value, int $o
 /**
  * Helper to determine if metadata translation should be skipped.
  *
- * @param mixed  $value        The meta value.
+ * @param mixed  $value        Unused; kept for signature compatibility.
  * @param bool   $single       Whether a single value is requested.
  * @param string $meta_key     The meta key.
  * @param array  $allowed_keys The list of keys allowed for translation.
  * @return bool True to skip translation, false to proceed.
  */
-function frl_translator_should_skip_translation( mixed $value, bool $single, string $meta_key, array $allowed_keys ): bool {
-	return null === $value
-		|| ! $single
+function frl_translator_should_skip_translation( mixed $value, ?bool $single, string $meta_key, array $allowed_keys ): bool {
+	// WP passes null as the filter value on every call; the raw value is fetched by
+	// the cache callback (which unhooks this filter first), so null is expected here.
+	return ! $single
 		|| ! frl_is_valid_frontend_page_request()
 		|| ! frl_string_matches_pattern( $meta_key, $allowed_keys );
 }

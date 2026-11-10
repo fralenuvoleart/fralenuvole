@@ -223,85 +223,8 @@ function frl_render_admin_actions_buttons() {
 		'superadmin',
 	);
 
-	return frl_ui_render_widget( 'admin-action-buttons', $output, 'Plugin Actions', 'widget-admin-actions' );
-}
-
-/**
- * Renders a generic UI component that lists items with a "Copy" button.
- *
- * This is a reusable helper to create informational widgets for the settings page,
- * allowing users to easily copy slugs or other values into textarea fields.
- *
- * @param string $id A unique ID for the main container element.
- * @param string $description A short text to display above the list.
- * @param array $items An associative array where keys are the display labels and values are the text to be copied.
- * @return string The generated HTML for the copyable list.
- */
-function frl_render_copyable_list_ui( $id, $description, $items ) {
-	if ( empty( $items ) ) {
-		return sprintf( '<p><em>%s</em></p>', __( 'No items found.', FRL_PREFIX ) );
-	}
-
-	// Use a cache key based on the ID and a hash of the items to prevent unnecessary regeneration.
-	$items_hash = substr( md5( serialize( $items ) ), 0, 8 );
-	$cache_key  = "copyable_list_{$id}_{$items_hash}";
-
-	return frl_cache_remember(
-		'adminui',
-		$cache_key,
-		function () use ( $id, $description, $items ) {
-			$output  = sprintf( '<div class="frl-admin-menu-info" id="frl-copy-ui-%s">', esc_attr( $id ) );
-			$output .= sprintf( '<p>%s</p>', esc_html( $description ) );
-			$output .= '<div class="frl-menu-slug-list">';
-
-			$output .= '<div class="frl-menu-item-row row-title">
-			<span>Name</span>
-			<span></span>
-			<span>Slug</span>
-			<span></span>
-		</div>';
-
-			foreach ( $items as $label => $slug ) {
-				$output .= sprintf(
-					'<div class="frl-menu-item-row">
-					<span>%s</span>
-					<span></span>
-					<span><input type="text" value="%s" readonly="readonly" class="frl-slug-input" /></span>
-					<span><button type="button" class="button button-small frl-copy-single-item" data-copy-text="%s">Copy</button></span>
-				</div>',
-					esc_html( $label ),
-					esc_attr( $slug ),
-					esc_attr( $slug )
-				);
-			}
-
-			$output .= '</div>';
-			ob_start();
-			?>
-		<script>
-			document.addEventListener('DOMContentLoaded', function() {
-				const container = document.getElementById('frl-copy-ui-<?php echo esc_js( $id ); ?>');
-				if (!container) return;
-
-				container.addEventListener('click', function(e) {
-					if (e.target.classList.contains('frl-copy-single-item')) {
-						const textToCopy = e.target.dataset.copyText;
-						navigator.clipboard.writeText(textToCopy).then(() => {
-							const originalText = e.target.textContent;
-							e.target.textContent = 'Copied!';
-							setTimeout(() => { e.target.textContent = originalText; }, 1500);
-						});
-					}
-				});
-			});
-		</script>
-			<?php
-			$output .= ob_get_clean();
-			$output .= '</div>';
-
-			return $output;
-		}
-	);
+	// Uncached: these buttons carry per-user nonces that are verified on dispatch.
+	return frl_ui_render_widget( 'admin-action-buttons', $output, 'Plugin Actions', 'widget-admin-actions', HOUR_IN_SECONDS, true );
 }
 
 /**
@@ -545,7 +468,7 @@ function frl_apply_debug_settings( $updated_options = null, $show_no_changes_not
 					'wp-config.php',
 					__( 'No changes were needed, settings are already applied', FRL_PREFIX )
 				);
-				if ( $overall_status !== 'error' ) { // @phpstan-ignore-line notEqual.alwaysTrue
+				if ( $overall_status !== 'error' ) {
 					$overall_status = 'info';
 				}
 			}

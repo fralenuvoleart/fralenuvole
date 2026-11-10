@@ -37,7 +37,7 @@ function frl_pbs_load_public_scripts() {
 	// Inline script with version check
 	$data = array(
 		'selector'   => PBS_JS_REMOVE_HTML_SELECTOR,
-		'substrings' => PBS_JS_REMOVE_HTML_STRINGS[ frl_get_language() ], // Returns the current language code
+		'substrings' => PBS_JS_REMOVE_HTML_STRINGS[ frl_get_language() ] ?? '', // Unknown language: empty.
 	);
 	wp_localize_script( FRL_PREFIX . '-pbs-public', 'pbsSettings', $data );
 

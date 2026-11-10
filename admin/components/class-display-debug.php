@@ -52,6 +52,7 @@ class Frl_Debug_Display {
 		$debug_constants_rows .= frl_ui_render_status_row( 'WP_DEBUG_LOG', $debug_log, null );
 		$debug_constants_rows .= frl_ui_render_status_row( 'WP_DEBUG_DISPLAY', $debug_display, null );
 
+		// By design: admin-only surface; the table is cached in 'adminui'.
 		// Get the raw wp-config.php file content
 		$code_display = '';
 		$config_path  = ABSPATH . 'wp-config.php';

@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Fralenuvole
  * Description: Multi-environment and performance management framework with comprehensive backend suite for admins and devs.
- * Version: 5.8.8
+ * Version: 5.8.9
  * Requires at least: 7.0
  * Requires PHP: 8.3
  * Text Domain: fralenuvole
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Upgrade routines trigger only when the first 3 version numbers change: 1.1.1 -> 1.1.2
-const FRL_VERSION = '5.8.8';
+const FRL_VERSION = '5.8.9';
 
 // Load required core files and constants
 require_once __DIR__ . '/includes/bootstrap.php';
@@ -114,6 +114,10 @@ function frl_load_core_components() {
 	if ( frl_translator_is_enabled() ) {
 		require_once FRL_DIR_PATH . 'core/translator/translator.php';
 		frl_translator_init();
+	} elseif ( ! get_option( frl_prefix( 'disable_translator' ), '0' ) ) {
+		// Safe Mode: no multilingual plugin, so frl_translator_init() never runs,
+		// but leftover {{...}}/##...## delimiters still need stripping.
+		add_action( 'init', 'frl_translator_register_safe_mode', 20, 0 );
 	}
 
 	// Rewriter — only load + init if not explicitly disabled.

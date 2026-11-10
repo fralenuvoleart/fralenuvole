@@ -320,7 +320,8 @@ function frl_get_plugin_options_db( $reset = false ) {
 	// A failed query returns null/empty; log and bail rather than caching an
 	// empty option set (which would force per-key DB fallbacks for the request).
 	if ( $wpdb->last_error ) {
-		frl_log( 'FRL Options DB Error: {error}', array( 'error' => $wpdb->last_error ) );
+		// No email: frl_log() would re-enter option loading and re-run this query.
+		frl_log( 'FRL Options DB Error: {error}', array( 'error' => $wpdb->last_error ), false );
 		return array();
 	}
 

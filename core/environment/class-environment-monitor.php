@@ -12,6 +12,23 @@ class Frl_Environment_Monitor {
 	use Frl_Environment_Host_Normalizer;
 
 	/**
+	 * True while enforcement is applying config (suppresses manual-edit tracking).
+	 *
+	 * @var bool
+	 */
+	private static bool $suppress_tracking = false;
+
+	/**
+	 * Enable/disable manual-edit tracking for the current scope.
+	 *
+	 * @param bool $suppress True to suppress tracking.
+	 * @return void
+	 */
+	public static function suppress_tracking( bool $suppress ): void {
+		self::$suppress_tracking = $suppress;
+	}
+
+	/**
 	 * Set up hooks for tracking option changes.
 	 *
 	 * @return void
@@ -52,6 +69,11 @@ class Frl_Environment_Monitor {
 	 * @return void
 	 */
 	public static function track_plugin_options( $option_name, $old_value, $new_value ) {
+		// Enforcement's own writes are not manual changes (they would self-ignore).
+		if ( self::$suppress_tracking ) {
+			return;
+		}
+
 		if ( $old_value === $new_value ) {
 			return;
 		}
@@ -65,9 +87,13 @@ class Frl_Environment_Monitor {
 			return;
 		}
 
-		$ignored_options = frl_get_option( Frl_Environment_Manager::IGNORE_OPTIONS_KEY ) ?? array();
+		// Seeded default is '', not an array.
+		$ignored_options = frl_get_option( Frl_Environment_Manager::IGNORE_OPTIONS_KEY );
+		if ( ! is_array( $ignored_options ) ) {
+			$ignored_options = array();
+		}
 
-		if ( is_array( $ignored_options ) && ! in_array( $option_name, $ignored_options, true ) ) {
+		if ( ! in_array( $option_name, $ignored_options, true ) ) {
 			$ignored_options[] = $option_name;
 			frl_update_option( Frl_Environment_Manager::IGNORE_OPTIONS_KEY, $ignored_options );
 			frl_cache_set( Frl_Environment_Manager::CACHE_GROUP, Frl_Environment_Manager::IGNORE_OPTIONS_KEY, $ignored_options );
@@ -107,12 +133,15 @@ class Frl_Environment_Monitor {
 			return;
 		}
 
-		// Load ignored plugins from option only once per request
+		// Load once per request; seeded default is ''.
 		if ( $cached_ignored_plugins === null ) {
-			$cached_ignored_plugins = frl_get_option( Frl_Environment_Manager::IGNORE_PLUGINS_KEY ) ?? array();
+			$cached_ignored_plugins = frl_get_option( Frl_Environment_Manager::IGNORE_PLUGINS_KEY );
+			if ( ! is_array( $cached_ignored_plugins ) ) {
+				$cached_ignored_plugins = array();
+			}
 		}
 
-		if ( is_array( $cached_ignored_plugins ) && ! in_array( $plugin, $cached_ignored_plugins, true ) ) {
+		if ( ! in_array( $plugin, $cached_ignored_plugins, true ) ) {
 			$cached_ignored_plugins[] = $plugin;
 			frl_update_option( Frl_Environment_Manager::IGNORE_PLUGINS_KEY, $cached_ignored_plugins );
 			frl_cache_set( Frl_Environment_Manager::CACHE_GROUP, Frl_Environment_Manager::IGNORE_PLUGINS_KEY, $cached_ignored_plugins );

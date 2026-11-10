@@ -11,6 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Loaded only on the plugin's page — frl_load_plugin_ui() gates this file
+// behind frl_is_plugin_context().
+
 // Critical hooks for immediate registration
 add_action( 'admin_enqueue_scripts', 'frl_asset_loader_scripts', -999, 0 );
 

@@ -89,17 +89,19 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base 
 			$lang_esc = Frl_Rewriter_Path_Utils::escape_for_regex( $lang, '#' );
 			$base_esc = Frl_Rewriter_Path_Utils::escape_for_regex( $translated_base, '#' );
 
-			// Post single-item rules with language prefix
-			$rules[ "^{$lang_esc}/{$base_esc}/(.+?)/?$" ]                          = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&lang={$lang}";
+			// Specific suffixes first, generic rule last: add_rewrite_rule() APPENDS
+			// to extra_rules_top, so the first registered pattern wins. A generic
+			// (.+?)/?$ registered first would swallow /feed/ and /embed/.
 			$rules[ "^{$lang_esc}/{$base_esc}/(.+?)/feed/?$" ]                     = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&feed=feed&lang={$lang}";
 			$rules[ "^{$lang_esc}/{$base_esc}/(.+?)/embed/?$" ]                    = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&embed=true&lang={$lang}";
 			$rules[ "^{$lang_esc}/{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$" ] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&cpage=\$matches[2]&lang={$lang}";
+			$rules[ "^{$lang_esc}/{$base_esc}/(?!page/[0-9]+/?$)(.+?)/?$" ]        = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&lang={$lang}";
 
 			// Post single-item rules without language prefix (only add if no multilingual plugin manages lang roots)
-			$rules[ "^{$base_esc}/(.+?)/?$" ]                          = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&lang={$lang}";
 			$rules[ "^{$base_esc}/(.+?)/feed/?$" ]                     = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&feed=feed&lang={$lang}";
 			$rules[ "^{$base_esc}/(.+?)/embed/?$" ]                    = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&embed=true&lang={$lang}";
 			$rules[ "^{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$" ] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&cpage=\$matches[2]&lang={$lang}";
+			$rules[ "^{$base_esc}/(?!page/[0-9]+/?$)(.+?)/?$" ]        = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&lang={$lang}";
 		}
 
 		return $rules;
@@ -193,7 +195,7 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base 
 			}
 
 			// Main post slug (support hierarchical CPTs by using pagename)
-			if ( preg_match( "#^{$lang_esc}/{$base_esc}/(.+?)/?$#", $uri, $matches ) ) {
+			if ( preg_match( "#^{$lang_esc}/{$base_esc}/(?!page/[0-9]+/?$)(.+?)/?$#", $uri, $matches ) ) {
 				$slug = $matches[1];
 				if ( is_post_type_hierarchical( $this->cpt_slug ) ) {
 					$cache[ $this->cpt_slug ][ $request_uri ] = array(
@@ -211,7 +213,7 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base 
 				);
 				return $cache[ $this->cpt_slug ][ $request_uri ];
 			}
-			if ( preg_match( "#^{$base_esc}/(.+?)/?$#", $uri, $matches ) ) {
+			if ( preg_match( "#^{$base_esc}/(?!page/[0-9]+/?$)(.+?)/?$#", $uri, $matches ) ) {
 				$slug = $matches[1];
 				if ( is_post_type_hierarchical( $this->cpt_slug ) ) {
 					$cache[ $this->cpt_slug ][ $request_uri ] = array(
@@ -240,11 +242,12 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base 
 	 * @return void
 	 */
 	public function maybe_redirect_canonical(): void {
-		if ( ! $this->is_enabled() ) {
+		if ( ! $this->is_enabled() || ! is_singular( $this->cpt_slug ) || ! $this->is_canonicalisable_request() ) {
 			return;
 		}
 
-		if ( ! is_singular( $this->cpt_slug ) ) {
+		// Comment pagination is a legitimate URL, not a duplicate of the permalink.
+		if ( (int) get_query_var( 'cpage' ) > 1 ) {
 			return;
 		}
 
