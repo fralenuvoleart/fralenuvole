@@ -132,7 +132,7 @@ final class Frl_Cache_Operations {
 		}
 
 		// After hook.
-		if ( ! empty( $config['hooks']['after'] ) ) {
+		if ( isset( $config['hooks']['after'] ) ) {
 			do_action( $config['hooks']['after'], $operation, $results );
 		}
 

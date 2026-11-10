@@ -243,7 +243,7 @@ class Frl_Environment_Manager {
 			// Website transients purge moved to final state_changed block after operations
 
 			// Suppress manual-edit tracking: these writes are the config being applied.
-			Frl_Environment_Monitor::suppress_tracking( true );
+			$previous_suppress = Frl_Environment_Monitor::suppress_tracking( true );
 			try {
 				// Apply WordPress options from config
 				Frl_Environment_Applier::apply_wordpress_options( $config, $results, $force ); // Pass force
@@ -251,7 +251,7 @@ class Frl_Environment_Manager {
 				// Apply domain-specific configuration
 				Frl_Environment_Applier::apply_plugin_options( $config, $results, $force ); // Pass force
 			} finally {
-				Frl_Environment_Monitor::suppress_tracking( false );
+				Frl_Environment_Monitor::suppress_tracking( $previous_suppress );
 			}
 
 			// Apply plugin management

@@ -57,10 +57,10 @@ function frl_schema_builder_get_term_map(): array {
 /**
  * Build post-term schema properties from a type map.
  *
- * Resolves term values once per taxonomy (cached in $taxonomy_cache), then
+ * Resolves term values once per post + taxonomy (cached in $taxonomy_cache), then
  * formats them according to each field definition's format setting.
  * Called once per schema type that has a mapping, but term data is fetched
- * only once per unique taxonomy across all types.
+ * only once per unique post + taxonomy across all types.
  *
  * @param int   $post_id        Post ID.
  * @param array $type_map       Array of field definitions from frl_schema_builder_get_term_map().
@@ -80,13 +80,14 @@ function frl_schema_builder_build_term_properties( int $post_id, array $type_map
 			continue;
 		}
 
-		// Fetch terms once per taxonomy, reuse across type maps
-		if ( ! isset( $taxonomy_cache[ $taxonomy ] ) ) {
-			$terms                       = frl_get_post_terms( $post_id, $taxonomy, $field );
-			$taxonomy_cache[ $taxonomy ] = ( is_array( $terms ) ) ? array_values( array_filter( $terms, 'is_string' ) ) : array();
+		// Fetch terms once per post + taxonomy, reuse across type maps.
+		$cache_key = $post_id . '|' . $taxonomy;
+		if ( ! isset( $taxonomy_cache[ $cache_key ] ) ) {
+			$terms                        = frl_get_post_terms( $post_id, $taxonomy, $field );
+			$taxonomy_cache[ $cache_key ] = ( is_array( $terms ) ) ? array_values( array_filter( $terms, 'is_string' ) ) : array();
 		}
 
-		$values = $taxonomy_cache[ $taxonomy ];
+		$values = $taxonomy_cache[ $cache_key ];
 
 		if ( empty( $values ) ) {
 			continue;

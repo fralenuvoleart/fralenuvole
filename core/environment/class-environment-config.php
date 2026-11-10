@@ -161,7 +161,6 @@ class Frl_Environment_Config {
 		$plugins_extends  = isset( $extends_partial['plugins'] ) && is_array( $extends_partial['plugins'] ) ? $extends_partial['plugins'] : array();
 		$plugins_instance = isset( $instance_partial['plugins'] ) && is_array( $instance_partial['plugins'] ) ? $instance_partial['plugins'] : array();
 
-		// Refined plugin logic based on potential override keys:
 		$final_active   = $plugins_base['active'] ?? array();
 		$final_inactive = $plugins_base['inactive'] ?? array();
 		if ( ! is_array( $final_active ) ) {
@@ -171,56 +170,36 @@ class Frl_Environment_Config {
 			$final_inactive = array();
 		}
 
-		// Apply Type Overrides
-		if ( isset( $plugins_type['active'] ) && is_array( $plugins_type['active'] ) ) {
-			$final_active = $plugins_type['active'];
-		}
-		if ( isset( $plugins_type['inactive'] ) && is_array( $plugins_type['inactive'] ) ) {
-			$final_inactive = $plugins_type['inactive'];
-		}
-		if ( frl_is_array_not_empty( $plugins_type, 'active_add' ) ) {
-			$final_active = array_unique( array_merge( $final_active, $plugins_type['active_add'] ) );
-		}
-		if ( frl_is_array_not_empty( $plugins_type, 'inactive_add' ) ) {
-			$final_inactive = array_unique( array_merge( $final_inactive, $plugins_type['inactive_add'] ) );
+		// Layers apply in order; a layer's own decisions override everything below it.
+		foreach ( array( $plugins_type, $plugins_extends, $plugins_instance ) as $layer ) {
+			$layer_active   = array();
+			$layer_inactive = array();
+
+			if ( isset( $layer['active'] ) && is_array( $layer['active'] ) ) {
+				$final_active = $layer['active'];
+				$layer_active = $layer['active'];
+			}
+			if ( isset( $layer['inactive'] ) && is_array( $layer['inactive'] ) ) {
+				$final_inactive = $layer['inactive'];
+				$layer_inactive = $layer['inactive'];
+			}
+			if ( frl_is_array_not_empty( $layer, 'active_add' ) ) {
+				$final_active = array_merge( $final_active, $layer['active_add'] );
+				$layer_active = array_merge( $layer_active, $layer['active_add'] );
+			}
+			if ( frl_is_array_not_empty( $layer, 'inactive_add' ) ) {
+				$final_inactive = array_merge( $final_inactive, $layer['inactive_add'] );
+				$layer_inactive = array_merge( $layer_inactive, $layer['inactive_add'] );
+			}
+
+			// Same-layer conflict: active wins.
+			$final_inactive = array_diff( $final_inactive, $layer_active );
+			$final_active   = array_diff( $final_active, array_diff( $layer_inactive, $layer_active ) );
 		}
 
-		// Apply Extends Overrides (template layer, between type and instance)
-		if ( isset( $plugins_extends['active'] ) && is_array( $plugins_extends['active'] ) ) {
-			$final_active = $plugins_extends['active'];
-		}
-		if ( isset( $plugins_extends['inactive'] ) && is_array( $plugins_extends['inactive'] ) ) {
-			$final_inactive = $plugins_extends['inactive'];
-		}
-		if ( frl_is_array_not_empty( $plugins_extends, 'active_add' ) ) {
-			$final_active = array_unique( array_merge( $final_active, $plugins_extends['active_add'] ) );
-		}
-		if ( frl_is_array_not_empty( $plugins_extends, 'inactive_add' ) ) {
-			$final_inactive = array_unique( array_merge( $final_inactive, $plugins_extends['inactive_add'] ) );
-		}
-
-		// Apply Instance Overrides (highest precedence)
-		if ( isset( $plugins_instance['active'] ) && is_array( $plugins_instance['active'] ) ) {
-			$final_active = $plugins_instance['active'];
-		}
-		if ( frl_is_array_not_empty( $plugins_instance, 'active_add' ) ) {
-			$final_active = array_unique( array_merge( $final_active, $plugins_instance['active_add'] ) );
-		}
-		if ( isset( $plugins_instance['inactive'] ) && is_array( $plugins_instance['inactive'] ) ) {
-			$final_inactive = $plugins_instance['inactive'];
-		}
-		if ( frl_is_array_not_empty( $plugins_instance, 'inactive_add' ) ) {
-			$final_inactive = array_unique( array_merge( $final_inactive, $plugins_instance['inactive_add'] ) );
-		}
-
-		// Ensure consistency and final types
-		// First get unique elements in each potentially modified list
-		$final_active_temp   = array_values( array_unique( $final_active ) );
-		$final_inactive_temp = array_values( array_unique( $final_inactive ) );
-
-		// Active wins on conflict.
-		$final_inactive = array_diff( $final_inactive_temp, $final_active_temp );
-		$final_active   = $final_active_temp;
+		// Safety pass for conflicts that came from the base layer: active wins.
+		$final_active   = array_values( array_unique( $final_active ) );
+		$final_inactive = array_diff( array_values( array_unique( $final_inactive ) ), $final_active );
 
 		// Final cleanup (re-index) and sorting
 		$final_active   = array_values( $final_active );

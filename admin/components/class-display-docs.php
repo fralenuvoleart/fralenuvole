@@ -85,9 +85,9 @@ function frl_docs_get_documents() {
 					}
 					sort( $files );
 					foreach ( $files as $file ) {
-						$slug  = strtolower( basename( $file, '.md' ) );
-						$title = frl_docs_extract_title( $file );
-						$mtime = filemtime( $file );
+						$slug   = strtolower( basename( $file, '.md' ) );
+						$title  = frl_docs_extract_title( $file );
+						$mtime  = filemtime( $file );
 						$docs[] = array(
 							'slug'  => $slug,
 							'title' => $title,

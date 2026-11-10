@@ -1,11 +1,6 @@
 <?php
-// Ensure WP_CLI constant exists for static analysis; define false for non-CLI requests.
-if ( ! defined( 'WP_CLI' ) ) {
-	define( 'WP_CLI', false );
-}
-
-// Exit if not in WP-CLI context
-if ( ! WP_CLI ) {
+// Exit if not in a WP-CLI context.
+if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 	return;
 }
 
@@ -48,6 +43,13 @@ class Frl_Rewriter_CLI {
 			$count    = count( $patterns );
 			WP_CLI::log( sprintf( '%-40s %4d rules', $feature->get_name(), $count ) );
 		}
+
+		WP_CLI::log( str_repeat( '-', 40 ) );
+		WP_CLI::log(
+			$coordinator->validate_all_features()
+				? 'Feature validation: no pattern or routing conflicts'
+				: 'Feature validation: FAILED - see the rewrite log for the conflicting feature'
+		);
 
 		WP_CLI::success( 'Rewriter diagnostics finished.' );
 	}

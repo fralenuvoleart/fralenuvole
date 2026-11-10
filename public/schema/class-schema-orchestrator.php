@@ -142,7 +142,7 @@ class Frl_Schema_Orchestrator {
 		}
 
 		$page = $this->build_collection_page( $item_list );
-		return $page !== null ? array( $page ) : array();
+		return array( $page );
 	}
 
 	/**
@@ -152,23 +152,22 @@ class Frl_Schema_Orchestrator {
 	 */
 	private function build_archive_item_list(): ?array {
 		global $wp_query;
+
+		if ( empty( $wp_query->posts ) ) {
+			return null;
+		}
+
 		$items    = array();
 		$position = 1;
-
-		while ( have_posts() ) {
-			the_post();
+		// Read the query's posts without consuming the main loop ($post/in_the_loop).
+		foreach ( $wp_query->posts as $p ) {
 			$items[] = array(
 				'@type'    => 'ListItem',
 				'position' => $position,
-				'name'     => get_the_title(),
-				'url'      => get_permalink(),
+				'name'     => get_the_title( $p ),
+				'url'      => get_permalink( $p ),
 			);
 			++$position;
-		}
-		rewind_posts();
-
-		if ( empty( $items ) ) {
-			return null;
 		}
 
 		return array(

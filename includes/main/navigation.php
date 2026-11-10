@@ -49,11 +49,11 @@ function frl_render_block_core_navigation_translation( $settings, $metadata ) {
 		return $settings;
 	}
 
-	// Retrieve current language code
-	$current_lang = frl_get_language();
-
 	// Define a custom render callback to resolve translated navigation IDs
-	$settings['render_callback'] = function ( $attributes, $content, $block ) use ( $current_lang ) {
+	$settings['render_callback'] = function ( $attributes, $content, $block ) {
+		// Resolve the language at render time, not at block-registration time.
+		$current_lang = frl_get_language();
+
 		// Render normally if no reference ID is provided
 		if ( ! isset( $attributes['ref'] ) ) {
 			return render_block_core_navigation( $attributes, $content, $block );

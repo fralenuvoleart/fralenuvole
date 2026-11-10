@@ -82,4 +82,12 @@
     <exclude-pattern>*/config/environment/env-snippets/*_html\.php</exclude-pattern>
     <exclude-pattern>*/admin/metaboxes/metabox-editor\.php</exclude-pattern>
     <exclude-pattern>*/admin/widgets/widget-stats\.php</exclude-pattern>
+    <!--
+        The cache stats array uses the machine key `wordpress` (consumed by the
+        admin notices); the docblock shapes must match the code, so the prose
+        spelling sniff is disabled for that file only.
+    -->
+    <rule ref="WordPress.WP.CapitalPDangit">
+        <exclude-pattern>*/core/cache/class-cache-manager.php</exclude-pattern>
+    </rule>
 </ruleset>

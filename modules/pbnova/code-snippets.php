@@ -1,9 +1,9 @@
 <?php
 
 /**
- * PB Nova module constants
+ * PB Nova reference snippets (templates/examples).
  *
- * Kept on purpose — not auto-loaded, kept as reference snippets.
+ * Kept on purpose; not auto-loaded.
  */
 
 // Exit if accessed directly.

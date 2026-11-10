@@ -39,13 +39,13 @@ class Frl_Schema_Context {
 			return 'search';
 		}
 
-		// Posts index only: a static front page is singular and keeps its page schema.
-		if ( is_home() ) {
-			return 'home';
-		}
-
+		// Singular first: Polylang language roots can be both singular and home.
 		if ( is_singular() ) {
 			return 'singular';
+		}
+
+		if ( is_home() ) {
+			return 'home';
 		}
 
 		if ( is_archive() || is_post_type_archive() ) {
@@ -81,15 +81,5 @@ class Frl_Schema_Context {
 
 		$post_id = get_the_ID();
 		return $post_id ? (int) $post_id : null;
-	}
-
-	/**
-	 * Get the queried object for archive contexts.
-	 *
-	 * @return object|null Queried object (WP_Term, WP_Post_Type, etc.), or null.
-	 */
-	public function get_queried_object(): ?object {
-		$obj = get_queried_object();
-		return $obj instanceof \WP_Term || $obj instanceof \WP_Post_Type ? $obj : null;
 	}
 }

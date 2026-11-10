@@ -331,8 +331,6 @@ function frl_errors_handle_exception( Throwable $e ): void {
 			$errno = E_WARNING;
 		} elseif ( $e instanceof DivisionByZeroError ) {
 			$errno = E_ERROR;
-		} elseif ( $e instanceof ArgumentCountError ) {
-			$errno = E_ERROR;
 		} else {
 			$errno = E_ERROR;
 		}

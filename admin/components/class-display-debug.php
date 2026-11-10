@@ -52,44 +52,36 @@ class Frl_Debug_Display {
 		$debug_constants_rows .= frl_ui_render_status_row( 'WP_DEBUG_LOG', $debug_log, null );
 		$debug_constants_rows .= frl_ui_render_status_row( 'WP_DEBUG_DISPLAY', $debug_display, null );
 
-		// By design: admin-only surface; the table is cached in 'adminui'.
-		// Get the raw wp-config.php file content
+		// Cached per wp-config.php mtime, so a manual edit refreshes the viewer.
 		$code_display = '';
 		$config_path  = ABSPATH . 'wp-config.php';
-		if ( file_exists( $config_path ) && is_readable( $config_path ) ) {
-			$config_content = file_get_contents( $config_path );
+		$config_mtime = is_readable( $config_path ) ? filemtime( $config_path ) : false;
+		if ( false !== $config_mtime ) {
+			$code_display = frl_cache_remember(
+				'adminui',
+				'wpconfig_viewer_' . $config_mtime,
+				function () use ( $config_path ) {
+					$table_content  = frl_ui_render_table_row( 'wp-config.php', '', true );
+					$table_content .= frl_ui_render_code_block( (string) file_get_contents( $config_path ), 'js', '', false, false );
 
-			// Create the hidden file display but don't add it to the table yet
-			$code_display = '<div id="wpconfig-full-code" style="display:none;">';
-
-			// Start with table content - begin with header row
-			$table_content = frl_ui_render_table_row( 'wp-config.php', '', true );
-
-			// Create code block content without table row wrapping
-			$table_content .= frl_ui_render_code_block(
-				$config_content,
-				'js',            // Language for syntax highlighting
-				'',               // No separate ID needed
-				false,            // Not initially hidden - parent div is hidden
-				false             // Not in table row
+					return '<div id="wpconfig-full-code" style="display:none;">'
+						. frl_ui_render_table( 'wpconfig-code', $table_content, 'wpconfig-code-table', 0, true )
+						. '</div>';
+				},
+				HOUR_IN_SECONDS
 			);
-
-			// Render the complete table
-			$code_display .= frl_ui_render_table( 'wpconfig-code', $table_content, 'wpconfig-code-table' );
-
-			$code_display .= '</div>';
 		}
 
 		$debug_constants_table = frl_ui_render_table( 'debug-constants', $debug_constants_rows, 'debug-constants-table' );
 
-		// Add toggle button for wp-config.php code
-		$wp_config_toggle_button = frl_ui_render_toggle_button(
-			'View wp-config.php',
-			'wpconfig-full-code',
-			'button-small align-right'
-		);
-
-		$debug_constants_table .= $wp_config_toggle_button;
+		// Only offer the toggle when the viewer has content to show.
+		if ( '' !== (string) $code_display ) {
+			$debug_constants_table .= frl_ui_render_toggle_button(
+				'View wp-config.php',
+				'wpconfig-full-code',
+				'button-small align-right'
+			);
+		}
 
 		// Error Reporting Table
 		$error_reporting_rows  = frl_ui_render_table_row( 'Error Type', 'Status', true, 'error-types-header-row' );
@@ -137,60 +129,50 @@ class Frl_Debug_Display {
 	}
 
 	/**
-	 * Get current error reporting level in a readable format.
-	 *
-	 * This is a public wrapper for get_readable_error_level().
-	 *
-	 * @return string Human-readable representation of the current error level.
-	 */
-	public static function get_current_readable_error_level() {
-		return self::get_readable_error_level( error_reporting() );
-	}
-
-	/**
 	 * Convert error reporting level to readable format.
 	 *
 	 * @param int $level Error reporting level.
 	 * @return string Human-readable representation.
 	 */
 	private static function get_readable_error_level( $level ) {
-		// If level is E_ALL
-		if ( $level === E_ALL ) {
+		$level = (int) $level;
+
+		if ( E_ALL === $level ) {
 			return 'E_ALL';
 		}
 
-		// If level includes all error types, it's E_ALL with specific exclusions
-		if ( ( $level & E_ALL ) === $level ) {
-			$excluded = array();
+		// E_STRICT is deliberately absent: the constant is deprecated since PHP 8.4.
+		$names = array(
+			E_ERROR             => 'E_ERROR',
+			E_WARNING           => 'E_WARNING',
+			E_PARSE             => 'E_PARSE',
+			E_NOTICE            => 'E_NOTICE',
+			E_CORE_ERROR        => 'E_CORE_ERROR',
+			E_CORE_WARNING      => 'E_CORE_WARNING',
+			E_COMPILE_ERROR     => 'E_COMPILE_ERROR',
+			E_COMPILE_WARNING   => 'E_COMPILE_WARNING',
+			E_USER_ERROR        => 'E_USER_ERROR',
+			E_USER_WARNING      => 'E_USER_WARNING',
+			E_USER_NOTICE       => 'E_USER_NOTICE',
+			E_RECOVERABLE_ERROR => 'E_RECOVERABLE_ERROR',
+			E_DEPRECATED        => 'E_DEPRECATED',
+			E_USER_DEPRECATED   => 'E_USER_DEPRECATED',
+		);
 
-			// Check which error types are excluded
-			if ( ! ( $level & E_NOTICE ) ) {
-				$excluded[] = 'E_NOTICE';
-			}
-			if ( ! ( $level & E_USER_NOTICE ) ) {
-				$excluded[] = 'E_USER_NOTICE';
-			}
-			if ( ! ( $level & E_WARNING ) ) {
-				$excluded[] = 'E_WARNING';
-			}
-			if ( ! ( $level & E_USER_WARNING ) ) {
-				$excluded[] = 'E_USER_WARNING';
-			}
-			if ( ! ( $level & E_DEPRECATED ) ) {
-				$excluded[] = 'E_DEPRECATED';
-			}
-			if ( ! ( $level & E_USER_DEPRECATED ) ) {
-				$excluded[] = 'E_USER_DEPRECATED';
-			}
-
-			if ( empty( $excluded ) ) {
-				return 'E_ALL';
-			} else {
-				return 'E_ALL & ~' . implode( ' & ~', $excluded );
+		$enabled = array();
+		$known   = 0;
+		foreach ( $names as $bit => $name ) {
+			$known |= $bit;
+			if ( $level & $bit ) {
+				$enabled[] = $name;
 			}
 		}
 
-		// Otherwise, show the raw value
-		return 'Custom: ' . $level;
+		// Bits with no constant name (e.g. -1, or E_STRICT on PHP < 8.4) cannot be listed.
+		if ( 0 !== ( $level & ~$known ) ) {
+			return 'Custom: ' . $level;
+		}
+
+		return $enabled ? implode( ' | ', $enabled ) : 'None (0)';
 	}
 }

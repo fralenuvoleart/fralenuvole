@@ -21,17 +21,11 @@ class Frl_Environment_Display {
 	/** @var array|null Cached environment state from options. */
 	private static $cached_stored_state = null;
 
-	/** @var bool|null Whether plugin transients exist in DB. */
-	private static $cached_transient_exists = null;
-
 	/** @var int|null Cached count of plugin DB options. */
 	private static $cached_db_options_count = null;
 
 	/** @var array|null Per-request cache for environment data. */
 	private static $request_cached_data = null;
-
-	/** @var array|null Cached raw transients from get_all_plugin_transients(). */
-	private static $cached_all_transients = null;
 
 	/**
 	 * Constructor.
@@ -141,7 +135,7 @@ class Frl_Environment_Display {
 		// Handle empty state case
 		if ( ! $data['stored_state'] ) {
 			$warning = $this->get_warning_message();
-			$output .= frl_ui_render_widget( 'env-warning', $warning, 'Warning' );
+			$output .= frl_ui_render_widget( 'env-empty-state', $warning, 'Warning' );
 			return $output;
 		}
 
@@ -191,7 +185,7 @@ class Frl_Environment_Display {
 			// State Mismatch Warning
 			$mismatch_warning = $this->get_state_mismatch_warning( $data['stored_state'] );
 			if ( $mismatch_warning ) {
-				$output .= frl_ui_render_widget( 'env-warning', $mismatch_warning, 'State Mismatch Warning' );
+				$output .= frl_ui_render_widget( 'env-mismatch-warning', $mismatch_warning, 'State Mismatch Warning' );
 			}
 		}
 
@@ -369,7 +363,7 @@ class Frl_Environment_Display {
 	 * Get environment statistics for display.
 	 *
 	 * @param bool $force_refresh Whether to force fresh data from database.
-	 * @return array{config: array, type: string, stored_state: array, source: string, options_count: int, cached_options_count: int, options_mismatch: bool} Environment data.
+	 * @return array{config: array, type: string, stored_state: array, source: string, options_count: int, cached_options_count: int} Environment data.
 	 */
 	public function get_environment_stats( $force_refresh = false ) {
 		// NEW: Use request-level caching for the entire method's result
@@ -405,15 +399,6 @@ class Frl_Environment_Display {
 		// Get the plugin prefix
 		$prefix = frl_prefix();
 
-		// Get all transients in a single query for multiple uses
-		// Use cached transients data if available, or fetch once and cache for reuse
-		if ( ! $force_refresh && self::$cached_all_transients !== null ) {
-			$all_transients = self::$cached_all_transients;
-		} else {
-			$all_transients              = frl_get_all_plugin_transients();
-			self::$cached_all_transients = $all_transients;
-		}
-
 		// Use cached db options count if available and not forcing refresh
 		if ( ! $force_refresh && self::$cached_db_options_count !== null ) {
 			$db_options_count = self::$cached_db_options_count;
@@ -439,28 +424,6 @@ class Frl_Environment_Display {
 			$cached_options_count = frl_is_array_not_empty( $all_options ) ? count( $all_options ) : 0;
 		}
 
-		// Check for cache/db mismatch
-		$options_mismatch = ( $cached_options_count > 0 && $cached_options_count !== $db_options_count );
-
-		// Use cached value if available and not forcing refresh
-		if ( ! $force_refresh && self::$cached_transient_exists !== null ) {
-			$transient_exists = self::$cached_transient_exists;
-		} else {
-			// Check if the specific environment transient exists using the data we already have
-			$transient_name   = '_transient_' . FRL_CACHE_PREFIX . FRL_ENV_CACHE_GROUP . '_' . FRL_ENV_CACHE_KEY;
-			$transient_exists = false;
-
-			foreach ( $all_transients as $transient ) {
-				if ( $transient->option_name === $transient_name ) {
-					$transient_exists = true;
-					break;
-				}
-			}
-
-			// Cache for subsequent calls
-			self::$cached_transient_exists = $transient_exists;
-		}
-
 		// Comprehensive source determination - ordered by retrieval priority
 		if ( $stored_state ) {
 			// Get cache information using consolidated method
@@ -483,7 +446,6 @@ class Frl_Environment_Display {
 			'source'               => $source,
 			'options_count'        => (int) $db_options_count,
 			'cached_options_count' => (int) $cached_options_count,
-			'options_mismatch'     => $options_mismatch,
 		);
 
 		// Always store in class-level cache, even when forced refresh was requested
@@ -516,8 +478,7 @@ class Frl_Environment_Display {
 				$output_mu .= frl_ui_render_status_row(
 					$filename,
 					true,
-					null,
-					true
+					null
 				);
 			}
 		}
@@ -528,8 +489,7 @@ class Frl_Environment_Display {
 				$output_mu .= frl_ui_render_status_row(
 					$filename . ' (Out of sync)',
 					'warning',
-					'warning',
-					true
+					'warning'
 				);
 			}
 		}
@@ -540,8 +500,7 @@ class Frl_Environment_Display {
 				$output_mu .= frl_ui_render_status_row(
 					$filename . ' (Missing)',
 					false,
-					'missing',
-					true
+					'missing'
 				);
 			}
 		}
@@ -552,8 +511,7 @@ class Frl_Environment_Display {
 				$output_mu .= frl_ui_render_status_row(
 					$filename . ' (Orphaned)',
 					'uninstalled',
-					'uninstalled',
-					true
+					'uninstalled'
 				);
 			}
 		}
@@ -563,8 +521,7 @@ class Frl_Environment_Display {
 			$output_mu .= frl_ui_render_status_row(
 				'No MU plugins configured',
 				false,
-				null,
-				true
+				null
 			);
 		}
 
@@ -667,19 +624,19 @@ class Frl_Environment_Display {
 		// Active plugins
 		$output_active = frl_ui_render_table_row( 'Enabled by default', '', true );
 		foreach ( $active_plugins_data as $plugin ) {
-			$status_class = ( $plugin['status'] === 'uninstalled' ) ? 'uninstalled' : null;
-			// Pass 'uninstalled' string as value if status is uninstalled, otherwise pass the boolean
-			$render_value   = ( $plugin['status'] === 'uninstalled' ) ? 'uninstalled' : $plugin['is_active'];
-			$output_active .= frl_ui_render_status_row( $plugin['name'], $render_value, $status_class, true );
+			$is_uninstalled = ( $plugin['status'] === 'uninstalled' );
+			$render_value   = $is_uninstalled ? 'uninstalled' : $plugin['is_active'];
+			// The dot's class comes from $render_value; the 3rd argument is only its label.
+			$output_active .= frl_ui_render_status_row( $plugin['name'], $render_value, $is_uninstalled ? 'uninstalled' : null );
 		}
 
 		// Inactive plugins
 		$output_inactive = frl_ui_render_table_row( 'Disabled by default', '', true );
 		foreach ( $inactive_plugins_data as $plugin ) {
-			$status_class = ( $plugin['status'] === 'uninstalled' ) ? 'uninstalled' : null;
-			// Pass 'uninstalled' string as value if status is uninstalled, otherwise pass the boolean
-			$render_value     = ( $plugin['status'] === 'uninstalled' ) ? 'uninstalled' : $plugin['is_active'];
-			$output_inactive .= frl_ui_render_status_row( $plugin['name'], $render_value, $status_class, true );
+			$is_uninstalled = ( $plugin['status'] === 'uninstalled' );
+			$render_value   = $is_uninstalled ? 'uninstalled' : $plugin['is_active'];
+			// The dot's class comes from $render_value; the 3rd argument is only its label.
+			$output_inactive .= frl_ui_render_status_row( $plugin['name'], $render_value, $is_uninstalled ? 'uninstalled' : null );
 		}
 
 		// Ignored Plugins section
@@ -740,7 +697,7 @@ class Frl_Environment_Display {
 					$module_name = ucwords( str_replace( '-', ' ', $module ) );
 					$module_name = strlen( $module_name ) <= 3 ? strtoupper( $module_name ) . ' module' : $module_name;
 
-					$row_html = frl_ui_render_status_row( $module_name, $boolean_status, null, true );
+					$row_html = frl_ui_render_status_row( $module_name, $boolean_status, null );
 					if ( $boolean_status ) {
 						$enabled_modules[] = $row_html;
 					} else {

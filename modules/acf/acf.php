@@ -14,12 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Load configuration and helpers always
 require_once __DIR__ . '/config-constants-acf.php';
 
-// If ACF is not available, skip ACF-only integrations.
-// The shortcodes file must come AFTER this: its callbacks call get_field().
-if ( ! function_exists( 'get_field' ) ) {
-	return;
-}
-
+// Register always; the shortcode callback returns '' when ACF is unavailable.
 require_once __DIR__ . '/acf-shortcodes.php';
 
 // Compute and persist configured calculated ACF option fields on ACF Options save
@@ -31,11 +26,10 @@ add_action(
 );
 
 /**
- * Compute configured calculated ACF fields when saving ACF Options.
+ * Compute and persist each configured calculated option field.
  *
- * Config structure (defined in config-constants-acf.php):
- */
-/**
+ * Config structure is defined in config-constants-acf.php.
+ *
  * @param array<string, array{
  *     operation?: string,
  *     fields?: array,
@@ -111,6 +105,12 @@ function frl_acf_process_calc_options( array $calc_options ): void {
 	}
 }
 
+/**
+ * Recompute configured calculated fields when ACF Options are saved.
+ *
+ * @param string|int $post_id ACF post ID.
+ * @return void
+ */
 function frl_acf_calculate_on_save( $post_id ) {
 	if ( $post_id !== 'options' ) {
 		return;

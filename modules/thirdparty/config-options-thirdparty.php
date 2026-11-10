@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 $frl_thirdparty_default_fields = array(
 	// Add a section title to the modules tab
-	'thirdparty_section_title' => array(
+	'thirdparty_section_title'    => array(
 		'label'       => 'Third-Party Module',
 		'type'        => 'section_title',
 		'description' => 'Third-Party module settings',

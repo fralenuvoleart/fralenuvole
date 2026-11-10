@@ -5,6 +5,7 @@ parameters:
     paths:
         - ../ # Scans root + subdirectories recursively
     excludePaths:
+        - ../.dev (?)
         - ../vendor (?)
         - ../node_modules (?)
         - ../tests (?)
@@ -13,6 +14,7 @@ parameters:
         - ../assets/fonts (?)
         - ../assets/images (?)
         - ../assets/icons (?)
+        - ../assets/lib (?)
     bootstrapFiles:
         - stubs/wordpress-stubs.php
         - phpstan-bootstrap.php
@@ -26,6 +28,8 @@ parameters:
         - stubs/acf.php
         - stubs/wsform.php
         - stubs/memberpress.php
+        - stubs/wp-cli.php
+        - stubs/parsedown.php
     ignoreErrors:
         # Defensive isset checks on arrays - PHPStan incorrectly flags these
         # when it infers types from literal array definitions
@@ -114,6 +118,11 @@ parameters:
         # Unreachable code due to early returns (legitimate)
         - '#Unreachable statement - code above always terminates#'
         
+        # WS Form/ACPT runtime objects: properties are created dynamically by the plugin.
+        - '#Access to an undefined property object::\$(type|placeholder_row|data_grid_select|label)#'
+        # Langswitcher flags come from the FRL_LANGSWITCHER_ARGS constant, which is per-site.
+        - '#Offset .hide_current. on array\{.*\} in empty\(\) always exists and is always falsy#'
+        - '#Offset .hide_if_no.* on array\{.*\} in empty\(\) always exists and is always falsy#'
         # Undefined properties/methods in external libraries (memberpress, etc)
         - '#Access to an undefined property MeprTransaction::#'
         - '#Access to an undefined property MeprUser::#'

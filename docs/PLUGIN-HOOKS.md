@@ -14,7 +14,7 @@ Critical hook priority contract for Fralenuvole. Violating these priorities caus
 
 ### `init` (Priority 10)
 
-`fralenuvole.php:134` — `frl_environment_enforce_settings()`: Environment enforcement MUST run first. After this, `pre_option_*` filters are active and all option reads return environment-overridden values.
+`fralenuvole.php:144` — `frl_environment_enforce_settings()`: Environment enforcement MUST run first. After this, `pre_option_*` filters are active and all option reads return environment-overridden values.
 
 **⚠️ Any hook at `init` with priority < 10 reads RAW database options, NOT environment-overridden values.**
 
@@ -22,7 +22,7 @@ Also at priority 10: `frl_shortcodes_init()`.
 
 ### `init` (Priority 12)
 
-`includes/main/logged-user.php:13` — `frl_process_plugin_actions()`: Processes `?frl_action=...` GET requests from admin bar cache links.
+`includes/main/logged-user.php:13` — `frl_process_plugin_actions()`: Processes `?frl_action=...` GET requests (admin bar links, dashboard buttons, module actions); nonce-gated per `frl_actions_requiring_nonce()`.
 
 ### `init` (Priority 15)
 
@@ -30,15 +30,11 @@ Rewriter features register via `Frl_Rewriter_Coordinator`. Features read options
 
 ### `init` (Priority 20)
 
-`fralenuvole.php:148` — `frl_themekit_init()`: Theme kit initialization.
+`fralenuvole.php:158` — `frl_themekit_init()`: Theme kit initialization.
 
 ### `init` (Priority 100)
 
 `frl_themekit_remove_provider_block_patterns()`: Remove third-party block patterns.
-
-### `init` (Priority 200)
-
-`frl_flush_rewrite_rules()`: Deferred rewrite rules flush. **MUST be the last `init` hook** — flushes after all features have registered their rules.
 
 ## Reserved Priorities
 
@@ -48,11 +44,10 @@ Rewriter features register via `Frl_Rewriter_Coordinator`. Features read options
 | 5 | RESERVED | Fralenuvole bootstrap |
 | 8-9 | Forbidden | Before environment enforcement |
 | 10 | RESERVED | Environment enforcement + shortcodes init |
-| 12 | RESERVED | Plugin action processing |
-| 12-14 | Forbidden | After env, before rewriter |
+| 12 | RESERVED | Plugin action processing + main-include init hooks (media, website, log capture) |
+| 13-14 | Forbidden | After plugin actions, before rewriter |
 | 15 | RESERVED | Rewriter registration |
 | 20 | RESERVED | ThemeKit init |
-| 200 | RESERVED | Rewrite flush |
 
 ## Quick Reference
 
@@ -61,7 +56,6 @@ defined('FRL_INIT_BOOTSTRAP')   || define('FRL_INIT_BOOTSTRAP', 5);
 defined('FRL_INIT_ENV_ENFORCE') || define('FRL_INIT_ENV_ENFORCE', 10);
 defined('FRL_INIT_REWRITER')    || define('FRL_INIT_REWRITER', 15);
 defined('FRL_INIT_THEMEKIT')    || define('FRL_INIT_THEMEKIT', 20);
-defined('FRL_INIT_FLUSH')       || define('FRL_INIT_FLUSH', 200);
 ```
 
 ## Adding New Hooks
@@ -73,4 +67,4 @@ add_action('init', 'frl_my_feature_init', 50, 0);
 
 **❌ Wrong — priority 8:** Runs BEFORE environment enforcement. Options will have wrong values.
 
-**❌ Wrong — priority 12:** Runs after env but BEFORE rewriter. Feature won't be part of rewrite rules.
+**❌ Wrong — priority 13:** Runs after env and the main includes but BEFORE rewriter. Feature won't be part of rewrite rules.

@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Action names that require a valid nonce before dispatch.
  *
- * Cache-purge actions are deliberately absent: the admin-bar links carry no nonce.
+ * Purge/warm actions are absent: the admin-bar links (clear_scripts_tags, clear_shortcodes, clear_cache_light|all, trigger_cache_warmer) carry no nonce.
  *
  * @return string[] Action names.
  */
@@ -63,9 +63,7 @@ function frl_process_plugin_actions() {
 	$is_processing = true;
 	$result        = array();
 
-	// Destructive actions must present the nonce the button builder emits.
-	// The cache-purge actions stay capability-only: the admin-bar links
-	// (logged-user.php) carry no nonce by design.
+	// Listed actions need the nonce the button builder emits; purge/warm actions stay capability-only.
 	if ( in_array( $action, frl_actions_requiring_nonce(), true ) && ! frl_verify_plugin_action_nonce( $action ) ) {
 		frl_add_admin_notice( __( 'Security check failed. Please try again.', FRL_PREFIX ), 'error' );
 		frl_safe_redirect();

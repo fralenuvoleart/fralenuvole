@@ -22,7 +22,7 @@ class Frl_Cache_Manager {
 	/** Cache key prefix. */
 	const PREFIX = FRL_CACHE_PREFIX;
 
-	/** Sentinel key marking a wrapped falsey value in transient storage. */
+	/** Sentinel key marking a wrapped falsey value in persistent storage. */
 	private const FALSEY_SENTINEL = '__frl_falsey__';
 
 	// public by design: cache traits reference these cross-file (Intelephense cannot
@@ -214,9 +214,10 @@ class Frl_Cache_Manager {
 	 *
 	 * @param string $group Cache group name.
 	 * @param string|array $key Cache key (string or array to be hashed).
+	 * @param string|null $language Language code for language groups; null = current language.
 	 * @return string Generated cache key.
 	 */
-	private static function generate_key( $group, $key ) {
+	private static function generate_key( $group, $key, $language = null ) {
 		// Process array keys first to avoid duplication
 		if ( is_array( $key ) ) {
 			$key_str = json_encode( $key );
@@ -244,7 +245,7 @@ class Frl_Cache_Manager {
 
 		// For language-specific groups, add language prefix (O(1) lookup)
 		if ( isset( self::$language_groups_map[ $group ] ) ) {
-			$lang = frl_get_language();
+			$lang = $language ?? frl_get_language();
 			return $group . '_' . $lang . '_' . $key;
 		}
 
@@ -253,9 +254,10 @@ class Frl_Cache_Manager {
 	}
 
 	/**
-		* Wrap a value for transient storage so a cached falsey value (false/null)
-		* is distinguishable from a cache miss — get_transient() returns false for
-		* both. Only falsey values are wrapped, so the common case is unchanged.
+		* Wrap a value for persistent storage so a cached falsey value (false or null)
+		* is distinguishable from a cache miss — the object cache and get_transient()
+		* both return false for a miss. Only falsey values are wrapped, so the common
+		* case is unchanged.
 		*
 		* @param mixed $value Value to store.
 		* @return mixed Wrapped value.
@@ -268,9 +270,9 @@ class Frl_Cache_Manager {
 	}
 
 	/**
-		* Unwrap a value read from transient storage.
+		* Unwrap a value read from persistent storage (transients or object cache).
 		*
-		* @param mixed $value Value read from the transient.
+		* @param mixed $value Value read from storage.
 		* @return mixed Unwrapped value.
 		*/
 	private static function unwrap_transient_value( $value ) {
@@ -317,85 +319,11 @@ class Frl_Cache_Manager {
 
 		// Store in persistent cache
 		if ( self::is_object_cache_truly_functional() ) {
-			return wp_cache_set( $cache_key, $value, self::PREFIX . $group, $ttl );
+			return wp_cache_set( $cache_key, self::wrap_transient_value( $value ), self::PREFIX . $group, $ttl );
 		}
 
 		if ( self::use_transient_fallback( $group ) ) {
 			return set_transient( self::PREFIX . $cache_key, self::wrap_transient_value( $value ), $ttl );
-		}
-
-		return true;
-	}
-
-	/**
-	 * Set multiple values in a single cache group in one batch.
-	 *
-	 * For object-cache backends, this collapses N network round-trips into one via
-	 * wp_cache_set_multiple() (WP 6.0+; falls back to a per-item loop on older cores or
-	 * drop-ins that don't implement it). Intended for callers writing several keys to the
-	 * same group at once (e.g. a batch write) where the individual TTL is
-	 * uniform. Transient-fallback storage still writes one row-pair per item via
-	 * set_transient() — batching that path would require bypassing WordPress's option
-	 * hooks/autoload/cache-invalidation machinery, which is not done here to avoid
-	 * introducing behavioral regressions for a comparatively rare code path (no external
-	 * object cache configured).
-	 *
-	 * @param string $group Cache group name.
-	 * @param array<string, mixed> $items Map of key => value to store.
-	 * @param int|null $ttl Time to live in seconds (uses group default if null).
-	 * @return bool True on success (or when bypassed/empty).
-	 */
-	public static function set_multi( string $group, array $items, ?int $ttl = null ): bool {
-		if ( self::should_bypass() || empty( $items ) ) {
-			return true;
-		}
-
-		$ttl = $ttl ?? ( self::$default_ttls[ $group ] ?? self::$default_ttls['default'] );
-
-		$sanitized_items = array();
-		foreach ( $items as $key => $value ) {
-			// Sanitize lazily (only on failure) — mirrors set()'s handling.
-			try {
-				serialize( $value );
-			} catch ( \Throwable $e ) {
-				if ( function_exists( 'frl_sanitize_for_serialization' ) ) {
-					frl_sanitize_for_serialization( $value );
-				} else {
-					// Skip caching unserializable values when sanitizer unavailable.
-					continue;
-				}
-			}
-
-			$cache_key                     = self::generate_key( $group, $key );
-			$sanitized_items[ $cache_key ] = $value;
-
-			// Store in runtime cache individually (cheap, in-memory).
-			self::set_runtime( $cache_key, $value, $group );
-		}
-
-		if ( empty( $sanitized_items ) ) {
-			return true;
-		}
-
-		if ( self::is_object_cache_truly_functional() ) {
-			if ( function_exists( 'wp_cache_set_multiple' ) ) {
-				$results = wp_cache_set_multiple( $sanitized_items, self::PREFIX . $group, $ttl );
-				return ! in_array( false, $results, true );
-			}
-			// Backend/core doesn't support batch set — fall back to individual calls.
-			$all_ok = true;
-			foreach ( $sanitized_items as $cache_key => $value ) {
-				$all_ok = wp_cache_set( $cache_key, $value, self::PREFIX . $group, $ttl ) && $all_ok;
-			}
-			return $all_ok;
-		}
-
-		if ( self::use_transient_fallback( $group ) ) {
-			$all_ok = true;
-			foreach ( $sanitized_items as $cache_key => $value ) {
-				$all_ok = set_transient( self::PREFIX . $cache_key, self::wrap_transient_value( $value ), $ttl ) && $all_ok;
-			}
-			return $all_ok;
 		}
 
 		return true;
@@ -438,6 +366,7 @@ class Frl_Cache_Manager {
 			$found = null;
 			$data  = wp_cache_get( $cache_key, self::PREFIX . $group, false, $found );
 			if ( true === $found || ( null === $found && false !== $data ) ) {
+				$data = self::unwrap_transient_value( $data );
 				self::set_runtime( $cache_key, $data, $group );
 				return $data;
 			}
@@ -485,12 +414,28 @@ class Frl_Cache_Manager {
 		$ttl = $ttl ?? ( self::$default_ttls[ $group ] ?? self::$default_ttls['default'] );
 
 		if ( self::is_object_cache_truly_functional() ) {
-			wp_cache_set( $cache_key, $data, self::PREFIX . $group, $ttl );
+			wp_cache_set( $cache_key, self::wrap_transient_value( $data ), self::PREFIX . $group, $ttl );
 		} elseif ( self::use_transient_fallback( $group ) ) {
 			set_transient( self::PREFIX . $cache_key, self::wrap_transient_value( $data ), $ttl );
 		}
 
 		return $data;
+	}
+
+	/**
+	 * Read a language-group key under an explicit language (no callback, no write).
+	 *
+	 * @param string $group Cache group name.
+	 * @param string|array $key Cache key.
+	 * @param string $language Language code.
+	 * @return mixed|null Cached value, or null on miss/bypass.
+	 */
+	public static function get_in_language( string $group, $key, string $language ) {
+		if ( self::should_bypass() ) {
+			return null;
+		}
+
+		return self::get_cached_value( $group, $key, self::generate_key( $group, $key, $language ) );
 	}
 
 	/**
@@ -550,34 +495,35 @@ class Frl_Cache_Manager {
 	 *
 	 * @param string $group Cache group name.
 	 * @param array<int,string> $keys Original (pre-generate_key) keys.
-	 * @param bool $all_languages For language groups, clear the key in every active
-	 *                            language instead of only the current one.
+	 * @param bool|array<int,string> $languages Language groups only: false = current language,
+	 *                                         true = every active language plus the current one,
+	 *                                         array = exactly those language codes.
 	 * @return int Number of keys cleared.
 	 */
-	public static function clear_keys( string $group, array $keys, bool $all_languages = false ): int {
+	public static function clear_keys( string $group, array $keys, bool|array $languages = false ): int {
 		if ( empty( $keys ) ) {
 			return 0;
 		}
 
-		$cache_keys = array();
-		$languages  = array();
-		if ( $all_languages && isset( self::$language_groups_map[ $group ] ) ) {
-			// Always include the current language: the active list can be empty or
-			// omit it, which would otherwise clear nothing at all.
-			$languages = frl_get_active_languages();
-			$current   = frl_get_language();
-			if ( ! in_array( $current, $languages, true ) ) {
-				$languages[] = $current;
+		$lang_list = array( null );
+		if ( $languages !== false && isset( self::$language_groups_map[ $group ] ) ) {
+			if ( is_array( $languages ) ) {
+				$lang_list = array_values( array_unique( $languages ) );
+			} else {
+				// The active list can omit the current language, so add it.
+				$lang_list = frl_get_active_languages();
+				$current   = frl_get_language();
+				if ( ! in_array( $current, $lang_list, true ) ) {
+					$lang_list[] = $current;
+				}
 			}
 		}
+
+		$cache_keys = array();
 		foreach ( $keys as $key ) {
-			if ( $all_languages && isset( self::$language_groups_map[ $group ] ) ) {
-				foreach ( $languages as $language ) {
-					$cache_keys[] = $group . '_' . $language . '_' . $key;
-				}
-				continue;
+			foreach ( $lang_list as $language ) {
+				$cache_keys[] = self::generate_key( $group, $key, $language );
 			}
-			$cache_keys[] = self::generate_key( $group, $key );
 		}
 
 		if ( self::is_object_cache_truly_functional() ) {
@@ -753,7 +699,7 @@ class Frl_Cache_Manager {
 	 * purge_group() per group.
 	 *
 	 * @param string[] $groups Cache groups to purge (without dependencies).
-	 * @return array{runtime: int, persistent: int, WordPress: int, groups: array} Aggregated stats.
+	 * @return array{runtime: int, persistent: int, wordpress: int, groups: array}|array{} Aggregated stats, or empty array if already running.
 	 */
 	public static function purge_groups( array $groups ): array {
 		$stats = array(
@@ -1018,20 +964,26 @@ class Frl_Cache_Manager {
 						}
 					}
 
+						// Drop rows whose timeout has passed; get_transient() would treat them as misses.
+					$now = time();
+					foreach ( $transients as $key => $value ) {
+						if ( isset( $timeouts[ $key ] ) && (int) $timeouts[ $key ] < $now ) {
+							unset( $transients[ $key ] );
+						}
+					}
+
 						// Store values in our result (not including timeout values)
 					if ( $return_values ) {
 						foreach ( $transients as $key => $value ) {
 							$result[ $key ] = $value;
 
-							// Store in runtime cache - matching the pattern from get()
-							$cache_key = self::generate_key( $group, $key );
-							self::set_runtime( $cache_key, $value, $group );
+							// Key already carries group + language: generate_key() would prefix them twice.
+							self::set_runtime( $group . '_' . $key, $value, $group );
 						}
 					} else {
 						// Still populate runtime cache if not returning values
 						foreach ( $transients as $key => $value ) {
-							$cache_key = self::generate_key( $group, $key );
-							self::set_runtime( $cache_key, $value, $group );
+							self::set_runtime( $group . '_' . $key, $value, $group );
 						}
 					}
 
@@ -1095,6 +1047,8 @@ class Frl_Cache_Manager {
 			foreach ( $missing_keys_map as $original_key => $cache_key ) {
 				$data = $batch_results[ $cache_key ] ?? false;
 				if ( $data !== false ) {
+					// Unwrap the falsey sentinel so a cached false matches the transient path.
+					$data = self::unwrap_transient_value( $data );
 					if ( $return_values ) {
 						$result[ $original_key ] = $data;
 					}
@@ -1138,7 +1092,11 @@ class Frl_Cache_Manager {
 					$to_key    = '_transient_timeout_' . self::PREFIX . $cache_key;
 
 					if ( isset( $db_results[ $t_key ] ) ) {
-						$value = maybe_unserialize( $db_results[ $t_key ]->option_value );
+						// Expired but not yet purged: treat as a miss.
+						if ( isset( $db_results[ $to_key ] ) && (int) $db_results[ $to_key ]->option_value < time() ) {
+							continue;
+						}
+						$value = self::unwrap_transient_value( maybe_unserialize( $db_results[ $t_key ]->option_value ) );
 						if ( $return_values ) {
 							$result[ $original_key ] = $value;
 						}
@@ -1177,7 +1135,7 @@ class Frl_Cache_Manager {
 	 * @param string $group Cache group name.
 	 * @param string|null $key Optional specific key to clear (null clears entire group).
 	 * @param bool $include_dependencies Whether to clear dependent caches too.
-	 * @return array{runtime: int, persistent: int, WordPress: int, dependencies: array} Stats about what was cleared.
+	 * @return array{runtime: int, persistent: int, wordpress: int, dependencies: array} Stats about what was cleared.
 	 */
 	public static function clear_group_with_dependencies(
 		string $group,
@@ -1888,9 +1846,8 @@ LUA;
 		++$stats['runtime'];
 
 		// No pre_option_frl_* filter removal needed here — frl_update_option()
-		// and frl_delete_option() already call remove_all_filters() before each
-		// write, and frl_get_plugin_options_db() reads directly from $wpdb,
-		// bypassing pre_option_* filters entirely.
+		// already calls remove_all_filters() before each write, and
+		// frl_get_plugin_options_db() reads directly from $wpdb.
 
 		// If reset_options_caches are called multiple times
 		// for the 'options' group in a single request, the operations
@@ -2073,7 +2030,7 @@ LUA;
 	/**
 	 * Purge cache lightly, excluding heavy groups and dependencies.
 	 *
-	 * @return array{runtime: int, persistent: int, WordPress: int, skipped_groups: array, groups: array} Cache clearing stats.
+	 * @return array{runtime: int, persistent: int, wordpress: int, transients: int, object_cache: int, skipped_groups: array, groups?: array}|array{} Cache clearing stats.
 	 */
 	public static function purge_light() {
 		if ( frl_is_already_running( __METHOD__ ) ) {
@@ -2088,8 +2045,13 @@ LUA;
 				'runtime'        => 0,
 				'persistent'     => 0,
 				'wordpress'      => 0,
+				'transients'     => 0,
+				'object_cache'   => 0,
 				'skipped_groups' => FRL_CACHE_HEAVY_GROUPS,
 			);
+
+			// Same split as purge_all(): one counter per storage backend.
+			$object_cache = self::is_object_cache_truly_functional();
 
 			// Get all defined groups from TTL config
 			$all_groups = array_keys( self::$default_ttls );
@@ -2099,7 +2061,8 @@ LUA;
 			$light_groups  = array_diff( $all_groups, array_keys( self::$heavy_groups_map ) );
 			$batch_flushed = self::flush_groups_redis( $light_groups );
 			if ( $batch_flushed !== null ) {
-				$stats['persistent'] += $batch_flushed;
+				$stats['persistent']   += $batch_flushed;
+				$stats['object_cache'] += $batch_flushed;
 			}
 
 			foreach ( $all_groups as $group ) {
@@ -2115,6 +2078,12 @@ LUA;
 				$stats['runtime']    += $group_stats['runtime'];
 				$stats['persistent'] += $group_stats['persistent'];
 				$stats['wordpress']  += $group_stats['wordpress'];
+
+				if ( $object_cache ) {
+					$stats['object_cache'] += $group_stats['persistent'];
+				} else {
+					$stats['transients'] += $group_stats['persistent'];
+				}
 
 				// Store group-specific stats too
 				$stats['groups'][ $group ] = $group_stats;

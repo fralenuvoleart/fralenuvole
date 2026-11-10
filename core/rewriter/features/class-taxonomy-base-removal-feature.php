@@ -164,15 +164,16 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 	 * Get exclusion patterns from configuration (independent of other features)
 	 */
 	private function get_configuration_based_exclusions(): array {
-		// In-request static cache to avoid repeated work
-		static $cached = null;
-		if ( $cached !== null ) {
-			return $cached;
+		// In-request static cache, keyed by exclusion version.
+		static $cached = array();
+		$version       = Frl_Rewriter_Path_Utils::get_exclusion_version();
+		if ( isset( $cached[ $version ] ) ) {
+			return $cached[ $version ];
 		}
 
-		$cache_key = 'tax_base_page_exclusions';
+		$cache_key = 'tax_base_page_exclusions_v' . $version;
 
-		$cached = frl_cache_remember(
+		$cached[ $version ] = frl_cache_remember(
 			'rewriter',
 			$cache_key,
 			function () {
@@ -198,7 +199,7 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			}
 		);
 
-		return $cached;
+		return $cached[ $version ];
 	}
 
 	/**
@@ -655,7 +656,7 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 
 		$path = substr( $url, strlen( $home ) ); // leading slash included or empty
 
-		// First segment only, after an optional static front and language prefix.
+		// Remove the base right after an optional language prefix and static front.
 		$base_esc  = Frl_Rewriter_Path_Utils::escape_for_regex( $tax_base, '#' );
 		$languages = frl_get_active_languages();
 		$lang_alt  = '';
@@ -663,11 +664,11 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			$lang_alt = implode( '|', array_map( static fn( $l ) => preg_quote( (string) $l, '#' ), $languages ) );
 		}
 
-		// Permastructs carry WP_Rewrite::$front when with_front is on (/blog/...).
-		$front = '';
-		if ( preg_match( '#^/([^/%]+)/#', (string) get_option( 'permalink_structure' ), $m ) ) {
-			$front = preg_quote( $m[1], '#' );
-		}
+		// Permastructs carry WP_Rewrite::$front (all static leading segments) when with_front is on.
+		$structure = (string) get_option( 'permalink_structure' );
+		$pos       = strpos( $structure, '%' );
+		$static    = trim( false === $pos ? $structure : substr( $structure, 0, $pos ), '/' );
+		$front     = $static !== '' ? preg_quote( $static, '#' ) : '';
 
 		// Two fixed groups ($1 lang, $2 front) so the replacement is stable.
 		$lang_group  = $lang_alt !== '' ? '(/(?:' . $lang_alt . '))?' : '()';

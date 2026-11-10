@@ -298,46 +298,6 @@ class Frl_Rewriter_Coordinator {
 	}
 
 	/**
-	 * Force a complete rewrite rules refresh.
-	 *
-	 * Resets the in-memory config hash so the next validate_all_features() call
-	 * recomputes with current option values, then delegates to
-	 * frl_flush_rewrite_rules() which mirrors WP_Rewrite::set_permalink_structure():
-	 * fires update_option_permalink_structure (→ clear_rewriter_caches() clears
-	 * options→rewriter→permalinks + deletes exclusion patterns transient +
-	 * flush_rewrite_rules(true); → Polylang cleans language cache) + fires
-	 * permalink_structure_changed.
-	 *
-	 * @return void
-	 */
-	public function force_refresh(): void {
-		$this->config_hash            = null;
-		$this->enabled_features_cache = null;
-		frl_flush_rewrite_rules();
-	}
-
-	/**
-	 * Invalidate the in-memory config hash so the next validate_all_features() call
-	 * recomputes with the current option values. Used by force_rules_refresh() which
-	 * delegates the full cache + WP-rules purge to clear_rewriter_caches().
-	 *
-	 * @return void
-	 */
-	public function invalidate_config_hash(): void {
-		$this->config_hash            = null;
-		$this->enabled_features_cache = null;
-	}
-
-	/**
-	 * Generate unique hash of feature configurations.
-	 *
-	 * Includes the actual option values (not just enabled/priority) so the
-	 * validate_all_features() cache invalidates when configuration changes —
-	 * e.g., when CPT slugs are added to remove_cpt_base without toggling any feature.
-	 *
-	 * @return string MD5 hash of configuration data
-	 */
-	/**
 	 * Generate unique hash of feature configurations.
 	 *
 	 * Includes the actual option values (not just enabled/priority) so the

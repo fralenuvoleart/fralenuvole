@@ -15,7 +15,6 @@ frl_update_option( 'header_html', '<script>…</script>' ); // write
 - `frl_get_option()` returns the value already normalized to the field's type (see section 4).
 - A special key `'__reset__'` is an internal command used by the cache manager to clear the in-request snapshot. Never call it from feature code.
 
-There is also `frl_delete_option( $key, $cache_group )` to remove an option.
 
 ---
 

@@ -516,36 +516,28 @@ function frl_handle_action_reset_plugin() {
 	// to reflect the final option state. It reads options to update wp-config.php.
 	frl_apply_debug_settings( null, true );
 
-	// STEP 6: Drop the options snapshot repopulated by Step 5. A keyed clear, not a
-	// third full purge: clear_group_with_dependencies() would no-op here (the group
-	// is already marked cleared for this request), and one key covers the group.
+	// STEP 6: Drop the options snapshot Step 5 repopulated (keyed clear, not a third full purge).
 	frl_cache_clear_keys( 'options', array( 'all_options' ) );
 	frl_flush_db();
 
 	frl_flush_rewrite_rules();
 	// Format response
 	$message_parts = array();
-	$notice_type   = 'success';
 
 	/** @var array $results */
-	if ( isset( $results['cache_cleared'] ) ) {
-		$message_parts[] = sprintf(
-			__( 'Plugin reset successfully. Deleted: %1$d options, restored: %2$d options. All Caches cleared: %3$d runtime, %4$d object cache, %5$d transients', FRL_PREFIX ),
-			$results['options_deleted'] ?? 0,
-			$results['options_restored'] ?? 0,
-			$results['cache_cleared']['runtime'] ?? 0,
-			$results['cache_cleared']['object_cache'] ?? 0,
-			$results['cache_cleared']['transients'] ?? 0
-		);
-	} else {
-		$message_parts[] = __( 'Plugin reset completed, but detailed stats are unavailable.', FRL_PREFIX );
-		$notice_type     = 'warning';
-	}
+	$message_parts[] = sprintf(
+		__( 'Plugin reset successfully. Deleted: %1$d options, restored: %2$d options. All caches cleared: %3$d runtime, %4$d object cache, %5$d transients', FRL_PREFIX ),
+		$results['options_deleted'] ?? 0,
+		$results['options_restored'] ?? 0,
+		$results['cache_cleared']['runtime'] ?? 0,
+		$results['cache_cleared']['object_cache'] ?? 0,
+		$results['cache_cleared']['transients'] ?? 0
+	);
 
 	return array(
 		'success'       => true,
 		'message_parts' => $message_parts,
-		'notice_type'   => $notice_type,
+		'notice_type'   => 'success',
 	);
 }
 

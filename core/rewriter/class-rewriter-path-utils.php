@@ -24,8 +24,14 @@ final class Frl_Rewriter_Path_Utils {
 	 * @return array Array with 'home_url', 'lang_prefix', and 'segments' keys
 	 */
 	public static function parse_url_segments( string $url ): array {
-		$parsed = wp_parse_url( $url );
-		$path   = $parsed['path'] ?? '';
+		$parsed    = wp_parse_url( $url );
+		$path      = $parsed['path'] ?? '';
+		$home_path = rtrim( (string) ( wp_parse_url( home_url(), PHP_URL_PATH ) ?? '' ), '/' );
+
+		// Drop the install path so rebuild_url() does not prefix a sub-directory install twice.
+		if ( '' !== $home_path && str_starts_with( $path, $home_path . '/' ) ) {
+			$path = substr( $path, strlen( $home_path ) );
+		}
 
 		// Extract language prefix if present.
 		// array_values() re-indexes after array_filter so callers can safely use $segments[0].
@@ -229,7 +235,7 @@ final class Frl_Rewriter_Path_Utils {
 
 	/**
 	 * Transient key used by generate_standard_exclusion_patterns() for persistent storage
-	 * on sites without an external object cache. Exposed so clear_rewriter_caches() can
+	 * on sites without an external object cache. Exposed so invalidate_rewriter_caches() can
 	 * delete it when permalink options change.
 	 */
 	const EXCLUSION_PATTERNS_TRANSIENT = 'rewriter_excl_patterns';
@@ -244,6 +250,76 @@ final class Frl_Rewriter_Path_Utils {
 	 * deliberately: read on every request, a few bytes.
 	 */
 	const EXCLUSION_VERSION_OPTION = '_' . FRL_PREFIX . '_' . 'rewriter_excl_version';
+
+	/**
+	 * Autoloaded hash of the registered public CPT/taxonomy rewrite slugs.
+	 *
+	 * Written only when the set changes, so registered_post_type/registered_taxonomy
+	 * can detect a stale exclusion list with one autoloaded read and no option write.
+	 */
+	const REGISTERED_SLUGS_HASH_OPTION = '_' . FRL_PREFIX . '_rewriter_slugs_hash';
+
+	/**
+	 * Current exclusion version (autoloaded option, no extra query).
+	 *
+	 * @return int
+	 */
+	public static function get_exclusion_version(): int {
+		return (int) get_option( self::EXCLUSION_VERSION_OPTION, 0 );
+	}
+
+	/**
+	 * Stored hash of the registered public rewrite slugs (autoloaded, no extra query).
+	 *
+	 * @return string
+	 */
+	public static function get_registered_slugs_hash(): string {
+		return (string) get_option( self::REGISTERED_SLUGS_HASH_OPTION, '' );
+	}
+
+	/**
+	 * Bump the exclusion version when the registered public rewrite slugs changed.
+	 *
+	 * Called from registered_post_type/registered_taxonomy, which fire on every request.
+	 *
+	 * @return void
+	 */
+	public static function refresh_registered_slugs_hash(): void {
+		$hash = self::compute_registered_slugs_hash();
+		if ( get_option( self::REGISTERED_SLUGS_HASH_OPTION ) === $hash ) {
+			return;
+		}
+		update_option( self::REGISTERED_SLUGS_HASH_OPTION, $hash, true );
+		self::invalidate_exclusion_patterns();
+	}
+
+	/**
+	 * Hash the rewrite slugs of every registered public post type and taxonomy.
+	 *
+	 * @return string
+	 */
+	public static function compute_registered_slugs_hash(): string {
+		$slugs = array();
+
+		foreach ( get_post_types( array( 'public' => true ), 'objects' ) as $pt_obj ) {
+			$rewrite = $pt_obj->rewrite;
+			if ( is_array( $rewrite ) && ! empty( $rewrite['slug'] ) ) {
+				$slugs[] = 'cpt:' . $rewrite['slug'];
+			}
+		}
+
+		foreach ( get_taxonomies( array( 'public' => true ), 'objects' ) as $tax_obj ) {
+			$rewrite = $tax_obj->rewrite;
+			if ( is_array( $rewrite ) && ! empty( $rewrite['slug'] ) ) {
+				$slugs[] = 'tax:' . $rewrite['slug'];
+			}
+		}
+
+		$slugs = array_unique( $slugs );
+		sort( $slugs );
+
+		return md5( implode( '|', $slugs ) );
+	}
 
 	/**
 	 * Invalidate the cached exclusion patterns and optionally refresh routing.
@@ -281,7 +357,7 @@ final class Frl_Rewriter_Path_Utils {
 	 */
 	public static function generate_standard_exclusion_patterns(): array {
 		if ( wp_using_ext_object_cache() ) {
-			$version   = (int) get_option( self::EXCLUSION_VERSION_OPTION, 0 );
+			$version   = self::get_exclusion_version();
 			$cache_key = "exclusion_patterns_v{$version}";
 			return frl_cache_remember( 'rewriter', $cache_key, array( self::class, 'compute_exclusion_patterns' ) );
 		}

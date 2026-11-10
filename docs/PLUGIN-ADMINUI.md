@@ -45,6 +45,8 @@ Frl_Tab_Manager::render_tab_container_end();
 
 ```php
 frl_ui_render_widget('my-widget', $content, 'Title', 'extra-class', HOUR_IN_SECONDS);
+// Per-user cached widget: content_cb runs only on a miss, cache_key_suffix scopes the key.
+frl_ui_render_widget('my-widget', '', 'Title', '', HOUR_IN_SECONDS, false, 'adminui', ['content_cb' => $cb, 'cache_key_suffix' => $suffix]);
 frl_ui_render_table('my-table', $rows, 'my-class', HOUR_IN_SECONDS, $bypass_cache);
 frl_ui_render_table_row('Label', 'Value', $is_header, 'row-class');
 frl_ui_render_status_row('Label', $status, $text, 'row-class');

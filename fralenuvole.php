@@ -114,9 +114,9 @@ function frl_load_core_components() {
 	if ( frl_translator_is_enabled() ) {
 		require_once FRL_DIR_PATH . 'core/translator/translator.php';
 		frl_translator_init();
-	} elseif ( ! get_option( frl_prefix( 'disable_translator' ), '0' ) ) {
-		// Safe Mode: no multilingual plugin, so frl_translator_init() never runs,
-		// but leftover {{...}}/##...## delimiters still need stripping.
+		frl_translator_mark_seen();
+	} elseif ( frl_translator_was_seen() && ! get_option( frl_prefix( 'disable_translator' ), '0' ) ) {
+		// Safe Mode: the plugin was removed, so leftover {{...}}/##...## delimiters need stripping.
 		add_action( 'init', 'frl_translator_register_safe_mode', 20, 0 );
 	}
 

@@ -143,16 +143,31 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 		}
 
 		$config = $this->get_option( 'rewriter_remove_cpt_base' );
-		if ( ! empty( trim( $config ) ) ) {
-			$parsed = frl_textlist_to_array( $config );
-			foreach ( $parsed as $line ) {
-				if ( ! empty( $line[0] ) && post_type_exists( $line[0] ) ) {
-					$this->cpt_slugs[] = $line[0];
-				}
+		if ( empty( trim( $config ) ) ) {
+			$this->config_loaded = true;
+			return;
+		}
+
+		$parsed   = frl_textlist_to_array( $config );
+		$slugs    = array();
+		$expected = 0;
+		foreach ( $parsed as $line ) {
+			if ( empty( $line[0] ) ) {
+				continue;
+			}
+			++$expected;
+			if ( post_type_exists( $line[0] ) ) {
+				$slugs[] = $line[0];
 			}
 		}
 
-		$this->config_loaded = true;
+		$this->cpt_slugs = $slugs;
+
+		// Latch only when every configured CPT resolved: a caller that runs before the
+		// CPTs are registered must retry later instead of caching a partial list.
+		if ( count( $slugs ) === $expected ) {
+			$this->config_loaded = true;
+		}
 	}
 
 	/**
@@ -182,9 +197,11 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 		//   - the configured CPT slugs ($this->cpt_slugs)
 		//   - all public CPTs registered in this WP install
 		//   - generate_standard_exclusion_patterns() (which has its own cache)
-		// All of the above are stable between deploys; frl_cache_clear('rewriter') in
-		// clear_rewriter_caches() invalidates this whenever permalink options change.
-		$cache_key = 'cpt_base_catch_all_exclusions_' . md5( implode( ',', $this->cpt_slugs ) );
+		// The exclusion version refreshes it when page slugs change; the registered-slug
+		// hash covers a CPT/taxonomy registered after the version was last bumped.
+		$cache_key = 'cpt_base_catch_all_exclusions_' . md5( implode( ',', $this->cpt_slugs ) )
+			. '_v' . Frl_Rewriter_Path_Utils::get_exclusion_version()
+			. '_' . Frl_Rewriter_Path_Utils::get_registered_slugs_hash();
 
 		return frl_cache_remember(
 			'rewriter',

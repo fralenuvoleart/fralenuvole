@@ -65,6 +65,8 @@ FRL_REWRITER_LOG_DUPLICATES     = false;  // suppress duplicate pattern log nois
 
 CPT translation features (Archive + Single) are instantiated per CPT in `FRL_REWRITER_MULTILINGUAL_CPT` — they are NOT listed in `FRL_REWRITER_FEATURES`.
 
+The Single feature registers specific suffix rules (`/feed/`, `/embed/`, `/comment-page-N/`) before the generic slug rule, because the first matching rule wins. The `/feed/` rules (a singular feed is a comment feed) are omitted while `disable_comments` is on; `/foo/feed/` then falls through to the slug rule as before.
+
 ### Admin Options
 
 | Option | Used by | Format |
@@ -93,9 +95,8 @@ fralenuvole.php → frl_load_core_components()
 
 | Hook | Priority | Action |
 |------|----------|--------|
-| `plugins_loaded` | 5 | Coordinator created, features instantiated, modules loaded |
-| `plugins_loaded` | 7 | `frl_rewriter_register_features` fires + features sorted |
-| `init` | 15 | `feature->register()` for every feature (adds rewrite rules) |
+| `plugins_loaded` | 5 | `frl_rewriter_init()`: coordinator created, features instantiated + self-registered, `frl_rewriter_register_features` fired, features sorted |
+| `init` | 15 | `feature->register()` for every feature — hooks each feature's `add_rules()` and `filter_request()` at `100+priority` |
 | `init` | 100+priority | Individual feature `add_rules()` and `filter_request()` |
 | `wp_loaded` | 10 | Cache invalidation hooks wired |
 | `post_type_link` | 10 | `filter_post_link()` → `transform_url()` |
@@ -137,29 +138,31 @@ Abstract methods: `is_enabled()`, `generate_rules()`, `applies_to_request()`, `r
 
 ### `invalidate_rewriter_caches()` (cache-only)
 
-Hooked to `flush_rewrite_rules`. Clears the `rewriter` cache group (cascades to `permalinks` via `FRL_CACHE_DEPENDENCIES`) + deletes `frl_rewriter_excl_patterns` transient. Has `frl_is_already_running` guard.
+Hooked to `generate_rewrite_rules`, which fires whenever rules are rebuilt. Clears the `rewriter` cache group (cascades to `permalinks` via `FRL_CACHE_DEPENDENCIES`) + deletes `frl_rewriter_excl_patterns` transient. Has `frl_is_already_running` guard.
 
-### `clear_rewriter_caches()` (cache + hard flush)
+### `clear_rewriter_caches( $deferred )` (cache + one flush)
 
-Called by the single `updated_option` hook (any `frl_rewriter_*` option change) and Polylang language hooks. Calls `invalidate_rewriter_caches()` then `flush_rewrite_rules(true)`. Guard prevents duplicate work when `flush_rewrite_rules` hook re-fires `invalidate_rewriter_caches()`.
+Clears the `options` and `rewriter` caches, then flushes once.
 
-### `force_rules_refresh()`
+- **Deferred (`true`):** rules are registered at `init` from the old settings, so flushing in the same request would persist stale rules. The call sets the autoloaded `_frl_rewrite_flush_pending` flag and schedules a cron wake-up as fallback. The next admin, cron or WP-CLI request flushes on `wp_loaded/20` (`frl_maybe_flush_pending_rewrite_rules()`), resets the flag, and never runs for frontend visitors. A flag raised in the current request is not consumed by the `wp_loaded` consumer; `frl_flush_rewrite_rules()` resets it, because its own direct flush satisfies the request.
+- **Not deferred:** `clear_rewriter_caches(false)` schedules one `flush_rewrite_rules(true)` at `shutdown`; `frl_flush_rewrite_rules()` (button, cron, reset) fires the permalink hooks and then regenerates immediately.
 
-Invalidates coordinator's in-memory config hash, calls `frl_flush_rewrite_rules()`, then `validate_all_features()`.
+Guard prevents duplicate cache work when the `generate_rewrite_rules` hook re-fires `invalidate_rewriter_caches()`.
 
 ### Registered Hooks (deferred to `wp_loaded`)
 
 | Hook | Calls |
 |------|-------|
-| `flush_rewrite_rules` | `invalidate_rewriter_caches()` |
-| `updated_option` (name starts with `frl_rewriter_`) | `maybe_clear_rewriter_caches_on_option_change()` → `clear_rewriter_caches()` |
-| `pll_add_language` | `clear_rewriter_caches()` |
-| `pll_update_language` | `clear_rewriter_caches()` |
-| `pll_update_default_lang` | `clear_rewriter_caches()` |
+| `generate_rewrite_rules` | `invalidate_rewriter_caches()` |
+| `update_option_permalink_structure` | `on_permalink_structure_update()`: real change → deferred; equal values (synthetic call from `frl_flush_rewrite_rules()`) → cache invalidation only, the caller regenerates |
+| `updated_option` (name starts with `frl_rewriter_`, or `frl_disable_comments`) | `maybe_clear_rewriter_caches_on_option_change()` → `clear_rewriter_caches( true )` |
+| `pll_add_language` | `clear_rewriter_caches_deferred()` |
+| `pll_update_language` | `clear_rewriter_caches_deferred()` |
+| `pll_update_default_lang` | `clear_rewriter_caches_deferred()` |
 | `post_updated` (page: slug/parent/status change) | Bump exclusion version + schedule debounced rewrite flush |
 | `wp_trash_post`, `untrash_post`, `before_delete_post` (page) | Bump exclusion version + schedule debounced rewrite flush |
 | `created_term`, `edited_term` | Bump exclusion version (no flush) |
-| `deleted_term` | Non-language: bump version; `language` taxonomy: full `clear_rewriter_caches()` |
+| `delete_term` | Non-language: bump version; `language` taxonomy: `clear_rewriter_caches( true )` |
 
 ## Exclusion Pattern System
 
@@ -172,14 +175,14 @@ Invalidates coordinator's in-memory config hash, calls `frl_flush_rewrite_rules(
 5. Top-level published page slugs — fetched across **all** languages via `get_pages( array( 'lang' => '' ) )` (Polylang's own escape hatch), so the list is identical regardless of which context (frontend/cron/admin) computes it. Capped at `FRL_REWRITER_PAGE_TOPLEVEL_CAP` (500) scaled by active-language count, hard ceiling 1000.
 
 **Two-tier caching:**
-- **Object cache active:** keyed by an autoloaded `_frl_rewriter_excl_version` counter, bumped only by events that can change page/language slugs. Ordinary post edits no longer force a recompute (the old `posts:last_changed` key did).
+- **Object cache active:** keyed by an autoloaded `_frl_rewriter_excl_version` counter, bumped by events that change page/language slugs, and by a change in the registered public CPT/taxonomy slug set. Ordinary post edits no longer force a recompute (the old `posts:last_changed` key did). The derived `cpt_base_catch_all_exclusions_*` and `tax_base_page_exclusions_*` entries carry the same version in their key.
 - **No object cache:** stored in the `frl_rewriter_excl_patterns` transient (1 hour TTL), deleted on the same events.
 
-**Routing uses the flushed `rewrite_rules` snapshot**, so bumping the version alone does not change routing. Page lifecycle events (`post_updated` with a routing-relevant slug/parent/status change, plus trash/untrash/delete of pages) bump the version **and** schedule the debounced `frl_schedule_rewrite_flush()` (fires within the next cron run). Term events bump the version only; language deletion still runs the full `clear_rewriter_caches()`.
+**Routing uses the flushed `rewrite_rules` snapshot**, so bumping the version alone does not change routing. Page lifecycle events (`post_updated` with a routing-relevant slug/parent/status change, plus trash/untrash/delete of pages) bump the version **and** schedule the debounced `frl_schedule_rewrite_flush()` (fires within the next cron run). Term events bump the version only; language deletion runs the deferred `clear_rewriter_caches( true )`.
 
 ## Module Extension
 
-External modules register features at `plugins_loaded/7`:
+External code registers features on the `frl_rewriter_register_features` action, which fires during `frl_load_core_components()` at `plugins_loaded/5` (before `frl_modules_init()` runs):
 
 ```php
 add_action('frl_rewriter_register_features', function ($coordinator) {
@@ -192,15 +195,14 @@ Default priority is 99 for unlisted feature classes. Features must extend `Frl_R
 ## WP-CLI
 
 ```bash
-wp frl rewriter status   # Dump active features and rules
-wp frl rewriter flush    # force_rules_refresh()
+wp frl-rewrites test   # Per-feature rule counts + pattern/routing validation
 ```
 
 ## Debugging
 
 ```php
-Frl_Rewriter::clear_rewriter_caches();    // Cache clear + hard flush
-Frl_Rewriter::force_rules_refresh();      // Full refresh + config hash reset + validation
+Frl_Rewriter::clear_rewriter_caches();    // Cache clear + one flush at shutdown
+frl_flush_rewrite_rules();                // Permalink hooks + immediate regeneration
 Frl_Rewriter::init()->warm_cache_for_posts($posts);  // Pre-warm permalink cache
 frl_rewriter_is_loaded();                 // Check if subsystem is active
 Frl_Rewriter::get_multilingual_cpts();    // Get CPTs with translation config

@@ -16,7 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * frl_rewriter_is_loaded() gating instead of a duplicate, ad-hoc guard here.
  */
 
-add_action( 'update_option', 'frl_clear_option_transient', 10, 1 );
 add_action( 'pll_save_strings_translations', 'frl_clear_translation_cache', 10, 0 );
 add_action( 'edit_terms', 'frl_capture_term_route', 10, 2 );
 add_action( 'edited_term', 'frl_clear_term_permalink_cache', 10, 3 );
@@ -24,15 +23,17 @@ add_action( 'created_term', 'frl_clear_permalinks_on_term_event', 10, 3 );
 add_action( 'delete_term', 'frl_clear_permalinks_on_term_event', 10, 3 );
 add_action( 'post_updated', 'frl_clear_permalinks_on_post_route_change', 10, 3 );
 add_action( 'transition_post_status', 'frl_clear_permalinks_on_publish_change', 10, 3 );
+add_action( 'transition_post_status', 'frl_clear_shortcodes_on_page_publish', 10, 3 );
 add_action( 'deleted_post', 'frl_clear_permalinks_on_post_delete', 10, 2 );
 add_action( 'set_object_terms', 'frl_clear_permalinks_on_terms_change', 10, 6 );
 add_action( 'save_post', 'frl_clear_post_cache', 10, 1 );
 add_action( 'save_post_wp_navigation', 'frl_clear_navigation_cache', 10, 1 );
-add_action( 'wp_update_nav_menu', 'frl_clear_menu_cache', 10, 1 );
+add_action( 'wp_update_nav_menu', 'frl_clear_menu_cache', 10, 0 );
+add_action( 'wp_delete_nav_menu', 'frl_clear_menu_cache', 10, 0 );
 add_action( 'profile_update', 'frl_clear_user_cache', 10, 1 );
 add_action( 'updated_option', 'frl_clear_option_cache', 10, 1 );
 // Invalidation for unversioned keys (TTL was their only safety net).
-add_action( 'acf/save_post', 'frl_clear_acf_option_shortcode_cache', 20, 1 );
+add_action( 'acf/save_post', 'frl_clear_acf_option_shortcode_cache', 1000, 1 );
 add_action( 'customize_save_after', 'frl_clear_login_inline_style_cache', 10, 0 );
 add_action( 'wp_update_attachment_metadata', 'frl_clear_svg_dims_cache', 10, 2 );
 
@@ -68,30 +69,15 @@ function frl_clear_post_cache( $post_id ) {
 		return;
 	}
 
-	// Bump the post cache version on every real save (each Polylang sibling
-	// needs its own bump) BEFORE the dedup guard below.
-	update_post_meta( $post_id, '_frl_post_version', time() );
+	// Bump the post cache version on every real save (each Polylang sibling needs its own bump).
+	// Monotonic: two saves in the same second must not share a version.
+	$previous = (int) get_post_meta( $post_id, '_frl_post_version', true );
+	update_post_meta( $post_id, '_frl_post_version', max( time(), $previous + 1 ) );
+	frl_get_post_cache_version( $post_id, true );
 
-	// Polylang meta sync fires save_post once per translation sibling in the
-	// same request. Purge once per translation group; skipping repeats is safe
-	// because cache clears are idempotent (keys are already absent).
-	static $purged_groups = array();
-	$group_id             = 'solo_' . $post_id;
-	if ( function_exists( 'pll_get_post_translations' ) ) {
-		$translations = pll_get_post_translations( $post_id );
-		if ( is_array( $translations ) && count( $translations ) > 1 ) {
-			$group_id = 'pll_' . md5( (string) wp_json_encode( $translations ) );
-		}
-	}
-	if ( isset( $purged_groups[ $group_id ] ) ) {
-		return;
-	}
-	$purged_groups[ $group_id ] = true;
-
-	// Clear all tracked translated meta fields for this post.
-	// The translations/schema/langswitcher/featured_img key families are intentionally
-	// NOT purged here: they carry the '_v{version}' suffix and the bump above already invalidated
-	// them across all languages. Old entries expire via group TTL.
+	// Every sibling has its own meta keys, so each one is cleared (no per-group dedupe).
+	// The translations/schema/langswitcher/featured_img key families carry '_v{version}'
+	// and the bump above already invalidated them; old entries expire via group TTL.
 	frl_clear_tracked_meta_cache( 'post', $post_id );
 }
 
@@ -140,29 +126,6 @@ function frl_clear_option_cache( $option_name ) {
 }
 
 /**
- * Delete plugin transient matching an updated option name.
- *
- * @param string $option Name of the updated option.
- * @return void
- */
-function frl_clear_option_transient( $option ) {
-	// Extract the unprefixed option name
-	$prefix = frl_prefix( '' );
-	if ( str_starts_with( $option, $prefix ) ) {
-		$unprefixed = substr( $option, strlen( $prefix ) );
-
-		// Skip the delete round-trip when the transient was never set this request
-		$cache = &frl_transients_static_cache();
-		if ( ! isset( $cache[ $unprefixed ] ) ) {
-			return;
-		}
-
-		// Delete any transient with the same name as the option
-		frl_delete_transient( $unprefixed );
-	}
-}
-
-/**
  * Clear tracked meta cache for a user.
  *
  * @param int $user_id User ID.
@@ -205,22 +168,13 @@ function frl_clear_navigation_cache( $post_id ) {
 }
 
 /**
- * Clear navigation cache when a classic menu (nav_menu term) is updated.
+ * Purge menu-sitemap shortcode output when a classic menu (nav_menu term) is updated or deleted.
  *
- * Uses a separate cache key prefix (wp_menu_) to avoid ID namespace
- * collisions with wp_navigation post IDs.
+ * Shortcode keys embed hashed args and are not enumerable, so the group is purged.
  *
- * @param int $menu_id Menu term ID.
  * @return void
  */
-function frl_clear_menu_cache( $menu_id ) {
-	$cache_key = "wp_menu_{$menu_id}";
-
-	// 'permalinks' is language-prefixed: clear the key in every language.
-	frl_cache_clear_keys( 'permalinks', array( $cache_key ), true );
-
-	// Same rationale as frl_clear_navigation_cache(): menu-sitemap shortcode
-	// output depends on classic menus but its keys are not enumerable.
+function frl_clear_menu_cache() {
 	frl_cache_clear( 'shortcodes' );
 }
 
@@ -241,7 +195,8 @@ function &frl_term_routes(): array {
  * @return string
  */
 function frl_term_signature( WP_Term $term ): string {
-	return $term->slug . '|' . $term->parent . '|' . $term->name . '|' . $term->description;
+	// "\0" separates name from description so the link fields can be compared alone.
+	return $term->slug . '|' . $term->parent . '|' . $term->name . "\0" . $term->description;
 }
 
 /**
@@ -287,9 +242,17 @@ function frl_clear_term_permalink_cache( $term_id, $tt_id = 0, $taxonomy = '' ) 
 	$before = $routes[ $term_id ] ?? null;
 	unset( $routes[ $term_id ] );
 
+	$after = frl_term_signature( $term );
+
 	// Unknown previous state: clear to be safe.
-	if ( null === $before || $before !== frl_term_signature( $term ) ) {
+	if ( null === $before || $before !== $after ) {
 		frl_cache_clear( 'permalinks' );
+
+		// Shortcode output (e.g. category links) embeds name/slug/parent only.
+		$link_fields = substr( $after, 0, (int) strpos( $after, "\0" ) + 1 );
+		if ( null === $before || ! str_starts_with( $before, $link_fields ) ) {
+			frl_cache_clear( 'shortcodes' );
+		}
 	}
 
 	// Also clear any tracked meta fields for this term.
@@ -307,6 +270,8 @@ function frl_clear_term_permalink_cache( $term_id, $tt_id = 0, $taxonomy = '' ) 
 function frl_clear_permalinks_on_term_event( $term_id, $tt_id = 0, $taxonomy = '' ) {
 	if ( is_taxonomy_viewable( $taxonomy ) ) {
 		frl_cache_clear( 'permalinks' );
+		// Shortcodes cache term lookups, including misses.
+		frl_cache_clear( 'shortcodes' );
 	}
 }
 
@@ -322,6 +287,20 @@ function frl_clear_permalinks_on_publish_change( $new_status, $old_status, $post
 	if ( ( 'publish' === $new_status ) !== ( 'publish' === $old_status )
 		&& $post instanceof WP_Post && is_post_type_viewable( $post->post_type ) ) {
 		frl_cache_clear( 'permalinks' );
+	}
+}
+
+/**
+ * Clear shortcode output when a page is published (core/page-list enumerates pages).
+ *
+ * @param string  $new_status New status.
+ * @param string  $old_status Old status.
+ * @param WP_Post $post       Post.
+ * @return void
+ */
+function frl_clear_shortcodes_on_page_publish( $new_status, $old_status, $post ) {
+	if ( 'publish' === $new_status && 'publish' !== $old_status && $post instanceof WP_Post && 'page' === $post->post_type ) {
+		frl_cache_clear( 'shortcodes' );
 	}
 }
 
@@ -359,6 +338,14 @@ function frl_clear_permalinks_on_post_route_change( $post_id, $post_after, $post
 	if ( $post_before->post_name !== $post_after->post_name
 		|| (int) $post_before->post_parent !== (int) $post_after->post_parent ) {
 		frl_cache_clear( 'permalinks' );
+	}
+
+	// Hierarchical titles/slugs/parents appear in descendants' breadcrumbs.
+	if ( is_post_type_hierarchical( $post_after->post_type )
+		&& ( $post_before->post_title !== $post_after->post_title
+			|| $post_before->post_name !== $post_after->post_name
+			|| (int) $post_before->post_parent !== (int) $post_after->post_parent ) ) {
+		frl_cache_clear( 'shortcodes' );
 	}
 }
 
@@ -412,24 +399,36 @@ function frl_clear_tracked_meta_cache( string $type, int $id ) {
 	}
 
 	// Get the current translation version to build the correct cache key.
-	$version = frl_get_option( 'translation_version' ) ?: 1;
-
-	// Construct the tracking key and retrieve the list of cached meta keys.
+	$version      = frl_get_option( 'translation_version' ) ?: 1;
 	$tracking_key = "translation_{$type}meta_keys_{$id}";
-	$tracked_keys = frl_cache_get( 'metafields', $tracking_key, null );
 
-	if ( frl_is_array_not_empty( $tracked_keys ) ) {
-		$cache_keys = array();
-		foreach ( $tracked_keys as $meta_key ) {
-			$cache_keys[] = "translation_{$type}meta_{$id}_{$meta_key}_{$version}";
-		}
-
-		// Entry keys are language-prefixed, so clear them in every language. Each
-		// language keeps its own tracking list, so only the current one is dropped —
-		// deleting the others would orphan entries they still know about.
-		frl_cache_clear_keys( 'metafields', $cache_keys, true );
-		frl_cache_clear_keys( 'metafields', array( $tracking_key ) );
+	$languages = frl_get_active_languages();
+	$current   = frl_get_language();
+	if ( ! in_array( $current, $languages, true ) ) {
+		$languages[] = $current;
 	}
+
+	// Union of every language's list: a value cached under another language must still be cleared.
+	$tracked_keys = array();
+	foreach ( $languages as $language ) {
+		$language_keys = frl_cache_get_in_language( 'metafields', $tracking_key, $language );
+		if ( frl_is_array_not_empty( $language_keys ) ) {
+			foreach ( $language_keys as $meta_key ) {
+				$tracked_keys[ $meta_key ] = true;
+			}
+		}
+	}
+
+	// No list in any language: nothing tracked, so issue no deletes at all.
+	if ( empty( $tracked_keys ) ) {
+		return;
+	}
+
+	$cache_keys = array( $tracking_key );
+	foreach ( array_keys( $tracked_keys ) as $meta_key ) {
+		$cache_keys[] = "translation_{$type}meta_{$id}_{$meta_key}_{$version}";
+	}
+	frl_cache_clear_keys( 'metafields', $cache_keys, $languages );
 }
 
 /**

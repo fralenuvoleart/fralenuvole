@@ -20,8 +20,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - render_widget
  * - render_flex_layout
  * - render_page_header
- * - render_section_header
- * - render_header_with_action
  *
  * Table Rendering:
  * - render_table
@@ -124,6 +122,9 @@ class Frl_UI_Renderer {
 	 * @param int    $ttl          Cache TTL in seconds.
 	 * @param bool   $bypass_cache Whether to bypass the cache and render directly.
 	 * @param string $group        Cache group for the widget.
+	 * @param array  $options      Optional: 'content_cb' (callable, builds the content only on a cache miss
+	 *                             and replaces $content), 'cache_key_suffix' (string appended to the cache key,
+	 *                             e.g. per-user scope).
 	 * @return string Rendered widget HTML.
 	 */
 	public static function render_widget(
@@ -225,25 +226,6 @@ class Frl_UI_Renderer {
 		return $output . '</div>';
 	}
 
-	/**
-	 * Renders a simple header with title and action button
-	 *
-	 * @param string $title The header title
-	 * @param string $button HTML for an action button or other control (not escaped)
-	 * @param string $class_name Additional CSS class for the header
-	 * @return string HTML for the simple header with button
-	 */
-	public static function render_header_with_action( $title, $button, $class_name = '' ) {
-		$class_attr = ! empty( $class_name ) ? ' ' . esc_attr( $class_name ) : '';
-
-		return "<div class='frl-simple-header{$class_attr}'>
-            <div class='frl-simple-header-content'>
-                <span class='frl-simple-header-title'>" . $title . "</span>
-                <span class='frl-simple-header-action'>{$button}</span>
-            </div>
-        </div>";
-	}
-
 	// Table Rendering
 	// --------------------------------------------------
 
@@ -328,8 +310,9 @@ class Frl_UI_Renderer {
 			$tag        = 'div'; // Assuming div-based tables
 			$table_html = "<{$tag} class='{$table_class}'{$id_attr}>{$content}</{$tag}>";
 		} else {
-			// Use cache: Remember or retrieve the generated HTML
-			$cache_key = 'ui_table_' . $sanitized_id;
+			// Use cache: Remember or retrieve the generated HTML.
+			// The ID alone is not unique: the same ID can carry different content per request.
+			$cache_key = 'ui_table_' . $sanitized_id . '_' . substr( md5( $class_name . '|' . $content ), 0, 8 );
 			// Pass the HTML generation logic as a closure directly to the cache function
 			$table_html = frl_cache_remember(
 				$group,
@@ -380,24 +363,6 @@ class Frl_UI_Renderer {
                 <div class='widget-table-cell-name'>" . $name . "</div>
                 <div class='widget-table-cell-value'>{$value}</div>
             </div>";
-	}
-
-	/**
-	 * Renders a section header title
-	 *
-	 * @param string $title The section title
-	 * @param string $class_name Additional CSS class for the row
-	 * @return string HTML for the section header row
-	 */
-	public static function render_section_header( $title, $class_name = '' ) {
-		$section_class = 'section-header';
-		if ( ! empty( $class_name ) ) {
-			$section_class .= ' ' . $class_name;
-		}
-
-		return "<div class='frl-{$section_class}'>
-                <h3>" . $title . '</h3>
-            </div>';
 	}
 
 	/**

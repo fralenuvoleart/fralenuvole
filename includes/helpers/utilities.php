@@ -26,21 +26,23 @@ function frl_minify_css( $css ) {
 	$minified = preg_replace(
 		array(
 			'!/\*[^*]*\*+([^/][^*]*\*+)*/!',  // Remove comments
-			'/\s*([{}|:;,>~+^])\s*/',         // Remove spaces around delimiters (combined pattern)
+			'/\s*([{}|;,>~^])\s*/',          // Remove spaces around delimiters ('+' and ':' kept: calc() operands, descendant pseudo selectors)
+			'/:\s+/',                         // Remove spaces after a colon
 			'/\s+/',                          // Normalize whitespace
 			'/;\s*}/',                        // Remove trailing semicolons before closing braces
 		),
 		array(
 			'',
 			'$1',
+			':',
 			' ',
 			'}',
 		),
 		$css
 	);
 
-	// Final cleanup with single str_replace call
-	return str_replace( array( ' {', ' }', '; }' ), array( '{', '}', '}' ), trim( $minified ) );
+	// Spaces around braces and semicolons are already stripped above.
+	return trim( $minified );
 }
 
 /**
@@ -120,7 +122,7 @@ function frl_is_array_not_empty( $variable, $key = null ) {
  * Pipe-separated lines are converted into sub-arrays.
  *
  * @param string $input The textlist string content.
- * @return array Processed array. Empty if input is empty or not a string.
+ * @return array Re-indexed list of lines (each an array of parts). Empty if input is empty or not a string.
  */
 function frl_textlist_to_array( $input ) {
 	// Handle empty or non-string input
@@ -139,18 +141,20 @@ function frl_textlist_to_array( $input ) {
 		}
 	);
 
-	return array_map(
-		function ( $line ) {
-			$trimmed_line = trim( $line );
-			if ( str_contains( $trimmed_line, '|' ) ) {
-				// Line contains pipes, explode into an array of all parts
-				return array_map( 'trim', explode( '|', $trimmed_line ) );
-			} else {
-				// Line does not contain pipes, wrap in array for consistency
-				return array( $trimmed_line );
-			}
-		},
-		$lines
+	return array_values(
+		array_map(
+			function ( $line ) {
+				$trimmed_line = trim( $line );
+				if ( str_contains( $trimmed_line, '|' ) ) {
+					// Line contains pipes, explode into an array of all parts
+					return array_map( 'trim', explode( '|', $trimmed_line ) );
+				} else {
+					// Line does not contain pipes, wrap in array for consistency
+					return array( $trimmed_line );
+				}
+			},
+			$lines
+		)
 	);
 }
 
@@ -181,7 +185,7 @@ function frl_group_array_by_key( $key, $data ) {
 function frl_filter_array_by_substring( $array_value, $needle ) {
 	return array_filter(
 		$array_value,
-		fn( $v ) => ! str_contains( $v, $needle )
+		fn( $v ) => ! is_string( $v ) || ! str_contains( $v, $needle )
 	);
 }
 
@@ -221,7 +225,7 @@ function frl_normalize_boolval( $value ) {
  * - The ':first' selector returns the first scalar value found.
  *
  * @param mixed $value The value to coerce.
- * @param array $preferredSelectors Priority list of keys/properties; may include ':first'.
+ * @param array $preferred_selectors Priority list of keys/properties; may include ':first'.
  * @return string The coerced string, or an empty string if no match is found.
  */
 function frl_coerce_to_string( $value, array $preferred_selectors = array() ): string {
@@ -369,7 +373,7 @@ function frl_string_matches_pattern( $str, $patterns ) {
 		$regex = preg_quote( $pattern, '/' );
 		$regex = str_replace( '%', '.*', $regex );
 		// Anchor full string match
-		$regex = '/^' . $regex . '$/u';
+		$regex = '/^' . $regex . '\z/u';
 
 		if ( preg_match( $regex, $str ) === 1 ) {
 			return true;
@@ -436,10 +440,10 @@ function frl_is_token_match( string $token ): bool {
 }
 
 /**
- * Normalize any input into a non-empty array.
+ * Normalize any input into an array.
  *
  * Converts arrays, objects, and JSON strings to arrays. Wraps scalar values
- * in an array. Returns an empty array for null or empty strings.
+ * in an array. Returns an empty array for null, empty strings, and unsupported types.
  *
  * @param mixed $data The input data to normalize.
  * @return array The resulting array.
@@ -505,7 +509,10 @@ function frl_string_contains_item_from_array( $str, $substrings ) {
  * @return string The processed HTML output.
  */
 function frl_process_php_string( $str, $context = null ): string {
-	if ( empty( $str ) || ! str_contains( $str, '<?' ) ) {
+	if ( ! is_string( $str ) ) {
+		return '';
+	}
+	if ( ! str_contains( $str, '<?' ) ) {
 		return $str;
 	}
 
@@ -639,9 +646,10 @@ function frl_validate_html_fragment( string $html ): string {
 		return $html;
 	}
 
-	// Use libxml to suppress warnings from malformed HTML during parsing
-	libxml_use_internal_errors( true );
 	$dom = new DOMDocument();
+
+	// Use libxml to suppress warnings from malformed HTML during parsing
+	$previous_libxml_errors = libxml_use_internal_errors( true );
 
 	// Load the HTML, wrapping it in a div and specifying UTF-8
 	// The wrapping div ensures that fragments are parsed correctly
@@ -649,7 +657,7 @@ function frl_validate_html_fragment( string $html ): string {
 
 	// Clear libxml errors after parsing
 	libxml_clear_errors();
-	libxml_use_internal_errors( false );
+	libxml_use_internal_errors( $previous_libxml_errors );
 
 	// Find the wrapper element
 	$wrapper = $dom->getElementById( 'frl-validator-wrapper' );
@@ -672,7 +680,7 @@ function frl_validate_html_fragment( string $html ): string {
 /**
  * Normalize an autoload setting value to a boolean.
  *
- * @param mixed $value The input value (e.g., 'yes', 'no', null).
+ * @param mixed $value The input value ('yes', 'no', a bool, or null).
  * @return bool True if autoload is enabled, false otherwise.
  */
 function frl_normalize_autoload( $value ) {
@@ -722,7 +730,7 @@ function frl_get_client_ip() {
 /**
  * Build the full request URL (scheme://host/path?query).
  *
- * Returns 'CLI_REQUEST' for CLI/cron environments or an empty string if the host cannot be determined.
+ * Returns 'CLI_REQUEST' under the PHP CLI SAPI (e.g. WP-CLI), or the bare request path if the host cannot be determined.
  *
  * @return string The full request URL.
  */
@@ -764,7 +772,7 @@ function frl_get_request_url(): string {
 
 	if ( $host === '' ) {
 		// Last resort: return path if present, else empty string
-		return $path !== '' ? $path : '';
+		return $path;
 	}
 
 	return $scheme . '://' . $host . $path;
@@ -840,11 +848,8 @@ function frl_json_decode_file( $path ) {
 	$json_content = file_get_contents( $path );
 
 	$json_data = frl_json_decode( $json_content, __FUNCTION__ );
-	if ( $json_data === null ) {
-		return array();
-	}
 
-	return $json_data;
+	return is_array( $json_data ) ? $json_data : array();
 }
 
 /**
@@ -857,11 +862,8 @@ function frl_json_decode_file( $path ) {
  */
 function frl_json_decode_string( $json ) {
 	$json_data = frl_json_decode( $json, __FUNCTION__ );
-	if ( $json_data === null ) {
-		return array();
-	}
 
-	return $json_data;
+	return is_array( $json_data ) ? $json_data : array();
 }
 
 /**

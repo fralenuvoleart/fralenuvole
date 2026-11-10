@@ -4,6 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Autoloaded marker: a multilingual plugin was active at least once.
+const FRL_TRANSLATOR_SEEN_OPTION = '_frl_translator_seen';
+
 /**
  * Fralenuvole
  * functions-translator-helpers.php - Global helper functions for the Translator module.
@@ -83,6 +86,33 @@ function frl_translator_is_enabled(): bool {
 	// Direct get_option() (autoloaded) avoids triggering the full frl_get_option()
 	// options load during bootstrap; the value is identical ('1'/'0').
 	return frl_is_multilingual_plugin_active() && ! get_option( frl_prefix( 'disable_translator' ), '0' );
+}
+
+/**
+ * Whether a multilingual plugin was ever active here (autoloaded internal marker).
+ *
+ * Seeded once so later reads never miss the options cache.
+ *
+ * @return bool
+ */
+function frl_translator_was_seen(): bool {
+	$value = get_option( FRL_TRANSLATOR_SEEN_OPTION, null );
+	if ( null === $value ) {
+		add_option( FRL_TRANSLATOR_SEEN_OPTION, 0, '', true );
+		return false;
+	}
+	return (bool) $value;
+}
+
+/**
+ * Record that a multilingual plugin was active (written once).
+ *
+ * @return void
+ */
+function frl_translator_mark_seen(): void {
+	if ( ! frl_translator_was_seen() ) {
+		update_option( FRL_TRANSLATOR_SEEN_OPTION, 1, true );
+	}
 }
 
 /**
@@ -245,7 +275,7 @@ function frl_translator_safe_mode_block( $block_content, $block ) {
 }
 
 /**
- * Register Safe Mode at init/20, once every plugin has declared itself.
+ * Register the Safe Mode render_block filter (re-checks the plugins_loaded decision).
  *
  * @return void
  */

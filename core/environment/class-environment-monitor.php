@@ -22,10 +22,12 @@ class Frl_Environment_Monitor {
 	 * Enable/disable manual-edit tracking for the current scope.
 	 *
 	 * @param bool $suppress True to suppress tracking.
-	 * @return void
+	 * @return bool The previous value, to restore in a finally block.
 	 */
-	public static function suppress_tracking( bool $suppress ): void {
+	public static function suppress_tracking( bool $suppress ): bool {
+		$previous                = self::$suppress_tracking;
 		self::$suppress_tracking = $suppress;
+		return $previous;
 	}
 
 	/**
@@ -96,7 +98,6 @@ class Frl_Environment_Monitor {
 		if ( ! in_array( $option_name, $ignored_options, true ) ) {
 			$ignored_options[] = $option_name;
 			frl_update_option( Frl_Environment_Manager::IGNORE_OPTIONS_KEY, $ignored_options );
-			frl_cache_set( Frl_Environment_Manager::CACHE_GROUP, Frl_Environment_Manager::IGNORE_OPTIONS_KEY, $ignored_options );
 		}
 	}
 
@@ -144,7 +145,6 @@ class Frl_Environment_Monitor {
 		if ( ! in_array( $plugin, $cached_ignored_plugins, true ) ) {
 			$cached_ignored_plugins[] = $plugin;
 			frl_update_option( Frl_Environment_Manager::IGNORE_PLUGINS_KEY, $cached_ignored_plugins );
-			frl_cache_set( Frl_Environment_Manager::CACHE_GROUP, Frl_Environment_Manager::IGNORE_PLUGINS_KEY, $cached_ignored_plugins );
 		}
 	}
 

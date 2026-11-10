@@ -124,7 +124,7 @@ function frl_maybe_apply_shortcodes_block( $block_content, $block ) {
 	// Synced Pattern blocks (core/block): process any shortcode bracket.
 	if ( isset( $block['blockName'] ) && 'core/block' === $block['blockName'] ) {
 		if ( str_contains( $block_content, '[' ) ) {
-			return apply_shortcodes( $block_content, $block );
+			return apply_shortcodes( $block_content );
 		}
 		return $block_content;
 	}
@@ -133,7 +133,7 @@ function frl_maybe_apply_shortcodes_block( $block_content, $block ) {
 	if ( ! str_contains( $block_content, '[' . FRL_PREFIX ) ) {
 		return $block_content;
 	}
-	return apply_shortcodes( $block_content, $block );
+	return apply_shortcodes( $block_content );
 }
 
 /**
@@ -202,8 +202,12 @@ function frl_shortcode_readtime( $atts ) {
 				return '';
 			}
 
-			$words = str_word_count( $content );
-			$mins  = max( 1, round( $words / (int) $a['words_per_min'] ) );
+			$wpm = (int) $a['words_per_min'];
+			if ( $wpm < 1 ) {
+				$wpm = 275;
+			}
+			$words = frl_count_words( $content );
+			$mins  = max( 1, round( $words / $wpm ) );
 
 			$prefix  = wp_kses_post( frl_get_translation( $a['prefix'] ) );
 			$postfix = frl_get_translation( $a['postfix'] );
@@ -271,13 +275,20 @@ function frl_shortcode_langswitcher( $atts = array() ) {
 	);
 	$exclude_slugs = array_values( array_filter( array_map( 'sanitize_key', array_map( 'trim', explode( ',', (string) $a['exclude'] ) ) ) ) );
 
-	$post_id          = get_queried_object_id();
+	$object_id        = get_queried_object_id();
+	$queried          = get_queried_object();
 	$dropdown_enabled = $a['dropdown'] !== ''
-		? (bool) $a['dropdown']
+		? filter_var( $a['dropdown'], FILTER_VALIDATE_BOOLEAN )
 		: (bool) $args['dropdown'];
-	// Versioned key (Post Cache Versioning Pattern): invalidated by the _frl_post_version bump
-	// on save — which fires for every Polylang sibling.
-	$cache_key = frl_generate_cache_key( 'langswitcher_' . ( $dropdown_enabled ? 'dd' : 'fl' ), 'post', (string) $post_id, 'v' . frl_get_post_cache_version( $post_id ) );
+	$cache_key        = '';
+	$switcher_variant = 'langswitcher_' . ( $dropdown_enabled ? 'dd' : 'fl' );
+	if ( $object_id > 0 ) {
+		// Kind + versioned suffix: a post and a term can share an ID.
+		$cache_key = frl_generate_cache_key( $switcher_variant, frl_shortcode_object_kind( $queried ) . $object_id, ltrim( frl_shortcode_object_version( $queried, $object_id ), '_' ) );
+	} elseif ( is_front_page() && ! is_paged() && ! is_search() ) {
+		// Posts-index front page: the links are the plain per-language home URLs.
+		$cache_key = $switcher_variant . '_home';
+	}
 
 	// show_flags=0 avoids Polylang rendering unused base64 PNGs.
 	// Drop 'dropdown' — deprecated in Polylang 3.9 (emits a "Deprecated argument" notice)
@@ -288,18 +299,17 @@ function frl_shortcode_langswitcher( $atts = array() ) {
 	$raw_args['raw']        = 1;
 	$raw_args['show_flags'] = 0;
 
-	$elements = frl_cache_remember(
-		'shortcodes',
-		$cache_key,
-		function () use ( $raw_args ) {
-			/** @disregard P1010 Undefined type */
-			$elements = pll_the_languages( $raw_args );
-			if ( ! is_array( $elements ) || empty( $elements ) ) {
-				return null;
-			}
-			return $elements;
+	$build_elements = function () use ( $raw_args ) {
+		/** @disregard P1010 Undefined type */
+		$elements = pll_the_languages( $raw_args );
+		if ( ! is_array( $elements ) || empty( $elements ) ) {
+			return null;
 		}
-	);
+		return $elements;
+	};
+
+	// Views without a stable object (search, 404, archives) are not cached.
+	$elements = $cache_key !== '' ? frl_cache_remember( 'shortcodes', $cache_key, $build_elements ) : $build_elements();
 
 	if ( empty( $elements ) || ! is_array( $elements ) ) {
 		return '';
@@ -558,7 +568,7 @@ function frl_shortcode_meta( $atts ) {
 		$selectors = array( ':first' ); }
 
 	$default_value = (string) $a['default'];
-	$cache_key     = 'meta_' . $post->ID . '_' . $meta_key . '_' . md5( implode( '|', $selectors ) . '|' . $default_value ) . '_v' . frl_get_post_cache_version( $post->ID );
+	$cache_key     = 'meta_' . $post->ID . '_' . $meta_key . '_' . md5( implode( '|', $selectors ) . '|' . $default_value ) . '_v' . frl_get_post_cache_version( $post->ID ) . '_tv' . ( frl_get_option( 'translation_version' ) ?: 1 );
 	return frl_cache_remember(
 		'shortcodes',
 		$cache_key,
@@ -609,7 +619,7 @@ function frl_shortcode_repeater( $atts ) {
 		return '';
 	}
 
-	$cache_key = frl_generate_cache_key( 'repeater', (string) $post->ID, $field, (string) $index, $subfield, $format, 'v' . frl_get_post_cache_version( $post->ID ) );
+	$cache_key = frl_generate_cache_key( 'repeater', (string) $post->ID, $field, (string) $index, $subfield, $format, 'd' . md5( $default ), 'v' . frl_get_post_cache_version( $post->ID ) );
 	return frl_cache_remember(
 		'shortcodes',
 		$cache_key,
@@ -709,6 +719,12 @@ function frl_shortcode_meta_rel( $atts ) {
 		return '';
 	}
 
+	// The anchor fragment of cpt|service|current|post comes from the global post.
+	$anchor_post = 0;
+	if ( 'permalink' === sanitize_key( $a['output'] ) && in_array( strtolower( trim( (string) $a['anchor'] ) ), array( 'cpt', 'service', 'current', 'post' ), true ) && is_object( $post ) && isset( $post->ID ) ) {
+		$anchor_post = (int) $post->ID;
+	}
+
 	// serialize() is cache-key fingerprinting (pre-lookup), NOT data
 	// serialization for storage — see frl_shortcode_readtime() for rationale.
 	$cache_key = 'meta_rel_' . $target_post_id . '_' . $field . '_' . md5(
@@ -718,6 +734,7 @@ function frl_shortcode_meta_rel( $atts ) {
 				(string) $a['output'],
 				(string) $a['sep'],
 				(string) $a['anchor'],
+				$anchor_post,
 			)
 		)
 	) . '_v' . frl_get_post_cache_version( $target_post_id );
@@ -872,7 +889,7 @@ function frl_shortcode_excerpt( $atts ) {
 		return '';
 	}
 
-	$cache_key = "excerpt_post_{$post_id}_v" . frl_get_post_cache_version( $post_id );
+	$cache_key = "excerpt_post_{$post_id}_v" . frl_get_post_cache_version( $post_id ) . '_tv' . ( frl_get_option( 'translation_version' ) ?: 1 );
 
 	return frl_cache_remember(
 		'shortcodes',
@@ -923,9 +940,7 @@ function frl_shortcode_permalink( $atts, $content = null ) {
 		if ( $post_id <= 0 ) {
 			return '#';
 		}
-		$slug           = (string) get_post_field( 'post_name', $post_id );
-		$key_slug       = $slug !== '' ? $slug : ( 'post-' . $post_id );
-		$curr_cache_key = 'permalink_' . sanitize_key( $key_slug ) . '_v' . frl_get_post_cache_version( $post_id );
+		$curr_cache_key = 'permalink_id' . $post_id . '_v' . frl_get_post_cache_version( $post_id );
 		$permalink      = frl_cache_remember(
 			'shortcodes',
 			$curr_cache_key,
@@ -943,9 +958,8 @@ function frl_shortcode_permalink( $atts, $content = null ) {
 	$link_parts = explode( '#', $raw, 2 );
 	$slug_part  = $link_parts[0];
 
-	$cache_key = frl_build_cache_key( $slug_part, 'permalink' );
-	$permalink = frl_cache_remember(
-		'shortcodes',
+	$cache_key = frl_build_cache_key( $slug_part, 'permalink' ) . '_tv' . ( frl_get_option( 'translation_version' ) ?: 1 );
+	$permalink = frl_shortcode_cached_lookup(
 		$cache_key,
 		function () use ( $slug_part ) {
 			return frl_get_translation_permalink( $slug_part );
@@ -1023,10 +1037,9 @@ function frl_shortcode_slug( $atts ) {
 	}
 
 	// Use a hash for hierarchical paths to avoid collisions (slashes get stripped by sanitize_key)
-	$cache_key = frl_build_cache_key( $slug_to_translate, 'slug' );
+	$cache_key = frl_build_cache_key( $slug_to_translate, 'slug' ) . '_tv' . ( frl_get_option( 'translation_version' ) ?: 1 );
 
-	$translated_slug = frl_cache_remember(
-		'shortcodes',
+	$translated_slug = frl_shortcode_cached_lookup(
 		$cache_key,
 		function () use ( $slug_to_translate ) {
 			$url = frl_get_translation_permalink( $slug_to_translate );
@@ -1091,10 +1104,9 @@ function frl_shortcode_category_link( $atts, $content = null ) {
 		return '';
 	}
 	$identifier = trim( wp_strip_all_tags( $content ) );
-	$cache_key  = 'cat_link_' . sanitize_key( $identifier );
+	$cache_key  = 'cat_link_' . sanitize_key( $identifier ) . '_tv' . ( frl_get_option( 'translation_version' ) ?: 1 );
 
-	return frl_cache_remember(
-		'shortcodes',
+	$link = frl_shortcode_cached_lookup(
 		$cache_key,
 		function () use ( $identifier ) {
 			$term_id = 0;
@@ -1121,6 +1133,8 @@ function frl_shortcode_category_link( $atts, $content = null ) {
 			return '';
 		}
 	);
+
+	return (string) $link;
 }
 
 /**
@@ -1152,12 +1166,12 @@ function frl_shortcode_breadcrumbs( $atts ) {
 
 	// A post ID and a term ID can be equal, so the type must be part of the key.
 	$queried     = get_queried_object();
-	$object_kind = ( $queried instanceof WP_Term ) ? 't' : ( ( $queried instanceof WP_Post ) ? 'p' : 'o' );
+	$object_kind = frl_shortcode_object_kind( $queried );
 
 	// Include translation_version: the closure below calls frl_get_translation()
 	// ('Jurisdictions') and frl_get_translation_permalink(), so the cache key must
 	// invalidate when string translations change, not only when the post is saved.
-	$version             = ( $object_id > 0 ) ? '_v' . frl_get_post_cache_version( $object_id ) : '';
+	$version             = ( $object_id > 0 ) ? frl_shortcode_object_version( $queried, $object_id ) : '';
 	$translation_version = frl_get_option( 'translation_version' ) ?: 1;
 	// serialize() is cache-key fingerprinting (pre-lookup), NOT data
 	// serialization for storage — see frl_shortcode_readtime() for rationale.
@@ -1258,8 +1272,74 @@ function frl_sc_append_anchor( string $url, string $anchor ): string {
  * @return string Formatted cache key.
  */
 function frl_build_cache_key( string $key, string $type = 'slug' ): string {
-	if ( $type === 'slug' ) {
-		return 'slug_' . md5( $key );
+	// Hash paths: sanitize_key() strips '/', so 'services/faq' and 'servicesfaq' would collide.
+	if ( $type === 'slug' || $type === 'permalink' ) {
+		return $type . '_' . md5( $key );
 	}
 	return $type . '_' . sanitize_key( $key );
+}
+
+/**
+ * Caches a shortcode lookup; misses expire in minutes so new content appears.
+ *
+ * @param string   $cache_key Cache key.
+ * @param callable $lookup    Lookup returning a non-empty string when found.
+ * @return string Found value, or '' when missing.
+ */
+function frl_shortcode_cached_lookup( string $cache_key, callable $lookup ): string {
+	$value = frl_cache_remember(
+		'shortcodes',
+		$cache_key,
+		function () use ( $cache_key, $lookup ) {
+			$found = (string) $lookup();
+			if ( '' !== $found ) {
+				return $found;
+			}
+			// A missing target may be created soon: keep the miss for minutes, not the group TTL.
+			frl_cache_set( 'shortcodes', $cache_key, '', 5 * MINUTE_IN_SECONDS );
+			return null;
+		}
+	);
+
+	return (string) $value;
+}
+
+/**
+ * Returns the object kind of the queried object for cache keys.
+ *
+ * @param mixed $queried Result of get_queried_object().
+ * @return string 't' (term), 'p' (post) or 'o' (other).
+ */
+function frl_shortcode_object_kind( $queried ): string {
+	if ( $queried instanceof WP_Term ) {
+		return 't';
+	}
+	return $queried instanceof WP_Post ? 'p' : 'o';
+}
+
+/**
+ * Returns the cache-key version suffix for the queried object.
+ *
+ * Posts use the post version; terms hash their own loaded fields (no extra query).
+ *
+ * @param mixed $queried   Result of get_queried_object().
+ * @param int   $object_id Queried object ID.
+ * @return string Suffix starting with '_v', or '' for other objects.
+ */
+function frl_shortcode_object_version( $queried, int $object_id ): string {
+	if ( $queried instanceof WP_Term ) {
+		return '_v' . md5( $queried->name . '|' . $queried->slug . '|' . $queried->parent );
+	}
+	return $queried instanceof WP_Post ? '_v' . frl_get_post_cache_version( $object_id ) : '';
+}
+
+/**
+ * Counts words in any script (letters/digits, with inner apostrophes or hyphens).
+ *
+ * @param string $text Plain text.
+ * @return int Word count.
+ */
+function frl_count_words( string $text ): int {
+	$count = preg_match_all( "/[\\p{L}\\p{N}\\p{M}]+(?:['’-][\\p{L}\\p{N}\\p{M}]+)*/u", $text );
+	return false === $count ? str_word_count( $text ) : $count;
 }

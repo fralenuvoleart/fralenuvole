@@ -17,15 +17,14 @@ function frl_menu_sitemap_init() {
 	add_shortcode( FRL_PREFIX . '_menu_sitemap', 'frl_shortcode_menu_sitemap' );
 }
 add_action( 'init', 'frl_menu_sitemap_init' );
-
 /**
  * Shortcode: [frl_menu_sitemap]
  * Attributes:
- *   - menu (optional): Menu location or name. Defaults to FRL_MENU_SITEMAP_MENU
- *   - parent (optional): Parent menu item title. Empty/full menu if omitted.
- *   - title (optional): Heading text to display. Empty = no title.
+ *   - menu (optional): Menu location or name. Defaults to FRL_MENU_SITEMAP_MENU.
+ *   - parent (optional): Parent menu item title. Defaults to FRL_MENU_SITEMAP_PARENT.
+ *   - title (optional): Heading text. Empty falls back to FRL_MENU_SITEMAP_TITLE, then no heading.
  *   - heading (optional): Heading level h1-h6. Defaults to h2.
- *   - class (optional): Additional CSS class for the wrapper
+ *   - class (optional): Additional CSS class(es) for the wrapper, space-separated
  */
 function frl_shortcode_menu_sitemap( $atts ) {
 	$menu_sitemap_tag = FRL_PREFIX . '_menu_sitemap';
@@ -45,8 +44,8 @@ function frl_shortcode_menu_sitemap( $atts ) {
 	$menu_location = sanitize_text_field( $a['menu'] );
 	$parent_title  = sanitize_text_field( $a['parent'] );
 	$title         = sanitize_text_field( $a['title'] );
-	$heading       = sanitize_text_field( $a['heading'] );
-	$extra_class   = sanitize_html_class( $a['class'] );
+	$heading       = strtolower( sanitize_text_field( $a['heading'] ) );
+	$extra_class   = implode( ' ', array_filter( array_map( 'sanitize_html_class', preg_split( '/\s+/', trim( (string) $a['class'] ) ) ?: array() ) ) );
 
 	// Validate heading level
 	$allowed_headings = array( 'h1', 'h2', 'h3', 'h4', 'h5', 'h6' );
@@ -54,15 +53,25 @@ function frl_shortcode_menu_sitemap( $atts ) {
 		$heading = 'h2';
 	}
 
-	$cache_key = $menu_sitemap_tag . '_' . md5( $menu_location . '_' . $parent_title . '_' . $title . '_' . $heading . '_' . $extra_class );
+	// JSON-encoded fields cannot collide the way a '_' join can.
+	$cache_key = $menu_sitemap_tag . '_' . md5( (string) wp_json_encode( array( $menu_location, $parent_title, $title, $heading, $extra_class ) ) );
 
-	return frl_cache_remember(
+	$html   = '';
+	$cached = frl_cache_remember(
 		'shortcodes',
 		$cache_key,
-		function () use ( $menu_location, $parent_title, $title, $heading, $extra_class ) {
-			return frl_render_menu_sitemap( $menu_location, $parent_title, $title, $heading, $extra_class );
+		function () use ( &$html, $cache_key, $menu_location, $parent_title, $title, $heading, $extra_class ) {
+			$html = frl_render_menu_sitemap( $menu_location, $parent_title, $title, $heading, $extra_class );
+			// Cache error comments briefly so a missing menu does not repeat its lookups.
+			if ( str_starts_with( $html, '<!--' ) ) {
+				frl_cache_set( 'shortcodes', $cache_key, $html, 5 * MINUTE_IN_SECONDS );
+				return null;
+			}
+			return $html;
 		}
 	);
+
+	return $cached ?? $html;
 }
 
 /**
@@ -147,6 +156,16 @@ function frl_render_menu_sitemap( $menu_location, $parent_title, $title = '', $h
 }
 
 /**
+ * Lowercase a string multibyte-safely (ru/ka titles).
+ *
+ * @param string $text Text to lowercase.
+ * @return string Lowercased text.
+ */
+function frl_menu_sitemap_lower( $text ) {
+	return function_exists( 'mb_strtolower' ) ? mb_strtolower( (string) $text, 'UTF-8' ) : strtolower( (string) $text );
+}
+
+/**
  * Find the parent menu item ID by title (case-insensitive)
  * Strips HTML tags (like <strong>) before comparison
  *
@@ -155,11 +174,11 @@ function frl_render_menu_sitemap( $menu_location, $parent_title, $title = '', $h
  * @return int|null Menu item ID or null if not found
  */
 function frl_find_menu_parent_id( $menu_items, $title ) {
-	$search_lower = strtolower( $title );
+	$search_lower = frl_menu_sitemap_lower( $title );
 
 	foreach ( $menu_items as $item ) {
 		// Strip HTML tags before comparison
-		$clean_title = strtolower( wp_strip_all_tags( $item->title ) );
+		$clean_title = frl_menu_sitemap_lower( wp_strip_all_tags( $item->title ) );
 		if ( $clean_title === $search_lower ) {
 			return (int) $item->ID;
 		}
@@ -179,8 +198,8 @@ function frl_build_menu_tree( $items, $parent_id = 0 ) {
 	$branch = array();
 
 	foreach ( $items as $item ) {
-		if ( (int) $item->menu_item_parent === $parent_id ) {
-			$children = frl_build_menu_tree( $items, $item->ID );
+		if ( (int) $item->menu_item_parent === (int) $parent_id ) {
+			$children = frl_build_menu_tree( $items, (int) $item->ID );
 			if ( ! empty( $children ) ) {
 				$item->children = $children;
 			}
@@ -296,11 +315,11 @@ function frl_render_block_navigation_sitemap( $navigation_post, $parent_title, $
 	} else {
 		// Find parent item
 		$parent_id    = null;
-		$search_lower = strtolower( $parent_title );
+		$search_lower = frl_menu_sitemap_lower( $parent_title );
 
 		foreach ( $items as $item ) {
 			// Strip HTML tags before comparison
-			$clean_label = strtolower( wp_strip_all_tags( $item['label'] ) );
+			$clean_label = frl_menu_sitemap_lower( wp_strip_all_tags( $item['label'] ) );
 			if ( $clean_label === $search_lower ) {
 				$parent_id = $item['id'];
 				break;

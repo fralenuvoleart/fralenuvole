@@ -25,17 +25,18 @@ function frl_slug_negative_bucket( string $context, string $key ): string {
 function frl_slug_negative_get( string $context, string $key ): bool {
 	$map = frl_cache_get( 'permalinks', frl_slug_negative_bucket( $context, $key ) );
 
-	return is_array( $map ) && isset( $map[ $key ] );
+	return is_array( $map ) && isset( $map[ $key ] ) && ( time() - (int) $map[ $key ] ) < HOUR_IN_SECONDS;
 }
 
-/** Record a slug as missing. 8 shards x 128 entries, 1h TTL. */
+/** Record a slug as missing. 8 shards x 128 entries; each entry expires after 1h. */
 function frl_slug_negative_mark( string $context, string $key ): void {
 	$bucket = frl_slug_negative_bucket( $context, $key );
 	$map    = frl_cache_get( 'permalinks', $bucket );
 	if ( ! is_array( $map ) ) {
 		$map = array();
 	}
-	if ( isset( $map[ $key ] ) ) {
+	// Skip only a still-fresh entry; an expired one is renewed.
+	if ( isset( $map[ $key ] ) && ( time() - (int) $map[ $key ] ) < HOUR_IN_SECONDS ) {
 		return;
 	}
 
@@ -169,26 +170,42 @@ function frl_find_term_by_path( string $path, string $taxonomy ) {
 		return null;
 	}
 
-	$term = get_term_by( 'slug', end( $parts ), $taxonomy );
-	if ( ! $term ) {
-		return null;
-	}
+	$leaf = (string) end( $parts );
+
+	// Single-segment path: a direct slug lookup is enough.
 	if ( count( $parts ) === 1 ) {
-		return $term;
+		$term = get_term_by( 'slug', $leaf, $taxonomy );
+		return $term ? $term : null;
 	}
 
-	// The parent chain must match the rest of the path.
-	$expected  = array_slice( $parts, 0, -1 );
-	$ancestors = array_reverse( get_ancestors( $term->term_id, $taxonomy, 'taxonomy' ) );
-	$actual    = array();
-	foreach ( $ancestors as $ancestor_id ) {
-		$ancestor = get_term( $ancestor_id, $taxonomy );
-		if ( $ancestor && ! is_wp_error( $ancestor ) ) {
-			$actual[] = $ancestor->slug;
+	// Several terms can share the leaf slug; keep the one whose ancestors match the path.
+	$terms = get_terms(
+		array(
+			'taxonomy'   => $taxonomy,
+			'slug'       => $leaf,
+			'hide_empty' => false,
+		)
+	);
+	if ( is_wp_error( $terms ) ) {
+		return null;
+	}
+
+	$expected = array_slice( $parts, 0, -1 );
+	foreach ( $terms as $term ) {
+		$ancestors = array_reverse( get_ancestors( $term->term_id, $taxonomy, 'taxonomy' ) );
+		$actual    = array();
+		foreach ( $ancestors as $ancestor_id ) {
+			$ancestor = get_term( $ancestor_id, $taxonomy );
+			if ( $ancestor && ! is_wp_error( $ancestor ) ) {
+				$actual[] = $ancestor->slug;
+			}
+		}
+		if ( $actual === $expected ) {
+			return $term;
 		}
 	}
 
-	return $actual === $expected ? $term : null;
+	return null;
 }
 
 /**
@@ -219,9 +236,22 @@ function frl_get_cpt_id_by_slug( $slug, $cpt ) {
 		return (int) $cached;
 	}
 
-	$post = get_page_by_path( $slug, OBJECT, $cpt );
-	if ( $post ) {
-		$post_id = (int) $post->ID;
+	$query_args = array(
+		'post_type'   => $cpt,
+		'post_status' => 'publish',
+		'numberposts' => 1,
+		'lang'        => frl_get_language(),
+	);
+	// pagename covers hierarchical CPT paths; name covers flat slugs.
+	if ( str_contains( (string) $slug, '/' ) ) {
+		$query_args['pagename'] = $slug;
+	} else {
+		$query_args['name'] = $slug;
+	}
+	$posts = get_posts( $query_args );
+
+	if ( ! empty( $posts ) ) {
+		$post_id = (int) $posts[0]->ID;
 		frl_cache_set( 'permalinks', $cache_key, $post_id );
 		return $post_id;
 	}

@@ -13,10 +13,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// Autoloaded flag: a rewrite flush is waiting for the next admin/cron/CLI request.
+const FRL_REWRITE_FLUSH_PENDING_OPTION = '_frl_rewrite_flush_pending';
+
 // Register cron callback for scheduled rewrite flushes.
 // The hook name matches the function name so wp_schedule_single_event()
 // can use the function name directly as the action.
 add_action( 'frl_flush_rewrite_rules', 'frl_flush_rewrite_rules', 10, 0 );
+// Fallback wake-up for a pending flush: the flag consumer below does the flush.
+add_action( 'frl_flush_pending_rewrite_rules', 'frl_maybe_flush_pending_rewrite_rules', 10, 0 );
+// Next admin/cron/CLI request flushes with rules built from the new settings.
+add_action( 'wp_loaded', 'frl_maybe_flush_pending_rewrite_rules', 20, 0 );
 add_action( 'admin_init', 'frl_auto_backup_on_upgrade', 5, 0 );
 
 /**
@@ -36,8 +43,8 @@ function frl_activate_plugin(): void {
 
 	frl_update_option( 'translation_version', 1 );
 
-	// Activation fires before 'init' — rewrite rules cannot be flushed yet.
-	// Schedule a cron event to flush them after post types are registered.
+	// Activation fires before 'init': flush on the next admin/CLI request, cron as fallback.
+	frl_request_rewrite_flush();
 	frl_schedule_rewrite_flush();
 	frl_cache_clear( 'light' );
 
@@ -282,22 +289,25 @@ function frl_auto_backup_on_upgrade(): void {
 /**
  * Handles plugin deactivation.
  *
- * Clears light cache, flushes rewrite rules, and removes scheduled cleanup hooks.
+ * Clears light cache, drops the cached rewrite rules, and removes scheduled cleanup hooks.
  *
  * @return void
  */
 function frl_deactivate_plugin(): void {
 	frl_cache_clear( 'light' );
 
-	// Deactivation fires before 'init' — schedule a deferred flush.
+	// An absent option makes WP_Rewrite::wp_rewrite_rules() regenerate lazily without our rules.
+	delete_option( 'rewrite_rules' );
+	// Best-effort fallback: the cron callback does not run once the plugin is inactive.
 	frl_schedule_rewrite_flush();
 	wp_clear_scheduled_hook( 'frl_daily_cache_cleanup' );
+	wp_clear_scheduled_hook( 'frl_flush_pending_rewrite_rules' );
 }
 
 /**
  * Handles plugin uninstallation.
  *
- * Deletes plugin data, removes MU-plugins, flushes rewrite rules, and clears scheduled hooks.
+ * Deletes plugin data, removes MU-plugins, drops the cached rewrite rules, and clears scheduled hooks.
  *
  * @return void
  */
@@ -318,26 +328,30 @@ function frl_uninstall_plugin(): void {
 		frl_mu_plugins_delete();
 	}
 
-	// Uninstall fires before 'init' — schedule a deferred flush.
+	// An absent option makes WP_Rewrite::wp_rewrite_rules() regenerate lazily without our rules.
+	delete_option( 'rewrite_rules' );
+	// Best-effort fallback: the cron callback does not run once the plugin is uninstalled.
 	frl_schedule_rewrite_flush();
 	wp_clear_scheduled_hook( 'frl_daily_cache_cleanup' );
+	wp_clear_scheduled_hook( 'frl_flush_pending_rewrite_rules' );
 }
 
 /**
- * Flush WordPress rewrite rules, mirroring the exact behaviour of
+ * Flush WordPress rewrite rules, mirroring the relevant part of
  * WP_Rewrite::set_permalink_structure() (the "Save Permalinks" button).
  *
- * For before-init contexts (plugin activation/deactivation), use frl_schedule_rewrite_flush() instead.
+ * For before-init contexts (plugin activation), use frl_request_rewrite_flush() instead.
  *
  * Action chain (once wp_loaded has fired):
  *   1. update_option_permalink_structure → triggers:
- *        - Fralenuvole: clear_rewriter_caches() [class-rewriter.php]
+ *        - Fralenuvole: Frl_Rewriter::on_permalink_structure_update() [class-rewriter.php]
  *          → clears options cache (→ rewriter → permalinks)
  *          → deletes exclusion patterns transient
- *          → calls flush_rewrite_rules(true)
+ *          → does not schedule a flush: this function regenerates below
  *        - Polylang: clean_languages_cache() [polylang/src/model.php]
  *          → ensures fresh language data during rule regeneration
  *   2. permalink_structure_changed → notifies any other plugins
+ *   3. one flush_rewrite_rules(true): the only regeneration of the call.
  *
  * TIMING — why this defers instead of flushing immediately when called early:
  * Both Frl_Rewriter::register_cache_invalidation_hooks() (this plugin) AND
@@ -375,16 +389,30 @@ function frl_flush_rewrite_rules(): void {
 		return;
 	}
 
+	// The flush below satisfies a pending request, including one raised in this request.
+	frl_set_rewrite_flush_pending( false );
+
 	$permastruct = get_option( 'permalink_structure' );
-	do_action( 'update_option_permalink_structure', $permastruct, $permastruct );
-	do_action( 'permalink_structure_changed', $permastruct, $permastruct );
+
+	// Same option hooks set_permalink_structure() fires: Polylang and third parties react to them.
+	// The flag stops Frl_Rewriter's listener from adding a second regeneration.
+	frl_rewrite_flush_is_direct( true );
+	try {
+		do_action( 'update_option_permalink_structure', $permastruct, $permastruct );
+		do_action( 'permalink_structure_changed', $permastruct, $permastruct );
+	} finally {
+		frl_rewrite_flush_is_direct( false );
+	}
+
+	// One regeneration per call, from the rules registered during this request.
+	flush_rewrite_rules( true );
 }
 
 /**
  * Schedules a single cron event to flush rewrite rules after 15 seconds.
  *
- * Used when a flush is needed before 'init' (plugin activation/deactivation)
- * or from contexts where a synchronous flush would be too expensive
+ * Used when a flush is needed before 'init' (plugin activation) as a best-effort
+ * fallback, or from contexts where a synchronous flush would be too expensive
  * (frontend requests, third-party cache purge handlers).
  *
  * The cron callback is frl_flush_rewrite_rules().
@@ -395,4 +423,104 @@ function frl_schedule_rewrite_flush(): void {
 	if ( ! wp_next_scheduled( 'frl_flush_rewrite_rules' ) ) {
 		wp_schedule_single_event( time() + 15, 'frl_flush_rewrite_rules' );
 	}
+}
+
+/**
+ * Whether a rewrite flush is waiting for the next admin/cron/CLI request.
+ *
+ * Seeds the autoloaded option once so later reads never miss.
+ *
+ * @return bool
+ */
+function frl_is_rewrite_flush_pending(): bool {
+	$value = get_option( FRL_REWRITE_FLUSH_PENDING_OPTION, null );
+	if ( null === $value ) {
+		add_option( FRL_REWRITE_FLUSH_PENDING_OPTION, 0, '', true );
+		return false;
+	}
+	return (bool) $value;
+}
+
+/**
+ * Set or clear the pending-flush flag (writes only on change).
+ *
+ * @param bool $pending True to request a flush.
+ * @return void
+ */
+function frl_set_rewrite_flush_pending( bool $pending ): void {
+	if ( $pending ) {
+		frl_rewrite_flush_set_this_request( true );
+	}
+	if ( frl_is_rewrite_flush_pending() !== $pending ) {
+		update_option( FRL_REWRITE_FLUSH_PENDING_OPTION, $pending ? 1 : 0, true );
+	}
+}
+
+/**
+ * Whether the pending flag was raised during this request.
+ *
+ * @param bool|null $value Pass true to record, null to read.
+ * @return bool
+ */
+function frl_rewrite_flush_set_this_request( ?bool $value = null ): bool {
+	static $state = false;
+
+	if ( null !== $value ) {
+		$state = $value;
+	}
+	return $state;
+}
+
+/**
+ * Whether frl_flush_rewrite_rules() is regenerating the rules itself.
+ *
+ * Read by Frl_Rewriter::on_permalink_structure_update() so the synthetic
+ * permalink hooks invalidate caches without scheduling a second flush.
+ *
+ * @param bool|null $value Pass true/false to set, null to read.
+ * @return bool
+ */
+function frl_rewrite_flush_is_direct( ?bool $value = null ): bool {
+	static $direct = false;
+
+	if ( null !== $value ) {
+		$direct = $value;
+	}
+	return $direct;
+}
+
+/**
+ * Request one rewrite flush from the next admin/cron/CLI request.
+ *
+ * Rules are registered at init from the old settings, so flushing in the
+ * request that changed them would persist stale rules. Cron is only a fallback.
+ *
+ * @return void
+ */
+function frl_request_rewrite_flush(): void {
+	frl_set_rewrite_flush_pending( true );
+
+	if ( ! wp_next_scheduled( 'frl_flush_pending_rewrite_rules' ) ) {
+		wp_schedule_single_event( time() + 15, 'frl_flush_pending_rewrite_rules' );
+	}
+}
+
+/**
+ * Flush once if a flush is pending. Runs on wp_loaded for admin, cron and WP-CLI
+ * requests only, never for frontend visitors.
+ *
+ * @return void
+ */
+function frl_maybe_flush_pending_rewrite_rules(): void {
+	$is_cli = defined( 'WP_CLI' ) && WP_CLI;
+	if ( ! ( wp_doing_cron() || $is_cli || ( is_admin() && ! wp_doing_ajax() && is_user_logged_in() ) ) ) {
+		return;
+	}
+
+	// A flag raised in this request waits for the next one: this request's rules are init-time.
+	if ( frl_rewrite_flush_set_this_request() || ! frl_is_rewrite_flush_pending() ) {
+		return;
+	}
+
+	frl_flush_rewrite_rules();
 }

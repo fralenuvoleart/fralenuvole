@@ -44,7 +44,7 @@ function frl_wsf_get_grouped_submission_data( $days = 30, $form_id = null, $star
 				// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Intentional: this must reflect the site's local calendar date (so "today" means local-today, not UTC-today) for correct date-range boundaries.
 				$end_date_time = current_time( 'timestamp' );
 				$end_date      = gmdate( 'Y-m-d', $end_date_time );
-				$start_date    = gmdate( 'Y-m-d', strtotime( "-{$days} days", $end_date_time ) );
+				$start_date    = gmdate( 'Y-m-d', strtotime( '-' . max( 0, (int) $days - 1 ) . ' days', $end_date_time ) );
 			}
 
 			// Get dynamic field mappings from modular config
@@ -134,29 +134,28 @@ function frl_wsf_get_grouped_submission_data( $days = 30, $form_id = null, $star
 				}
 			}
 
-			// --- Sorting Logic (remains the same) ---
+			// Sorting
 			$language_totals = array();
 			foreach ( $grouped_counts as $lang => $groups ) {
 				$language_totals[ $lang ] = array_sum( $groups );
 			}
 
-			// 2. Sort languages by total submissions (descending)
+			// Languages by total (descending)
 			arsort( $language_totals );
 
-			// 3. Sort field_8 values within each language by count (descending)
+			// Groups within each language by count (descending)
 			foreach ( $grouped_counts as $lang => &$groups ) {
 				arsort( $groups );
 			}
 			unset( $groups ); // Unset reference after loop
 
-			// 4. Rebuild the array in the new language order
+			// Rebuild in the new language order
 			$sorted_grouped_counts = array();
 			foreach ( $language_totals as $lang => $total ) {
 				if ( isset( $grouped_counts[ $lang ] ) ) {
 					$sorted_grouped_counts[ $lang ] = $grouped_counts[ $lang ]; // Add the already sorted inner array
 				}
 			}
-			// --- End New Sorting Logic ---
 
 			return array(
 				'grouped_counts' => $sorted_grouped_counts,
@@ -221,8 +220,8 @@ function frl_wsf_get_raw_submission_meta( array $meta_keys, $start_date, $end_da
 	// Prepare parameters
 	// Note: Parameters for IN clause must be passed individually
 	$params   = $meta_keys;
-	$params[] = $start_date . ' 00:00:00';
-	$params[] = $end_date . ' 23:59:59';
+	$params[] = frl_wsf_local_to_utc( $start_date . ' 00:00:00' );
+	$params[] = frl_wsf_local_to_utc( $end_date . ' 23:59:59' );
 
 	// Add form ID condition if specified
 	if ( ! empty( $form_id ) && is_numeric( $form_id ) ) {
@@ -264,6 +263,17 @@ function frl_wsf_get_raw_submission_meta( array $meta_keys, $start_date, $end_da
 	}
 
 	return array_values( $submissions ); // Return as a simple array of submission objects
+}
+
+/**
+ * Convert a site-local datetime to a UTC datetime (submissions store date_added in UTC).
+ *
+ * @param string $local Local 'Y-m-d H:i:s' datetime.
+ * @return string UTC 'Y-m-d H:i:s' datetime, or the input if it cannot be parsed.
+ */
+function frl_wsf_local_to_utc( string $local ): string {
+	$date = date_create_immutable( $local, wp_timezone() );
+	return $date ? $date->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ) : $local;
 }
 
 /**

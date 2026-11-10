@@ -67,10 +67,6 @@ function frl_cta_webhook_handler() {
 	// Layer 4 — Admin option only, no constant fallback.
 	$use_cron = (bool) frl_get_option( 'cta_use_cron' );
 
-	if ( empty( $webhook_url ) ) {
-		wp_send_json_error( 'No webhook configured', 404 );
-	}
-
 	$service  = 'Webpage';
 	$page_url = sanitize_url( wp_unslash( $_POST['page_url'] ?? '' ) );
 

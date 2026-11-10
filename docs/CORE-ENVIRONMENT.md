@@ -28,7 +28,8 @@ Frl_Environment_Manager (Facade)
 | `core/environment/class-environment-applier.php` | `Frl_Environment_Applier` | Applies WP options, plugin options, module states |
 | `core/environment/class-environment-plugin-manager.php` | `Frl_Environment_Plugin_Manager` | Plugin activation/deactivation |
 | `core/environment/class-environment-files.php` | `Frl_Environment_Files` | File-based option loading |
-| `core/environment/class-environment-utils.php` | `Frl_Environment_Utils` + trait | Logging; host normalization |
+| `core/environment/class-environment-utils.php` | `Frl_Environment_Utils` | Structured logging |
+| `core/environment/trait-environment-host-normalizer.php` | `Frl_Environment_Host_Normalizer` (trait) | Host normalization helpers |
 
 ## Configuration System
 
@@ -74,7 +75,7 @@ Layer 4: Instance constant        ← The specific constant from FRL_ENV_MAP
 | `active` / `inactive` | Full replacement at this layer |
 | `active_add` / `inactive_add` | Additive: merged with current list |
 
-After all layers resolve, active plugins are removed from the inactive list; on conflict, active wins.
+**Most specific layer wins.** Layers apply in order type → extends → instance. Each layer's own decisions override every layer below it: a plugin it lists as active is removed from the inactive list, and a plugin it lists as inactive is removed from the active list. If one layer lists the same plugin in both, active wins. A final pass resolves any conflict that came from the base layer (active wins). To disable a plugin that a lower layer activates, list it in the instance layer's `inactive` or `inactive_add`.
 
 ### Default Configuration Sections
 
@@ -98,7 +99,7 @@ After all layers resolve, active plugins are removed from the inactive list; on 
 2. If user has access (`frl_has_access()`):
    - Check & clear force-reload cookie → injects `window.location.reload(true)` script
    - `Frl_Environment_Monitor::check_urls()` — compares `HTTP_HOST` vs `siteurl`/`home`, corrects if mismatch
-   - `Frl_Environment_Monitor::setup_plugin_options_tracking()` — registers `update_option_*` hooks
+   - `Frl_Environment_Monitor::setup_plugin_options_tracking()` — registers one `updated_option` hook
 3. Register hooks: `admin_bar_menu` (switcher), `activated_plugin`, `deactivated_plugin`
 
 ### Enforcement (`init/10`)
@@ -143,11 +144,11 @@ Stored state: `{host, siteurl, home, hash, last_updated?}`. Persisted to DB opti
 
 **`check_urls()` (admin-only):** If `HTTP_HOST` differs from `siteurl`/`home` host: updates both options, syncs `blog_public`, resets ignore lists, refreshes auth cookie, sets force-reload cookie, runs `enforce_environment_settings(true)`.
 
-**`setup_plugin_options_tracking()`:** Registers `update_option_{$prefixed_name}` hooks for all managed plugin options. Each hook calls `track_plugin_options()`.
+**`setup_plugin_options_tracking()`:** Registers a single `updated_option` hook with an O(1) lookup of the managed prefixed option names. A match calls `track_plugin_options()`.
 
-**`track_plugin_options()`:** If a managed option is manually changed by an admin, adds it to `environment_ignore_options` list. Subsequent enforcement skips ignored options.
+**`track_plugin_options()`:** If a managed option is manually changed by an admin, adds it to `environment_ignore_options` list. Subsequent enforcement skips ignored options. Tracking is skipped while `Frl_Environment_Monitor::suppress_tracking()` is on: `enforce_environment_settings()` turns it on around its own option writes, so enforcement never ignores itself. The call returns the previous value, which the caller restores in a `finally` block.
 
-**`track_plugins_activation_status()`:** Same pattern for plugins — adds to `environment_ignore_plugins` list.
+**`track_plugins_activation_status()`:** Adds the plugin to the `environment_ignore_plugins` list. It does **not** check `suppress_tracking()`: `apply_plugins_activation_status()` removes the `activated_plugin`/`deactivated_plugin` hooks before applying its changes and re-adds them afterwards, so enforcement never ignores itself.
 
 ### Frl_Environment_Applier — Config Application
 
@@ -161,7 +162,7 @@ Stored state: `{host, siteurl, home, hash, last_updated?}`. Persisted to DB opti
 
 ### Frl_Environment_Plugin_Manager — Plugin Lifecycle
 
-**`apply_plugins_activation_status()`:** Reads ignore list, activates plugins in `active` list, deactivates plugins in `inactive` list. Temporarily removes tracking hooks to prevent self-triggering. Uses `deactivate_plugins($silent=true)` and `activate_plugin($silent=false)`.
+**`apply_plugins_activation_status()`:** Reads ignore list, activates plugins in `active` list, deactivates plugins in `inactive` list. Temporarily removes tracking hooks to prevent self-triggering. Uses `deactivate_plugins($silent=false)` and `activate_plugin($silent=false)`.
 
 ### Frl_Environment_Files — File-Based Options
 
@@ -185,7 +186,7 @@ Two DB options track manual overrides:
 | `frl_environment_ignore_plugins` | Array of plugin paths | `track_plugins_activation_status()` |
 | `frl_environment_ignore_options` | Array of option keys | `track_plugin_options()` |
 
-Reset via admin action "Reset Ignored Plugins" → `reset_customizations()` clears both lists.
+The lists are read from the DB option only (no cache copy). Reset via admin action "Reset Ignored Plugins" → `reset_customizations()` clears both lists.
 
 ## Admin Bar Switcher
 
@@ -200,7 +201,6 @@ Added at `admin_bar_menu` priority 9999. Shows current environment (`prod`/`stag
 | Domain config | `environment` | 1 hour |
 | Environment state | `environment` + DB option | 1 hour |
 | Throttle last check | `environment` | 1 hour |
-| Ignored plugins/options | `environment` + DB option | 1 hour |
 | File option keys/content | `environment` | 1 hour |
 | Transients-cleared flag | `environment` | 1 year |
 | Admin bar submenus | `admin` | Default |

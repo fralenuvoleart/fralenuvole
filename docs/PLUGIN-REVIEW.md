@@ -1,6 +1,6 @@
 # Plugin AI Review 
 
-**Version:** 5.8.7 | **PHP:** 8.3+ | **License:** GPL2+
+**Version:** 5.8.9 | **PHP:** 8.3+ | **License:** GPL2+
 
 ## Overview
 

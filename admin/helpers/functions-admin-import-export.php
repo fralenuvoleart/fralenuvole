@@ -87,7 +87,7 @@ function frl_post_ajax_import_translations() {
 		}
 
 		// Check for critical errors
-		$critical_errors = $results['strings']['errors'] + $results['translations']['errors'];
+		$critical_errors = frl_import_error_count( $results['strings']['errors'] ) + frl_import_error_count( $results['translations']['errors'] );
 		if ( $critical_errors > 0 && $results['strings']['added'] === 0 && $results['translations']['updated'] === 0 ) {
 			// If we have errors but no successful imports, treat as error
 			$error_msg = frl_build_import_message( $results );
@@ -318,6 +318,16 @@ function frl_post_ajax_import_settings() {
  * @param array<string, mixed> $results Import results containing counts of added/updated/error items.
  * @return string Formatted message string.
  */
+/**
+ * Normalises an importer counter that may be an int or a list of errors.
+ *
+ * @param mixed $value Counter value.
+ * @return int
+ */
+function frl_import_error_count( $value ): int {
+	return is_array( $value ) ? count( $value ) : (int) $value;
+}
+
 function frl_build_import_message( $results ) {
 	$parts = array();
 
@@ -335,8 +345,8 @@ function frl_build_import_message( $results ) {
 	}
 
 	// Errors
-	$errors      = $results['strings']['errors'] + $results['translations']['errors'];
-	$has_changes = ( $results['strings']['added'] + $results['translations']['updated'] ) > 0;
+	$errors      = frl_import_error_count( $results['strings']['errors'] ) + frl_import_error_count( $results['translations']['errors'] );
+	$has_changes = ( frl_import_error_count( $results['strings']['added'] ) + frl_import_error_count( $results['translations']['updated'] ) ) > 0;
 
 	// Build message
 	$message = '';

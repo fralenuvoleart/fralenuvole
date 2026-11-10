@@ -18,7 +18,7 @@ if (!function_exists('wsf_form_get_fields')) {
 
 if (!function_exists('wsf_field_get_object')) {
     /**
-     * @param int $form_id
+     * @param int|object $form_id
      * @param int $field_id
      */
     function wsf_field_get_object($form_id, $field_id) {

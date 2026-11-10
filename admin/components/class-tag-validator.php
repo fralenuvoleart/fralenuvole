@@ -18,8 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - render_tag_validation_results() - Renders validation results as HTML
  *
  * The render() method uses these newer methods internally for better separation of concerns.
- * JavaScript functionality is handled by the external assets/js/tag-validator.js file,
- * which is loaded in scripts-ui.php.
+ * JavaScript functionality is handled by the external assets/js/admin-tag-validator.js file,
+ * which is loaded in ui-asset-loader.php.
  */
 class Frl_Tag_Validator {
 
@@ -192,16 +192,13 @@ class Frl_Tag_Validator {
 			'checked_url' => $url,
 		);
 
-		// Check if we're validating the local site or an external URL
-		$home_url_host = parse_url( home_url(), PHP_URL_HOST );
-		$url_host      = parse_url( $url, PHP_URL_HOST );
-
 		// Get page content - use direct method for all URLs since wp_remote_get has issues with local URLs
 		$html_content_result = $this->direct_get_page_content( $url );
 
 		// Check for errors
 		if ( isset( $html_content_result['error'] ) ) {
 			return array(
+				'tags'        => array(),
 				'error'       => $html_content_result['error'],
 				'checked_url' => $html_content_result['checked_url'],
 			);
@@ -365,6 +362,7 @@ class Frl_Tag_Validator {
 	 * @return array Examples of tag usage
 	 */
 	private function extract_tag_examples( $html, $tag, $limit = 3 ) {
+		/** @var array<int, string> $examples */
 		$examples = array();
 
 		// Create regex patterns for different types of tags
@@ -573,7 +571,7 @@ class Frl_Tag_Validator {
 		if ( ! isset( $data['@context'] ) ) {
 			$validation['status']     = 'error';
 			$validation['messages'][] = 'Missing required property: @context';
-		} elseif ( ! str_contains( $data['@context'], 'schema.org' ) ) {
+		} elseif ( ! str_contains( is_array( $data['@context'] ) ? implode( ' ', array_filter( $data['@context'], 'is_string' ) ) : (string) $data['@context'], 'schema.org' ) ) {
 			$validation['status']     = 'warning';
 			$validation['messages'][] = '@context should contain schema.org URL';
 		}
@@ -594,8 +592,8 @@ class Frl_Tag_Validator {
 					continue;
 				}
 
-				// Add the type to our found types
-				$found_types[] = $item['@type'];
+				// Add the type to our found types (@type may be a list).
+				$found_types[] = is_array( $item['@type'] ) ? implode( '/', array_map( 'strval', $item['@type'] ) ) : (string) $item['@type'];
 
 				// We could add deeper validation here for each item if needed
 				// For now just do basic checks on required properties
@@ -618,8 +616,8 @@ class Frl_Tag_Validator {
 			return $validation; // Stop further validation if @type is missing
 		}
 
-		// Get schema type and validate required properties based on type
-		$type                      = $data['@type'];
+		// Get schema type and validate required properties based on type (@type may be a list).
+		$type                      = is_array( $data['@type'] ) ? (string) reset( $data['@type'] ) : (string) $data['@type'];
 		$validation['schema_type'] = $type;
 
 		// Check for common schema types and their required properties
@@ -1070,7 +1068,9 @@ class Frl_Tag_Validator {
 			$metadata_table = frl_ui_render_table(
 				'validation-summary',
 				$metadata_rows,
-				'validation-metadata-table'
+				'validation-metadata-table',
+				0,
+				true
 			);
 			$error_output  .= '<div class="validation-summary">' . $metadata_table . '</div>';
 		}
@@ -1079,7 +1079,9 @@ class Frl_Tag_Validator {
 			'tag-validator-error',
 			$error_output,
 			'Validation Error',
-			'tag-validator-error'
+			'tag-validator-error',
+			0,
+			true
 		);
 	}
 
@@ -1314,7 +1316,11 @@ class Frl_Tag_Validator {
 	 * @return bool True if the host matches.
 	 */
 	private function is_allowed_target_url( string $url ): bool {
-		$host      = wp_parse_url( $url, PHP_URL_HOST );
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+		if ( null === $host && ! preg_match( '~^(?:f|ht)tps?://~i', trim( $url ) ) ) {
+			// Scheme-less input: the fetch prepends https://, so check the same way.
+			$host = wp_parse_url( 'https://' . trim( $url ), PHP_URL_HOST );
+		}
 		$site_host = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
 
 		if ( ! is_string( $host ) || $host === '' || ! is_string( $site_host ) || $site_host === '' ) {
@@ -1332,7 +1338,7 @@ class Frl_Tag_Validator {
 	 * Render the tag validator form and results
 	 *
 	 * This method handles both rendering the form and displaying validation results.
-	 * AJAX functionality is provided by the external tag-validator.js file.
+	 * AJAX functionality is provided by the external admin-tag-validator.js file.
 	 *
 	 * @return string HTML content
 	 */

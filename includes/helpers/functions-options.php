@@ -33,15 +33,21 @@ function frl_get_option( $key, $bypass_cache = false ) {
 	static $loaded          = false;
 	static $write_attempted = array();
 
-	// REVIEWER NOTE: '__reset__' is a deliberate internal API contract between
-	// this function and Frl_Cache_Manager::reset_options_caches() — a single
-	// call site in the same codebase. It is not a fragile "magic value."
+	// '__reset__' is an internal contract with Frl_Cache_Manager::reset_options_caches() and frl_migrate_rewriter_option_names().
 	if ( $key === '__reset__' ) {
 		$options         = array();
 		$loaded          = false;
 		$write_attempted = array(); // Cleared on reset
+		$written_values  = &frl_option_written_values();
+		$written_values  = array();
 		frl_get_plugin_options_db( true );
 		return null;
+	}
+
+	// --- 0. Values written earlier in this request win over the stale snapshots below ---
+	$written_values = &frl_option_written_values();
+	if ( array_key_exists( $key, $written_values ) ) {
+		return $written_values[ $key ];
 	}
 
 	// --- 1. Request-local static cache check ---
@@ -95,14 +101,28 @@ function frl_get_option( $key, $bypass_cache = false ) {
 }
 
 /**
+ * Values written by frl_update_option() in this request, keyed by option key.
+ *
+ * Lets frl_get_option() return a value this request just wrote even when the
+ * persistent snapshot is stale (a write with $clear_cache = false keeps it).
+ *
+ * @return array<string, mixed> Reference to the write-through map.
+ */
+function &frl_option_written_values() {
+	static $written_values = array();
+	return $written_values;
+}
+
+/**
  * Set a plugin option by name, without prefix.
  *
  * The value is normalized based on the option's defined type before being saved.
  *
  * @param string $key Option key without prefix.
  * @param mixed $value_param Value to set.
- * @param bool $clear_cache Whether to clear the options cache, default = true.
- * @param string|null $autoload_param Optional. Whether to autoload the option. Accepts 'yes' or 'no'. Defaults to 'no' if null.
+ * @param bool $clear_cache Whether to clear the options cache, default = true. The write is
+ *                          visible to frl_get_option() in this request either way.
+ * @param string|bool|null $autoload_param Optional. Autoload: 'yes'/'no' or a bool. Defaults to 'yes' for FRL_AUTOLOAD_OPTIONS keys, 'no' otherwise.
  * @return bool True on success. Note: update_option() returns false when the value is unchanged, so false means "not written", not "failed".
  */
 function frl_update_option( $key, $value_param, $clear_cache = true, $autoload_param = null ) {
@@ -116,7 +136,9 @@ function frl_update_option( $key, $value_param, $clear_cache = true, $autoload_p
 	$normalized_value = frl_normalize_option( $value_param, $type );
 
 	$prefixed_key = frl_prefix( $key );
-	$autoload     = frl_normalize_autoload( $autoload_param );
+	// Matches frl_migrate_option_autoload(): only the bootstrap hot-path options stay autoloaded.
+	$autoload_default = in_array( $key, FRL_AUTOLOAD_OPTIONS, true ) ? 'yes' : 'no';
+	$autoload         = frl_normalize_autoload( $autoload_param ?? $autoload_default );
 
 	// Strip stale anonymous closures from prior writes to the same key in this request.
 	// Without this, multiple frl_update_option() calls accumulate priority-9999 filters
@@ -125,6 +147,12 @@ function frl_update_option( $key, $value_param, $clear_cache = true, $autoload_p
 	// third-party pre_option_frl_* filter; the frl_ namespace makes that collision unlikely.
 	remove_all_filters( 'pre_option_' . $prefixed_key );
 	$result = update_option( $prefixed_key, $normalized_value, $autoload );
+
+	if ( $result !== false ) {
+		// Write-through: frl_get_option() must see this value even when $clear_cache is false.
+		$written_values         = &frl_option_written_values();
+		$written_values[ $key ] = $normalized_value;
+	}
 
 	if ( $clear_cache ) {
 		// Only refresh the options cache entry itself – dependent groups must remain intact to avoid thrashing.
@@ -147,36 +175,6 @@ function frl_update_option( $key, $value_param, $clear_cache = true, $autoload_p
 		9999,
 		1
 	);
-
-	return $result;
-}
-
-/**
- * Delete a plugin option by name, without prefix.
- *
- * @param string $key Option key without prefix.
- * @param string $cache_group Optional cache group to clear after deletion.
- * @return bool True on success, false on failure.
- */
-function frl_delete_option( $key, $cache_group = '' ) {
-	if ( ! is_string( $key ) ) {
-		return false;
-	}
-
-	$prefixed_key = frl_prefix( $key );
-
-	// Same stale-closure rationale as frl_update_option() — prevents a previously-written
-	// priority-9999 filter from resurrecting a deleted option's value via pre_option_*.
-	// Also removes any third-party pre_option_frl_* filter (frl_ namespace makes that unlikely).
-	remove_all_filters( 'pre_option_' . $prefixed_key );
-
-	// Update option and capture result
-	$result = delete_option( $prefixed_key );
-
-	// Clear cache group
-	if ( $cache_group ) {
-		frl_cache_clear( $cache_group );
-	}
 
 	return $result;
 }
@@ -235,17 +233,21 @@ function frl_get_plugin_options( $keys = 'all', $bypass_cache = false ) {
 	$all_options = null;
 
 	if ( $bypass_cache ) {
-		// Direct database query when bypassing cache
+		// Request-static DB snapshot (the query runs once per request)
 		$all_options = frl_get_plugin_options_db();
 	} else {
-		// Use frl_cache_remember for persistent caching
+		// Persistent cache; null (DB error or empty set) is never cached.
 		$all_options = frl_cache_remember(
 			'options',
 			'all_options',
 			function () {
-				return frl_get_plugin_options_db();
+				$loaded = frl_get_plugin_options_db();
+				return is_array( $loaded ) && ! empty( $loaded ) ? $loaded : null;
 			}
 		);
+		if ( ! is_array( $all_options ) ) {
+			$all_options = array();
+		}
 	}
 
 	// Special case: return all options
@@ -317,8 +319,7 @@ function frl_get_plugin_options_db( $reset = false ) {
 		)
 	);
 
-	// A failed query returns null/empty; log and bail rather than caching an
-	// empty option set (which would force per-key DB fallbacks for the request).
+	// On a failed query, log and return an empty set (the caller does not cache it).
 	if ( $wpdb->last_error ) {
 		// No email: frl_log() would re-enter option loading and re-run this query.
 		frl_log( 'FRL Options DB Error: {error}', array( 'error' => $wpdb->last_error ), false );
@@ -367,10 +368,23 @@ function frl_get_all_plugin_options_settings( $key = null, $ui_fields = false ) 
 				$modules_options_defaults = frl_modules_load_options_defaults();
 				$runtime_options_defaults = frl_load_runtime_options_defaults();
 
+				// Rewriter CPT slug options (textlist, autoload no) are registered by slug.
+				$cpt_options_defaults = array();
+				if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
+					foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $slug ) {
+						$cpt_options_defaults[ 'rewriter_translate_cpt_slugs_' . $slug ] = array(
+							'value'    => '',
+							'autoload' => 'no',
+							'type'     => 'textlist',
+						);
+					}
+				}
+
 				return array_merge(
 					$options_defaults,
 					$modules_options_defaults,
-					$runtime_options_defaults
+					$runtime_options_defaults,
+					$cpt_options_defaults
 				);
 			}
 		);
@@ -596,20 +610,8 @@ function frl_load_config_options_fields() {
 		'config_options_fields',
 		function () {
 			// Flatten the hierarchical structure (config-default-fields.php only)
-			$flat_fields = frl_load_config_options_fields_flat();
-
-			$field_definitions = array();
-
-			foreach ( $flat_fields as $field ) {
-				// Skip if no ID - but keep formatting fields
-				if ( ! isset( $field['id'] ) ) {
-					continue;
-				}
-
-				$field_definitions[] = $field;
-			}
-
-			return $field_definitions;
+			// Every flat field carries its id (FRL_FIELD_ATTRIBUTES computes it), formatting fields included.
+			return frl_load_config_options_fields_flat();
 		}
 	);
 
@@ -723,9 +725,6 @@ function frl_set_transient( $key, $value, $expiration = 0 ) {
 	// Get the shared cache
 	$cache = &frl_transients_static_cache();
 
-	// Normalize value
-	$value = frl_normalize_boolval( $value );
-
 	// Update static cache with sentinel value if the value is false
 	if ( $value === false ) {
 		$cache[ $key ] = '__TRANSIENT_FALSE__';
@@ -748,10 +747,8 @@ function frl_delete_transient( $key ) {
 	// Get the shared cache
 	$cache = &frl_transients_static_cache();
 
-	// Remove from static cache if it exists
-	if ( isset( $cache[ $key ] ) ) {
-		unset( $cache[ $key ] );
-	}
+	// Remove from static cache
+	unset( $cache[ $key ] );
 
 	// Delete WordPress transient
 	$result = delete_transient( frl_prefix( $key ) );
@@ -824,7 +821,6 @@ function frl_set_missing_option_default( string $key, bool $bypass_cache, array 
 
 	$default_value = $default_option['value'];
 	$autoload      = $default_option['autoload'];
-	$type          = $default_option['type'] ?? 'text';
 
 	// When setting a missing option to its default, do not clear the main options cache.
 	// The operation that led to this (e.g., plugin reset) should handle bulk cache clearing.
@@ -836,21 +832,6 @@ function frl_set_missing_option_default( string $key, bool $bypass_cache, array 
 	if ( ! $all_options_cleared ) {
 		frl_cache_clear( 'options', 'all_options', false );
 		$all_options_cleared = true;
-	}
-
-	$prefixed_key  = frl_prefix( $key );
-	$current_value = get_option( $prefixed_key, null );
-	$current_value = frl_normalize_option( $current_value, $type );
-
-	if ( $current_value !== $default_value ) {
-		frl_log(
-			'frl_set_missing_option_default: Default for {key} set. Expected: {expected}. Actual: {actual}',
-			array(
-				'key'      => $key,
-				'expected' => $default_value,
-				'actual'   => $current_value,
-			)
-		);
 	}
 
 	if ( ! $bypass_cache ) {

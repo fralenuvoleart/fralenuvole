@@ -24,6 +24,13 @@ add_shortcode( FRL_PREFIX . '_acf_calculated', 'frl_shortcode_acf_calculated' );
  */
 
 function frl_shortcode_acf_calculated( $atts ) {
+	if ( ! function_exists( 'get_field' ) ) {
+		if ( function_exists( 'frl_log' ) ) {
+			frl_log( 'ACF unavailable: [frl_acf_calculated] returns empty' );
+		}
+		return '';
+	}
+
 	$a = shortcode_atts(
 		array(
 			'source'    => 'option', // option|post
@@ -58,10 +65,10 @@ function frl_shortcode_acf_calculated( $atts ) {
 			$cache_key,
 			static function () use ( $target, $source, $a ) {
 				$pid = 'option';
-					if ( $source === 'post' ) {
-						$id_raw = trim( (string) $a['id'] );
-						$pid    = ( ctype_digit( $id_raw ) && (int) $id_raw > 0 ) ? (int) $id_raw : frl_get_current_post_id();
-					}
+				if ( $source === 'post' ) {
+					$id_raw = trim( (string) $a['id'] );
+					$pid    = ( ctype_digit( $id_raw ) && (int) $id_raw > 0 ) ? (int) $id_raw : frl_get_current_post_id();
+				}
 					$val = get_field( $target, $pid, false );
 					return is_scalar( $val ) ? (string) $val : '';
 			}

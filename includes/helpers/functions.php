@@ -102,8 +102,9 @@ function frl_name( $name_prefix = '' ) {
 /**
  * Retrieves the current user object with static and persistent caching.
  *
- * Handles early WordPress loading stages by returning a dummy user if
- * wp_get_current_user is not yet available.
+ * Handles early WordPress loading stages by returning a dummy user (not stored) if
+ * wp_get_current_user is not yet available. Requests without a logged-in cookie
+ * (anonymous, WP-CLI --user, app passwords, cron) return wp_get_current_user() directly.
  *
  * @return WP_User The current user object (ID=0 if not logged in).
  */
@@ -116,10 +117,14 @@ function frl_get_current_user() {
 		return $current_user;
 	}
 
-	// Return dummy user if WP is loading early
+	// Return dummy user if WP is loading early (not stored, so the real user is resolved later)
 	if ( ! function_exists( 'wp_get_current_user' ) || ( ! doing_action( 'plugins_loaded' ) && ! did_action( 'plugins_loaded' ) ) ) {
-		$current_user = new WP_User( 0 );
-		return $current_user;
+		return new WP_User( 0 );
+	}
+
+	// No logged-in cookie: no session to key a persistent cache entry on.
+	if ( ! isset( $_COOKIE[ LOGGED_IN_COOKIE ] ) || ! is_string( $_COOKIE[ LOGGED_IN_COOKIE ] ) ) {
+		return wp_get_current_user();
 	}
 
 	// Use auth cookie for cache key.
@@ -127,8 +132,8 @@ function frl_get_current_user() {
 	// cache entry to the specific session, preventing cross-session cache hits.
 	// Otherwise, stale WP_User objects from the persistent 'admin' cache group
 	// (1-hour TTL) could be served to a different user's session.
-	$auth_cookie     = isset( $_COOKIE[ LOGGED_IN_COOKIE ] ) ? $_COOKIE[ LOGGED_IN_COOKIE ] : 'anonymous';
-	$cookie_username = strtok( $auth_cookie, '|' );
+	$auth_cookie     = $_COOKIE[ LOGGED_IN_COOKIE ];
+	$cookie_username = (string) strtok( $auth_cookie, '|' );
 	$cookie_token    = substr( md5( $auth_cookie ), 0, 8 );
 	$cache_key       = 'user_' . $cookie_username . '_' . $cookie_token;
 
@@ -154,11 +159,12 @@ function frl_get_current_user() {
 	}
 
 	// 3. Cross-session safety: verify the cached user's login matches the
-	//    current request's cookie username. If the persistent cache returned a
-	//    stale WP_User for a different user, invalidate and re-fetch.
-	if ( $current_user->ID > 0 && $current_user->user_login !== $cookie_username ) {
+	//    current request's cookie username (case-insensitive, as MySQL matches logins).
+	//    If the persistent cache returned a stale WP_User for a different user,
+	//    invalidate and re-fetch.
+	if ( $current_user->ID > 0 && strcasecmp( $current_user->user_login, $cookie_username ) !== 0 ) {
 		frl_cache_clear( 'admin', $cache_key, false );
-		$current_user = new WP_User( 0 );
+		$current_user = wp_get_current_user();
 	}
 
 	return $current_user;
@@ -167,12 +173,14 @@ function frl_get_current_user() {
 /**
  * Retrieves user metadata using a prefixed key.
  *
- * @param int|WP_User $user_id The user ID or user object.
- * @param string      $key     The meta key. If empty, all user meta is returned.
- * @param bool        $single  Whether to return a single value or an array. Defaults to true.
+ * @param int    $user_id The user ID.
+ * @param string $key     The meta key. If empty, all user meta is returned.
+ * @param bool   $single  Whether to return a single value or an array. Defaults to true.
  * @return mixed The meta value(s), or false on failure.
  */
 function frl_get_user_meta( $user_id, $key = '', $single = true ) {
+	$user_id = (int) $user_id;
+
 	if ( empty( $key ) ) {
 		return get_user_meta( $user_id, $key, $single );
 	}
@@ -183,7 +191,7 @@ function frl_get_user_meta( $user_id, $key = '', $single = true ) {
 /**
  * Updates user metadata using a prefixed key.
  *
- * @param int|WP_User $user_id   The user ID or user object.
+ * @param int         $user_id   The user ID.
  * @param string      $key       The meta key.
  * @param mixed       $value     The value to set.
  * @param mixed       $prev_value Optional. Previous value to check against.
@@ -210,15 +218,14 @@ function frl_enqueue_scripts( $assets, $assets_key, $deps = array() ) {
 	if ( isset( $enqueued_groups[ $assets_key ] ) ) {
 		return;
 	}
-	$enqueued_groups[ $assets_key ] = true;
 
-	$assets_key .= '_scripts';
-
-	$versions = frl_get_assets_versions( $assets, $assets_key );
+	$versions = frl_get_assets_versions( $assets, $assets_key . '_scripts' );
 
 	if ( empty( $versions ) ) {
 		return;
 	}
+
+	$enqueued_groups[ $assets_key ] = true;
 
 	$prefix = FRL_PREFIX . '-';
 
@@ -308,24 +315,21 @@ function frl_get_featured_image_size( $post ) {
 }
 
 /**
- * Build a cache key from prefix + segments joined by '_'. Empty segments are ignored.
- *
- * @param string $prefix      Key prefix (without trailing '_').
- * @param string ...$segments Segments to join.
- * @return string Cache key.
- */
-/**
  * Returns the post cache version for shortcode invalidation.
  *
  * Cached statically per-request. Defaults to 1 for posts without a version.
  *
  * @since 5.8.3
  *
- * @param int $post_id Post ID.
+ * @param int  $post_id Post ID.
+ * @param bool $reset   Drop the request-static entry first (call right after bumping the version).
  * @return int Cache version.
  */
-function frl_get_post_cache_version( int $post_id ): int {
+function frl_get_post_cache_version( int $post_id, bool $reset = false ): int {
 	static $versions = array();
+	if ( $reset ) {
+		unset( $versions[ $post_id ] );
+	}
 	if ( ! isset( $versions[ $post_id ] ) ) {
 		$versions[ $post_id ] = (int) get_post_meta( $post_id, '_frl_post_version', true ) ?: 1;
 	}
@@ -402,7 +406,7 @@ function frl_get_page_title_from_url( $url ) {
 		// Other admin pages
 		$page_param = $params['page'] ?? null;
 
-		if ( $page_param ) {
+		if ( is_string( $page_param ) && $page_param ) {
 			// Format slugs for readability
 			$admin_page_title = ucfirst( str_replace( array( '-', '_' ), ' ', $page_param ) );
 			return sprintf( 'Admin Page: %s', esc_html( $admin_page_title ) );
@@ -546,7 +550,7 @@ function frl_mu_plugins_sync() {
 	}
 
 	// Cleanup orphaned files
-	$existing_mu_files = glob( $mu_plugin_dir . '/frl-*.php' );
+	$existing_mu_files = glob( $mu_plugin_dir . '/frl-*.php' ) ?: array();
 
 	foreach ( $existing_mu_files as $existing_file ) {
 		$filename = basename( $existing_file );
@@ -646,10 +650,9 @@ function frl_delete_plugin() {
 	global $wpdb;
 	$prefix  = frl_prefix();
 	$results = array(
-		'options_deleted'   => 0,
-		'options_restored'  => 0,
-		'options_preserved' => 0,
-		'cache_cleared'     => array(
+		'options_deleted'  => 0,
+		'options_restored' => 0,
+		'cache_cleared'    => array(
 			'runtime'      => 0,
 			'object_cache' => 0,
 			'transients'   => 0,
@@ -660,17 +663,42 @@ function frl_delete_plugin() {
 	frl_flush_db();
 
 	// Clear all caches
-	frl_cache_clear( 'all' );
+	$cache_stats = frl_cache_clear( 'all' );
+	if ( is_array( $cache_stats ) ) {
+		$results['cache_cleared'] = array(
+			'runtime'      => (int) ( $cache_stats['runtime'] ?? 0 ),
+			'object_cache' => (int) ( $cache_stats['object_cache'] ?? 0 ),
+			'transients'   => (int) ( $cache_stats['transients'] ?? 0 ),
+		);
+	}
 
-	// Matches plain `frl_%` (regular options) and `_frl_%` (internal-state flags
-	// excluded from Import/Export, e.g. `_frl_disable_comments_completed` — see
-	// frl_disable_comments()). Derived from $prefix so both stay in sync with FRL_PREFIX.
-	$query = "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s";
-	$args  = array( $wpdb->esc_like( $prefix ) . '%', $wpdb->esc_like( '_' . $prefix ) . '%' );
-	if ( $wpdb instanceof wpdb ) {
-		$results['options_deleted'] = $wpdb->query( $wpdb->prepare( $query, $args ) );
+	if ( ! ( $wpdb instanceof wpdb ) ) {
+		frl_log( 'ERROR - $wpdb is not a valid wpdb object before deleting options during reset.' );
 	} else {
-		frl_log( "ERROR - $wpdb is not a valid wpdb object before deleting options during reset." );
+		// Matches plain `frl_%` (regular options) and `_frl_%` (internal-state flags
+		// excluded from Import/Export, e.g. `_frl_disable_comments_completed` — see
+		// frl_disable_comments()). Derived from $prefix so both stay in sync with FRL_PREFIX.
+		// The translator marker survives a reset: it records that a multilingual plugin was once active.
+		$where = '(option_name LIKE %s OR option_name LIKE %s) AND option_name <> %s';
+		$args  = array( $wpdb->esc_like( $prefix ) . '%', $wpdb->esc_like( '_' . $prefix ) . '%', FRL_TRANSLATOR_SEEN_OPTION );
+
+		// Names first, so WP's own option cache is invalidated for exactly these rows.
+		$names                      = $wpdb->get_col( $wpdb->prepare( "SELECT option_name FROM {$wpdb->options} WHERE $where", $args ) );
+		$results['options_deleted'] = $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE $where", $args ) );
+
+		// Targeted eviction (no flush): per-option entries plus the autoloaded bundle, if cached.
+		if ( ! empty( $names ) ) {
+			$alloptions = wp_cache_get( 'alloptions', 'options' );
+			foreach ( $names as $name ) {
+				wp_cache_delete( $name, 'options' );
+				if ( is_array( $alloptions ) ) {
+					unset( $alloptions[ $name ] );
+				}
+			}
+			if ( is_array( $alloptions ) ) {
+				wp_cache_set( 'alloptions', $alloptions, 'options' );
+			}
+		}
 	}
 
 	// Final DB flush
@@ -727,8 +755,8 @@ function frl_safe_redirect( $redirect_url = '' ) {
 	$action_param     = frl_prefix( 'action' );
 	$is_plugin_action = isset( $_GET[ $action_param ] ) ? true : false;
 
-	// Get action if present
-	if ( $is_plugin_action ) {
+	// Get action if present (array-valued input is ignored)
+	if ( $is_plugin_action && is_string( $_GET[ $action_param ] ) ) {
 		$action = $_GET[ $action_param ];
 	}
 
@@ -737,7 +765,7 @@ function frl_safe_redirect( $redirect_url = '' ) {
 		// Referer as fallback — frl_wp_get_referer() handles Nginx false return
 		$referer = frl_wp_get_referer();
 		// Redirect to plugin admin for resets, otherwise referer
-		$redirect_url = ( $is_plugin_action && str_contains( $action, 'reset_' ) ) ? FRL_PLUGIN_ADMIN_URL : $referer;
+		$redirect_url = ( '' !== $action && str_contains( $action, 'reset_' ) ) ? FRL_PLUGIN_ADMIN_URL : $referer;
 	}
 
 	// Parameters to remove
@@ -745,7 +773,8 @@ function frl_safe_redirect( $redirect_url = '' ) {
 
 	// Add nonce parameters
 	if ( ! empty( $action ) ) {
-		$params_to_remove[] = $action_param . '_nonce';
+		// Emitted as frl_<action>_nonce by frl_render_action_button().
+		$params_to_remove[] = frl_prefix( $action ) . '_nonce';
 	} else {
 		// Scan for any prefixed nonce parameters
 		foreach ( $_GET as $key => $value ) {
@@ -814,9 +843,9 @@ function frl_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' )
 		return false;
 	}
 
-	// Include language in cache key for multilingual compatibility
+	// The permalinks group is language-scoped by the cache manager, so the key carries no language.
 	$lang      = frl_get_language();
-	$cache_key = 'cf_terms_' . $post_id . '_' . sanitize_key( $taxonomy ) . '_' . $lang;
+	$cache_key = 'cf_terms_' . $post_id . '_' . sanitize_key( $taxonomy ) . '_' . sanitize_key( $field );
 
 	return frl_cache_remember(
 		'permalinks',
@@ -875,7 +904,7 @@ function frl_get_post_terms( $post = 0, $taxonomy = 'category', $field = 'all' )
 function frl_get_post_meta( int $post_id, string $key, bool $single = true ) {
 	// Primary: raw post meta (ACPT or standard WP)
 	$value = get_post_meta( $post_id, $key, $single );
-	if ( $value !== null && $value !== '' && $value !== false ) {
+	if ( $value !== null && $value !== '' && $value !== false && $value !== array() ) {
 		return $value;
 	}
 
@@ -887,9 +916,9 @@ function frl_get_post_meta( int $post_id, string $key, bool $single = true ) {
 
 	// Fallback: ACF (handles serialization, repeaters, etc.)
 	if ( function_exists( 'get_field' ) ) {
-		$acf_value = get_field( $key, $post_id, $single );
+		$acf_value = get_field( $key, $post_id );
 		if ( $acf_value !== null && $acf_value !== false ) {
-			return $acf_value;
+			return ( $single || is_array( $acf_value ) ) ? $acf_value : array( $acf_value );
 		}
 	}
 	return $value;

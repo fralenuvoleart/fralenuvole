@@ -103,8 +103,7 @@ class Frl_Cache_Display {
 		// Persistence logic:
 		// By default, this plugin *will* use transients if a high-performance cache is not functional.
 		// So, is_persistent is almost always true unless caching is totally bypassed.
-		$non_persistent_slugs = array(); // Add any non-persistent slugs here if they exist in the future.
-		if ( in_array( $details['slug'], $non_persistent_slugs, true ) ) {
+		if ( defined( 'FRL_CACHE_NON_PERSISTENT_SLUGS' ) && in_array( $details['slug'], (array) FRL_CACHE_NON_PERSISTENT_SLUGS, true ) ) {
 			$details['is_persistent'] = false;
 		} else {
 			$details['is_persistent'] = true;

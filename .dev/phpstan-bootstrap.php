@@ -6,6 +6,9 @@
  * wordpress-stubs package during PHPStan analysis.
  */
 
+// WordPress core guard: config/config.php exits without it (silently killing analysis).
+if (!defined('ABSPATH')) { define('ABSPATH', '/tmp/wp/'); }
+
 // WordPress time constants
 if (!defined('MINUTE_IN_SECONDS')) { define('MINUTE_IN_SECONDS', 60); }
 if (!defined('HOUR_IN_SECONDS'))   { define('HOUR_IN_SECONDS', 3600); }

@@ -75,7 +75,7 @@ function frl_render_action_button(
 	}
 
 	$button_class  = 'button ';
-	$button_class .= $class_name ?? 'button-small';
+	$button_class .= $class_name;
 
 	$label = empty( $label ) ? ucwords( str_replace( '_', ' ', $action ) ) : $label;
 	$url   = empty( $url ) ? FRL_PLUGIN_ADMIN_URL : $url;
@@ -468,9 +468,7 @@ function frl_apply_debug_settings( $updated_options = null, $show_no_changes_not
 					'wp-config.php',
 					__( 'No changes were needed, settings are already applied', FRL_PREFIX )
 				);
-				if ( $overall_status !== 'error' ) {
-					$overall_status = 'info';
-				}
+				$overall_status = 'info';
 			}
 		} else {
 			$notice_parts[] = sprintf(

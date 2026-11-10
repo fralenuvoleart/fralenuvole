@@ -57,24 +57,6 @@
     margin-bottom: 10px;
 }
 
-/* Simple Header Bar */
-.frl-simple-header {
-    padding: 8px 15px;
-    border-top: 4px solid #fff;
-    background-color: #f0f0f0;
-}
-
-.frl-simple-header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.frl-simple-header-title {
-    font-weight: 600;
-    font-size: 14px;
-}
-
 /* General Widget Row */
 .frl-widget-row {
     display: flex;
@@ -303,17 +285,6 @@
     font-size: 14px;
 }
 
-/* Specific code highlighting (example) */
-.widget-code .language-current-error-level {
-    padding: 2px;
-}
-
-.env-error-level {
-    font-family: monospace;
-    font-size: 11px;
-    color: #905;
-}
-
 /* --- Message/Notice Styling --- */
 .frl-warning-message {
     background-color: #FFF3CD;
@@ -324,7 +295,8 @@
     border-radius: 4px;
 }
 
-.frl-error-message {
+.frl-error-message,
+p.tag-validator-error {
     color: #dc3232;
     padding: 10px;
     background: #fcf0f0;
@@ -431,15 +403,6 @@
     margin-top: 5px;
 }
 
-#tag-validator-priority-tag .tag-examples {
-    margin-top: 10px;
-}
-
-#tag-validator-priority-tags .tag-examples.tag-priority {
-    border-left: 4px solid #2271b1;
-    padding-left: 10px;
-}
-
 /* --- Status Indicators (Tag Validator Specific) --- */
 #tag-validator-priority-tags .status-dot,
 #tag-validator-priority-tags .status-dot-container {
@@ -456,16 +419,6 @@
     width: 10px;
     height: 10px;
     margin-right: 5px;
-}
-
-#tag-validator-priority-tags .status-dot.active:before {
-    background-color: #46b450;
-    /* Green */
-}
-
-#tag-validator-priority-tags .status-dot.inactive:before {
-    background-color: #dc3232;
-    /* Red */
 }
 
 #tag-validator-priority-tags .status-dot.uninstalled:before {

@@ -210,6 +210,7 @@ function frl_preload_featured_image() {
 		return;
 	}
 
+	/** @var WP_Post $post */
 	$allowed_types = apply_filters( 'frl_hero_mobile_post_types', FRL_PRELOAD_IMAGE_MOBILE_POST_TYPES );
 	$is_hero_type  = in_array( $post->post_type, $allowed_types, true ) || ( in_array( 'home', $allowed_types, true ) && is_front_page() );
 

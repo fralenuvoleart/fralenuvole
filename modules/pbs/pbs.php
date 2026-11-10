@@ -28,25 +28,33 @@ add_filter(
 );
 
 /**
- * Add common scripts
+ * Add common scripts on frontend requests only.
  */
 function frl_pbs_load_public_scripts() {
+	if ( is_admin() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI ) || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+		return;
+	}
+
 	$assets = array( 'pbs-public-js' => 'modules/pbs/assets/js/public.js' );
 	frl_enqueue_scripts( $assets, 'pbs_public' );
+
+	$handle = FRL_PREFIX . '-pbs-public';
+	if ( ! wp_script_is( $handle, 'enqueued' ) ) {
+		return;
+	}
 
 	// Inline script with version check
 	$data = array(
 		'selector'   => PBS_JS_REMOVE_HTML_SELECTOR,
 		'substrings' => PBS_JS_REMOVE_HTML_STRINGS[ frl_get_language() ] ?? '', // Unknown language: empty.
 	);
-	wp_localize_script( FRL_PREFIX . '-pbs-public', 'pbsSettings', $data );
+	wp_localize_script( $handle, 'pbsSettings', $data );
 
 	// The function call is now handled within the JavaScript file after document load
 }
 
 
-/** Set Service-Type field default value
-*/
+/** Set the Service-Type field default value. */
 function frl_pbs_set_monday_field( $form, $preview ) {
 	/** @disregard P1010 Undefined type */
 	$fields = wsf_form_get_fields( $form );

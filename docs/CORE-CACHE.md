@@ -63,10 +63,11 @@ Groups stored across requests (object cache or transients):
 
 | Group | TTL |
 |---|---|
-| `staticdata`, `theme`, `rewriter`, `translations`, `permalinks`, `postdata`, `metafields` | `WEEK_IN_SECONDS` (all version- or hook-invalidated; TTL is a safety net) |
-| `html`, `blocks`, `shortcodes`, `adminui` | `DAY_IN_SECONDS` |
-| `options` | `DAY_IN_SECONDS` (actively invalidated; TTL is a safety net for out-of-band DB edits) |
+| `staticdata`, `theme`, `rewriter`, `translations`, `postdata`, `metafields`, `html`, `blocks`, `shortcodes`, `options` | `WEEK_IN_SECONDS` |
+| `permalinks`, `adminui` | `DAY_IN_SECONDS` |
 | `versions`, `environment`, `admin`, `default` | `HOUR_IN_SECONDS` |
+
+Every group above is version- or hook-invalidated; `options` in particular is actively invalidated by `frl_update_option()` and the cleanup hooks, so its TTL is only a safety net for out-of-band DB edits.
 
 ### Language-Aware Groups
 
@@ -76,7 +77,7 @@ Keys are prefixed: `{group}_{lang}_{key}` (e.g., `permalinks_en_post_42`).
 
 ### Heavy Groups (excluded from light purge)
 
-`staticdata`, `blocks`, `translations`, `permalinks`, `postdata`
+`staticdata`, `blocks`, `translations`, `permalinks`, `postdata`, `rewriter`
 
 ### Scripts Groups (cleared on scripts flush)
 
@@ -93,7 +94,7 @@ These lists are a **transient-path** optimization. On a functional object cache,
 
 ```
 options       → theme, html, environment, admin, adminui
-rewriter      → permalinks   (rewriter is NOT an options dependency; invalidated by the frl_rewriter_* option hook + flush_rewrite_rules)
+rewriter      → permalinks   (rewriter is NOT an options dependency; invalidated by the frl_rewriter_* option hook + whenever rules are rebuilt, `generate_rewrite_rules`)
 translations  → metafields
 environment   → adminui, admin
 staticdata    → adminui
@@ -135,10 +136,10 @@ Groups in `FRL_CACHE_PERSISTENT_GROUPS` use transients when object cache is abse
 **Key methods:**
 - `set()` — writes to runtime + persistent
 - `get()` — runtime → persistent → callback generation. Populates runtime on persistent hit.
-- `get_multi()` — batch load. `$keys = null` loads all keys for a group **only on the transient path** (a `LIKE` query); on a functional object cache keys cannot be enumerated, so it returns the runtime-hydrated subset. Chunks specific-key loads in batches of 100.
+- `get_multi()` — batch load. `$keys = null` loads all keys for a group **only on the transient path** (a `LIKE` query); on a functional object cache keys cannot be enumerated, so it returns the runtime-hydrated subset. Chunks specific-key loads in batches of 100. Transient rows whose timeout has passed are skipped (treated as misses) on every read path, including the eager preload.
 - `preload_multi()` — calls `get_multi()` with `$return_values = false`. On a functional object cache this is a no-op (no enumeration); groups listed in `FRL_CACHE_PRELOAD_*_GROUPS` warm lazily on first access there. The eager preload only does real work on the transient path, where `auto_preload()` collapses the groups into one batched `LIKE` query.
 
-**Falsey values:** a cached `false`/`null` is distinguishable from a miss. Object-cache reads use `wp_cache_get(..., $found)` (with a legacy `!== false` fallback for drop-ins that don't populate `$found`); transient reads/writes wrap falsey values in a `__frl_falsey__` sentinel so `get_transient()` returning `false` still means "miss".
+**Falsey values:** a cached `false`/`null` is distinguishable from a miss on both backends. Writes wrap falsey values in a `__frl_falsey__` sentinel (object cache and transients alike) and every read path unwraps it; object-cache reads use `wp_cache_get(..., $found)` with a legacy `!== false` fallback for drop-ins that don't populate `$found`.
 
 ### Provider Detection
 
@@ -159,11 +160,11 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 | Tier | Method | What It Clears | Dependencies | Heavy Groups |
 |---|---|---|---|---|
 | Light | `purge_light()` | All groups except heavy | No | Skipped |
-| All | `purge_all()` | All groups | Yes | Cleared |
+| All | `purge_all()` | All groups | No | Cleared |
 
-**`purge_all()`:** Resets runtime state, batch-deletes plugin transients from DB (if transient fallback), iterates all groups with dependency cascade. Wrapped in `with_auth_preservation()`. On Redis, all groups are storage-flushed in ONE keyspace scan first (`flush_groups_redis()`), and the per-group loop skips storage via the `$storage_batch_flushed` map.
+**`purge_all()`:** Resets runtime state, batch-deletes plugin transients from DB (if transient fallback), iterates all groups with `include_dependencies=false` (every group is cleared explicitly, so no cascade is needed). Wrapped in `with_auth_preservation()`. On Redis, all groups are storage-flushed in ONE keyspace scan first (`flush_groups_redis()`), and the per-group loop skips storage via the `$storage_batch_flushed` map.
 
-**`purge_light()`:** Iterates all groups skipping `FRL_CACHE_HEAVY_GROUPS`, clears each WITHOUT dependencies. Uses the same single-scan Redis batch for the light groups.
+**`purge_light()`:** Iterates all groups skipping `FRL_CACHE_HEAVY_GROUPS`, clears each WITHOUT dependencies, and returns `object_cache`/`transients` counters (the admin notice reads them). Uses the same single-scan Redis batch for the light groups.
 
 **`purge_groups(array $groups)`:** Generic multi-group batch (helper: `frl_cache_clear_groups()`). One Redis scan for K groups; per-group fallback on other backends. Used by `action_clear_scripts_tags`.
 
@@ -216,15 +217,14 @@ A provider is "effectively functional" only if its plugin is active AND detectio
 
 | Hook | What It Clears |
 |---|---|
-| `save_post` | Postdata, permalinks, meta, langswitcher, featured images |
+| `save_post` | Bumps `_frl_post_version`; clears tracked meta for that post ID (every Polylang sibling is cleared on its own save) |
 | `save_post_wp_navigation` | `wp_navigation_{$post_id}` key in `permalinks` + `shortcodes` group (menu sitemap) |
-| `wp_update_nav_menu` | `wp_menu_{$menu_id}` key in `permalinks` + `shortcodes` group (menu sitemap) |
-| `edited_term` | `permalinks` group + tracked meta for term |
+| `wp_update_nav_menu`, `wp_delete_nav_menu` | `shortcodes` group (menu sitemap) |
+| `edited_term` | `permalinks` group when slug/parent/name/description changed, `shortcodes` group when slug/parent/name changed, plus tracked meta for term |
 | `pll_save_strings_translations` | Bumps `translation_version`, clears `translations` (→ cascades to `metafields`) |
-| `update_option` | Plugin transient matching option name |
 | `updated_option` | Translated option caches for all languages (plugin-owned options only) |
 | `profile_update` | Tracked meta for user |
-| `acf/save_post` (post_id = `option`/`options`) | `shortcodes` group (unversioned `acf_calc_*_option` keys) |
+| `acf/save_post` (post_id = `option`/`options`, priority 1000, after the recompute at 999) | `shortcodes` group (unversioned `acf_calc_*_option` keys) |
 | `customize_save_after` | `login_inline_style` key in `html` (embeds `custom_logo` theme mod) |
 | `wp_update_attachment_metadata` | `svg_dims_{$id}` key in `html` (attachments skip `save_post` clearing) |
 | `save_post_gd_place` | `blocks` group (unversioned, language-prefixed `places_by_lang` key) |
@@ -239,9 +239,9 @@ All in `functions-class-helpers.php`. Every function checks `frl_cache_is_loaded
 | `frl_cache_set($group, $key, $value, $ttl)` | Store value |
 | `frl_cache_remember($group, $key, $callback, $ttl)` | Cache-aside (no lock — see Race Condition Prevention) |
 | `frl_cache_clear($group, $key, $include_dependencies)` | Clear cache — routes to orchestrator or direct manager calls |
-| `frl_cache_clear_keys($group, $keys)` | Batch-clear specific keys via one `wp_cache_delete_multiple()` (per-key fallback on older cores); also drops runtime entries and resets the options static caches for the `options` group |
+| `frl_cache_clear_keys($group, $keys, $languages = false)` | Batch-clear specific keys via one `wp_cache_delete_multiple()` (per-key fallback on older cores); also drops runtime entries and resets the options static caches for the `options` group. `$languages` applies to language groups only: `false` = current language, `true` = every active language plus the current one, array = exactly those language codes |
 | `frl_cache_get_multi($group, $keys, $return_values)` | Batch get multiple keys |
-| `frl_cache_set_multi($group, $items, $ttl)` | Batch set multiple keys |
+| `frl_cache_get_in_language($group, $key, $language)` | Read a language-group key under an explicit language (no callback, no write); `null` on a miss |
 | `frl_cache_preload_multi($group, $keys)` | Preload group into runtime cache |
 
 ### `frl_cache_clear()` Routing
@@ -249,13 +249,13 @@ All in `functions-class-helpers.php`. Every function checks `frl_cache_is_loaded
 ```
 frl_cache_clear($group, $key, $include_dependencies)
     │
-    ├── $group ∈ {hard, all, light, options, rewriter}
+    ├── $key === null && $include_dependencies && $group ∈ {all, light, options, rewriter}
     │       → Frl_Cache_Operations::run('clear_{group}')
     ├── $group === 'plugin_transients'
     │       → Frl_Cache_Manager::clear_transients()
     ├── $group === 'website_transients'
     │       → Frl_Cache_Manager::clear_all_website_transients()
-    └── Any other group
+    └── Anything else (any other group, or a keyed / dependency-free clear of the groups above)
             → Frl_Cache_Manager::clear_group_with_dependencies($group, $key, $include_dependencies)
 ```
 
@@ -267,7 +267,7 @@ frl_cache_clear($group, $key, $include_dependencies)
 
 ### Full-Group Clear
 
-`frl_cache_clear('options')` — checks `$groups_cleared` dedup, purges persistent + runtime storage, resets the plugin's `frl_get_option` static cache, cascades to dependencies. It deliberately does **not** clear WordPress's own `alloptions` cache (that would force a full autoloaded-options reload site-wide), and it does **not** remove `pre_option_frl_*` filters — those are managed per-write by `frl_update_option()` / `frl_delete_option()`.
+`frl_cache_clear('options')` — checks `$groups_cleared` dedup, purges persistent + runtime storage, resets the plugin's `frl_get_option` static cache, cascades to dependencies. It deliberately does **not** clear WordPress's own `alloptions` cache (that would force a full autoloaded-options reload site-wide), and it does **not** remove `pre_option_frl_*` filters — those are managed per-write by `frl_update_option()`.
 
 ### Alloptions Cache Clear (Action)
 

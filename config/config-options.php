@@ -7,19 +7,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Runtime plugin options not defined elsewhere, to remove missing options flag
 const FRL_OPTIONS_RUNTIME = array(
-	'environment_state'           => array(
+	'environment_state'                    => array(
 		'type'    => 'text',
 		'default' => '',
 	),
-	'environment_ignore_plugins'  => array(
+	'environment_ignore_plugins'           => array(
 		'type'    => 'text',
 		'default' => '',
 	),
-	'environment_ignore_options'  => array(
+	'environment_ignore_options'           => array(
 		'type'    => 'text',
 		'default' => '',
 	),
-	'translation_version'         => array(
+	'translation_version'                  => array(
 		'type'    => 'text',
 		'default' => 1,
 	),
@@ -27,7 +27,7 @@ const FRL_OPTIONS_RUNTIME = array(
 		'type'    => 'textlist',
 		'default' => '',
 	),
-	'plugin_version'              => array(
+	'plugin_version'                       => array(
 		'type'    => 'text',
 		'default' => '0.0.0',
 	),
@@ -671,7 +671,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'description' => 'Custom rewriter features with priority-based URL processing',
 				'type'        => 'section_title',
 			),
-			'rewriter_translate_post_base'     => array(
+			'rewriter_translate_post_base'      => array(
 				'label'             => 'Post Base Translation',
 				'description'       => 'Add language-specific post base to URLs. Adapts to permalink structure: with %category% creates /en/news/tech/article-name, without creates /en/news/article-name. Format: lang|base per line. Priorities: 10 (Archives) & 20 (Singles).',
 				'placeholder'       => "en|news\nit|notizie",
@@ -680,7 +680,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'restricted'        => true,
 			),
-			'rewriter_translate_cpt_slugs'     => array(
+			'rewriter_translate_cpt_slugs'      => array(
 				'label'       => 'CPT Base Translation',
 				'description' => 'Translate CPT base in URLs for multilingual sites. Each CPT requires configuration in FRL_REWRITER_MULTILINGUAL_CPT constant. Format: lang|slug per line. Priorities: 15 (Archives) & 25 (Singles).',
 				'placeholder' => "en|services\nit|servizi",
@@ -688,7 +688,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'callback'    => 'frl_render_rewrite_multilingual_cpts',
 				'restricted'  => true,
 			),
-			'rewriter_remove_tax_base'         => array(
+			'rewriter_remove_tax_base'          => array(
 				'label'             => 'Taxonomy Base Removal',
 				'description'       => 'Remove taxonomy base from categories and custom taxonomies (e.g., /tech/ instead of /category/tech/). One taxonomy per line. Priority 35.',
 				'type'              => 'textlist',
@@ -697,7 +697,7 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 				'restricted'        => true,
 			),
-			'rewriter_remove_cpt_base'         => array(
+			'rewriter_remove_cpt_base'          => array(
 				'label'             => 'CPT Base Removal',
 				'description'       => 'Remove CPT base from URLs (e.g., /my-service/ instead of /service/my-service/). One CPT slug per line. Priority 40.',
 				'type'              => 'textlist',

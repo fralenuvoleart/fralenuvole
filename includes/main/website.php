@@ -198,7 +198,7 @@ function frl_disable_comments() {
 		);
 	}
 
-	// Unconditional filters: enforce "comments disabled" for REST/feed requests.
+	// Registered for every request type, including REST and AJAX.
 	add_filter(
 		'rest_endpoints',
 		function ( $endpoints ) {
@@ -212,9 +212,12 @@ function frl_disable_comments() {
 		'template_redirect',
 		function () {
 			if ( is_comment_feed() ) {
+				$public_query_vars = ( isset( $GLOBALS['wp'] ) && $GLOBALS['wp'] instanceof WP ) ? $GLOBALS['wp']->public_query_vars : array();
+				// Carry only non-WordPress args (e.g. utm_*): query vars would recreate the comment feed.
+				$extra_args   = array_diff_key( $_GET, array_flip( $public_query_vars ) );
 				$redirect_url = home_url();
-				if ( ! empty( $_GET ) ) {
-					$redirect_url = add_query_arg( $_GET, $redirect_url );
+				if ( ! empty( $extra_args ) ) {
+					$redirect_url = add_query_arg( wp_unslash( $extra_args ), $redirect_url );
 				}
 				wp_redirect( $redirect_url );
 				exit;

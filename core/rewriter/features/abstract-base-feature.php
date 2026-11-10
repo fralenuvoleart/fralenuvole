@@ -173,7 +173,8 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 			$found = get_posts(
 				array(
 					'name'           => $name,
-					'post_type'      => 'any',
+					// WP's default name query only looks at posts, never at CPTs.
+					'post_type'      => 'post',
 					'post_status'    => 'publish',
 					'posts_per_page' => 1,
 					'fields'         => 'ids',
@@ -792,8 +793,11 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 
 		// Add global configuration that affects this feature
 		$config_data['global_config'] = array(
-			'rewriter_remove_tax_base' => frl_get_option( 'rewriter_remove_tax_base' ),
-			'rewriter_remove_cpt_base' => frl_get_option( 'rewriter_remove_cpt_base' ),
+			'rewriter_remove_tax_base'     => frl_get_option( 'rewriter_remove_tax_base' ),
+			'rewriter_remove_cpt_base'     => frl_get_option( 'rewriter_remove_cpt_base' ),
+			'rewriter_translate_post_base' => frl_get_option( 'rewriter_translate_post_base' ),
+			'permalink_structure'          => Frl_Rewriter_Path_Utils::get_permalink_structure(),
+			'active_languages'             => Frl_Rewriter_Path_Utils::get_active_languages_safe(),
 		);
 
 		// Add CPT translation configs if applicable

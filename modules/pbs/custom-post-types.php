@@ -443,17 +443,6 @@ function frl_pbs_kill_taxonomy_archives( $query ) {
 }
 
 /**
- * Resolve /about/{slug}/ collision between team-member CPT and child pages.
- *
- * The team-member CPT rewrite slug 'about' generates a native rewrite rule
- * about/([^/]+)/?$ that matches before the generic page rule. When no
- * team-member post exists for the requested slug, fall back to page resolution
- * so child pages like /about/team/ resolve correctly.
- *
- * Hooks at parse_request priority 1 — rewrites matched_rule and query_vars
- * before WP_Query parses, so WordPress resolves the page natively.
- */
-/**
  * Resolve /{parent}/{slug}/ collision between team-member CPT and child pages.
  *
  * The team-member CPT rewrite slug 'about' generates a native rewrite rule
@@ -473,9 +462,9 @@ add_action(
 
 		$slug = $wp->query_vars['team-member'];
 
-		// If a real team-member post exists, let it win.
+		// If a published team-member owns the slug, let it win.
 		$team_member = get_page_by_path( $slug, OBJECT, 'team-member' );
-		if ( $team_member ) {
+		if ( $team_member && 'team-member' === $team_member->post_type && 'publish' === $team_member->post_status ) {
 			return;
 		}
 
@@ -519,6 +508,7 @@ add_action(
 			$wp->query_vars['name'],
 			$wp->query_vars['error']
 		);
+		/** @var WP $wp */
 		$wp->query_vars['page_id']  = $page->ID;
 		$wp->query_vars['pagename'] = $pagename;
 		$wp->matched_rule           = '(.?.+?)(/[0-9]+)?/?$';

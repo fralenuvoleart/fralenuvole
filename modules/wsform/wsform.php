@@ -16,12 +16,13 @@ require_once FRL_DIR_PATH . 'public/channel-tracking.php';
 require_once __DIR__ . '/email-directives.php';
 
 // Load the phone sanitizer only when phone validation is enabled.
-if ( frl_get_option( 'wsform_phone_validation' ) ) {
+// Native get_option(): module options are not registered yet at include time.
+if ( get_option( frl_prefix( 'wsform_phone_validation' ), '0' ) ) {
 	require_once __DIR__ . '/phone/phone-validation.php';
 }
 
 // Serve WS Form's inline footer config as a cached static file.
-if ( frl_get_option( 'wsform_external_footer' ) ) {
+if ( get_option( frl_prefix( 'wsform_external_footer' ), '1' ) ) {
 	require_once __DIR__ . '/external-footer-wsform.php';
 }
 

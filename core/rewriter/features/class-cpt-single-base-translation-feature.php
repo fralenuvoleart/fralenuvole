@@ -64,6 +64,24 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base 
 	}
 
 	/**
+	 * Singular /feed/ is a comment feed; the plugin disables it with disable_comments.
+	 *
+	 * @return bool
+	 */
+	private function feeds_enabled(): bool {
+		return ! frl_get_option( 'disable_comments' );
+	}
+
+	/**
+	 * Feed gate is part of the rules cache key.
+	 *
+	 * @return array
+	 */
+	protected function get_feature_config_for_hash(): array {
+		return array( 'feeds' => $this->feeds_enabled() );
+	}
+
+	/**
 	 * Load configuration from options
 	 *
 	 * @return void
@@ -84,21 +102,24 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base 
 
 		$rules         = array();
 		$cpt_query_var = $this->cpt_slug; // Use the CPT slug as the query var
+		$feeds         = $this->feeds_enabled();
 
 		foreach ( $this->mappings as $lang => $translated_base ) {
 			$lang_esc = Frl_Rewriter_Path_Utils::escape_for_regex( $lang, '#' );
 			$base_esc = Frl_Rewriter_Path_Utils::escape_for_regex( $translated_base, '#' );
 
-			// Specific suffixes first, generic rule last: add_rewrite_rule() APPENDS
-			// to extra_rules_top, so the first registered pattern wins. A generic
-			// (.+?)/?$ registered first would swallow /feed/ and /embed/.
-			$rules[ "^{$lang_esc}/{$base_esc}/(.+?)/feed/?$" ]                     = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&feed=feed&lang={$lang}";
+			// First registered pattern wins: specific suffixes before the generic rule.
+			if ( $feeds ) {
+				$rules[ "^{$lang_esc}/{$base_esc}/(.+?)/feed/?$" ] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&feed=feed&lang={$lang}";
+			}
 			$rules[ "^{$lang_esc}/{$base_esc}/(.+?)/embed/?$" ]                    = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&embed=true&lang={$lang}";
 			$rules[ "^{$lang_esc}/{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$" ] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&cpage=\$matches[2]&lang={$lang}";
 			$rules[ "^{$lang_esc}/{$base_esc}/(?!page/[0-9]+/?$)(.+?)/?$" ]        = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&lang={$lang}";
 
 			// Post single-item rules without language prefix (only add if no multilingual plugin manages lang roots)
-			$rules[ "^{$base_esc}/(.+?)/feed/?$" ]                     = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&feed=feed&lang={$lang}";
+			if ( $feeds ) {
+				$rules[ "^{$base_esc}/(.+?)/feed/?$" ] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&feed=feed&lang={$lang}";
+			}
 			$rules[ "^{$base_esc}/(.+?)/embed/?$" ]                    = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&embed=true&lang={$lang}";
 			$rules[ "^{$base_esc}/(.+?)/comment-page-([0-9]{1,})/?$" ] = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&cpage=\$matches[2]&lang={$lang}";
 			$rules[ "^{$base_esc}/(?!page/[0-9]+/?$)(.+?)/?$" ]        = "index.php?post_type={$this->cpt_slug}&name=\$matches[1]&{$cpt_query_var}=\$matches[1]&lang={$lang}";
@@ -165,12 +186,17 @@ class Frl_CPT_Single_Base_Translation_Feature extends Frl_Rewriter_Feature_Base 
 
 		$uri           = Frl_Rewriter_Path_Utils::extract_request_path( $request_uri );
 		$cpt_query_var = $this->cpt_slug;
+		$feeds         = $this->feeds_enabled();
 
 		foreach ( $this->mappings as $lang => $translated_base ) {
 			$lang_esc = Frl_Rewriter_Path_Utils::escape_for_regex( $lang, '#' );
 			$base_esc = Frl_Rewriter_Path_Utils::escape_for_regex( $translated_base, '#' );
 
 			$single_req = Frl_Rewriter_Path_Utils::parse_cpt_single_request( $uri, $lang_esc, $base_esc );
+			// Feeds disabled: let /feed/ fall through to the slug branch (plain 404).
+			if ( $single_req && ! $feeds && 'feed' === $single_req['type'] ) {
+				$single_req = null;
+			}
 			if ( $single_req ) {
 				$res = array(
 					'post_type'    => $this->cpt_slug,

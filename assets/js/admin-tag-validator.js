@@ -27,7 +27,7 @@
                 
             // Validate URL before proceeding
             if (!urlToValidate) {
-                resultsContainer.html('<div class="error">Please enter a valid URL to validate.</div>');
+                resultsContainer.html('<p class="tag-validator-error">Please enter a valid URL to validate.</p>');
                 return;
             }
             
@@ -56,7 +56,7 @@
                     
                     // Check if we got valid results
                     if (!resultsHtml) {
-                        resultsContainer.html('<div class="error">Error parsing response from server. Please try again.</div>');
+                        resultsContainer.html('<p class="tag-validator-error">Error parsing response from server. Please try again.</p>');
                         return;
                     }
                     
@@ -68,7 +68,7 @@
                     $(document).trigger('frl_content_loaded', [resultsContainer[0]]);
                 },
                 error: function() {
-                    resultsContainer.html('<div class="error">Error communicating with the server.</div>');
+                    resultsContainer.html('<p class="tag-validator-error">Error communicating with the server.</p>');
                 }
             });
         });

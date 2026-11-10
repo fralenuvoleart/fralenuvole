@@ -53,7 +53,7 @@ No access to any plugin features.
 
 ## Core Function: `frl_has_access()`
 
-**File:** `includes/helpers/functions-access-control.php:25`
+**File:** `includes/helpers/functions-access-control.php:24`
 
 ```php
 function frl_has_access( $capability = FRL_PLUGIN_ACCESS ): bool
@@ -105,11 +105,11 @@ frl_create_nonce( 'my_action' );              // → wp_create_nonce('frl_my_act
 frl_nonce_field( 'save_options', '_wpnonce' ); // → wp_nonce_field('frl_save_options', '_wpnonce')
 ```
 
-Both defined in `includes/helpers/functions.php:864`.
+Defined in `includes/helpers/functions.php` (`frl_create_nonce()` `:804`, `frl_nonce_field()` `:817`).
 
 ### Verifying Nonces
 
-All verification flows through `_frl_verify_nonce_core()`, which:
+All verification flows through `_frl_verify_nonce_core()` (`includes/helpers/functions-access-control.php:705`), which:
 1. Picks the correct superglobal (`$_GET`, `$_POST`, or `$_REQUEST`)
 2. Checks the nonce field exists
 3. Calls `wp_verify_nonce()`
@@ -117,12 +117,12 @@ All verification flows through `_frl_verify_nonce_core()`, which:
 
 **Public wrappers:**
 
-| Function | File:Line | Use Case |
+| Function | Line in `includes/helpers/functions-access-control.php` | Use Case |
 |----------|-----------|----------|
-| `frl_verify_simple_nonce()` | `:966` | Static action name, auto-prefixed. Default cap: `FRL_PLUGIN_ACCESS` |
-| `frl_verify_dynamic_nonce()` | `:992` | Pattern-based action with `{placeholder}` replacement |
-| `frl_verify_plugin_action_nonce()` | `:816` | Plugin action dispatch — requires `FRL_PLUGIN_ACCESS` |
-| `frl_verify_admin_action_nonce()` | `:853` | Settings form save — no capability check, custom redirect on failure |
+| `frl_verify_simple_nonce()` | `:762` | Static action name, auto-prefixed. Default cap: `FRL_PLUGIN_ACCESS` |
+| `frl_verify_dynamic_nonce()` | `:788` | Pattern-based action with `{placeholder}` replacement |
+| `frl_verify_plugin_action_nonce()` | `:630` | Plugin action dispatch — requires `FRL_PLUGIN_ACCESS` |
+| `frl_verify_admin_action_nonce()` | `:649` | Settings form save — no capability check, custom redirect on failure |
 
 ## Action Button Rendering
 
@@ -190,14 +190,16 @@ The admin bar menu is gated by **both**:
 
 ### GET Actions (`?frl_action=...`)
 
-**File:** `includes/helpers/functions-action-handlers.php:24`
+**File:** `includes/helpers/functions-action-handlers.php:47`
 
-Hooked at `init:12`. Processes actions from admin bar cache links and other GET-based triggers.
+Hooked at `init:12`. Processes `?frl_action=` GET requests from the admin bar links, the dashboard action buttons and modules (via `frl_action_registry`).
 
 **Access check:**
 ```php
 frl_has_access()
 ```
+
+**Nonce gate:** actions listed by `frl_actions_requiring_nonce()` (`reset_plugin`, `reset_environment`, `reset_environment_ignored`, `reset_debug_config`, `delete_mu_plugins`, `sync_mu_plugins`, `delete_orphan_options`, `flush_rewrite_rules`, `clear_wp_alloptions`) must carry `frl_<action>_nonce` (action `frl_<action>`), as emitted by `frl_render_action_button()`. A failed check shows a notice and redirects through `frl_safe_redirect()`. Extend the list with the `frl_actions_requiring_nonce` filter. Purge/warm actions (the admin-bar set and the rest) stay capability-only.
 
 Registered actions: `clear_dashboard`, `clear_cache_light`, `clear_cache_all`, `clear_wp_alloptions`, `clear_plugin_transients`, `clear_website_transients`, `clear_scripts_tags`, `clear_shortcodes`, `reset_environment`, `reset_environment_ignored`, `reset_debug_config`, `reset_plugin`, `delete_mu_plugins`, `delete_orphan_options`, `sync_mu_plugins`, `flush_rewrite_rules`, `trigger_cache_warmer`, plus dynamic `clear_cache_{group}`.
 
@@ -226,7 +228,7 @@ Return `true` to hide a settings section from the current user. Used to gate sen
 
 ### Filter: `frl_admin_dashboard_links`
 
-**File:** `admin/widgets/widget-administrator.php:16`
+**File:** `admin/widgets/widget-administrator.php:17`
 
 ```php
 apply_filters( 'frl_admin_dashboard_links', $links ): array

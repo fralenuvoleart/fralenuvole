@@ -215,8 +215,7 @@
 
 .frl-section h2,
 .wrap>h2:first-child,
-.frl-widget.has-section-title :where(h2, h3),
-.frl-section-header.has-section-title :where(h2, h3) {
+.frl-widget.has-section-title :where(h2, h3) {
     padding: 12px 20px;
     font-size: 18px;
     border-radius: 0 4px 0 0;
@@ -391,40 +390,6 @@
 /* Header background for log tables */
 .widget-table.log-table .widget-table-header {
     background-color: #f5f5f5;
-}
-
-.frl-admin-menu-info p {
-    margin: 1em 0 !important;
-}
-.frl-menu-slug-list {
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-.frl-menu-item-row {
-    display: flex;
-    gap: 30px;
-}
-
-.frl-menu-item-row span {
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-}
-
-.frl-menu-item-row span:first-child {
-    flex-basis: 20%;
-}
-
-.frl-menu-item-row span:nth-child(3) {
-    flex-basis: 35%;
-}
-
-.frl-menu-item-row input:read-only {
-    background-color: #f5f5f5;
-    color: #555;
-    border-color: #ccc;
-    width: 100%;
 }
 
 /* ==========================================================================

@@ -20,7 +20,7 @@ Frl_Translation_Service  [final, singleton]
 | `core/translator/translator.php` | Module entry point — requires loader, service, field-translator |
 | `core/translator/class-translation-service.php` | Central hub — caching, batching, translation lifecycle |
 | `core/translator/field-translator.php` | Hook-based layer intercepting WordPress metadata calls |
-| `core/translator/adapters/interface.php` | `Frl_Translation_Adapter_Interface` — 14-method contract |
+| `core/translator/adapters/interface.php` | `Frl_Translation_Adapter_Interface` — 15-method contract |
 | `core/translator/adapters/loader.php` | Detection-to-file mapping — only place that knows adapter filenames |
 | `core/translator/adapters/polylang.php` | Polylang adapter implementation |
 | `core/translator/adapters/polylang-admin-access.php` | Polylang-only `admin_menu` patch |
@@ -42,7 +42,7 @@ function frl_get_translation_adapter_class(): ?string {
 - `frl_is_polylang_active()` — checks `function_exists('pll_the_languages') || defined('PLL')`
 - `frl_is_wpml_active()` — checks `defined('ICL_SITEPRESS_VERSION')`
 - `frl_is_multilingual_plugin_active()` — true iff `frl_get_translation_adapter_class()` returns non-null
-- `frl_translator_is_enabled()` — `frl_is_multilingual_plugin_active() && !frl_get_option('disable_translator')`
+- `frl_translator_is_enabled()` — `frl_is_multilingual_plugin_active() && !get_option(frl_prefix('disable_translator'), '0')` (reads the prefixed option directly, not via `frl_get_option()`)
 
 `adapters/loader.php` handles file loading — the only place that maps "which plugin" to "which file."
 
@@ -57,7 +57,7 @@ function frl_get_translation_adapter_class(): ?string {
 - **Persistent values** (translations, permalinks, block translations, post/term maps): stored via `frl_cache_remember()` in `translations`, `blocks`, `permalinks`, `postdata` groups
 
 **Key methods:**
-- `get_language()` — adapter → `$wp_query->query['lang']` fallback → `FRL_TRANSLATOR_DEFAULT_LANG`
+- `get_language()` — adapter → `$wp_query->query['lang']` fallback → `frl_get_default_language_fallback()` (Polylang's default when the adapter exists, else `FRL_TRANSLATOR_DEFAULT_LANG`)
 - `get_default_language()` — delegates to adapter
 - `get_source_language()` — returns `FRL_TRANSLATOR_SOURCE_LANG` (always `'en'`, independent of Polylang's default)
 - `get_active_languages()` — adapter → filtered via `frl_active_languages`
@@ -87,10 +87,12 @@ Metadata hooks are gated by admin options: `translator_posts`, `translator_terms
 Blocks with `{{text}}` or `##permalink##` delimiters are processed on `render_block` at priority 10 (before `apply_shortcodes` at 20). Three-tier guard:
 
 1. **Fully disabled** (`disable_translator` option) — zero overhead, return as-is
-2. **Safe Mode** (no multilingual plugin active) — strips delimiters: `{{Hello}}` → `Hello`, `##slug##` → `#`
+2. **Safe Mode** (a multilingual plugin was active once and is gone) — strips delimiters: `{{Hello}}` → `Hello`, `##slug##` → `#`. Sites that never had a plugin register nothing.
 3. **Full translation** (Polylang active) — translates tokens via `Frl_Translation_Service`
 
 Safe Mode uses request-level static dedup only (no persistent cache — block content may contain per-request dynamic values).
+
+The `_frl_translator_seen` autoloaded option records that a plugin was active. It is seeded to `0` once and set to `1` the first time the translator is enabled. A site that dropped its plugin before the marker existed never gets Safe Mode — the marker reads `0` and nothing else writes it. Reset Plugin preserves the marker (`frl_delete_plugin()` excludes it from the option deletion).
 
 ## Deferred String Registration
 

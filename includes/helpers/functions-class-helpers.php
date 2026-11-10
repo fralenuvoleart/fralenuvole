@@ -95,19 +95,17 @@ function frl_cache_set( string $group, string $key, mixed $value, ?int $ttl = nu
 }
 
 /**
- * Set multiple cached values in a single group in one batch (fewer round-trips than
- * calling frl_cache_set() per item — see Frl_Cache_Manager::set_multi()).
- *
+ * Read a language-group key under an explicit language (no callback, no write).
  * @param string $group Cache group
- * @param array<string, mixed> $items Map of key => value to store
- * @param int|null $ttl Optional TTL in seconds
- * @return bool Success
+ * @param string $key Cache key
+ * @param string $language Language code
+ * @return mixed|null Cached value or null
  */
-function frl_cache_set_multi( string $group, array $items, ?int $ttl = null ): bool {
+function frl_cache_get_in_language( string $group, string $key, string $language ): mixed {
 	if ( ! frl_cache_is_loaded() ) {
-		return false;
+		return null;
 	}
-	return Frl_Cache_Manager::set_multi( $group, $items, $ttl );
+	return Frl_Cache_Manager::get_in_language( $group, $key, $language );
 }
 
 /**
@@ -224,19 +222,19 @@ function frl_cache_clear_groups( array $groups ): array|false {
 }
 
 /**
-* Clear multiple specific keys from a group in one batch (fewer round-trips
-* than calling frl_cache_clear() per key — see Frl_Cache_Manager::clear_keys()).
-	*
-	* @param string $group Cache group
-	* @param array<int,string> $keys Keys to clear
-	* @param bool $all_languages For language groups, clear every active language
-	* @return int Number of keys cleared
-	*/
-function frl_cache_clear_keys( string $group, array $keys, bool $all_languages = false ): int {
+ * Clear multiple specific keys from a group in one batch (fewer round-trips
+ * than calling frl_cache_clear() per key — see Frl_Cache_Manager::clear_keys()).
+ *
+ * @param string $group Cache group
+ * @param array<int,string> $keys Keys to clear
+ * @param bool|array<int,string> $languages Language groups: false = current language, true = every active language, array = those codes
+ * @return int Number of keys cleared
+ */
+function frl_cache_clear_keys( string $group, array $keys, bool|array $languages = false ): int {
 	if ( ! frl_cache_is_loaded() ) {
 		return 0;
 	}
-	return Frl_Cache_Manager::clear_keys( $group, $keys, $all_languages );
+	return Frl_Cache_Manager::clear_keys( $group, $keys, $languages );
 }
 
 /**

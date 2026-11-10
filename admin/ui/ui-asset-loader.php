@@ -301,7 +301,7 @@ function frl_enqueue_codemirror_scripts() {
 
 	if ( false !== $settings ) {
 		wp_add_inline_script(
-			FRL_PREFIX . '-admin-ui-js',
+			FRL_PREFIX . '-admin-ui',
 			'jQuery(function($) {
                 var cmEditors = {};
 
@@ -338,7 +338,7 @@ function frl_enqueue_codemirror_scripts() {
                 }
 
                 $(document).on("frl_content_loaded", function() {
-                    var $initialActivePanel = $(".frl-sectionui-tabs-active");
+                    var $initialActivePanel = $(".frl-section.ui-tabs-active");
                     if ($initialActivePanel.length) {
                         initCodeMirrorForPanel($initialActivePanel[0]);
                     } else {

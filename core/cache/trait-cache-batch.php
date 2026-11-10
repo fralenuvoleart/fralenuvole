@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * members below (not reusable elsewhere).
  *
  * @method static array safe_db_query( string $query, array $fallback = array(), string $operation = 'cache_query', string $output = OBJECT )
- * @method static string generate_key( string $group, $key )
+ * @method static string generate_key( string $group, $key, ?string $language = null )
  * @method static void set_runtime( string $cache_key, $value, ?string $group = null )
  * @method static mixed unwrap_transient_value( mixed $value )
  * @package Fralenuvole
@@ -81,28 +81,38 @@ trait Frl_Cache_Batch_Trait {
 
 			$wp_cache   = array();
 			$transients = array();
+			$timeouts   = array();
 
 			foreach ( $rows as $row ) {
 				$wp_cache[ $row->option_name ] = $row->option_value;
 
 				if ( str_starts_with( $row->option_name, $timeout_prefix ) ) {
 					// timeout row — tracked in wp_cache but not injected into runtime
+					$timeouts[ substr( $row->option_name, $timeout_prefix_len ) ] = $row->option_value;
 					continue;
 				}
 
 				$key                = substr( $row->option_name, $prefix_len );
 				$value              = self::unwrap_transient_value( maybe_unserialize( $row->option_value ) );
 				$transients[ $key ] = $value;
+			}
 
-				// Inject into runtime cache — mirrors get_multi() transient path
-				$cache_key = self::generate_key( $group, $key );
-				self::set_runtime( $cache_key, $value, $group );
+			// Drop rows whose timeout has passed; get_transient() would treat them as misses.
+			$now = time();
+			foreach ( $transients as $key => $value ) {
+				if ( isset( $timeouts[ $key ] ) && (int) $timeouts[ $key ] < $now ) {
+					unset( $transients[ $key ] );
+				}
+			}
+
+			// Inject into runtime cache — mirrors get_multi() transient path
+			foreach ( $transients as $key => $value ) {
+				// Key already carries group + language: generate_key() would prefix them twice.
+				self::set_runtime( $group . '_' . $key, $value, $group );
 			}
 
 			// Inject into WordPress option cache — mirrors get_multi() transient path
-			if ( ! empty( $wp_cache ) ) {
-				wp_cache_add_multiple( $wp_cache, 'options' );
-			}
+			wp_cache_add_multiple( $wp_cache, 'options' );
 
 			Frl_Cache_Manager::$loaded_groups[ $group ] = true;
 		}

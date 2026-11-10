@@ -12,8 +12,8 @@ Debug and troubleshooting modes activated via URL parameter or `wp-config.php` c
 
 | Mode | Effect | Checked In |
 |------|--------|------------|
-| `disable` | Plugin stops loading entirely. Early return in `bootstrap.php:28` and `fralenuvole.php:31`. Emergency kill-switch. | Before any `FRL_DIR_PATH` usage |
-| `core` | Mimics `disable_plugin` option. Core components load but public components and modules are skipped. Cache bypassed via `Frl_Cache_Manager::should_bypass()`. | `fralenuvole.php:82` |
+| `disable` | Plugin stops loading entirely. Early return in `includes/bootstrap.php:28` and `fralenuvole.php:31`. Emergency kill-switch. | Before any `FRL_DIR_PATH` usage |
+| `core` | Mimics `disable_plugin` option. Core components load but public components and modules are skipped. Cache bypassed via `Frl_Cache_Manager::should_bypass()`. | `fralenuvole.php:84` |
 | `nocache` | Bypasses internal cache system. `Frl_Cache_Manager::should_bypass()` returns `true`. WordPress transients and object cache unaffected. | `Frl_Cache_Manager::should_bypass()` |
 | `migrate` | Break-glass for domain migrations. `frl_has_access()` returns `true` for all users. Environment Manager enforcement runs for everyone (throttle bypassed). | `frl_has_access()`, `Frl_Environment_Manager::enforce_environment_settings()` |
 

@@ -16,4 +16,3 @@ return array(
 	'_if'   => 'schema_collectionpage',
 	'@type' => 'CollectionPage',
 );
-

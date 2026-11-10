@@ -185,7 +185,7 @@ if (!function_exists('pll_get_post')) {
 if (!function_exists('pll_get_post_translations')) {
     /**
      * @param int|WP_Post $post
-     * @return array<string, WP_Post>
+     * @return array<string, int>
      */
     function pll_get_post_translations($post) {
         return [];
@@ -209,7 +209,7 @@ if (!class_exists('PLL_Language')) {
      */
     class PLL_Language
     {
-        /** @var string */
+        /** @var string|null */
         public $name = '';
         /** @var string */
         public $slug = '';
@@ -255,7 +255,7 @@ if (!class_exists('PLL_Base_Stub')) {
      */
     class PLL_Base_Stub
     {
-        /** @var PLL_Model */
+        /** @var PLL_Model|null */
         public $model;
 
         public function __construct() {

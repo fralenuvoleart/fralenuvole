@@ -20,22 +20,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Guards the call behind frl_class_exists() using the caller's function name
  * as context, then routes to a static or instance method.
  *
- * @param string $class    Target class name.
- * @param string $method   Method to call.
- * @param array  $args     Positional arguments for the method.
- * @param mixed  $fallback Return value when class is unavailable.
- * @param string $caller   Calling function name (pass __FUNCTION__).
- * @param bool   $static   True for static call, false for new instance call.
+ * @param string $class_name Target class name.
+ * @param string $method     Method to call.
+ * @param array  $args       Positional arguments for the method.
+ * @param mixed  $fallback   Return value when class is unavailable.
+ * @param string $caller     Calling function name (pass __FUNCTION__).
+ * @param bool   $is_static  True for static call, false for new instance call.
  * @return mixed
  */
-function _frl_ui_dispatch( $class, $method, $args, $fallback, $caller, $static = true ) {
-	if ( ! frl_class_exists( $class, $caller ) ) {
+function _frl_ui_dispatch( $class_name, $method, $args, $fallback, $caller, $is_static = true ) {
+	if ( ! frl_class_exists( $class_name, $caller ) ) {
 		return $fallback;
 	}
-	if ( $static ) {
-		return $class::$method( ...$args );
+	if ( $is_static ) {
+		return $class_name::$method( ...$args );
 	}
-	$instance = new $class();
+	$instance = new $class_name();
 	return $instance->$method( ...$args );
 }
 
@@ -109,8 +109,8 @@ function frl_tab_render_tab_container_end() {
 
 // ─── Dashboard / Environment / Debug display wrappers ────────────────────
 
-function frl_admin_dashboard_render( $content = '' ) {
-	return _frl_ui_dispatch( 'Frl_Admin_Dashboard', 'render', array( $content ), null, __FUNCTION__, false );
+function frl_admin_dashboard_render() {
+	return _frl_ui_dispatch( 'Frl_Admin_Dashboard', 'render', array(), null, __FUNCTION__, false );
 }
 
 function frl_environment_display_render() {
