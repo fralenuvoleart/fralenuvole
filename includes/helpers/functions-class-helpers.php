@@ -211,7 +211,7 @@ function frl_cache_clear( string $group, ?string $key = null, bool $include_depe
  * Frl_Cache_Manager::purge_groups() — far cheaper than per-group flushes).
  *
  * @param string[] $groups Cache groups to clear (without dependencies).
- * @return array{runtime: int, persistent: int, WordpPress: int, groups: array}|false Aggregated stats, false if cache not loaded.
+ * @return array<string, mixed>|false Aggregated stats, false if cache not loaded.
  */
 function frl_cache_clear_groups( array $groups ): array|false {
 	if ( ! frl_cache_is_loaded() ) {

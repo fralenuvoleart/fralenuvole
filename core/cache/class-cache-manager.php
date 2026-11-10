@@ -699,7 +699,7 @@ class Frl_Cache_Manager {
 	 * purge_group() per group.
 	 *
 	 * @param string[] $groups Cache groups to purge (without dependencies).
-	 * @return array{runtime: int, persistent: int, wordpress: int, groups: array}|array{} Aggregated stats, or empty array if already running.
+	 * @return array{runtime: int, persistent: int, wordpress: int, groups: array} Aggregated stats.
 	 */
 	public static function purge_groups( array $groups ): array {
 		$stats = array(

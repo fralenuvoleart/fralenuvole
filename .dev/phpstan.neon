@@ -148,9 +148,6 @@ parameters:
         # PHPDoc parameter references (acceptable)
         - '#PHPDoc tag @param references unknown parameter#'
         
-        # Function should return type but returns other
-        - '#Function .* should return .* but returns .*#'
-        
         # Empty array/foreach issues
         - '#Empty array passed to foreach#'
         

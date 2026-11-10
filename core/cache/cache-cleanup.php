@@ -21,6 +21,7 @@ add_action( 'edit_terms', 'frl_capture_term_route', 10, 2 );
 add_action( 'edited_term', 'frl_clear_term_permalink_cache', 10, 3 );
 add_action( 'created_term', 'frl_clear_permalinks_on_term_event', 10, 3 );
 add_action( 'delete_term', 'frl_clear_permalinks_on_term_event', 10, 3 );
+add_action( 'delete_term', 'frl_clear_metafields_on_language_delete', 10, 3 );
 add_action( 'post_updated', 'frl_clear_permalinks_on_post_route_change', 10, 3 );
 add_action( 'transition_post_status', 'frl_clear_permalinks_on_publish_change', 10, 3 );
 add_action( 'transition_post_status', 'frl_clear_shortcodes_on_page_publish', 10, 3 );
@@ -272,6 +273,25 @@ function frl_clear_permalinks_on_term_event( $term_id, $tt_id = 0, $taxonomy = '
 		frl_cache_clear( 'permalinks' );
 		// Shortcodes cache term lookups, including misses.
 		frl_cache_clear( 'shortcodes' );
+	}
+}
+
+/**
+ * Purge translated-meta caches when a language is deleted.
+ *
+ * A deleted language's tracking list and cached values are stored under that
+ * language's key, so frl_clear_tracked_meta_cache() can no longer reach them once
+ * the language is inactive. Purging the whole group (a rare admin action) clears
+ * every language's stale entries and costs nothing per request.
+ *
+ * @param int    $term_id  Term ID.
+ * @param int    $tt_id    Term taxonomy ID.
+ * @param string $taxonomy Taxonomy slug.
+ * @return void
+ */
+function frl_clear_metafields_on_language_delete( $term_id, $tt_id = 0, $taxonomy = '' ) {
+	if ( 'language' === $taxonomy ) {
+		frl_cache_clear( 'metafields' );
 	}
 }
 

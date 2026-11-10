@@ -280,7 +280,9 @@ final class Frl_Rewriter_Path_Utils {
 	/**
 	 * Bump the exclusion version when the registered public rewrite slugs changed.
 	 *
-	 * Called from registered_post_type/registered_taxonomy, which fire on every request.
+	 * Runs once per request from Frl_Rewriter's init/99 callback, after every post type
+	 * and taxonomy has registered. One autoloaded read and one hash compare per request;
+	 * no option writes unless the registered slug set actually changed.
 	 *
 	 * @return void
 	 */

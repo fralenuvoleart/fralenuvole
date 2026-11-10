@@ -513,40 +513,16 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 		}
 		$cache_hooks_registered = true;
 
-		// A new public CPT/taxonomy base changes the exclusion lists. Registered here (not
-		// at wp_loaded) because these hooks fire while CPTs register on init.
-		add_action(
-			'registered_post_type',
-			static function ( $post_type ): void {
-				$pt_obj = get_post_type_object( $post_type );
-				if ( ! $pt_obj || empty( $pt_obj->public ) ) {
-					return;
-				}
-				$rewrite = $pt_obj->rewrite;
-				if ( ! is_array( $rewrite ) || empty( $rewrite['slug'] ) ) {
-					return;
-				}
-				Frl_Rewriter_Path_Utils::refresh_registered_slugs_hash();
-			},
-			10,
-			1
-		);
-		add_action(
-			'registered_taxonomy',
-			static function ( $taxonomy ): void {
-				$tax_obj = get_taxonomy( $taxonomy );
-				if ( ! $tax_obj || empty( $tax_obj->public ) ) {
-					return;
-				}
-				$rewrite = $tax_obj->rewrite;
-				if ( ! is_array( $rewrite ) || empty( $rewrite['slug'] ) ) {
-					return;
-				}
-				Frl_Rewriter_Path_Utils::refresh_registered_slugs_hash();
-			},
-			10,
-			1
-		);
+		// A new public CPT/taxonomy base changes the exclusion lists. Compare the
+		// registered-slug hash ONCE per request, after all post types and taxonomies have
+		// registered (init/99) and before the rewriter features build their rules
+		// (init/115+). Comparing on every registration would hash a partial registry,
+		// rewriting the hash and bumping the exclusion version on every request.
+		if ( did_action( 'init' ) ) {
+			Frl_Rewriter_Path_Utils::refresh_registered_slugs_hash();
+		} else {
+			add_action( 'init', array( Frl_Rewriter_Path_Utils::class, 'refresh_registered_slugs_hash' ), 99, 0 );
+		}
 
 		// Defer hook registration until 'wp_loaded' to ensure all plugins and themes are loaded
 		add_action(

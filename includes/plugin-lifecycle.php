@@ -43,9 +43,10 @@ function frl_activate_plugin(): void {
 
 	frl_update_option( 'translation_version', 1 );
 
-	// Activation fires before 'init': flush on the next admin/CLI request, cron as fallback.
+	// Activation fires before 'init': flush on the next admin/cron request.
+	// frl_request_rewrite_flush() already schedules its own cron fallback, so the
+	// legacy frl_schedule_rewrite_flush() event is not added (it would flush twice).
 	frl_request_rewrite_flush();
-	frl_schedule_rewrite_flush();
 	frl_cache_clear( 'light' );
 
 	frl_update_option( 'plugin_version', FRL_VERSION );
@@ -369,7 +370,9 @@ function frl_uninstall_plugin(): void {
  * mechanisms, independent of the cached `rewrite_rules` option).
  *
  * Fix: when called too early, defer the entire flush to wp_loaded priority 20
- * (after Polylang's priority-9 callback) instead of flushing immediately.
+ * (after Polylang's priority-9 callback) instead of flushing immediately, and
+ * record a pending flush for the next admin/cron request in case this request
+ * ends before wp_loaded (an init-time admin action redirects and exits).
  * add_action() with the same callback/hook/priority is idempotent, so multiple
  * early calls within one request only result in a single deferred execution.
  *
@@ -386,6 +389,10 @@ function frl_flush_rewrite_rules(): void {
 		// Too early: neither this plugin's nor Polylang's rewrite-rule filters
 		// are registered yet. Defer the actual flush instead of running it now.
 		add_action( 'wp_loaded', 'frl_flush_rewrite_rules', 20, 0 );
+		// The caller may end this request before wp_loaded (the admin action dispatcher
+		// redirects and exits on init/12), so record a pending flush that the next
+		// admin/cron/WP-CLI request consumes and that the cron fallback also covers.
+		frl_request_rewrite_flush();
 		return;
 	}
 
@@ -411,9 +418,8 @@ function frl_flush_rewrite_rules(): void {
 /**
  * Schedules a single cron event to flush rewrite rules after 15 seconds.
  *
- * Used when a flush is needed before 'init' (plugin activation) as a best-effort
- * fallback, or from contexts where a synchronous flush would be too expensive
- * (frontend requests, third-party cache purge handlers).
+ * Used when a synchronous flush would be too expensive (page-slug changes,
+ * frontend requests, third-party cache purge handlers).
  *
  * The cron callback is frl_flush_rewrite_rules().
  *
