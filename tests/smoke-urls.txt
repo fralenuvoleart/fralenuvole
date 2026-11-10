@@ -1,0 +1,9 @@
+# Staging smoke list for stg-pbservicesge-staging.kinsta.cloud (site-specific, not for commit).
+# One URL per line; optional expected canonical after "|".
+https://stg-pbservicesge-staging.kinsta.cloud/blog/
+https://stg-pbservicesge-staging.kinsta.cloud/blog/licensing/
+https://stg-pbservicesge-staging.kinsta.cloud/ru/blog/liczenzirovanie/
+https://stg-pbservicesge-staging.kinsta.cloud/blog/why-american-expats-choose-georgia-over-other-low-tax-countries/
+https://stg-pbservicesge-staging.kinsta.cloud/services/igaming-license-georgia/
+https://stg-pbservicesge-staging.kinsta.cloud/ru/uslugi/licenziya-igaming-gruziya/
+https://stg-pbservicesge-staging.kinsta.cloud/about/daria-migunova/

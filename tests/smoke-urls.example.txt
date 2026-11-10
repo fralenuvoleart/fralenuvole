@@ -1,0 +1,23 @@
+# Staging smoke URLs for tests/smoke-urls.sh
+#
+# Copy this file to tests/smoke-urls.txt (not committed) and fill in this
+# site's URLs. One URL per line; an optional second field after "|" is the
+# expected canonical. Lines starting with # and blank lines are ignored.
+#
+# Run against staging before deploying:
+#   tests/smoke-urls.sh https://stg-pbservicesge-staging.kinsta.cloud/ tests/smoke-urls.txt
+#
+# Cover, per language:
+#   - the language homepage
+#   - a category archive (taxonomy base removal)
+#   - a CPT single whose base is removed (flag / jurisdiction)
+#   - the posts page (blog index)
+#
+# Examples (replace the placeholders):
+#
+# https://stg-pbservicesge-staging.kinsta.cloud/
+# https://stg-pbservicesge-staging.kinsta.cloud/<lang>/
+# https://stg-pbservicesge-staging.kinsta.cloud/<lang>/blog/category/<term-slug>/
+# https://stg-pbservicesge-staging.kinsta.cloud/<lang>/blog/<post-slug>/
+# https://stg-pbservicesge-staging.kinsta.cloud/<lang>/<cpt-post-slug>/
+# https://stg-pbservicesge-staging.kinsta.cloud/<lang>/blog/category/<term-slug>/|https://stg-pbservicesge-staging.kinsta.cloud/<lang>/blog/<term-slug>/
