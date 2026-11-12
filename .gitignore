@@ -9,3 +9,6 @@
 
 # Roo Code removed 2026-11-05
 .roo/
+
+# Site-specific smoke list (template: tests/smoke-urls.example.txt)
+/tests/smoke-urls.txt

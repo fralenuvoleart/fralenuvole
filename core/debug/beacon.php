@@ -21,6 +21,27 @@ add_action( 'wp_head', 'frl_debug_beacon_print_head', -998, 0 );
 // Last thing in the body: its presence proves the whole HTML arrived.
 add_action( 'wp_footer', 'frl_debug_beacon_print_end_marker', PHP_INT_MAX, 0 );
 
+// Turning the option off removes the receiver's marker file (see beacon-receiver.php).
+add_action( 'update_option_' . frl_prefix( 'debugger_beacon' ), 'frl_debug_beacon_sync_marker', 10, 0 );
+
+/**
+ * Creates or deletes the marker that allows beacon-receiver.php to write, to match the option.
+ */
+function frl_debug_beacon_sync_marker() {
+	$logs = frl_get_uploads_location( 'logs' );
+	if ( null === $logs ) {
+		return;
+	}
+	$marker = $logs['dir'] . '/beacon.on';
+	if ( frl_get_option( 'debugger_beacon', true ) ) {
+		if ( ! is_file( $marker ) && ( is_dir( $logs['dir'] ) || wp_mkdir_p( $logs['dir'] ) ) ) {
+			@touch( $marker ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		}
+	} elseif ( is_file( $marker ) ) {
+		wp_delete_file( $marker );
+	}
+}
+
 /**
  * Whether the beacon runs on this request: option on, frontend page view, visitor not logged in.
  *
@@ -30,6 +51,9 @@ function frl_debug_beacon_is_active(): bool {
 	static $active = null;
 	if ( null === $active ) {
 		$active = frl_get_option( 'debugger_beacon' ) && frl_is_valid_frontend_page_request() && ! is_user_logged_in();
+		if ( $active ) {
+			frl_debug_beacon_sync_marker(); // Recreates the marker if missing (e.g. after deploy).
+		}
 	}
 	return $active;
 }

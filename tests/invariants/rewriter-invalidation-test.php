@@ -112,8 +112,9 @@ frl_test_same( 11, (int) get_option( '_frl_rewriter_excl_version' ), 'request af
 
 // 5. The per-registration hooks are gone: they would hash a partial registry.
 $rewriter_source = (string) file_get_contents( FRL_TEST_PLUGIN_DIR . 'core/rewriter/class-rewriter.php' );
-frl_test_ok( ! str_contains( $rewriter_source, "'registered_post_type'" ), 'no per-post-type hash refresh hook' );
-frl_test_ok( ! str_contains( $rewriter_source, "'registered_taxonomy'" ), 'no per-taxonomy hash refresh hook' );
+// Either quote style; a hook name built from a variable is not covered.
+frl_test_ok( ! preg_match( '/[\'"]registered_post_type[\'"]/', $rewriter_source ), 'no per-post-type hash refresh hook' );
+frl_test_ok( ! preg_match( '/[\'"]registered_taxonomy[\'"]/', $rewriter_source ), 'no per-taxonomy hash refresh hook' );
 frl_test_ok( str_contains( $rewriter_source, "'refresh_registered_slugs_hash'" ), 'the single hash refresh callback is registered' );
 
 frl_test_done();

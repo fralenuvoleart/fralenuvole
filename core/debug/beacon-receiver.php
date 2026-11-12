@@ -27,6 +27,12 @@ if ( ! is_dir( $frl_dir ) && ! @mkdir( $frl_dir, 0755, true ) ) { // phpcs:ignor
 	exit;
 }
 
+// Kill switch: beacon.php creates this marker while debugger_beacon is on and deletes it when turned off,
+// so cached pages that still carry the inline script stop writing as soon as the option is off.
+if ( ! is_file( $frl_dir . '/beacon.on' ) ) {
+	exit;
+}
+
 $frl_file = $frl_dir . '/beacon-' . gmdate( 'Y-m-d' ) . '.tsv';
 
 // Column names, written as the first row of each daily file. Meanings: docs/PLUGIN-DEBUG.md.
@@ -106,7 +112,8 @@ $frl_line = implode(
 		frl_beacon_clean( isset( $frl_in['n'] ) ? $frl_in['n'] : '', 8 ),
 		(string) ( isset( $frl_in['t'] ) ? (int) $frl_in['t'] : -1 ),
 		isset( $frl_in['c'] ) ? ( '1' === $frl_in['c'] ? '1' : '0' ) : '',
-		frl_beacon_clean( isset( $frl_in['p'] ) ? rawurldecode( $frl_in['p'] ) : '', 200 ),
+		// Kept percent-encoded: decoding would let frl_beacon_clean() strip non-ASCII slugs.
+		frl_beacon_clean( isset( $frl_in['p'] ) ? $frl_in['p'] : '', 600 ),
 		// REMOTE_ADDR is the visitor IP on Kinsta (verified on staging, same as CF-Connecting-IP).
 		isset( $_SERVER['REMOTE_ADDR'] ) ? preg_replace( '/[^0-9a-fA-F:\.]/', '', (string) $_SERVER['REMOTE_ADDR'] ) : '',
 		substr( preg_replace( '/[\t\r\n]+/', ' ', $frl_ua ), 0, 400 ),
