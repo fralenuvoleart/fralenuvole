@@ -814,8 +814,14 @@ function frl_handle_missing_option_key( string $key, bool $bypass_cache, array &
 function frl_set_missing_option_default( string $key, bool $bypass_cache, array &$options ) {
 	$default_option = frl_get_all_plugin_options_settings( $key );
 	if ( $default_option === null ) {
-		// Log warning about unregistered option that could cause performance issues
-		frl_log( "WARNING: Option '{key}' not registered in any system (config-default-fields.php, FRL_OPTIONS_RUNTIME, or modules). This will cause cache bypass on every page load.", array( 'key' => $key ) );
+		// Email only (no debug.log line), once per key per request; frl_email_error_notification() rate-limits.
+		static $emailed_keys = array();
+		if ( ! isset( $emailed_keys[ $key ] ) && frl_get_option( 'error_reporting_email' ) ) {
+			$emailed_keys[ $key ] = true;
+			frl_email_error_notification(
+				frl_format_log_message( "WARNING: Option '{key}' not registered in any system (config-default-fields.php, FRL_OPTIONS_RUNTIME, or modules). This will cause cache bypass on every page load.", array( 'key' => $key ) )
+			);
+		}
 		return null;
 	}
 

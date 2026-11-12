@@ -14,7 +14,7 @@ includes/bootstrap.php
   ├─ includes/helpers/functions.php → loads all helper files (10 files in order)
   ├─ core/cache/class-cache-manager.php → Frl_Cache_Manager::init()
   ├─ core/cache/class-cache-operations.php
-  ├─ core/error-handler.php → frl_errors_init()
+  ├─ core/debug/error-handler.php → frl_errors_init()
   └─ WP-CLI → core/rewriter/cli/class-rewriter-cli.php
 ```
 
@@ -98,6 +98,7 @@ See `docs/PLUGIN-HOOKS.md` for the full priority table and the reasoning behind 
 | ThemeKit | `docs/CORE-THEMEKIT.md` | Theme-independent body classes, base styles, block pattern/provider-style removal, font optimization |
 | Admin UI | `docs/PLUGIN-ADMINUI.md` | Tabbed settings page, dashboard widgets, log manager, tag validator, import/export, docs browser |
 | Access Control | `docs/PLUGIN-PERMISSIONS.md` | Capability model (`frl_has_access()`), superadmin/plugin-admin tiers, nonce system, `FRL_MODE` behavior |
+| Debug Tools | `docs/PLUGIN-DEBUG.md` | Error handler and page-load beacon (`core/debug/`): what the beacon logs and how to read it |
 | Debug Modes | `docs/PLUGIN-DEBUG-MODES.md` | `FRL_MODE` URL parameter / constant for disable/core/nocache/migrate modes |
 | Webhooks | `docs/CORE-WEBHOOKS.md` | Generic webhook dispatch (sync + async via WP-Cron with retry backoff) |
 | Kinsta MU-Plugin | `docs/WWW-KINSTA.md` | Third-party reference for Kinsta's caching behavior |
@@ -106,7 +107,6 @@ See `docs/PLUGIN-HOOKS.md` for the full priority table and the reasoning behind 
 
 | Component | Location | Purpose |
 |---|---|---|
-| Error Handler | `core/error-handler.php` | Custom error handling initialized in bootstrap via `frl_errors_init()` |
 | Schema / JSON-LD | `public/schema/` | Orchestrator-based JSON-LD generation (Organization, WebSite, WebPage, BreadcrumbList, BlogPosting, Service, HowTo, etc.) |
 | Shortcodes | `public/shortcodes.php` | 15+ shortcodes (`[frl]`, `[frl_meta]`, `[frl_permalink]`, `[frl_breadcrumbs]`, etc.) |
 | Website Features | `includes/main/website.php` | Disable comments/oEmbed/emojis, heartbeat throttling, Dashicons removal, comment REST-endpoint pruning, secondary-query tuning |

@@ -1022,6 +1022,19 @@ const FRL_DEFAULT_FIELDS = array(
 				'default'           => '_load_textdomain_just_in_time',
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
+			'section_title_debugger'        => array(
+				'label'       => 'Proprietary Plugin Debugging',
+				'description' => 'Diagnostic tools, logs go to uploads/fralenuvole/logs/',
+				'type'        => 'section_title',
+			),
+			'debugger_beacon'               => array(
+				'label'             => 'Enable Page-Load Beacon',
+				'description'       => 'Logs started / finished / abandoned per page view (logged-out visitors, kept 30 days)',
+				'type'              => 'checkbox',
+				'default'           => 0,
+				'sanitize_callback' => 'absint',
+				'restricted'        => true,
+			),
 		),
 	),
 	'settings'       => array(
