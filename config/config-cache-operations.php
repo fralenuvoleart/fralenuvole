@@ -26,7 +26,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 const FRL_CACHE_SCRIPTS_GROUPS = array(
 	'versions',
 	'html',
-	'shortcodes',
 );
 
 /**
