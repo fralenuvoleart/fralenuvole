@@ -98,8 +98,7 @@ See `docs/PLUGIN-HOOKS.md` for the full priority table and the reasoning behind 
 | ThemeKit | `docs/CORE-THEMEKIT.md` | Theme-independent body classes, base styles, block pattern/provider-style removal, font optimization |
 | Admin UI | `docs/PLUGIN-ADMINUI.md` | Tabbed settings page, dashboard widgets, log manager, tag validator, import/export, docs browser |
 | Access Control | `docs/PLUGIN-PERMISSIONS.md` | Capability model (`frl_has_access()`), superadmin/plugin-admin tiers, nonce system, `FRL_MODE` behavior |
-| Debug Tools | `docs/PLUGIN-DEBUG.md` | Error handler and page-load beacon (`core/debug/`): what the beacon logs and how to read it |
-| Debug Modes | `docs/PLUGIN-DEBUG-MODES.md` | `FRL_MODE` URL parameter / constant for disable/core/nocache/migrate modes |
+| Debug Tools | `docs/PLUGIN-DEBUG.md` | Error handler, page-load beacon (`core/debug/`):and `FRL_MODE` URL parameters / constant for disable/core/nocache/migrate modes|
 | Webhooks | `docs/CORE-WEBHOOKS.md` | Generic webhook dispatch (sync + async via WP-Cron with retry backoff) |
 | Kinsta MU-Plugin | `docs/WWW-KINSTA.md` | Third-party reference for Kinsta's caching behavior |
 
