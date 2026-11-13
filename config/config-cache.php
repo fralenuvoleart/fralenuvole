@@ -46,13 +46,12 @@ const FRL_CACHE_TTL = array(
 	'blocks'       => WEEK_IN_SECONDS,     // 1 week
 	'shortcodes'   => WEEK_IN_SECONDS,     // 1 week
 	// 'options' actively invalidated by frl_update_option() + cache-cleanup hooks;
-	// TTL is only a safety net for DB edits.
 	'options'      => WEEK_IN_SECONDS,     // 1 week
 	'permalinks'   => DAY_IN_SECONDS,      // 1 day
 	'adminui'      => DAY_IN_SECONDS,      // 1 day (UI assembly data)
+	'admin'        => HOUR_IN_SECONDS,     // 1 hour
 	'versions'     => HOUR_IN_SECONDS,     // 1 hour
 	'environment'  => HOUR_IN_SECONDS,     // 1 hour
-	'admin'        => HOUR_IN_SECONDS,     // 1 hour
 	'default'      => HOUR_IN_SECONDS,     // 1 hour default
 );
 
@@ -79,9 +78,10 @@ const FRL_AUTOLOAD_OPTIONS = array(
 const FRL_CACHE_HEAVY_GROUPS = array(
 	'staticdata',
 	'blocks',
+	'postdata',
+	'shortodes',
 	'translations',
 	'permalinks',
-	'postdata',
 	'rewriter',
 );
 
