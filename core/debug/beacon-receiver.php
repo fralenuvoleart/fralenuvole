@@ -17,7 +17,7 @@ http_response_code( 204 );
 $frl_in = ! empty( $_POST ) ? $_POST : $_GET; // phpcs:ignore WordPress.Security.NonceVerification -- anonymous telemetry, no state change.
 
 $frl_event = isset( $frl_in['e'] ) ? (string) $frl_in['e'] : '';
-if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned' ), true ) ) {
+if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned', 'js_error' ), true ) ) {
 	exit;
 }
 
@@ -53,6 +53,9 @@ const FRL_BEACON_COLUMNS = array(
 	'ga_client_id',
 	'clarity_user_id',
 	'reference_id',
+	'msg',
+	'src',
+	'line',
 );
 
 // 'x' creates the file only if it does not exist yet, so the header is written exactly once.
@@ -120,6 +123,9 @@ $frl_line = implode(
 		frl_beacon_clean( isset( $_COOKIE['_ga'] ) ? $_COOKIE['_ga'] : '', 60 ),
 		frl_beacon_clean( isset( $_COOKIE['_clck'] ) ? strtok( (string) $_COOKIE['_clck'], '|' ) : '', 40 ),
 		frl_beacon_clean( isset( $_COOKIE['_channel_reference_id'] ) ? $_COOKIE['_channel_reference_id'] : '', 40 ),
+		substr( preg_replace( '/[\t\r\n]+/', ' ', (string) ( isset( $frl_in['msg'] ) ? $frl_in['msg'] : '' ) ), 0, 300 ),
+		substr( preg_replace( '/[\t\r\n]+/', ' ', (string) ( isset( $frl_in['src'] ) ? $frl_in['src'] : '' ) ), 0, 200 ),
+		( isset( $frl_in['line'] ) && '' !== $frl_in['line'] ? (string) (int) $frl_in['line'] : '' ),
 	)
 ) . "\n";
 

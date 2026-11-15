@@ -78,6 +78,8 @@ function frl_debug_beacon_print_head() {
 		. 'try{if(navigator.sendBeacon&&navigator.sendBeacon(u,new Blob([b],{type:"application/x-www-form-urlencoded"})))return}catch(_){}'
 		. '(new Image()).src=u+"?"+b}'
 		. 's("started");'
+		. 'var er=0;window.addEventListener("error",function(e){if(er>=5)return;er++;var f=(e.filename||"").split("/").slice(-2).join("/");s("js_error","&msg="+encodeURIComponent((e.message||"unknown").slice(0,300))+"&src="+encodeURIComponent(f.slice(0,200))+"&line="+(e.lineno||0))},true);'
+		. 'window.addEventListener("unhandledrejection",function(e){if(er>=5)return;er++;s("js_error","&msg="+encodeURIComponent(String(e.reason).slice(0,300))+"&src=unhandledrejection&line=0")});'
 		. 'document.addEventListener("DOMContentLoaded",function(){if(d)return;d=1;s("finished","&c="+(document.getElementById("frl-beacon-end")?1:0))});'
 		. 'var h=0;document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"&&!d&&!h){h=1;s("hidden")}});'
 		. 'addEventListener("pagehide",function(){if(!d&&!a){a=1;s("abandoned")}})'
