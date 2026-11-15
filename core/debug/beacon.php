@@ -3,7 +3,7 @@
 /**
  * Page-load beacon (printer).
  *
- * Prints a ~1 KB inline script as the first thing in <head> reporting, per page view:
+ * Prints a ~1.6 KB inline script as the first thing in <head> reporting, per page view:
  * started (head ran), finished (DOM parsed; c=1 if the end marker arrived, c=0 if the HTML was cut),
  * hidden (tab/app switched before finished; often finishes later), abandoned (page left before finished).
  * Receiver: beacon-receiver.php.
@@ -78,8 +78,8 @@ function frl_debug_beacon_print_head() {
 		. 'try{if(navigator.sendBeacon&&navigator.sendBeacon(u,new Blob([b],{type:"application/x-www-form-urlencoded"})))return}catch(_){}'
 		. '(new Image()).src=u+"?"+b}'
 		. 's("started");'
-		. 'var er=0;window.addEventListener("error",function(e){if(er>=5)return;er++;var f=(e.filename||"").split("/").slice(-2).join("/");s("js_error","&msg="+encodeURIComponent((e.message||"unknown").slice(0,300))+"&src="+encodeURIComponent(f.slice(0,200))+"&line="+(e.lineno||0))},true);'
-		. 'window.addEventListener("unhandledrejection",function(e){if(er>=5)return;er++;s("js_error","&msg="+encodeURIComponent(String(e.reason).slice(0,300))+"&src=unhandledrejection&line=0")});'
+		. 'var er=0,str=function(v){if(v==null)return "";try{return String(v)}catch(_){return ""}},fix=function(s){var o="",i=0,c;while(i<s.length){c=s.charCodeAt(i);if(c>=0xD800&&c<=0xDBFF&&s.charCodeAt(i+1)>=0xDC00&&s.charCodeAt(i+1)<=0xDFFF){o+=s.charAt(i)+s.charAt(i+1);i+=2}else if(c>=0xD800&&c<=0xDFFF){o+="\uFFFD";i++}else{o+=s.charAt(i);i++}}return o},enc=function(s){try{return encodeURIComponent(s)}catch(_){return encodeURIComponent(fix(s))}};window.addEventListener("error",function(e){if(!e.message||er>=5)return;er++;var f=str(e.filename).split("/").slice(-2).join("/");s("js_error","&msg="+enc(str(e.message).slice(0,300))+"&src="+enc(f.slice(0,200))+"&line="+(e.lineno||0))},true);'
+		. 'window.addEventListener("unhandledrejection",function(e){if(er>=5)return;er++;s("js_error","&msg="+enc(str(e.reason).slice(0,300))+"&src=unhandledrejection&line=0")});'
 		. 'document.addEventListener("DOMContentLoaded",function(){if(d)return;d=1;s("finished","&c="+(document.getElementById("frl-beacon-end")?1:0))});'
 		. 'var h=0;document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"&&!d&&!h){h=1;s("hidden")}});'
 		. 'addEventListener("pagehide",function(){if(!d&&!a){a=1;s("abandoned")}})'

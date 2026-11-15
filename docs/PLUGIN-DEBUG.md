@@ -17,7 +17,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 
 ### How it works
 
-- `beacon.php` prints a ~1 KB inline script at `wp_head` priority -998, right after the critical CSS (about 3–4 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
+- `beacon.php` prints a ~1.5 KB inline script at `wp_head` priority -998, right after the critical CSS (about 3–4 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
 - It prints an end marker `<i id="frl-beacon-end" hidden>` as the last thing in the body (`wp_footer`, `PHP_INT_MAX`). If the marker is present when the page is parsed, the whole HTML arrived.
 - Runs only on frontend page views (`frl_is_valid_frontend_page_request()`) for visitors who are not logged in.
 - Each event is sent with `navigator.sendBeacon` to `core/debug/beacon-receiver.php`, a standalone PHP file (no WordPress load, a few ms per hit) that answers `204` and appends one line to the day's log.
@@ -26,6 +26,8 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 
 - Location: `uploads/fralenuvole/logs/beacon-YYYY-MM-DD.tsv` (the folder from `frl_get_uploads_location( 'logs' )`). The receiver works the path out from its own location, so the two must match.
 - One file per UTC day, tab-separated, the first row names the columns.
+- New columns are appended at the end, so existing columns never shift. On a deploy day the current file keeps its old header until the next UTC day; read by header name and ignore extra trailing fields.
+- The UTF-8 scrub of `msg`/`src` needs the `mbstring` extension; without it the fallback truncates at the first invalid byte (safe, but lossy).
 - Files older than 30 days are deleted automatically; each file is capped at 20 MB.
 - Contains IP addresses and identifiers: protect the folder.
 
@@ -37,6 +39,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `finished` | The browser finished reading the whole HTML (`DOMContentLoaded`). Images and other files may still be loading: this is not "page fully loaded". |
 | `hidden` | The visitor switched tab or app before `finished`. Not a problem by itself; the page often finishes afterwards. Sent at most once per page view. |
 | `abandoned` | The visitor left the page (closed it, navigated away) before `finished`. This is the "gave up" signal. |
+| `js_error` | An uncaught JavaScript error or unhandled promise rejection. At most 5 per view. |
 
 ### Columns
 
@@ -58,6 +61,9 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `ga_client_id` | `_ga` cookie: links the row to GA4. Empty on a first visit before GA4 has set it. |
 | `clarity_user_id` | User id part of the `_clck` cookie: find the visitor's session recordings in Clarity. |
 | `reference_id` | `_channel_reference_id` cookie: the Reference ID that is saved with a WS Form submission and appears in Monday. |
+| `msg` | Only on `js_error`: the error message, truncated to 300 bytes. |
+| `src` | Only on `js_error`: last two path segments of the file that threw (truncated to 200 bytes), or `unhandledrejection`. |
+| `line` | Only on `js_error`: the line number, `0` if unknown. |
 
 ### Reading the log
 

@@ -81,6 +81,27 @@ function frl_beacon_clean( $value, $max ) {
 	return substr( preg_replace( '/[^\w\-\/\.%]/', '', (string) $value ), 0, $max );
 }
 
+/**
+ * Cuts a string at a UTF-8-safe boundary (no mbstring dependency).
+ *
+ * @param string $value Raw value.
+ * @param int    $max   Max length in bytes.
+ * @return string
+ */
+function frl_beacon_utf8_cut( $value, $max ) {
+	$value = (string) $value;
+	if ( function_exists( 'mb_convert_encoding' ) ) {
+		$value = mb_convert_encoding( $value, 'UTF-8', 'UTF-8' ); // scrub invalid bytes
+	}
+	$value = substr( $value, 0, $max );
+	$n     = strlen( $value );
+	while ( $n > 0 && false === @preg_match( '//u', $value ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		--$n;
+		$value = substr( $value, 0, $n );
+	}
+	return $value;
+}
+
 $frl_ua      = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
 $frl_browser = 'other';
 foreach ( array(
@@ -123,9 +144,9 @@ $frl_line = implode(
 		frl_beacon_clean( isset( $_COOKIE['_ga'] ) ? $_COOKIE['_ga'] : '', 60 ),
 		frl_beacon_clean( isset( $_COOKIE['_clck'] ) ? strtok( (string) $_COOKIE['_clck'], '|' ) : '', 40 ),
 		frl_beacon_clean( isset( $_COOKIE['_channel_reference_id'] ) ? $_COOKIE['_channel_reference_id'] : '', 40 ),
-		substr( preg_replace( '/[\t\r\n]+/', ' ', (string) ( isset( $frl_in['msg'] ) ? $frl_in['msg'] : '' ) ), 0, 300 ),
-		substr( preg_replace( '/[\t\r\n]+/', ' ', (string) ( isset( $frl_in['src'] ) ? $frl_in['src'] : '' ) ), 0, 200 ),
-		( isset( $frl_in['line'] ) && '' !== $frl_in['line'] ? (string) (int) $frl_in['line'] : '' ),
+		frl_beacon_utf8_cut( preg_replace( '/[\t\r\n]+/', ' ', ( isset( $frl_in['msg'] ) && is_string( $frl_in['msg'] ) ? $frl_in['msg'] : '' ) ), 300 ),
+		frl_beacon_utf8_cut( preg_replace( '/[\t\r\n]+/', ' ', ( isset( $frl_in['src'] ) && is_string( $frl_in['src'] ) ? $frl_in['src'] : '' ) ), 200 ),
+		( isset( $frl_in['line'] ) && is_scalar( $frl_in['line'] ) && '' !== (string) $frl_in['line'] ? (string) (int) $frl_in['line'] : '' ),
 	)
 ) . "\n";
 
