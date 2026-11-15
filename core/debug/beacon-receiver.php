@@ -85,7 +85,7 @@ function frl_beacon_clean( $value, $max ) {
 }
 
 /**
- * Cuts a string at a UTF-8-safe boundary (no mbstring dependency).
+ * Cuts a string at a UTF-8-safe boundary (uses mbstring when available, falls back without it).
  *
  * @param string $value Raw value.
  * @param int    $max   Max length in bytes.
@@ -175,7 +175,12 @@ $frl_line = implode(
 @file_put_contents( $frl_file, $frl_line, FILE_APPEND | LOCK_EX ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions
 
 // About once per 500 hits, delete beacon files older than 30 days.
-if ( 1 === random_int( 1, 500 ) ) {
+try {
+	$frl_prune = 1 === random_int( 1, 500 );
+} catch ( \Throwable $e ) {
+	$frl_prune = false;
+}
+if ( $frl_prune ) {
 	foreach ( (array) glob( $frl_dir . '/beacon-*.tsv' ) as $frl_old ) {
 		if ( filemtime( $frl_old ) < time() - 30 * 86400 ) {
 			@unlink( $frl_old ); // phpcs:ignore WordPress.PHP.NoSilencedErrors

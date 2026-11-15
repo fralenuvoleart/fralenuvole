@@ -254,8 +254,15 @@ function frl_errors_handle_doing_it_wrong( $function_name, $message, $version ):
 			}
 		}
 
-		if ( frl_errors_handle_error( E_USER_NOTICE, $error, $file, $line ) ) {
-			add_filter( 'doing_it_wrong_trigger_error', '__return_false' );
+		if ( frl_errors_handle_error( E_USER_NOTICE, $error, $file, $line ) && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// One-shot: removes itself when WordPress evaluates it, so later
+			// _doing_it_wrong() calls (ours or other plugins') are not silenced.
+			$once = null;
+			$once = function ( $trigger ) use ( &$once ) {
+				remove_filter( 'doing_it_wrong_trigger_error', $once, PHP_INT_MAX );
+				return false;
+			};
+			add_filter( 'doing_it_wrong_trigger_error', $once, PHP_INT_MAX );
 		}
 	} finally {
 		$is_handling = false;
@@ -283,16 +290,24 @@ function frl_errors_is_suppression_match( $errstring ): bool {
 		}
 
 		$all_message_parts_match = true;
+		$has_non_empty_part      = false;
 		foreach ( $rule as $message_part ) {
 			$message_part_to_find = trim( $message_part );
 
-			if ( ! empty( $message_part_to_find ) && ! str_contains( $clean_errstr, $message_part_to_find ) ) {
+			if ( '' === $message_part_to_find ) {
+				continue;
+			}
+			$has_non_empty_part = true;
+
+			if ( ! str_contains( $clean_errstr, $message_part_to_find ) ) {
 				$all_message_parts_match = false;
 				break;
 			}
 		}
 
-		if ( $all_message_parts_match ) {
+		// A rule made only of empty parts (e.g. a line containing just "|")
+		// must not match everything.
+		if ( $has_non_empty_part && $all_message_parts_match ) {
 			return true;
 		}
 	}
