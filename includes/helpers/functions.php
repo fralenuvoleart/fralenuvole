@@ -701,6 +701,12 @@ function frl_delete_plugin() {
 		}
 	}
 
+	// Options were removed with plain SQL above, so no delete_option / update_option
+	// hook fires and the beacon marker would survive a reset or uninstall.
+	if ( function_exists( 'frl_debug_beacon_delete_marker' ) ) {
+		frl_debug_beacon_delete_marker();
+	}
+
 	// Final DB flush
 	frl_flush_db();
 

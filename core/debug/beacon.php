@@ -3,7 +3,7 @@
 /**
  * Page-load beacon (printer).
  *
- * Prints a ~1.6 KB inline script as the first thing in <head> reporting, per page view:
+ * Prints a ~1.9 KB inline script as the first thing in <head> reporting, per page view:
  * started (head ran), finished (DOM parsed; c=1 if the end marker arrived, c=0 if the HTML was cut),
  * hidden (tab/app switched before finished; often finishes later), abandoned (page left before finished).
  * Receiver: beacon-receiver.php.
@@ -23,6 +23,8 @@ add_action( 'wp_footer', 'frl_debug_beacon_print_end_marker', PHP_INT_MAX, 0 );
 
 // Turning the option off removes the receiver's marker file (see beacon-receiver.php).
 add_action( 'update_option_' . frl_prefix( 'debugger_beacon' ), 'frl_debug_beacon_sync_marker', 10, 0 );
+// Option deletion does not fire update_option, so it needs its own cleanup.
+add_action( 'delete_option_' . frl_prefix( 'debugger_beacon' ), 'frl_debug_beacon_delete_marker', 10, 0 );
 
 /**
  * Creates or deletes the marker that allows beacon-receiver.php to write, to match the option.
@@ -38,6 +40,20 @@ function frl_debug_beacon_sync_marker() {
 			@touch( $marker ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
 	} elseif ( is_file( $marker ) ) {
+		wp_delete_file( $marker );
+	}
+}
+
+/**
+ * Deletes the receiver's marker file (option deleted or plugin deactivated).
+ */
+function frl_debug_beacon_delete_marker() {
+	$logs = frl_get_uploads_location( 'logs' );
+	if ( null === $logs ) {
+		return;
+	}
+	$marker = $logs['dir'] . '/beacon.on';
+	if ( is_file( $marker ) ) {
 		wp_delete_file( $marker );
 	}
 }

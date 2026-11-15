@@ -17,7 +17,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 
 ### How it works
 
-- `beacon.php` prints a ~1.5 KB inline script at `wp_head` priority -998, right after the critical CSS (about 3–4 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
+- `beacon.php` prints a ~1.9 KB inline script at `wp_head` priority -998, right after the critical CSS (about 3–4 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
 - It prints an end marker `<i id="frl-beacon-end" hidden>` as the last thing in the body (`wp_footer`, `PHP_INT_MAX`). If the marker is present when the page is parsed, the whole HTML arrived.
 - Runs only on frontend page views (`frl_is_valid_frontend_page_request()`) for visitors who are not logged in.
 - Each event is sent with `navigator.sendBeacon` to `core/debug/beacon-receiver.php`, a standalone PHP file (no WordPress load, a few ms per hit) that answers `204` and appends one line to the day's log.
@@ -57,7 +57,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `html_complete` | Only on `finished`: `1` the whole HTML arrived, `0` the HTML was cut short. Empty on other events. |
 | `path` | Page path, without the query string. |
 | `ip` | Visitor IP (`REMOTE_ADDR`, which on Kinsta is the real visitor IP). |
-| `user_agent` | Full user agent (tabs and line breaks replaced by spaces). |
+| `user_agent` | Full user agent (control characters replaced by spaces, leading `= + - @` escaped). |
 | `ga_client_id` | `_ga` cookie: links the row to GA4. Empty on a first visit before GA4 has set it. |
 | `clarity_user_id` | User id part of the `_clck` cookie: find the visitor's session recordings in Clarity. |
 | `reference_id` | `_channel_reference_id` cookie: the Reference ID that is saved with a WS Form submission and appears in Monday. |

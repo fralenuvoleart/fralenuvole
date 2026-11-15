@@ -16,7 +16,7 @@ http_response_code( 204 );
 
 $frl_in = ! empty( $_POST ) ? $_POST : $_GET; // phpcs:ignore WordPress.Security.NonceVerification -- anonymous telemetry, no state change.
 
-$frl_event = isset( $frl_in['e'] ) ? (string) $frl_in['e'] : '';
+$frl_event = isset( $frl_in['e'] ) && is_string( $frl_in['e'] ) ? $frl_in['e'] : '';
 if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned', 'js_error' ), true ) ) {
 	exit;
 }
@@ -78,6 +78,9 @@ if ( is_file( $frl_file ) && filesize( $frl_file ) > 20 * 1024 * 1024 ) {
  * @return string
  */
 function frl_beacon_clean( $value, $max ) {
+	if ( ! is_string( $value ) && ! is_numeric( $value ) ) {
+		return '';
+	}
 	return substr( preg_replace( '/[^\w\-\/\.%]/', '', (string) $value ), 0, $max );
 }
 
@@ -100,6 +103,25 @@ function frl_beacon_utf8_cut( $value, $max ) {
 		$value = substr( $value, 0, $n );
 	}
 	return $value;
+}
+
+/**
+ * Cleans a free-text field: strips control characters, guards against spreadsheet formulas,
+ * and cuts at a UTF-8-safe boundary.
+ *
+ * @param mixed $value Raw value.
+ * @param int   $max   Max length in bytes.
+ * @return string
+ */
+function frl_beacon_free_text( $value, $max ) {
+	if ( ! is_string( $value ) ) {
+		return '';
+	}
+	$value = preg_replace( '/[\x00-\x1F\x7F]+/', ' ', $value );
+	if ( isset( $value[0] ) && false !== strpos( '=+-@', $value[0] ) ) {
+		$value = "'" . $value;
+	}
+	return frl_beacon_utf8_cut( $value, $max );
 }
 
 $frl_ua      = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
@@ -134,18 +156,18 @@ $frl_line = implode(
 		preg_match( '/Mobi|Android|iPhone/', $frl_ua ) ? '1' : '0',
 		isset( $frl_in['ad'] ) && '1' === $frl_in['ad'] ? '1' : '0',
 		frl_beacon_clean( isset( $frl_in['n'] ) ? $frl_in['n'] : '', 8 ),
-		(string) ( isset( $frl_in['t'] ) ? (int) $frl_in['t'] : -1 ),
+		( isset( $frl_in['t'] ) && is_scalar( $frl_in['t'] ) ? (string) (int) $frl_in['t'] : '-1' ),
 		isset( $frl_in['c'] ) ? ( '1' === $frl_in['c'] ? '1' : '0' ) : '',
 		// Kept percent-encoded: decoding would let frl_beacon_clean() strip non-ASCII slugs.
 		frl_beacon_clean( isset( $frl_in['p'] ) ? $frl_in['p'] : '', 600 ),
 		// REMOTE_ADDR is the visitor IP on Kinsta (verified on staging, same as CF-Connecting-IP).
 		isset( $_SERVER['REMOTE_ADDR'] ) ? preg_replace( '/[^0-9a-fA-F:\.]/', '', (string) $_SERVER['REMOTE_ADDR'] ) : '',
-		substr( preg_replace( '/[\t\r\n]+/', ' ', $frl_ua ), 0, 400 ),
+		frl_beacon_free_text( $frl_ua, 400 ),
 		frl_beacon_clean( isset( $_COOKIE['_ga'] ) ? $_COOKIE['_ga'] : '', 60 ),
-		frl_beacon_clean( isset( $_COOKIE['_clck'] ) ? strtok( (string) $_COOKIE['_clck'], '|' ) : '', 40 ),
+		frl_beacon_clean( isset( $_COOKIE['_clck'] ) && is_string( $_COOKIE['_clck'] ) ? strtok( $_COOKIE['_clck'], '|' ) : '', 40 ),
 		frl_beacon_clean( isset( $_COOKIE['_channel_reference_id'] ) ? $_COOKIE['_channel_reference_id'] : '', 40 ),
-		frl_beacon_utf8_cut( preg_replace( '/[\t\r\n]+/', ' ', ( isset( $frl_in['msg'] ) && is_string( $frl_in['msg'] ) ? $frl_in['msg'] : '' ) ), 300 ),
-		frl_beacon_utf8_cut( preg_replace( '/[\t\r\n]+/', ' ', ( isset( $frl_in['src'] ) && is_string( $frl_in['src'] ) ? $frl_in['src'] : '' ) ), 200 ),
+		frl_beacon_free_text( isset( $frl_in['msg'] ) ? $frl_in['msg'] : '', 300 ),
+		frl_beacon_free_text( isset( $frl_in['src'] ) ? $frl_in['src'] : '', 200 ),
 		( isset( $frl_in['line'] ) && is_scalar( $frl_in['line'] ) && '' !== (string) $frl_in['line'] ? (string) (int) $frl_in['line'] : '' ),
 	)
 ) . "\n";

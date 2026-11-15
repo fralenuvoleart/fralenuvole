@@ -24,16 +24,12 @@ function frl_errors_init(): void {
 	// Install custom error handler if WP_DEBUG_LOG is enabled
 	if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) { // @phpstan-ignore-line alwaysFalse
 		set_error_handler( 'frl_errors_handle_error' );
-		// Also install custom exception handler to catch Throwable types
-		// (TypeError, ValueError, etc.) not intercepted by set_error_handler()
-		set_exception_handler( 'frl_errors_handle_exception' );
 	}
 
 	// Re-bind handler at key phases to prevent overrides by other plugins
 	$rebind = function () {
 		if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) { // @phpstan-ignore-line alwaysFalse
 			set_error_handler( 'frl_errors_handle_error' );
-			set_exception_handler( 'frl_errors_handle_exception' );
 		}
 	};
 
@@ -106,6 +102,14 @@ function _frl_errors_get_rules(): array {
  * @return bool True to suppress the default PHP error handler.
  */
 function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): bool {
+	// Respect the current error_reporting mask (@ on PHP 8 and the level settings).
+	if ( ! ( error_reporting() & $errlevel ) ) {
+		return false;
+	}
+
+	// Fatal errors must not be swallowed: let PHP halt after logging.
+	$is_fatal = (bool) ( $errlevel & ( E_USER_ERROR | E_RECOVERABLE_ERROR ) );
+
 	// Cache detailed log messages to avoid repeated processing
 	static $detailed_log_cache = array();
 	static $backtrace_cache    = array();
@@ -113,7 +117,7 @@ function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): b
 	$error_signature = md5( $errlevel . $errstring . $errfile . $errline );
 	if ( isset( $detailed_log_cache[ $error_signature ] ) ) {
 		error_log( $detailed_log_cache[ $error_signature ] );
-		return true;
+		return ! $is_fatal;
 	}
 
 	// Prevent recursion if an error occurs within the handler.
@@ -152,23 +156,16 @@ function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): b
 			}
 		}
 
-		// Suppress errors silenced by the @ operator.
-		// PHP 8.0+: @ sets error_reporting() to 0.
-		$current_reporting = error_reporting();
-		if ( $current_reporting === 0 ) {
-			return true;
-		}
-
 		// Suppress errors originating outside the plugin directory if enabled
 		if ( frl_get_option( 'error_reporting_plugin', false ) ) {
 			if ( ! empty( $errfile ) && ! str_contains( $errfile, FRL_DIR_PATH ) ) {
-				return true;
+				return ! $is_fatal;
 			}
 		}
 
 		// Suppress based on custom rules
 		if ( frl_errors_is_suppression_match( $errstring ) ) {
-			return true;
+			return ! $is_fatal;
 		}
 
 		// Determine error label
@@ -208,7 +205,7 @@ function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): b
 
 		$detailed_log_cache[ $error_signature ] = $line;
 		error_log( $line );
-		return true;
+		return ! $is_fatal;
 	} finally {
 		$is_handling_error = false;
 	}
@@ -301,46 +298,4 @@ function frl_errors_is_suppression_match( $errstring ): bool {
 	}
 
 	return false;
-}
-
-/**
- * Custom exception handler to catch PHP 7+ Throwable types (TypeError, ValueError, etc.)
- * that are NOT interceptable by set_error_handler().
- *
- * Delegates to frl_errors_handle_error() for consistent formatting, suppression, and logging
- * — all existing rules (@ operator, error_reporting_plugin, textlist suppression) apply identically.
- *
- * @param Throwable $e The uncaught exception or error.
- * @return void
- */
-function frl_errors_handle_exception( Throwable $e ): void {
-	// Prevent recursion if an exception occurs within the handler.
-	// Uses try/finally to guarantee guard reset even if the delegated
-	// error handler itself triggers an exception.
-	static $is_handling = false;
-	if ( $is_handling ) {
-		return;
-	}
-	$is_handling = true;
-
-	try {
-		// Map exception type to an error level for consistent logging
-		if ( $e instanceof TypeError ) {
-			$errno = E_ERROR;
-		} elseif ( $e instanceof ValueError ) {
-			$errno = E_WARNING;
-		} elseif ( $e instanceof DivisionByZeroError ) {
-			$errno = E_ERROR;
-		} else {
-			$errno = E_ERROR;
-		}
-
-		$errstr = get_class( $e ) . ': ' . $e->getMessage();
-
-		// Delegate to the existing error handler for consistent formatting,
-		// suppression rules, and logging via error_log()
-		frl_errors_handle_error( $errno, $errstr, $e->getFile(), $e->getLine() );
-	} finally {
-		$is_handling = false;
-	}
 }
