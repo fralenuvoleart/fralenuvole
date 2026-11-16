@@ -6,7 +6,7 @@
  * The folder must match frl_get_uploads_location( 'logs' ) (default uploads location).
  *
  * Each new daily file starts with a header row naming the columns (see FRL_RUM_COLUMNS).
- * Column meanings and how to read the log: docs/PLUGIN-DEBUG.md.
+ * Column meanings and how to read the log: docs/CORE-DEBUGGER.md.
  *
  * @package Fralenuvole
  */
@@ -18,25 +18,36 @@ http_response_code( 204 );
 $frl_in = ! empty( $_POST ) ? $_POST : $_GET; // phpcs:ignore WordPress.Security.NonceVerification -- anonymous telemetry, no state change.
 
 $frl_event = isset( $frl_in['e'] ) && is_string( $frl_in['e'] ) ? $frl_in['e'] : '';
-if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned', 'js_error' ), true ) ) {
+if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned', 'js_error', 'vitals' ), true ) ) {
+	exit;
+}
+
+$frl_ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
+
+// Crawlers and headless renderers still run the beacon; reject them so they cost no disk write.
+// Tokens are anchored (`bot/`, `bot;`, `bot)`, `bot-`, named crawlers, `spider`, …), never bare
+// `bot`/`yandex`/`baidu`/`sogou`, because real browsers carry them (CUBOT phones, YandexSearch,
+// baiduboxapp, SogouMobileBrowser).
+if ( preg_match( '#(?:apple|bing|bytes|dot|duckduck|google|gpt|msn|petal|semrush|ahrefs|yandex)bot|bot[-/;)]|spider|crawl|slurp|scrap|facebookexternalhit|yisou|mj12|dataprovider|preview|headless|lighthouse|pagespeed|googleother|google-inspectiontool|adsbot|mediapartners|feedfetcher|yandex\.com/bots|bingpreview#i', $frl_ua ) ) {
 	exit;
 }
 
 // <wp-content>/uploads/fralenuvole/logs, from core/debugger/rum/ (5 levels below wp-content).
 $frl_dir = dirname( __DIR__, 5 ) . '/uploads/fralenuvole/logs';
-if ( ! is_dir( $frl_dir ) && ! @mkdir( $frl_dir, 0755, true ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
-	exit;
-}
 
 // Kill switch: rum.php creates this marker while the RUM option is on and deletes it when turned off,
 // so cached pages that still carry the inline script stop writing as soon as the option is off.
+// Checked before the mkdir below, so a disabled feature never touches the filesystem.
 if ( ! is_file( $frl_dir . '/beacon.on' ) ) {
+	exit;
+}
+if ( ! is_dir( $frl_dir ) && ! @mkdir( $frl_dir, 0755, true ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
 	exit;
 }
 
 $frl_file = $frl_dir . '/beacon-' . gmdate( 'Y-m-d' ) . '.tsv';
 
-// Column names, written as the first row of each daily file. Meanings: docs/PLUGIN-DEBUG.md.
+// Column names, written as the first row of each daily file. Meanings: docs/CORE-DEBUGGER.md.
 const FRL_RUM_COLUMNS = array(
 	'time_utc',
 	'event',
@@ -57,6 +68,13 @@ const FRL_RUM_COLUMNS = array(
 	'msg',
 	'src',
 	'line',
+	'stack',
+	'lcp',
+	'cls',
+	'inp',
+	'fcp',
+	'utm_source',
+	'viewport',
 );
 
 // 'x' creates the file only if it does not exist yet, so the header is written exactly once.
@@ -72,7 +90,7 @@ if ( is_file( $frl_file ) && filesize( $frl_file ) > 20 * 1024 * 1024 ) {
 }
 
 /**
- * Keeps a short value without tabs or newlines.
+ * Keeps a short value without tabs or newlines; spaces survive, so `utm_source=news letter` stays readable.
  *
  * @param string $value Raw value.
  * @param int    $max   Max length.
@@ -82,7 +100,7 @@ function frl_rum_clean( $value, $max ) {
 	if ( ! is_string( $value ) && ! is_numeric( $value ) ) {
 		return '';
 	}
-	return substr( preg_replace( '/[^\w\-\/\.%]/', '', (string) $value ), 0, $max );
+	return substr( trim( preg_replace( '/[^\w\-\/\.% ]/', '', (string) $value ) ), 0, $max );
 }
 
 /**
@@ -125,7 +143,6 @@ function frl_rum_free_text( $value, $max ) {
 	return frl_rum_utf8_cut( $value, $max );
 }
 
-$frl_ua      = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
 $frl_browser = 'other';
 foreach ( array(
 	'yandex'  => 'YaBrowser',
@@ -170,6 +187,13 @@ $frl_line = implode(
 		frl_rum_free_text( isset( $frl_in['msg'] ) ? $frl_in['msg'] : '', 300 ),
 		frl_rum_free_text( isset( $frl_in['src'] ) ? $frl_in['src'] : '', 200 ),
 		( isset( $frl_in['line'] ) && is_scalar( $frl_in['line'] ) && '' !== (string) $frl_in['line'] ? (string) (int) $frl_in['line'] : '' ),
+		frl_rum_free_text( isset( $frl_in['stack'] ) ? $frl_in['stack'] : '', 400 ),
+		( isset( $frl_in['lcp'] ) && is_scalar( $frl_in['lcp'] ) && '' !== (string) $frl_in['lcp'] ? (string) (int) $frl_in['lcp'] : '' ),
+		frl_rum_clean( isset( $frl_in['cls'] ) ? $frl_in['cls'] : '', 8 ),
+		( isset( $frl_in['inp'] ) && is_scalar( $frl_in['inp'] ) && '' !== (string) $frl_in['inp'] ? (string) (int) $frl_in['inp'] : '' ),
+		( isset( $frl_in['fcp'] ) && is_scalar( $frl_in['fcp'] ) && '' !== (string) $frl_in['fcp'] ? (string) (int) $frl_in['fcp'] : '' ),
+		frl_rum_clean( isset( $frl_in['utm'] ) ? $frl_in['utm'] : '', 50 ),
+		( isset( $frl_in['vw'] ) && is_scalar( $frl_in['vw'] ) && '' !== (string) $frl_in['vw'] ? (string) (int) $frl_in['vw'] : '' ),
 	)
 ) . "\n";
 

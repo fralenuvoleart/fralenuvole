@@ -1,4 +1,4 @@
-# Plugin Debug
+# Core - Debugger
 
 Diagnostic tools in `core/debugger/`, loaded from `includes/bootstrap.php`. In Developer Tools, "Proprietary Plugin Debugging" has one switch per tool.
 
@@ -17,10 +17,11 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 
 ### How it works
 
-- `rum.php` prints a ~1.9 KB inline script at `wp_head` priority -998, right after the critical CSS (about 3–4 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
+- `rum.php` prints a ~3.1 KB inline script at `wp_head` priority -998, right after the critical CSS (about 6 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
 - It prints an end marker `<i id="frl-rum-end" hidden>` as the last thing in the body (`wp_footer`, `PHP_INT_MAX`). If the marker is present when the page is parsed, the whole HTML arrived.
 - Runs only on frontend page views (`frl_is_valid_frontend_page_request()`) for visitors who are not logged in.
 - Each event is sent with `navigator.sendBeacon` to `core/debugger/rum/rum-receiver.php`, a standalone PHP file (no WordPress load, a few ms per hit) that answers `204` and appends one line to the day's log.
+- Crawlers and headless renderers that do run JavaScript (search bots, Lighthouse, preview fetchers) are rejected in the receiver: they would inflate counts and pass for slow visitors. Real browsers whose user agent carries a crawler-like token stay in — `YandexSearch` (app), `baiduboxapp`, `SogouMobileBrowser`, and phones whose model name contains `BOT` (e.g. `CUBOT`) — so the filter matches whole tokens (`Googlebot/`, `bot;`, `spider`, `GoogleOther`, `google-inspectiontool`, `AdsBot`, `Mediapartners`, `FeedFetcher`, `yandex.com/bots`, `BingPreview`, …), never bare `bot`/`yandex`/`baidu`/`sogou`.
 
 ### Log files
 
@@ -40,6 +41,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `hidden` | The visitor switched tab or app before `finished`. Not a problem by itself; the page often finishes afterwards. Sent at most once per page view. |
 | `abandoned` | The visitor left the page (closed it, navigated away) before `finished`. This is the "gave up" signal. |
 | `js_error` | An uncaught JavaScript error or unhandled promise rejection. At most 5 per view. |
+| `vitals` | Web Vitals of that page view, sent once, when the page is hidden or left. A tab left open still reports when the visitor switches away, but the values then stop at that moment. |
 
 ### Columns
 
@@ -64,6 +66,13 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `msg` | Only on `js_error`: the error message, truncated to 300 bytes. |
 | `src` | Only on `js_error`: last two path segments of the file that threw (truncated to 200 bytes), or `unhandledrejection`. |
 | `line` | Only on `js_error`: the line number, `0` if unknown. |
+| `stack` | Only on `js_error`: the first stack frames, truncated to 400 bytes. Empty when the browser gives none (cross-origin script without CORS, most mobile in-app webviews). |
+| `lcp` | Only on `vitals`: largest contentful paint, ms from page open (`0` when the browser reports none, e.g. a page with no content element). |
+| `cls` | Only on `vitals`: cumulative layout shift, 3 decimals. `0` is a real score, not `unknown`. |
+| `inp` | Only on `vitals`: worst interaction duration in ms (`0` when there was no interaction). The `event` entry type exists in Chromium only; other browsers always report `0`. |
+| `fcp` | Only on `vitals`: first contentful paint, ms from page open. |
+| `utm_source` | Only on `vitals`: `utm_source` of the entry URL, decoded and cleaned to 50 bytes, spaces kept. Empty when the URL had none. |
+| `viewport` | Only on `vitals`: `window.innerWidth` in px, to separate phone from desktop LCP/CLS. |
 
 ### Reading the log
 
@@ -79,6 +88,8 @@ Group rows by `view_id`. Typical page views:
 | started, nothing after | The page never finished and no leave signal arrived (connection stalled, browser killed). |
 
 Useful comparisons: the share of page views without `finished` per country, page language (`/ru/`, `/zh/`, `/ar/`, others English), browser, and ad clicks against the rest, on days with few leads against normal days.
+
+`vitals` values are a snapshot taken when the page was hidden or left, so they measure the loading phase, not later interactions: compare distributions (p75 of `lcp` per country, share of `cls` above 0.1, `inp` where it is non-zero), not single rows.
 
 ### Verify after deploy
 
