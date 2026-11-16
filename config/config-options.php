@@ -1023,12 +1023,12 @@ const FRL_DEFAULT_FIELDS = array(
 				'sanitize_callback' => 'sanitize_textarea_field',
 			),
 			'section_title_debugger'        => array(
-				'label'       => 'Proprietary Plugin Debugging',
-				'description' => 'Diagnostic tools, logs go to uploads/fralenuvole/logs/',
+				'label'       => 'Plugin Debugger',
+				'description' => 'RUM Diagnostics, logs go to uploads/fralenuvole/logs/',
 				'type'        => 'section_title',
 			),
 			'debugger_rum'                  => array(
-				'label'             => 'Enable Page-Load RUM',
+				'label'             => 'Enable Debugger RUM',
 				'description'       => 'Logs started / finished / abandoned per page view (logged-out visitors, kept 30 days)',
 				'type'              => 'checkbox',
 				'default'           => 0,
