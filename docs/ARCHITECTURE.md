@@ -14,7 +14,7 @@ includes/bootstrap.php
   ├─ includes/helpers/functions.php → loads all helper files (10 files in order)
   ├─ core/cache/class-cache-manager.php → Frl_Cache_Manager::init()
   ├─ core/cache/class-cache-operations.php
-  ├─ core/debug/error-handler.php → frl_errors_init()
+  ├─ core/debugger/error-handler.php → frl_errors_init()
   └─ WP-CLI → core/rewriter/cli/class-rewriter-cli.php
 ```
 
@@ -98,7 +98,7 @@ See `docs/PLUGIN-HOOKS.md` for the full priority table and the reasoning behind 
 | ThemeKit | `docs/CORE-THEMEKIT.md` | Theme-independent body classes, base styles, block pattern/provider-style removal, font optimization |
 | Admin UI | `docs/PLUGIN-ADMINUI.md` | Tabbed settings page, dashboard widgets, log manager, tag validator, import/export, docs browser |
 | Access Control | `docs/PLUGIN-PERMISSIONS.md` | Capability model (`frl_has_access()`), superadmin/plugin-admin tiers, nonce system, `FRL_MODE` behavior |
-| Debug Tools | `docs/PLUGIN-DEBUG.md` | Error handler, page-load beacon (`core/debug/`):and `FRL_MODE` URL parameters / constant for disable/core/nocache/migrate modes|
+| Debug Tools | `docs/PLUGIN-DEBUG.md` | Error handler, page-load RUM beacon (`core/debugger/`) and `FRL_MODE` URL parameters / constant for disable/core/nocache/migrate modes|
 | Webhooks | `docs/CORE-WEBHOOKS.md` | Generic webhook dispatch (sync + async via WP-Cron with retry backoff) |
 | Kinsta MU-Plugin | `docs/WWW-KINSTA.md` | Third-party reference for Kinsta's caching behavior |
 

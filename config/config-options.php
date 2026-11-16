@@ -1027,8 +1027,8 @@ const FRL_DEFAULT_FIELDS = array(
 				'description' => 'Diagnostic tools, logs go to uploads/fralenuvole/logs/',
 				'type'        => 'section_title',
 			),
-			'debugger_beacon'               => array(
-				'label'             => 'Enable Page-Load Beacon',
+			'debugger_rum'                  => array(
+				'label'             => 'Enable Page-Load RUM',
 				'description'       => 'Logs started / finished / abandoned per page view (logged-out visitors, kept 30 days)',
 				'type'              => 'checkbox',
 				'default'           => 0,

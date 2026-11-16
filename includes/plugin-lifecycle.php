@@ -297,9 +297,9 @@ function frl_auto_backup_on_upgrade(): void {
 function frl_deactivate_plugin(): void {
 	frl_cache_clear( 'light' );
 
-	// Stop the beacon receiver writing after deactivation.
-	if ( function_exists( 'frl_debug_beacon_delete_marker' ) ) {
-		frl_debug_beacon_delete_marker();
+	// Stop the RUM receiver writing after deactivation.
+	if ( function_exists( 'frl_debug_rum_delete_marker' ) ) {
+		frl_debug_rum_delete_marker();
 	}
 
 	// An absent option makes WP_Rewrite::wp_rewrite_rules() regenerate lazily without our rules.

@@ -1,30 +1,30 @@
 # Plugin Debug
 
-Diagnostic tools in `core/debug/`, loaded from `includes/bootstrap.php`. In Developer Tools, "Proprietary Plugin Debugging" has one switch per tool.
+Diagnostic tools in `core/debugger/`, loaded from `includes/bootstrap.php`. In Developer Tools, "Proprietary Plugin Debugging" has one switch per tool.
 
 Options in this section use the `debugger_*` prefix. Do not name them `debug_*`: `assets/css/admin-ui.css` hides every row whose field name contains `debug_` while WP_DEBUG is unticked (meant for WP_DEBUG_LOG / WP_DEBUG_DISPLAY).
 
 | Tool | Files | Switch |
 |---|---|---|
-| Error handler | `core/debug/error-handler.php` | Always loaded; settings under "Error reporting" |
-| Page-load beacon | `core/debug/beacon.php`, `core/debug/beacon-receiver.php` | `debugger_beacon` ("Enable Page-Load Beacon"), off by default |
+| Error handler | `core/debugger/error-handler.php` | Always loaded; settings under "Error reporting" |
+| Page-load RUM | `core/debugger/rum/rum.php`, `core/debugger/rum/rum-receiver.php` | `debugger_rum` ("Enable Page-Load RUM"), off by default |
 
-## Page-load beacon
+## Page-load RUM
 
 ### Why it exists
 
-Clarity and GA4 load through Tag Manager, which runs late in the page. A page view that never finishes loading (connection cut or stalled, visitor gives up) leaves no trace in them. The beacon records every page view from its first bytes, so those page views become visible.
+Clarity and GA4 load through Tag Manager, which runs late in the page. A page view that never finishes loading (connection cut or stalled, visitor gives up) leaves no trace in them. The RUM beacon records every page view from its first bytes, so those page views become visible.
 
 ### How it works
 
-- `beacon.php` prints a ~1.9 KB inline script at `wp_head` priority -998, right after the critical CSS (about 3–4 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
-- It prints an end marker `<i id="frl-beacon-end" hidden>` as the last thing in the body (`wp_footer`, `PHP_INT_MAX`). If the marker is present when the page is parsed, the whole HTML arrived.
+- `rum.php` prints a ~1.9 KB inline script at `wp_head` priority -998, right after the critical CSS (about 3–4 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
+- It prints an end marker `<i id="frl-rum-end" hidden>` as the last thing in the body (`wp_footer`, `PHP_INT_MAX`). If the marker is present when the page is parsed, the whole HTML arrived.
 - Runs only on frontend page views (`frl_is_valid_frontend_page_request()`) for visitors who are not logged in.
-- Each event is sent with `navigator.sendBeacon` to `core/debug/beacon-receiver.php`, a standalone PHP file (no WordPress load, a few ms per hit) that answers `204` and appends one line to the day's log.
+- Each event is sent with `navigator.sendBeacon` to `core/debugger/rum/rum-receiver.php`, a standalone PHP file (no WordPress load, a few ms per hit) that answers `204` and appends one line to the day's log.
 
 ### Log files
 
-- Location: `uploads/fralenuvole/logs/beacon-YYYY-MM-DD.tsv` (the folder from `frl_get_uploads_location( 'logs' )`). The receiver works the path out from its own location, so the two must match.
+- Location: `uploads/fralenuvole/logs/beacon-YYYY-MM-DD.tsv` (the folder from `frl_get_uploads_location( 'logs' )`). The receiver works the path out from its own location, so the two must match. File names keep the `beacon-` prefix although the feature is called RUM: existing files and the `kinsta-logs` skill read `beacon-*.tsv`.
 - One file per UTC day, tab-separated, the first row names the columns.
 - New columns are appended at the end, so existing columns never shift. On a deploy day the current file keeps its old header until the next UTC day; read by header name and ignore extra trailing fields.
 - The UTF-8 scrub of `msg`/`src` needs the `mbstring` extension; without it the fallback truncates at the first invalid byte (safe, but lossy).
@@ -82,8 +82,8 @@ Useful comparisons: the share of page views without `finished` per country, page
 
 ### Verify after deploy
 
-1. `curl -d "e=started&v=test" https://<site>/wp-content/plugins/fralenuvole/core/debug/beacon-receiver.php` returns `204` and adds a line to today's file.
-2. A logged-out page source contains `beacon-receiver.php` right after the `frl-critical-css` style, and `frl-beacon-end` before `</body>`.
+1. `curl -d "e=started&v=test" https://<site>/wp-content/plugins/fralenuvole/core/debugger/rum/rum-receiver.php` returns `204` and adds a line to today's file.
+2. A logged-out page source contains `rum-receiver.php` right after the `frl-critical-css` style, and `frl-rum-end` before `</body>`.
 3. Kinsta bot protection has an Allow exception for the receiver path, otherwise some events may be dropped silently.
 
 ## Plugin Debug Modes

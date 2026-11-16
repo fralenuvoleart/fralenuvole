@@ -1,10 +1,11 @@
 <?php
 /**
- * Page-load beacon receiver. Standalone (no WordPress load) so each hit costs a few ms.
+ * Page-load RUM beacon receiver. Standalone (no WordPress load) so each hit costs a few ms.
  * Appends one tab-separated line per event to uploads/fralenuvole/logs/beacon-YYYY-MM-DD.tsv, kept 30 days.
+ * File names keep the `beacon-` prefix: the kinsta-logs skill and the existing files depend on it.
  * The folder must match frl_get_uploads_location( 'logs' ) (default uploads location).
  *
- * Each new daily file starts with a header row naming the columns (see FRL_BEACON_COLUMNS).
+ * Each new daily file starts with a header row naming the columns (see FRL_RUM_COLUMNS).
  * Column meanings and how to read the log: docs/PLUGIN-DEBUG.md.
  *
  * @package Fralenuvole
@@ -21,13 +22,13 @@ if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned'
 	exit;
 }
 
-// <wp-content>/uploads/fralenuvole/logs, from core/debug/ (4 levels below wp-content).
-$frl_dir = dirname( __DIR__, 4 ) . '/uploads/fralenuvole/logs';
+// <wp-content>/uploads/fralenuvole/logs, from core/debugger/rum/ (5 levels below wp-content).
+$frl_dir = dirname( __DIR__, 5 ) . '/uploads/fralenuvole/logs';
 if ( ! is_dir( $frl_dir ) && ! @mkdir( $frl_dir, 0755, true ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
 	exit;
 }
 
-// Kill switch: beacon.php creates this marker while debugger_beacon is on and deletes it when turned off,
+// Kill switch: rum.php creates this marker while the RUM option is on and deletes it when turned off,
 // so cached pages that still carry the inline script stop writing as soon as the option is off.
 if ( ! is_file( $frl_dir . '/beacon.on' ) ) {
 	exit;
@@ -36,7 +37,7 @@ if ( ! is_file( $frl_dir . '/beacon.on' ) ) {
 $frl_file = $frl_dir . '/beacon-' . gmdate( 'Y-m-d' ) . '.tsv';
 
 // Column names, written as the first row of each daily file. Meanings: docs/PLUGIN-DEBUG.md.
-const FRL_BEACON_COLUMNS = array(
+const FRL_RUM_COLUMNS = array(
 	'time_utc',
 	'event',
 	'view_id',
@@ -61,7 +62,7 @@ const FRL_BEACON_COLUMNS = array(
 // 'x' creates the file only if it does not exist yet, so the header is written exactly once.
 $frl_new = @fopen( $frl_file, 'x' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions
 if ( $frl_new ) {
-	fwrite( $frl_new, implode( "\t", FRL_BEACON_COLUMNS ) . "\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+	fwrite( $frl_new, implode( "\t", FRL_RUM_COLUMNS ) . "\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 	fclose( $frl_new ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 }
 
@@ -77,7 +78,7 @@ if ( is_file( $frl_file ) && filesize( $frl_file ) > 20 * 1024 * 1024 ) {
  * @param int    $max   Max length.
  * @return string
  */
-function frl_beacon_clean( $value, $max ) {
+function frl_rum_clean( $value, $max ) {
 	if ( ! is_string( $value ) && ! is_numeric( $value ) ) {
 		return '';
 	}
@@ -91,7 +92,7 @@ function frl_beacon_clean( $value, $max ) {
  * @param int    $max   Max length in bytes.
  * @return string
  */
-function frl_beacon_utf8_cut( $value, $max ) {
+function frl_rum_utf8_cut( $value, $max ) {
 	$value = (string) $value;
 	if ( function_exists( 'mb_convert_encoding' ) ) {
 		$value = mb_convert_encoding( $value, 'UTF-8', 'UTF-8' ); // scrub invalid bytes
@@ -113,7 +114,7 @@ function frl_beacon_utf8_cut( $value, $max ) {
  * @param int   $max   Max length in bytes.
  * @return string
  */
-function frl_beacon_free_text( $value, $max ) {
+function frl_rum_free_text( $value, $max ) {
 	if ( ! is_string( $value ) ) {
 		return '';
 	}
@@ -121,7 +122,7 @@ function frl_beacon_free_text( $value, $max ) {
 	if ( isset( $value[0] ) && false !== strpos( '=+-@', $value[0] ) ) {
 		$value = "'" . $value;
 	}
-	return frl_beacon_utf8_cut( $value, $max );
+	return frl_rum_utf8_cut( $value, $max );
 }
 
 $frl_ua      = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
@@ -143,31 +144,31 @@ foreach ( array(
 }
 
 // Kinsta IP Geolocation (country level) sets GEOIP_COUNTRY_CODE.
-$frl_country = isset( $_SERVER['GEOIP_COUNTRY_CODE'] ) ? frl_beacon_clean( $_SERVER['GEOIP_COUNTRY_CODE'], 2 ) : '';
+$frl_country = isset( $_SERVER['GEOIP_COUNTRY_CODE'] ) ? frl_rum_clean( $_SERVER['GEOIP_COUNTRY_CODE'], 2 ) : '';
 
 $frl_line = implode(
 	"\t",
 	array(
 		gmdate( 'Y-m-d\TH:i:s\Z' ),
 		$frl_event,
-		frl_beacon_clean( isset( $frl_in['v'] ) ? $frl_in['v'] : '', 10 ),
+		frl_rum_clean( isset( $frl_in['v'] ) ? $frl_in['v'] : '', 10 ),
 		$frl_country,
 		$frl_browser,
 		preg_match( '/Mobi|Android|iPhone/', $frl_ua ) ? '1' : '0',
 		isset( $frl_in['ad'] ) && '1' === $frl_in['ad'] ? '1' : '0',
-		frl_beacon_clean( isset( $frl_in['n'] ) ? $frl_in['n'] : '', 8 ),
+		frl_rum_clean( isset( $frl_in['n'] ) ? $frl_in['n'] : '', 8 ),
 		( isset( $frl_in['t'] ) && is_scalar( $frl_in['t'] ) ? (string) (int) $frl_in['t'] : '-1' ),
 		isset( $frl_in['c'] ) ? ( '1' === $frl_in['c'] ? '1' : '0' ) : '',
-		// Kept percent-encoded: decoding would let frl_beacon_clean() strip non-ASCII slugs.
-		frl_beacon_clean( isset( $frl_in['p'] ) ? $frl_in['p'] : '', 600 ),
+		// Kept percent-encoded: decoding would let frl_rum_clean() strip non-ASCII slugs.
+		frl_rum_clean( isset( $frl_in['p'] ) ? $frl_in['p'] : '', 600 ),
 		// REMOTE_ADDR is the visitor IP on Kinsta (verified on staging, same as CF-Connecting-IP).
 		isset( $_SERVER['REMOTE_ADDR'] ) ? preg_replace( '/[^0-9a-fA-F:\.]/', '', (string) $_SERVER['REMOTE_ADDR'] ) : '',
-		frl_beacon_free_text( $frl_ua, 400 ),
-		frl_beacon_clean( isset( $_COOKIE['_ga'] ) ? $_COOKIE['_ga'] : '', 60 ),
-		frl_beacon_clean( isset( $_COOKIE['_clck'] ) && is_string( $_COOKIE['_clck'] ) ? strtok( $_COOKIE['_clck'], '|' ) : '', 40 ),
-		frl_beacon_clean( isset( $_COOKIE['_channel_reference_id'] ) ? $_COOKIE['_channel_reference_id'] : '', 40 ),
-		frl_beacon_free_text( isset( $frl_in['msg'] ) ? $frl_in['msg'] : '', 300 ),
-		frl_beacon_free_text( isset( $frl_in['src'] ) ? $frl_in['src'] : '', 200 ),
+		frl_rum_free_text( $frl_ua, 400 ),
+		frl_rum_clean( isset( $_COOKIE['_ga'] ) ? $_COOKIE['_ga'] : '', 60 ),
+		frl_rum_clean( isset( $_COOKIE['_clck'] ) && is_string( $_COOKIE['_clck'] ) ? strtok( $_COOKIE['_clck'], '|' ) : '', 40 ),
+		frl_rum_clean( isset( $_COOKIE['_channel_reference_id'] ) ? $_COOKIE['_channel_reference_id'] : '', 40 ),
+		frl_rum_free_text( isset( $frl_in['msg'] ) ? $frl_in['msg'] : '', 300 ),
+		frl_rum_free_text( isset( $frl_in['src'] ) ? $frl_in['src'] : '', 200 ),
 		( isset( $frl_in['line'] ) && is_scalar( $frl_in['line'] ) && '' !== (string) $frl_in['line'] ? (string) (int) $frl_in['line'] : '' ),
 	)
 ) . "\n";

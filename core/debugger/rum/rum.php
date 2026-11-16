@@ -1,12 +1,12 @@
 <?php
 
 /**
- * Page-load beacon (printer).
+ * Page-load RUM beacon (printer).
  *
  * Prints a ~1.9 KB inline script as the first thing in <head> reporting, per page view:
  * started (head ran), finished (DOM parsed; c=1 if the end marker arrived, c=0 if the HTML was cut),
  * hidden (tab/app switched before finished; often finishes later), abandoned (page left before finished).
- * Receiver: beacon-receiver.php.
+ * Receiver: rum-receiver.php.
  *
  * @package Fralenuvole
  */
@@ -17,25 +17,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Right after frl_add_critical_css (-999), which ends at ~2.8 KB: stays well within the first 16 KB.
-add_action( 'wp_head', 'frl_debug_beacon_print_head', -998, 0 );
+add_action( 'wp_head', 'frl_debug_rum_print_head', -998, 0 );
 // Last thing in the body: its presence proves the whole HTML arrived.
-add_action( 'wp_footer', 'frl_debug_beacon_print_end_marker', PHP_INT_MAX, 0 );
+add_action( 'wp_footer', 'frl_debug_rum_print_end_marker', PHP_INT_MAX, 0 );
 
-// Turning the option off removes the receiver's marker file (see beacon-receiver.php).
-add_action( 'update_option_' . frl_prefix( 'debugger_beacon' ), 'frl_debug_beacon_sync_marker', 10, 0 );
+// Turning the option off removes the receiver's marker file (see rum-receiver.php).
+add_action( 'update_option_' . frl_prefix( 'debugger_rum' ), 'frl_debug_rum_sync_marker', 10, 0 );
 // Option deletion does not fire update_option, so it needs its own cleanup.
-add_action( 'delete_option_' . frl_prefix( 'debugger_beacon' ), 'frl_debug_beacon_delete_marker', 10, 0 );
+add_action( 'delete_option_' . frl_prefix( 'debugger_rum' ), 'frl_debug_rum_delete_marker', 10, 0 );
 
 /**
- * Creates or deletes the marker that allows beacon-receiver.php to write, to match the option.
+ * Creates or deletes the marker that allows rum-receiver.php to write, to match the option.
  */
-function frl_debug_beacon_sync_marker() {
+function frl_debug_rum_sync_marker() {
 	$logs = frl_get_uploads_location( 'logs' );
 	if ( null === $logs ) {
 		return;
 	}
 	$marker = $logs['dir'] . '/beacon.on';
-	if ( frl_get_option( 'debugger_beacon', true ) ) {
+	if ( frl_get_option( 'debugger_rum', true ) ) {
 		if ( ! is_file( $marker ) && ( is_dir( $logs['dir'] ) || wp_mkdir_p( $logs['dir'] ) ) ) {
 			@touch( $marker ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
@@ -47,7 +47,7 @@ function frl_debug_beacon_sync_marker() {
 /**
  * Deletes the receiver's marker file (option deleted or plugin deactivated).
  */
-function frl_debug_beacon_delete_marker() {
+function frl_debug_rum_delete_marker() {
 	$logs = frl_get_uploads_location( 'logs' );
 	if ( null === $logs ) {
 		return;
@@ -59,16 +59,16 @@ function frl_debug_beacon_delete_marker() {
 }
 
 /**
- * Whether the beacon runs on this request: option on, frontend page view, visitor not logged in.
+ * Whether the RUM beacon runs on this request: option on, frontend page view, visitor not logged in.
  *
  * @return bool
  */
-function frl_debug_beacon_is_active(): bool {
+function frl_debug_rum_is_active(): bool {
 	static $active = null;
 	if ( null === $active ) {
-		$active = frl_get_option( 'debugger_beacon' ) && frl_is_valid_frontend_page_request() && ! is_user_logged_in();
+		$active = frl_get_option( 'debugger_rum' ) && frl_is_valid_frontend_page_request() && ! is_user_logged_in();
 		if ( $active ) {
-			frl_debug_beacon_sync_marker(); // Recreates the marker if missing (e.g. after deploy).
+			frl_debug_rum_sync_marker(); // Recreates the marker if missing (e.g. after deploy).
 		}
 	}
 	return $active;
@@ -77,12 +77,12 @@ function frl_debug_beacon_is_active(): bool {
 /**
  * Prints the inline beacon. Wrapped in noptimize so Autoptimize does not defer or move it.
  */
-function frl_debug_beacon_print_head() {
-	if ( ! frl_debug_beacon_is_active() ) {
+function frl_debug_rum_print_head() {
+	if ( ! frl_debug_rum_is_active() ) {
 		return;
 	}
 
-	$url = esc_url( FRL_DIR_URL . 'core/debug/beacon-receiver.php' );
+	$url = esc_url( FRL_DIR_URL . 'core/debugger/rum/rum-receiver.php' );
 
 	// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- static script, URL escaped above.
 	echo '<!--noptimize--><script data-noptimize="1">(function(){var u="' . $url . '",'
@@ -96,7 +96,7 @@ function frl_debug_beacon_print_head() {
 		. 's("started");'
 		. 'var er=0,str=function(v){if(v==null)return "";try{return String(v)}catch(_){return ""}},fix=function(s){var o="",i=0,c;while(i<s.length){c=s.charCodeAt(i);if(c>=0xD800&&c<=0xDBFF&&s.charCodeAt(i+1)>=0xDC00&&s.charCodeAt(i+1)<=0xDFFF){o+=s.charAt(i)+s.charAt(i+1);i+=2}else if(c>=0xD800&&c<=0xDFFF){o+="\uFFFD";i++}else{o+=s.charAt(i);i++}}return o},enc=function(s){try{return encodeURIComponent(s)}catch(_){return encodeURIComponent(fix(s))}};window.addEventListener("error",function(e){if(!e.message||er>=5)return;er++;var f=str(e.filename).split("/").slice(-2).join("/");s("js_error","&msg="+enc(str(e.message).slice(0,300))+"&src="+enc(f.slice(0,200))+"&line="+(e.lineno||0))},true);'
 		. 'window.addEventListener("unhandledrejection",function(e){if(er>=5)return;er++;s("js_error","&msg="+enc(str(e.reason).slice(0,300))+"&src=unhandledrejection&line=0")});'
-		. 'document.addEventListener("DOMContentLoaded",function(){if(d)return;d=1;s("finished","&c="+(document.getElementById("frl-beacon-end")?1:0))});'
+		. 'document.addEventListener("DOMContentLoaded",function(){if(d)return;d=1;s("finished","&c="+(document.getElementById("frl-rum-end")?1:0))});'
 		. 'var h=0;document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden"&&!d&&!h){h=1;s("hidden")}});'
 		. 'addEventListener("pagehide",function(){if(!d&&!a){a=1;s("abandoned")}})'
 		. '})();</script><!--/noptimize-->' . "\n";
@@ -106,9 +106,9 @@ function frl_debug_beacon_print_head() {
 /**
  * Prints the end-of-page marker checked by the "finished" event.
  */
-function frl_debug_beacon_print_end_marker() {
-	if ( ! frl_debug_beacon_is_active() ) {
+function frl_debug_rum_print_end_marker() {
+	if ( ! frl_debug_rum_is_active() ) {
 		return;
 	}
-	echo '<i id="frl-beacon-end" hidden></i>' . "\n";
+	echo '<i id="frl-rum-end" hidden></i>' . "\n";
 }

@@ -42,11 +42,11 @@ Frl_Cache_Manager::init();
 
 require_once FRL_DIR_PATH . 'core/cache/class-cache-operations.php';
 
-require_once FRL_DIR_PATH . 'core/debug/error-handler.php';
+require_once FRL_DIR_PATH . 'core/debugger/error-handler.php';
 frl_errors_init();
 
-// Page-load beacon; inactive unless the debugger_beacon option is on (checked at hook time).
-require_once FRL_DIR_PATH . 'core/debug/beacon.php';
+// Page-load RUM beacon; inactive unless the debugger_rum option is on (checked at hook time).
+require_once FRL_DIR_PATH . 'core/debugger/rum/rum.php';
 
 // Register rewriter CLI commands for WP-CLI
 if ( defined( 'WP_CLI' ) && WP_CLI && ! get_option( frl_prefix( 'disable_rewriter' ), '0' ) ) { // @phpstan-ignore-line alwaysFalse
