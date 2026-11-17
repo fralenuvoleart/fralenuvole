@@ -17,7 +17,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 
 ### How it works
 
-- `rum.php` prints a ~3.1 KB inline script at `wp_head` priority -998, right after the critical CSS (about 6 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
+- `rum.php` prints a ~5.2 KB inline script at `wp_head` priority -998, right after the critical CSS (about 7 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
 - It prints an end marker `<i id="frl-rum-end" hidden>` as the last thing in the body (`wp_footer`, `PHP_INT_MAX`). If the marker is present when the page is parsed, the whole HTML arrived.
 - Runs only on frontend page views (`frl_is_valid_frontend_page_request()`) for visitors who are not logged in.
 - Each event is sent with `navigator.sendBeacon` to `core/debugger/rum/rum-receiver.php`, a standalone PHP file (no WordPress load, a few ms per hit) that answers `204` and appends one line to the day's log.
@@ -42,6 +42,10 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `abandoned` | The visitor left the page (closed it, navigated away) before `finished`. This is the "gave up" signal. |
 | `js_error` | An uncaught JavaScript error or unhandled promise rejection. At most 5 per view. |
 | `vitals` | Web Vitals of that page view, sent once, when the page is hidden or left. A tab left open still reports when the visitor switches away, but the values then stop at that moment. |
+| `form_start` | First `input` event inside a lead form: a form that contains an `input[type=email]` field. Once per page view, so only the first form touched is recorded. |
+| `submit_attempt` | An attempt started inside a lead form: a click on a submit control (`button[type=submit]`, `input[type=submit]`, or a `<button>` without `type`), or Enter in a single-line text field. Once per attempt, whichever comes first: Enter also fires a click on the default button in Chrome and Safari, and that click is swallowed. |
+| `submit_ok` | The form took the submission. On forms without `novalidate` it is sent the moment the browser fires `submit`. On a form with `novalidate` (WS Form sets it) the script waits and probes the result instead: 900 ms after submit it looks for a failure (below); if it finds none it waits another 1.6 s, then reports `submit_ok` — so a server-side rejection arriving up to ~2.5 s later is still caught. The wait ends early if the form is removed from the page, which is what a success message usually does. It still does not mean the server accepted it: a rejection that never reaches the page (silently dropped spam, email failure) is indistinguishable from success. |
+| `submit_blocked` | A submit was attempted and validation stopped it. `field` and `msg` name the first failing field; at most 5 per page view. Three paths feed it: an `invalid` event while an attempt is pending (native validation), the 900 ms probe on `novalidate` forms, or the 2.5 s re-probe. Both probes look for `.wsf-invalid` (WS Form's own class) and then `:invalid`, taking the text from `.wsf-invalid-feedback` (inside `.wsf-field-wrapper`) or `validationMessage`. Measured on this host a WordPress AJAX round trip takes 1.0–1.4 s, which is why the first probe alone is not enough. |
 
 ### Columns
 
@@ -63,7 +67,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `ga_client_id` | `_ga` cookie: links the row to GA4. Empty on a first visit before GA4 has set it. |
 | `clarity_user_id` | User id part of the `_clck` cookie: find the visitor's session recordings in Clarity. |
 | `reference_id` | `_channel_reference_id` cookie: the Reference ID that is saved with a WS Form submission and appears in Monday. |
-| `msg` | Only on `js_error`: the error message, truncated to 300 bytes. |
+| `msg` | On `js_error` the error message; on `submit_blocked` the field's error text (`.wsf-invalid-feedback`, else `validationMessage`; the script sends 120 bytes). Truncated to 300 bytes. |
 | `src` | Only on `js_error`: last two path segments of the file that threw (truncated to 200 bytes), or `unhandledrejection`. |
 | `line` | Only on `js_error`: the line number, `0` if unknown. |
 | `stack` | Only on `js_error`: the first stack frames, truncated to 400 bytes. Empty when the browser gives none (cross-origin script without CORS, most mobile in-app webviews). |
@@ -73,6 +77,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `fcp` | Only on `vitals`: first contentful paint, ms from page open. |
 | `utm_source` | Only on `vitals`: `utm_source` of the entry URL, decoded and cleaned to 50 bytes, spaces kept. Empty when the URL had none. |
 | `viewport` | Only on `vitals`: `window.innerWidth` in px, to separate phone from desktop LCP/CLS. |
+| `field` | Only on `submit_blocked`: `name` (or `id`) of the field that failed validation, 60 bytes. |
 
 ### Reading the log
 

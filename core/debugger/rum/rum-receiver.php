@@ -18,7 +18,7 @@ http_response_code( 204 );
 $frl_in = ! empty( $_POST ) ? $_POST : $_GET; // phpcs:ignore WordPress.Security.NonceVerification -- anonymous telemetry, no state change.
 
 $frl_event = isset( $frl_in['e'] ) && is_string( $frl_in['e'] ) ? $frl_in['e'] : '';
-if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned', 'js_error', 'vitals' ), true ) ) {
+if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned', 'js_error', 'vitals', 'form_start', 'submit_attempt', 'submit_ok', 'submit_blocked' ), true ) ) {
 	exit;
 }
 
@@ -75,6 +75,7 @@ const FRL_RUM_COLUMNS = array(
 	'fcp',
 	'utm_source',
 	'viewport',
+	'field',
 );
 
 // 'x' creates the file only if it does not exist yet, so the header is written exactly once.
@@ -194,6 +195,7 @@ $frl_line = implode(
 		( isset( $frl_in['fcp'] ) && is_scalar( $frl_in['fcp'] ) && '' !== (string) $frl_in['fcp'] ? (string) (int) $frl_in['fcp'] : '' ),
 		frl_rum_clean( isset( $frl_in['utm'] ) ? $frl_in['utm'] : '', 50 ),
 		( isset( $frl_in['vw'] ) && is_scalar( $frl_in['vw'] ) && '' !== (string) $frl_in['vw'] ? (string) (int) $frl_in['vw'] : '' ),
+		frl_rum_clean( isset( $frl_in['field'] ) ? $frl_in['field'] : '', 60 ),
 	)
 ) . "\n";
 
