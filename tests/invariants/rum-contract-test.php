@@ -16,10 +16,10 @@
 
 require __DIR__ . '/lib/assert.php';
 
-$plugin = dirname( __DIR__, 2 );
-$printer = $plugin . '/core/debugger/rum/rum.php';
+$plugin   = dirname( __DIR__, 2 );
+$printer  = $plugin . '/core/debugger/rum/rum.php';
 $receiver = $plugin . '/core/debugger/rum/rum-receiver.php';
-$docs = $plugin . '/docs/CORE-DEBUGGER.md';
+$docs     = $plugin . '/docs/CORE-DEBUGGER.md';
 
 $printer_src  = (string) file_get_contents( $printer );
 $receiver_src = (string) file_get_contents( $receiver );
@@ -60,7 +60,7 @@ $col_start = array_search( 'time_utc', $rows, true );
 frl_test_ok( false !== $col_start, 'docs have a column table starting at time_utc' );
 
 if ( false !== $col_start ) {
-	$doc_events  = array_slice( $rows, 0, $col_start );
+	$doc_events = array_slice( $rows, 0, $col_start );
 	// Later tables (FRL_MODE flags) follow, so only compare the first N rows.
 	$doc_columns = array_slice( $rows, $col_start, count( $columns ) );
 	frl_test_same( $allowed, $doc_events, 'docs events table matches the allowlist, in order' );
@@ -131,7 +131,7 @@ $armed_logs = frl_test_rum_request(
 		't'     => '1234',
 	)
 );
-$files = (array) glob( $armed_logs . '/beacon-*.tsv' );
+$files      = (array) glob( $armed_logs . '/beacon-*.tsv' );
 frl_test_same( 1, count( $files ), 'armed request creates one daily file' );
 
 $lines = $files ? file( $files[0], FILE_IGNORE_NEW_LINES ) : array();
@@ -141,7 +141,7 @@ frl_test_same( implode( "\t", $columns ), $lines[0] ?? '', 'header equals FRL_RU
 $fields = isset( $lines[1] ) ? explode( "\t", $lines[1] ) : array();
 frl_test_same( count( $columns ), count( $fields ), 'row has exactly one field per column' );
 frl_test_same( 'submit_blocked', $fields[1] ?? '', 'event lands in the event column' );
-frl_test_same( $columns[count( $columns ) - 1], 'field', 'last column is field' );
+frl_test_same( $columns[ count( $columns ) - 1 ], 'field', 'last column is field' );
 frl_test_same( 'email', end( $fields ), 'field value lands in the last column' );
 frl_test_ok( 1 === preg_match( '/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', $fields[0] ?? '' ), 'timestamp column is ISO-8601 UTC' );
 
