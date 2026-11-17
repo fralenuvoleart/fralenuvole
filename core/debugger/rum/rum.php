@@ -3,13 +3,14 @@
 /**
  * Page-load RUM beacon (printer).
  *
- * Prints a ~5.2 KB inline script as the first thing in <head> reporting, per page view:
+ * Prints a ~6.4 KB inline script as the first thing in <head> reporting, per page view:
  * started (head ran), finished (DOM parsed; c=1 if the end marker arrived, c=0 if the HTML was cut),
  * hidden (tab/app switched before finished; often finishes later), abandoned (page left before finished),
  * js_error (uncaught error or rejection, with stack), vitals (LCP/CLS/INP/FCP when the page is
- * hidden or left) and the contact-form funnel (form_start, submit_attempt, submit_ok, submit_blocked),
- * for forms that contain an email field only; forms with `novalidate` (WS Form) are judged 900 ms and,
- * if clean, 2.5 s after submit. Receiver: rum-receiver.php.
+ * hidden or left) and the contact-form funnel (form_start, submit_attempt, submit_ok, submit_blocked,
+ * submit_failed, submit_unresolved) for forms that contain an email field only. WS Form forms are
+ * judged by the plugin's own events (wsf-submit-success / -validate-fail / -error); other forms with
+ * `novalidate` are probed at 900 ms and 2.5 s. Receiver: rum-receiver.php.
  *
  * @package Fralenuvole
  */
@@ -113,11 +114,18 @@ function frl_debug_rum_print_head() {
 		. 'var pf=function(t){return t?t.form||(t.closest&&t.closest("form"))||0:0};'
 		. 'document.addEventListener("input",function(e){if(f1)return;if(lead(pf(e.target))){f1=1;s("form_start")}},true);'
 		. 'document.addEventListener("click",function(e){if(sc)return;var t=e.target;if(!t||!t.closest)return;var b=t.closest("button[type=submit],input[type=submit],button:not([type])");if(lead(pf(b))){sc=1;s("submit_attempt");setTimeout(function(){if(sc){s("submit_failed");sc=0}},500)}},true);'
-		. 'document.addEventListener("keydown",function(e){if(sc||(e.key!=="Enter"&&e.keyCode!==13))return;var t=e.target;if(!t||t.tagName!=="INPUT"||/^(checkbox|radio|submit|button|file|image|reset|range|color|hidden)$/.test((t.type||"text").toLowerCase()))return;if(lead(pf(t))){sc=1;s("submit_attempt");setTimeout(function(){if(sc){s("submit_failed");sc=0}},500)}},true);'
-		. 'var pend=0,jd=function(f,fin){var b=f.querySelector(".wsf-invalid")||f.querySelector(":invalid");if(!b){if(fin||f.isConnected===false){pend=0;s("submit_ok")}else setTimeout(function(){if(pend&&pend.f===f)jd(f,1)},1600);return}pend=0;if(ib>=5)return;ib++;var w=b.closest?b.closest(".wsf-field-wrapper"):0,fb=w?w.querySelector(".wsf-invalid-feedback"):0;s("submit_blocked","&field="+enc(str(b.name||b.id).slice(0,60))+"&msg="+enc(str((fb&&fb.textContent)||b.validationMessage||"").trim().slice(0,120)))};'
-		. 'document.addEventListener("submit",function(e){var f=e.target;if(!lead(f))return;if(sc)sc=0;if(!f.hasAttribute("novalidate")){s("submit_ok");return}var k={f:f};pend=k;setTimeout(function(){if(pend===k)jd(f,0)},900)},true);'
+		. 'document.addEventListener("keydown",function(e){if(sc||(e.key!=="Enter"&&e.keyCode!==13))return;var t=e.target;if(!t||t.tagName!=="INPUT"||/^(checkbox|radio|submit|button|file|image|reset|range|color|hidden)$/.test((t.type||"text").toLowerCase()))return;if(lead(pf(t))){var k=e;setTimeout(function(){if(k.defaultPrevented||sc)return;sc=1;s("submit_attempt");setTimeout(function(){if(sc){s("submit_failed");sc=0}},500)},0)}},true);'
+		. 'var pend=0,jd=function(f,fin){var b=f.querySelector(".wsf-invalid")||f.querySelector(":invalid");if(b&&b.querySelector&&!b.validationMessage){var x=b.querySelector(":invalid");if(x)b=x}if(!b){if(fin||f.isConnected===false){pend=0;s("submit_ok")}else setTimeout(function(){if(pend&&pend.f===f)jd(f,1)},1600);return}pend=0;if(ib>=5)return;ib++;var w=b.closest?b.closest(".wsf-field-wrapper"):0,fb=w?w.querySelector(".wsf-invalid-feedback"):0;s("submit_blocked","&field="+enc(str(b.name||b.id).slice(0,60))+"&msg="+enc(str((fb&&fb.textContent)||b.validationMessage||"").trim().slice(0,120)))};'
+		. 'var wx=function(err){var b=err?document.querySelector("[data-wsf-message]"):document.querySelector("form.wsf-form [aria-invalid=true]");return err?["",str(b?b.textContent:"")]:[str(b?b.name||b.id:""),str(b?b.validationMessage:"")]};'
+		. 'var jj=function(ok,x){if(!pend||!pend.ws||pend.done)return;var k=pend;pend=0;k.done=1;s(ok?"submit_ok":"submit_blocked",ok?"":"&field="+enc(x[0].slice(0,60))+"&msg="+enc(x[1].slice(0,120)))};'
+		. 'var wsb=0,wbind=function(){if(wsb||!window.jQuery)return;wsb=1;var j=jQuery;'
+		. 'j(document).on("wsf-submit-success",function(){jj(1,0)});'
+		. 'j(document).on("wsf-submit-validate-fail",function(){jj(0,wx(0))});'
+		. 'j(document).on("wsf-submit-error",function(){jj(0,wx(1))});'
+		. 'j(document).on("wsf-submit-validate-success",function(){var k=pend;if(k&&k.ws&&!k.done)k.t=setTimeout(function(){if(pend===k&&!k.done){pend=0;k.done=1;s("submit_unresolved","&msg=timeout")}},15e3)})};'
+		. 'document.addEventListener("submit",function(e){var f=e.target;if(!lead(f))return;if(sc)sc=0;if(f.classList&&f.classList.contains("wsf-form")){pend={f:f,ws:1};wbind();return}if(!f.hasAttribute("novalidate")){s("submit_ok");return}var k={f:f};pend=k;setTimeout(function(){if(pend===k)jd(f,0)},900)},true);'
 		. 'document.addEventListener("invalid",function(e){if(!sc||ib>=5)return;var t=e.target;if(lead(pf(t))){ib++;sc=0;s("submit_blocked","&field="+enc(str(t.name||t.id).slice(0,60))+"&msg="+enc(str(t.validationMessage||"").slice(0,120)))}},true);'
-		. 'addEventListener("pagehide",function(){if(pend){var p=pend;pend=0;jd(p.f,1)}if(!d&&!a){a=1;s("abandoned")}vit()})'
+		. 'addEventListener("pagehide",function(){if(pend){var p=pend;pend=0;p.ws?(p.done||(p.done=1,s("submit_unresolved","&msg=unload"))):jd(p.f,1)}if(!d&&!a){a=1;s("abandoned")}vit()})'
 		. '})();</script><!--/noptimize-->' . "\n";
 	// phpcs:enable
 }
