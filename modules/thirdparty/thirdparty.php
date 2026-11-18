@@ -33,14 +33,12 @@ add_action( 'frl_thirdparty_trigger_cache_warmer', 'frl_thirdparty_run_cache_war
 add_filter( 'frl_admin_bar_menu_data', 'frl_thirdparty_admin_bar_cache_warmer', 10, 1 );
 add_filter( 'frl_action_registry', 'frl_thirdparty_register_action', 10, 1 );
 
-/*
 add_filter(
 	'wp_script_modules_import_map_html',
 	function ( $html ) {
 		return str_replace( '<script id="wp-importmap"', '<script id="wp-importmap" data-noptimize="1"', $html );
 	}
 );
-*/
 
 /**
  * Force absolute https:// URLs in Autoptimize's rewritten CSS url() values.
