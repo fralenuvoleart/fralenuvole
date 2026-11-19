@@ -89,6 +89,8 @@ const FRL_RUM_COLUMNS = array(
 	'click_id',
 	'error_source',
 	'errors_dropped',
+	'submit_why',
+	'form_ref',
 );
 
 // 'x' creates the file only if it does not exist yet, so the header is written exactly once.
@@ -206,6 +208,13 @@ if ( ! in_array( $frl_es, array( 'own', 'inline', 'third' ), true ) ) {
 	$frl_es = '';
 }
 
+// Why a submit ended: browser blocked it, the client refused it, the request failed, the server refused it,
+// or a plain form passed the browser's own validation (native).
+$frl_why = isset( $frl_in['why'] ) && is_string( $frl_in['why'] ) ? $frl_in['why'] : '';
+if ( ! in_array( $frl_why, array( 'browser', 'client', 'server', 'error', 'native' ), true ) ) {
+	$frl_why = '';
+}
+
 // Page age: receive time minus the printer's render time, minus the ms the visitor spent before sending.
 // Both clocks are the server's, so a cached page shows a large age and a fresh one 0-2 s. `t = -1` means
 // the browser cannot measure, and is treated as 0.
@@ -258,6 +267,8 @@ $frl_line = implode(
 		$frl_click,
 		$frl_es,
 		frl_rum_int( $frl_in, 'dr' ),
+		$frl_why,
+		frl_rum_clean( isset( $frl_in['ref'] ) ? $frl_in['ref'] : '', 20 ),
 	)
 ) . "\n";
 

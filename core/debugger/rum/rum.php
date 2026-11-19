@@ -3,7 +3,7 @@
 /**
  * Page-load RUM beacon (printer).
  *
- * Prints a ~7.8 KB inline script as the first thing in <head> reporting, per page view:
+ * Prints a ~7.9 KB inline script as the first thing in <head> reporting, per page view:
  * started (head ran), finished (DOM parsed; c=1 if the end marker arrived, c=0 if the HTML was cut),
  * hidden (tab/app switched before finished; often finishes later), abandoned (page left before finished),
  * js_error (uncaught error or rejection, with stack and origin), vitals (LCP/CLS/INP/FCP, navigation
@@ -117,20 +117,20 @@ function frl_debug_rum_print_head() {
 		. 'var h=0;document.addEventListener("visibilitychange",function(){if(document.visibilityState!=="hidden")return;if(!d&&!h){h=1;s("hidden")}vit()});'
 		. 'var f1=0,sc=0,ib=0,lead=function(f){if(!f||f.tagName!=="FORM")return 0;var n=f.elements?f.elements.length:0;if(f.__rumLead===void 0||(f.__rumLead===0&&f.__rumLen!==n)){f.__rumLead=f.querySelector("input[type=email]")?1:0;f.__rumLen=n}return f.__rumLead};'
 		. 'var pf=function(t){return t?t.form||(t.closest&&t.closest("form"))||0:0};'
-		. 'document.addEventListener("input",function(e){if(f1)return;if(lead(pf(e.target))){f1=1;s("form_start")}},true);'
+		. 'document.addEventListener("input",function(e){if(f1||!e.isTrusted)return;if(lead(pf(e.target))){f1=1;s("form_start")}},true);'
 		. 'document.addEventListener("click",function(e){if(sc)return;var t=e.target;if(!t||!t.closest)return;var b=t.closest("button[type=submit],input[type=submit],button:not([type])");if(lead(pf(b))){sc=1;s("submit_attempt");setTimeout(function(){if(sc){s("submit_failed");sc=0}},500)}},true);'
 		. 'document.addEventListener("keydown",function(e){if(sc||(e.key!=="Enter"&&e.keyCode!==13))return;var t=e.target;if(!t||t.tagName!=="INPUT"||/^(checkbox|radio|submit|button|file|image|reset|range|color|hidden)$/.test((t.type||"text").toLowerCase()))return;if(lead(pf(t))){var k=e;setTimeout(function(){if(k.defaultPrevented||sc)return;sc=1;s("submit_attempt");setTimeout(function(){if(sc){s("submit_failed");sc=0}},500)},0)}},true);'
-		. 'var pend=0,jd=function(f,fin){var b=f.querySelector(".wsf-invalid")||f.querySelector(":invalid");if(b&&b.querySelector&&!b.validationMessage){var x=b.querySelector(":invalid");if(x)b=x}if(!b){if(fin||f.isConnected===false){pend=0;s("submit_ok")}else setTimeout(function(){if(pend&&pend.f===f)jd(f,1)},1600);return}pend=0;if(ib>=5)return;ib++;var w=b.closest?b.closest(".wsf-field-wrapper"):0,fb=w?w.querySelector(".wsf-invalid-feedback"):0;s("submit_blocked","&field="+enc(str(b.name||b.id).slice(0,60))+"&msg="+enc(str((fb&&fb.textContent)||b.validationMessage||"").trim().slice(0,120)))};'
-		. 'var wx=function(err,f){var b=err?document.querySelector("[data-wsf-message]"):(f&&f.querySelector("[aria-invalid=true]"));return err?["",str(b?b.textContent:"")]:[str(b?b.name||b.id:""),str(b?b.validationMessage:"")]};'
-		. 'var jj=function(ok,x){if(!pend||!pend.ws||pend.done)return;var k=pend;pend=0;k.done=1;s(ok?"submit_ok":"submit_blocked",ok?"":"&field="+enc(x[0].slice(0,60))+"&msg="+enc(x[1].slice(0,120)))};'
+		. 'var pend=0,jd=function(f,fin){var b=f.querySelector(".wsf-invalid")||f.querySelector(":invalid");if(b&&b.querySelector&&!b.validationMessage){var x=b.querySelector(":invalid");if(x)b=x}if(!b){if(fin||f.isConnected===false){pend=0;s("submit_ok","&why=native")}else setTimeout(function(){if(pend&&pend.f===f)jd(f,1)},1600);return}pend=0;if(ib>=5)return;ib++;s("submit_blocked","&why=browser&field="+enc(str(b.name||b.id).slice(0,60)))};'
+		. 'var wx=function(err,f){if(err)return[""];var b=f?f.querySelector("[aria-invalid=true]"):0,x=b?(b.querySelector(".wsf-invalid")||b.querySelector(":invalid")||b):0;return[x?str(x.name||x.id).slice(0,60):""]};'
+		. 'var jj=function(ok,x,w){if(!pend||!pend.ws||pend.done)return;var k=pend;pend=0;k.done=1;clearTimeout(k.t);s(ok?"submit_ok":"submit_blocked",(ok?"":"&why="+w+(x[0]?"&field="+enc(x[0]):""))+"&ref="+enc(k.ref||""))};'
 		. 'var wsb=0,wbind=function(){if(wsb||!window.jQuery)return;wsb=1;var j=jQuery;'
 		. 'j(document).on("wsf-submit-success",function(){jj(1,0)});'
-		. 'j(document).on("wsf-submit-validate-fail",function(){jj(0,wx(0,pend&&pend.f))});'
-		. 'j(document).on("wsf-submit-error",function(){jj(0,wx(1))});'
-		. 'j(document).on("wsf-submit-validate-success",function(){var k=pend;if(k&&k.ws&&!k.done)k.t=setTimeout(function(){if(pend===k&&!k.done){pend=0;k.done=1;s("submit_unresolved","&msg=timeout")}},15e3)})};'
-		. 'document.addEventListener("submit",function(e){var f=e.target;if(!lead(f))return;if(sc)sc=0;if(f.classList&&f.classList.contains("wsf-form")){pend={f:f,ws:1};wbind();return}if(!f.hasAttribute("novalidate")){s("submit_ok");return}var k={f:f};pend=k;setTimeout(function(){if(pend===k)jd(f,0)},900)},true);'
-		. 'document.addEventListener("invalid",function(e){if(!sc||ib>=5)return;var t=e.target;if(lead(pf(t))){ib++;sc=0;s("submit_blocked","&field="+enc(str(t.name||t.id).slice(0,60))+"&msg="+enc(str(t.validationMessage||"").slice(0,120)))}},true);'
-		. 'addEventListener("pagehide",function(){if(pend){var p=pend;pend=0;p.ws?(p.done||(p.done=1,s("submit_unresolved","&msg=unload"))):jd(p.f,1)}if(!d&&!a){a=1;s("abandoned")}vit()})'
+		. 'j(document).on("wsf-submit-validate-fail",function(){jj(0,wx(0,pend&&pend.f),pend&&pend.posted?"server":"client")});'
+		. 'j(document).on("wsf-submit-error",function(){jj(0,wx(1),"error")});'
+		. 'j(document).on("wsf-submit-validate-success",function(){var k=pend;if(k&&k.ws&&!k.done){k.posted=1;clearTimeout(k.t);k.t=setTimeout(function(){if(pend===k&&!k.done){pend=0;k.done=1;s("submit_unresolved","&msg=timeout&ref="+enc(k.ref||""))}},15e3)}})};'
+		. 'document.addEventListener("submit",function(e){var f=e.target;if(!lead(f))return;if(sc)sc=0;if(f.classList&&f.classList.contains("wsf-form")){var r=f.querySelector("[name=field_232]");pend={f:f,ws:1,posted:0,ref:r?str(r.value).slice(0,20):""};pend.t=setTimeout(function(){var k=pend;if(k&&k.ws&&!k.done){pend=0;k.done=1;s("submit_unresolved","&msg=stale&ref="+enc(k.ref||""))}},2e4);wbind();return}if(!f.hasAttribute("novalidate")){s("submit_ok","&why=native");return}var k={f:f};pend=k;setTimeout(function(){if(pend===k)jd(f,0)},900)},true);'
+		. 'document.addEventListener("invalid",function(e){if(!sc||ib>=5)return;var t=e.target;if(lead(pf(t))){ib++;sc=0;s("submit_blocked","&why=browser&field="+enc(str(t.name||t.id).slice(0,60)))}},true);'
+		. 'addEventListener("pagehide",function(){if(pend){var p=pend;pend=0;p.ws?(p.done||(p.done=1,s("submit_unresolved","&msg=unload&ref="+enc(p.ref||"")))):jd(p.f,1)}if(!d&&!a){a=1;s("abandoned")}vit()})'
 		. '})();</script><!--/noptimize-->' . "\n";
 	// phpcs:enable
 }
