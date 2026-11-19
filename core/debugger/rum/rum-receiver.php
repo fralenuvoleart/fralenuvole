@@ -8,6 +8,9 @@
  * Each new daily file starts with a header row naming the columns (see FRL_RUM_COLUMNS).
  * Column meanings and how to read the log: docs/CORE-DEBUGGER.md.
  *
+ * Loaded exactly once per request: it declares functions and a constant, so it must be included
+ * with `require_once`.
+ *
  * @package Fralenuvole
  */
 
@@ -76,6 +79,16 @@ const FRL_RUM_COLUMNS = array(
 	'utm_source',
 	'viewport',
 	'field',
+	'ttfb',
+	'redirect',
+	'dns',
+	'connect',
+	'tls',
+	'wait',
+	'page_age',
+	'click_id',
+	'error_source',
+	'errors_dropped',
 );
 
 // 'x' creates the file only if it does not exist yet, so the header is written exactly once.
@@ -102,6 +115,23 @@ function frl_rum_clean( $value, $max ) {
 		return '';
 	}
 	return substr( trim( preg_replace( '/[^\w\-\/\.% ]/', '', (string) $value ) ), 0, $max );
+}
+
+/**
+ * Reads a millisecond/count parameter as a non-negative integer; empty when absent, blank or <= 0.
+ * Zero is never a real measurement here, so it stays empty rather than turning "unknown" into "none".
+ * Values are clamped to one hour of milliseconds, so a crafted number cannot distort a column.
+ *
+ * @param array  $in  Request array (POST or GET).
+ * @param string $key Parameter name.
+ * @return string
+ */
+function frl_rum_int( $in, $key ) {
+	if ( ! isset( $in[ $key ] ) || ! is_scalar( $in[ $key ] ) || '' === (string) $in[ $key ] ) {
+		return '';
+	}
+	$n = (int) $in[ $key ];
+	return $n > 0 ? (string) min( $n, 3600000 ) : '';
 }
 
 /**
@@ -164,6 +194,28 @@ foreach ( array(
 // Kinsta IP Geolocation (country level) sets GEOIP_COUNTRY_CODE.
 $frl_country = isset( $_SERVER['GEOIP_COUNTRY_CODE'] ) ? frl_rum_clean( $_SERVER['GEOIP_COUNTRY_CODE'], 2 ) : '';
 
+// Ad-click id name, whitelisted: the printer sends a name, never the value.
+$frl_click = isset( $frl_in['cid'] ) && is_string( $frl_in['cid'] ) ? strtolower( $frl_in['cid'] ) : '';
+if ( ! in_array( $frl_click, array( 'gclid', 'gbraid', 'wbraid', 'yclid', 'fbclid' ), true ) ) {
+	$frl_click = '';
+}
+
+// Script that threw: own, inline (the page itself) or third (another origin).
+$frl_es = isset( $frl_in['es'] ) && is_string( $frl_in['es'] ) ? $frl_in['es'] : '';
+if ( ! in_array( $frl_es, array( 'own', 'inline', 'third' ), true ) ) {
+	$frl_es = '';
+}
+
+// Page age: receive time minus the printer's render time, minus the ms the visitor spent before sending.
+// Both clocks are the server's, so a cached page shows a large age and a fresh one 0-2 s. `t = -1` means
+// the browser cannot measure, and is treated as 0.
+$frl_age    = '';
+$frl_has_rt = isset( $frl_in['r'] ) && is_scalar( $frl_in['r'] ) && (int) $frl_in['r'] > 0;
+if ( $frl_has_rt && in_array( $frl_event, array( 'started', 'vitals' ), true ) ) {
+	$frl_t   = isset( $frl_in['t'] ) && is_scalar( $frl_in['t'] ) ? max( 0, (int) $frl_in['t'] ) : 0;
+	$frl_age = (string) max( 0, time() - (int) $frl_in['r'] - (int) round( $frl_t / 1000 ) );
+}
+
 $frl_line = implode(
 	"\t",
 	array(
@@ -196,6 +248,16 @@ $frl_line = implode(
 		frl_rum_clean( isset( $frl_in['utm'] ) ? $frl_in['utm'] : '', 50 ),
 		( isset( $frl_in['vw'] ) && is_scalar( $frl_in['vw'] ) && '' !== (string) $frl_in['vw'] ? (string) (int) $frl_in['vw'] : '' ),
 		frl_rum_clean( isset( $frl_in['field'] ) ? $frl_in['field'] : '', 60 ),
+		frl_rum_int( $frl_in, 'ttfb' ),
+		frl_rum_int( $frl_in, 'redirect' ),
+		frl_rum_int( $frl_in, 'dns' ),
+		frl_rum_int( $frl_in, 'connect' ),
+		frl_rum_int( $frl_in, 'tls' ),
+		frl_rum_int( $frl_in, 'wait' ),
+		$frl_age,
+		$frl_click,
+		$frl_es,
+		frl_rum_int( $frl_in, 'dr' ),
 	)
 ) . "\n";
 

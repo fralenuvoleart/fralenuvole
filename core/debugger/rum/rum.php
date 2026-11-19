@@ -3,11 +3,11 @@
 /**
  * Page-load RUM beacon (printer).
  *
- * Prints a ~6.4 KB inline script as the first thing in <head> reporting, per page view:
+ * Prints a ~7.8 KB inline script as the first thing in <head> reporting, per page view:
  * started (head ran), finished (DOM parsed; c=1 if the end marker arrived, c=0 if the HTML was cut),
  * hidden (tab/app switched before finished; often finishes later), abandoned (page left before finished),
- * js_error (uncaught error or rejection, with stack), vitals (LCP/CLS/INP/FCP when the page is
- * hidden or left) and the contact-form funnel (form_start, submit_attempt, submit_ok, submit_blocked,
+ * js_error (uncaught error or rejection, with stack and origin), vitals (LCP/CLS/INP/FCP, navigation
+ * timings and dropped-error count when the page is hidden or left) and the contact-form funnel (form_start, submit_attempt, submit_ok, submit_blocked,
  * submit_failed, submit_unresolved) for forms that contain an email field only. WS Form forms are
  * judged by the plugin's own events (wsf-submit-success / -validate-fail / -error); other forms with
  * `novalidate` are probed at 900 ms and 2.5 s. Receiver: rum-receiver.php.
@@ -90,24 +90,29 @@ function frl_debug_rum_print_head() {
 
 	// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- static script, URL escaped above.
 	echo '<!--noptimize--><script data-noptimize="1">(function(){var u="' . $url . '",'
-		. 'v=Math.random().toString(36).slice(2,10),d=0,a=0,g=0,'
-		. 'q=/[?&](gclid|gbraid|wbraid|yclid)=/.test(location.search)?1:0,'
+		. 'v=Math.random().toString(36).slice(2,10),d=0,a=0,g=0,dr=0,r=' . time() . ','
+		. 'c=(location.search.match(/[?&](gclid|gbraid|wbraid|yclid|fbclid)=/i)||[0,""])[1].toLowerCase(),'
 		. 'n=(navigator.connection&&navigator.connection.effectiveType)||"",'
 		. 'P=window.performance&&performance.now?function(){return Math.round(performance.now())}:function(){return -1};'
-		. 'function s(e,x){var b="e="+e+"&v="+v+"&p="+encodeURIComponent(location.pathname)+"&ad="+q+"&n="+n+"&t="+P()+(x||"");'
+		. 'function s(e,x){var b="e="+e+"&v="+v+"&p="+encodeURIComponent(location.pathname)+"&ad="+(c?1:0)+"&cid="+c+"&n="+n+"&t="+P()+"&r="+r+(x||"");'
 		. 'try{if(navigator.sendBeacon&&navigator.sendBeacon(u,new Blob([b],{type:"application/x-www-form-urlencoded"})))return}catch(_){}'
 		. '(new Image()).src=u+"?"+b}'
 		. 's("started");'
-		. 'var er=0,str=function(v){if(v==null)return "";try{return String(v)}catch(_){return ""}},fix=function(s){var o="",i=0,c;while(i<s.length){c=s.charCodeAt(i);if(c>=0xD800&&c<=0xDBFF&&s.charCodeAt(i+1)>=0xDC00&&s.charCodeAt(i+1)<=0xDFFF){o+=s.charAt(i)+s.charAt(i+1);i+=2}else if(c>=0xD800&&c<=0xDFFF){o+="\uFFFD";i++}else{o+=s.charAt(i);i++}}return o},enc=function(s){try{return encodeURIComponent(s)}catch(_){return encodeURIComponent(fix(s))}};'
-		. 'window.addEventListener("error",function(e){var m=str(e.message)||(e.error&&str(e.error.name))||"",st=e.error&&e.error.stack?str(e.error.stack):"";if(!m&&!st)return;if(er>=5)return;er++;var f=str(e.filename).split("/").slice(-2).join("/");s("js_error","&msg="+enc((m||"(no message)").slice(0,300))+"&stack="+enc(st.slice(0,400))+"&src="+enc(f.slice(0,200))+"&line="+(e.lineno||0))},true);'
-		. 'window.addEventListener("unhandledrejection",function(e){var r=e.reason,m=(r&&r.message)?str(r.message):(typeof r==="string"?str(r):(r&&r.name?str(r.name):"")),st=r&&r.stack?str(r.stack):"";if(!m&&!st)return;if(er>=5)return;er++;s("js_error","&msg="+enc((m||"(no message)").slice(0,300))+"&stack="+enc(st.slice(0,400))+"&src=unhandledrejection&line=0")});'
-		. 'var lcp=0,cls=0,inp=0,fcp=0,ob=function(t,x,f){try{var o={type:t,buffered:true};for(var k in x)o[k]=x[k];new PerformanceObserver(f).observe(o)}catch(_){}};'
-		. 'ob("paint",0,function(l){for(var i=0,a=l.getEntries();i<a.length;i++){var e=a[i];if(e.name==="first-contentful-paint")fcp=Math.round(e.startTime)}});'
-		. 'ob("largest-contentful-paint",0,function(l){var a=l.getEntries(),e=a[a.length-1];if(e&&e.startTime)lcp=Math.round(e.startTime)});'
-		. 'ob("layout-shift",0,function(l){for(var i=0,a=l.getEntries();i<a.length;i++){var e=a[i];if(!e.hadRecentInput)cls+=e.value}});'
-		. 'ob("event",{buffered:false,durationThreshold:16},function(l){for(var i=0,a=l.getEntries();i<a.length;i++){var e=a[i];if(e.duration>inp)inp=Math.round(e.duration)}});'
+		. 'var er=0,str=function(v){if(v==null)return "";try{return String(v)}catch(_){return ""}},fix=function(s){var o="",i=0,c;while(i<s.length){c=s.charCodeAt(i);if(c>=0xD800&&c<=0xDBFF&&s.charCodeAt(i+1)>=0xDC00&&s.charCodeAt(i+1)<=0xDFFF){o+=s.charAt(i)+s.charAt(i+1);i+=2}else if(c>=0xD800&&c<=0xDFFF){o+="\uFFFD";i++}else{o+=s.charAt(i);i++}}return o},enc=function(s){try{return encodeURIComponent(s)}catch(_){return encodeURIComponent(fix(s))}},Es=function(f){if(!f)return "";try{var u=new URL(f),l=location;if(u.origin!==l.origin)return "third";return u.pathname===l.pathname?"inline":"own"}catch(_){return "third"}};'
+		. 'window.addEventListener("error",function(e){var m=str(e.message)||(e.error&&str(e.error.name))||"",st=e.error&&e.error.stack?str(e.error.stack):"";if(!m&&!st)return;if(er>=5){dr++;return}er++;var f=str(e.filename).split("/").slice(-2).join("/");s("js_error","&msg="+enc((m||"(no message)").slice(0,300))+"&stack="+enc(st.slice(0,400))+"&src="+enc(f.slice(0,200))+"&es="+Es(e.filename?str(e.filename):"")+"&line="+(e.lineno||0))},true);'
+		. 'window.addEventListener("unhandledrejection",function(e){var r=e.reason,m=(r&&r.message)?str(r.message):(typeof r==="string"?str(r):(r&&r.name?str(r.name):"")),st=r&&r.stack?str(r.stack):"";if(!m&&!st)return;if(er>=5){dr++;return}er++;s("js_error","&msg="+enc((m||"(no message)").slice(0,300))+"&stack="+enc(st.slice(0,400))+"&src=unhandledrejection&line=0")});'
+		. 'var lcp=null,cls=null,inp=null,fcp=null,S=(window.PerformanceObserver&&PerformanceObserver.supportedEntryTypes)||[],'
+		. 'H=function(t){return S.indexOf(t)>-1},N=function(v){return v===null?"":v},'
+		. 'ob=function(t,x,f){try{var o={type:t,buffered:true};for(var k in x)o[k]=x[k];new PerformanceObserver(f).observe(o)}catch(_){}};'
+		. 'if(H("paint")){fcp=0;ob("paint",0,function(l){for(var i=0,a=l.getEntries();i<a.length;i++){var e=a[i];if(e.name==="first-contentful-paint")fcp=Math.round(e.startTime)}});}'
+		. 'if(H("largest-contentful-paint")){lcp=0;ob("largest-contentful-paint",0,function(l){var a=l.getEntries(),e=a[a.length-1];if(e&&e.startTime)lcp=Math.round(e.startTime)});}'
+		. 'if(H("layout-shift")){cls=0;ob("layout-shift",0,function(l){for(var i=0,a=l.getEntries();i<a.length;i++){var e=a[i];if(!e.hadRecentInput)cls+=e.value}});}'
+		. 'if(H("event")){ob("event",{buffered:false,durationThreshold:16},function(l){for(var i=0,a=l.getEntries();i<a.length;i++){var e=a[i];if(e.interactionId>0&&(inp===null||e.duration>inp))inp=Math.round(e.duration)}});}'
 		. 'var utm=((location.search.match(/[?&]utm_source=([^&]*)/)||[])[1]||"").replace(/\+/g," "),vw=window.innerWidth||0,'
-		. 'vit=function(){if(g)return;g=1;var x=utm;try{x=decodeURIComponent(utm)}catch(_){}s("vitals","&lcp="+lcp+"&cls="+(Math.round(cls*1000)/1000)+"&inp="+inp+"&fcp="+fcp+"&utm="+enc(x)+"&vw="+vw)};'
+		. 'nt=function(){var p=window.performance,e=p&&p.getEntriesByType?(p.getEntriesByType("navigation")||[])[0]:0;if(!e||e.type==="back_forward"||!e.responseStart)return "";'
+		. 'var dd=function(a,b){return a>0&&b>=a?Math.round(b-a):null},o=[Math.round(e.responseStart),dd(e.redirectStart,e.redirectEnd),dd(e.domainLookupStart,e.domainLookupEnd),dd(e.connectStart,e.connectEnd),dd(e.secureConnectionStart,e.connectEnd),dd(e.requestStart,e.responseStart)];'
+		. 'return "&ttfb="+N(o[0])+"&redirect="+N(o[1])+"&dns="+N(o[2])+"&connect="+N(o[3])+"&tls="+N(o[4])+"&wait="+N(o[5])},'
+		. 'vit=function(){if(g)return;g=1;var x=utm;try{x=decodeURIComponent(utm)}catch(_){}s("vitals","&lcp="+N(lcp)+"&cls="+(cls===null?"":Math.round(cls*1000)/1000)+"&inp="+N(inp)+"&fcp="+N(fcp)+"&dr="+dr+"&utm="+enc(x)+"&vw="+vw+nt())};'
 		. 'document.addEventListener("DOMContentLoaded",function(){if(d)return;d=1;s("finished","&c="+(document.getElementById("frl-rum-end")?1:0))});'
 		. 'var h=0;document.addEventListener("visibilitychange",function(){if(document.visibilityState!=="hidden")return;if(!d&&!h){h=1;s("hidden")}vit()});'
 		. 'var f1=0,sc=0,ib=0,lead=function(f){if(!f||f.tagName!=="FORM")return 0;var n=f.elements?f.elements.length:0;if(f.__rumLead===void 0||(f.__rumLead===0&&f.__rumLen!==n)){f.__rumLead=f.querySelector("input[type=email]")?1:0;f.__rumLen=n}return f.__rumLead};'

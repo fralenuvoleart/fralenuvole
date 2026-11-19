@@ -17,7 +17,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 
 ### How it works
 
-- `rum.php` prints a ~6.4 KB inline script at `wp_head` priority -998, right after the critical CSS (about 8 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
+- `rum.php` prints a ~7.8 KB inline script at `wp_head` priority -998, right after the critical CSS (about 10.6 KB into the HTML, well within the first 16 KB). It is wrapped in `<!--noptimize-->` so Autoptimize does not defer it.
 - It prints an end marker `<i id="frl-rum-end" hidden>` as the last thing in the body (`wp_footer`, `PHP_INT_MAX`). If the marker is present when the page is parsed, the whole HTML arrived.
 - Runs only on frontend page views (`frl_is_valid_frontend_page_request()`) for visitors who are not logged in.
 - Each event is sent with `navigator.sendBeacon` to `core/debugger/rum/rum-receiver.php`, a standalone PHP file (no WordPress load, a few ms per hit) that answers `204` and appends one line to the day's log.
@@ -27,7 +27,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 
 - Location: `uploads/fralenuvole/logs/beacon-YYYY-MM-DD.tsv` (the folder from `frl_get_uploads_location( 'logs' )`). The receiver works the path out from its own location, so the two must match. File names keep the `beacon-` prefix although the feature is called RUM: existing files and the `kinsta-logs` skill read `beacon-*.tsv`.
 - One file per UTC day, tab-separated, the first row names the columns.
-- New columns are appended at the end, so existing columns never shift. On a deploy day the current file keeps its old header until the next UTC day; read by header name and ignore extra trailing fields.
+- New columns are appended at the end, so existing columns never shift. On a deploy day the current file keeps its old header until the next UTC day; read by header name and ignore extra trailing fields. The columns added on 2026-11-19 are `ttfb` to `errors_dropped` (the last ten); `errors_dropped` stays last because the contract test pins it.
 - The UTF-8 scrub of `msg`/`src` needs the `mbstring` extension; without it the fallback truncates at the first invalid byte (safe, but lossy).
 - Files older than 30 days are deleted automatically; each file is capped at 20 MB.
 - Contains IP addresses and identifiers: protect the folder.
@@ -40,7 +40,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `finished` | The browser finished reading the whole HTML (`DOMContentLoaded`). Images and other files may still be loading: this is not "page fully loaded". |
 | `hidden` | The visitor switched tab or app before `finished`. Not a problem by itself; the page often finishes afterwards. Sent at most once per page view. |
 | `abandoned` | The visitor left the page (closed it, navigated away) before `finished`. This is the "gave up" signal. |
-| `js_error` | An uncaught JavaScript error or unhandled promise rejection. An error that carries neither a message nor a stack is not sent and does not count toward the limit: that is the cross-origin "Script error." class, where the browser blanks both and nothing can be acted on. At most 5 per view. |
+| `js_error` | An uncaught JavaScript error or unhandled promise rejection. An error that carries neither a message nor a stack is not sent and does not count toward the limit: that is the cross-origin "Script error." class, where the browser blanks both and nothing can be acted on. At most 5 per view; later errors are counted in `errors_dropped` and reported with `vitals`. |
 | `vitals` | Web Vitals of that page view, sent once, when the page is hidden or left. A tab left open still reports when the visitor switches away, but the values then stop at that moment. |
 | `form_start` | First `input` event inside a lead form: a form that contains an `input[type=email]` field. Once per page view, so only the first form touched is recorded. |
 | `submit_attempt` | An attempt started inside a lead form: a click on a submit control (`button[type=submit]`, `input[type=submit]`, or a `<button>` without `type`), or Enter in a single-line text field. Once per attempt, whichever comes first: Enter also fires a click on the default button in Chrome and Safari, and that click is swallowed. If the page cancels the Enter keypress (`defaultPrevented`), nothing is logged — WS Form does this when the form's `submit_on_enter` is off, and Enter then does not submit at all. |
@@ -59,9 +59,9 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `country` | Two-letter country from Kinsta IP Geolocation (`GEOIP_COUNTRY_CODE`). Empty if Geolocation is off (it is on for live only). |
 | `browser` | Family guessed from the user agent: `chrome`, `safari`, `firefox`, `edge`, `opera`, `yandex`, `samsung`, `inapp` (Facebook, Instagram, Telegram, Android webviews), `other`. |
 | `mobile` | `1` if the user agent looks like a phone, else `0`. |
-| `from_ad_click` | `1` if the page URL carried an ad-click id (`gclid`, `gbraid`, `wbraid`, `yclid`), else `0`. |
+| `from_ad_click` | `1` if the page URL carried an ad-click id (`gclid`, `gbraid`, `wbraid`, `yclid`, `fbclid`), else `0`. |
 | `network_estimate` | Chrome's own rough connection estimate (`slow-2g`, `2g`, `3g`, `4g`). Empty in other browsers. Approximate: desktop connections often report `3g`. |
-| `ms_since_page_open` | Milliseconds from when the visitor opened the URL to when the event was sent. On `finished`, this is how long the HTML took. `-1` if the browser cannot tell. |
+| `ms_since_page_open` | Milliseconds from when the visitor opened the URL to when the event was sent. On `finished`, this is how long the HTML took. `-1` if the browser cannot tell (this is also what the receiver treats it as: 0). |
 | `html_complete` | Only on `finished`: `1` the whole HTML arrived, `0` the HTML was cut short. Empty on other events. |
 | `path` | Page path, without the query string. |
 | `ip` | Visitor IP (`REMOTE_ADDR`, which on Kinsta is the real visitor IP). |
@@ -73,13 +73,23 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `src` | Only on `js_error`: last two path segments of the file that threw (truncated to 200 bytes), or `unhandledrejection`. |
 | `line` | Only on `js_error`: the line number, `0` if unknown. |
 | `stack` | Only on `js_error`: the first stack frames, truncated to 400 bytes. Empty when the browser gives none (cross-origin script without CORS, most mobile in-app webviews). |
-| `lcp` | Only on `vitals`: largest contentful paint, ms from page open (`0` when the browser reports none, e.g. a page with no content element). |
-| `cls` | Only on `vitals`: cumulative layout shift, 3 decimals. `0` is a real score, not `unknown`. |
-| `inp` | Only on `vitals`: worst interaction duration in ms (`0` when there was no interaction). The `event` entry type exists in Chromium only; other browsers always report `0`. |
-| `fcp` | Only on `vitals`: first contentful paint, ms from page open. |
+| `lcp` | Only on `vitals`: largest contentful paint, ms from page open. Empty when the browser does not report LCP entries (Safari and every iPhone browser before Safari 26.2); `0` only if the entry type exists but no entry arrived. |
+| `cls` | Only on `vitals`: cumulative layout shift, 3 decimals. `0` is a real score, not `unknown`. Empty when the browser does not report layout shifts. |
+| `inp` | Only on `vitals`: worst interaction duration in ms, from interactions only (`interactionId` above 0, so scrolling and hovering do not count). Empty when the view had no interaction, and empty in every browser without the Event Timing API (Safari before 26.2). Never `0`. |
+| `fcp` | Only on `vitals`: first contentful paint, ms from page open. Empty when the browser does not report paint entries. |
 | `utm_source` | Only on `vitals`: `utm_source` of the entry URL, decoded and cleaned to 50 bytes, spaces kept. Empty when the URL had none. |
 | `viewport` | Only on `vitals`: `window.innerWidth` in px, to separate phone from desktop LCP/CLS. |
 | `field` | Only on `submit_blocked`: `name` (or `id`) of the field that failed validation, 60 bytes. |
+| `ttfb` | Only on `vitals`: ms from the navigation start to the first byte of the page, i.e. the whole server wait including a redirect. Empty on back/forward navigations, when the browser has no navigation timing, or when `responseStart` is 0. |
+| `redirect` | Only on `vitals`: ms spent in redirects. Empty when there was none, or when it crossed origins and the browser hides it (`redirectStart` is 0). |
+| `dns` | Only on `vitals`: ms looking up the host name. Empty when the browser reused a connection (nothing to look up). |
+| `connect` | Only on `vitals`: ms opening the connection, TLS included. Empty when the connection was reused. |
+| `tls` | Only on `vitals`: ms of the TLS handshake, part of `connect`. Empty on plain `http://` and reused connections. |
+| `wait` | Only on `vitals`: ms from the request leaving to the first response byte, i.e. the server without network setup. Empty when `requestStart` is 0. |
+| `page_age` | On `started` and `vitals`: seconds between the server rendering the page and receiving the event (both clocks are the server's). A large value means the HTML was cached; 0-2 s means it was built for that request. Read cache status from the `started` row: the `vitals` row also contains however long the visitor kept the page. Empty on the other events. |
+| `click_id` | Which ad-click id the URL carried (`gclid`, `gbraid`, `wbraid`, `yclid`, `fbclid`), on every event of that view. Only the name is sent, never the value. Empty when there was none. |
+| `error_source` | Only on `js_error`: `own` (a file from this site other than the page), `inline` (the page's own HTML), `third` (another origin). Empty on `unhandledrejection` (the origin is not reported) and when the browser gives no filename. |
+| `errors_dropped` | Only on `vitals`: how many errors were discarded after the 5-per-view limit, so a row that errored 200 times is still visible. Empty when none were dropped. |
 
 ### Reading the log
 
@@ -96,7 +106,7 @@ Group rows by `view_id`. Typical page views:
 
 Useful comparisons: the share of page views without `finished` per country, page language (`/ru/`, `/zh/`, `/ar/`, others English), browser, and ad clicks against the rest, on days with few leads against normal days.
 
-`vitals` values are a snapshot taken when the page was hidden or left, so they measure the loading phase, not later interactions: compare distributions (p75 of `lcp` per country, share of `cls` above 0.1, `inp` where it is non-zero), not single rows.
+`vitals` values are a snapshot taken when the page was hidden or left, so they measure the loading phase, not later interactions: compare distributions (p75 of `lcp` per country, share of `cls` above 0.1, `inp` over the rows where it is present), not single rows. An empty `inp` means "no interaction" or "browser cannot measure", not zero, and an empty `cls` means the browser cannot measure it: neither counts as a good score. Compare `page_age` of a few seconds against the rest for cached versus freshly built pages (use the `started` row; the `vitals` row adds the time the visitor kept the page open), and compare INP across browsers only as a hint (Safari has measured it since 26.2 only).
 
 ### Verify after deploy
 

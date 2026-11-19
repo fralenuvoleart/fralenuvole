@@ -141,11 +141,58 @@ frl_test_same( implode( "\t", $columns ), $lines[0] ?? '', 'header equals FRL_RU
 $fields = isset( $lines[1] ) ? explode( "\t", $lines[1] ) : array();
 frl_test_same( count( $columns ), count( $fields ), 'row has exactly one field per column' );
 frl_test_same( 'submit_blocked', $fields[1] ?? '', 'event lands in the event column' );
-frl_test_same( $columns[ count( $columns ) - 1 ], 'field', 'last column is field' );
-frl_test_same( 'email', end( $fields ), 'field value lands in the last column' );
+frl_test_same( 'errors_dropped', $columns[ count( $columns ) - 1 ], 'last column is errors_dropped' );
+$field_at = array_search( 'field', $columns, true );
+frl_test_same( 'email', false !== $field_at ? ( $fields[ $field_at ] ?? '' ) : '', 'field value lands in the field column' );
 frl_test_ok( 1 === preg_match( '/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', $fields[0] ?? '' ), 'timestamp column is ISO-8601 UTC' );
 
-// 6. An unlisted event writes nothing.
+// 7. New columns: derived values and the whitelists that keep crafted input out.
+$new_logs = frl_test_rum_request(
+	$tmp,
+	true,
+	array(
+		'e'    => 'vitals',
+		'v'    => 'vit0',
+		'p'    => '/contact/',
+		't'    => '1500',
+		'r'    => (string) ( time() - 3600 ),
+		'ad'   => '1',
+		'cid'  => 'fbclid',
+		'ttfb' => '820',
+		'dns'  => '',
+		'tls'  => '90',
+		'dr'   => '2',
+	)
+);
+$new_files = (array) glob( $new_logs . '/beacon-*.tsv' );
+$new_lines = $new_files ? file( $new_files[0], FILE_IGNORE_NEW_LINES ) : array();
+$new_row   = explode( "\t", $new_lines[1] ?? '' );
+$by_name   = array_combine( $columns, array_pad( $new_row, count( $columns ), '' ) );
+frl_test_same( '820', $by_name['ttfb'], 'ttfb lands in its column' );
+frl_test_same( '', $by_name['dns'], 'an empty timing part stays empty' );
+frl_test_same( '', $by_name['redirect'], 'a missing timing part stays empty' );
+frl_test_same( '2', $by_name['errors_dropped'], 'dropped error count lands in its column' );
+frl_test_same( 'fbclid', $by_name['click_id'], 'click id name lands in its column' );
+frl_test_ok( (int) $by_name['page_age'] >= 3500, 'page age = receive time - render time - elapsed (' . $by_name['page_age'] . ')' );
+$bad_logs  = frl_test_rum_request( $tmp, true, array( 'e' => 'vitals', 'v' => 'hack0', 'cid' => 'evil', 'es' => 'bogus' ) );
+$bad_files = (array) glob( $bad_logs . '/beacon-*.tsv' );
+$bad_lines = $bad_files ? file( $bad_files[0], FILE_IGNORE_NEW_LINES ) : array();
+$bad_by    = array_combine( $columns, array_pad( explode( "\t", $bad_lines[1] ?? '' ), count( $columns ), '' ) );
+frl_test_same( '', $bad_by['click_id'], 'an unknown click id is rejected' );
+frl_test_same( '', $bad_by['error_source'], 'an unknown error source is rejected' );
+frl_test_same( '', $bad_by['page_age'], 'no render time means no page age' );
+
+// Zero and negative numbers are not measurements: they stay empty, so "unknown" never reads as "none".
+$zero_logs  = frl_test_rum_request( $tmp, true, array( 'e' => 'vitals', 'v' => 'zero0', 'dr' => '0', 'ttfb' => '0', 'tls' => '-5', 'r' => '0' ) );
+$zero_files = (array) glob( $zero_logs . '/beacon-*.tsv' );
+$zero_lines = $zero_files ? file( $zero_files[0], FILE_IGNORE_NEW_LINES ) : array();
+$zero_by    = array_combine( $columns, array_pad( explode( "\t", $zero_lines[1] ?? '' ), count( $columns ), '' ) );
+frl_test_same( '', $zero_by['errors_dropped'], 'a zero dropped count stays empty' );
+frl_test_same( '', $zero_by['ttfb'], 'a zero timing stays empty' );
+frl_test_same( '', $zero_by['tls'], 'a negative timing stays empty' );
+frl_test_same( '', $zero_by['page_age'], 'a zero render time means no page age' );
+
+// 8. An unlisted event writes nothing.
 $rejected = frl_test_rum_request( $tmp, true, array( 'e' => 'bogus_event' ) );
 frl_test_same( array(), (array) glob( $rejected . '/beacon-*.tsv' ), 'unlisted event is rejected' );
 
