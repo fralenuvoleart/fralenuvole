@@ -88,13 +88,16 @@ function frl_debug_rum_print_head() {
 
 	$url = esc_url( FRL_DIR_URL . 'core/debugger/rum/rum-receiver.php' );
 
+	// Build id: the printer file's modification time, base36. Changes on every deploy, cannot be forgotten.
+	$frl_build = preg_replace( '/[^a-z0-9]/', '', base_convert( (string) @filemtime( __FILE__ ), 10, 36 ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+
 	// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- static script, URL escaped above.
 	echo '<!--noptimize--><script data-noptimize="1">(function(){var u="' . $url . '",'
-		. 'v=Math.random().toString(36).slice(2,10),d=0,a=0,g=0,dr=0,r=' . time() . ','
+		. 'bd="' . $frl_build . '",v=Math.random().toString(36).slice(2,10),d=0,a=0,g=0,dr=0,r=' . time() . ', '
 		. 'c=(location.search.match(/[?&](gclid|gbraid|wbraid|yclid|fbclid)=/i)||[0,""])[1].toLowerCase(),'
 		. 'n=(navigator.connection&&navigator.connection.effectiveType)||"",'
 		. 'P=window.performance&&performance.now?function(){return Math.round(performance.now())}:function(){return -1};'
-		. 'function s(e,x){var b="e="+e+"&v="+v+"&p="+encodeURIComponent(location.pathname)+"&ad="+(c?1:0)+"&cid="+c+"&n="+n+"&t="+P()+"&r="+r+(x||"");'
+		. 'function s(e,x){var b="e="+e+"&v="+v+"&p="+encodeURIComponent(location.pathname)+"&ad="+(c?1:0)+"&cid="+c+"&n="+n+"&t="+P()+"&r="+r+"&b="+bd+(x||"");'
 		. 'try{if(navigator.sendBeacon&&navigator.sendBeacon(u,new Blob([b],{type:"application/x-www-form-urlencoded"})))return}catch(_){}'
 		. '(new Image()).src=u+"?"+b}'
 		. 's("started");'
@@ -115,9 +118,10 @@ function frl_debug_rum_print_head() {
 		. 'vit=function(){if(g)return;g=1;var x=utm;try{x=decodeURIComponent(utm)}catch(_){}s("vitals","&lcp="+N(lcp)+"&cls="+(cls===null?"":Math.round(cls*1000)/1000)+"&inp="+N(inp)+"&fcp="+N(fcp)+"&dr="+dr+"&utm="+enc(x)+"&vw="+vw+nt())};'
 		. 'document.addEventListener("DOMContentLoaded",function(){if(d)return;d=1;s("finished","&c="+(document.getElementById("frl-rum-end")?1:0))});'
 		. 'var h=0;document.addEventListener("visibilitychange",function(){if(document.visibilityState!=="hidden")return;if(!d&&!h){h=1;s("hidden")}vit()});'
-		. 'var f1=0,sc=0,ib=0,lead=function(f){if(!f||f.tagName!=="FORM")return 0;var n=f.elements?f.elements.length:0;if(f.__rumLead===void 0||(f.__rumLead===0&&f.__rumLen!==n)){f.__rumLead=f.querySelector("input[type=email]")?1:0;f.__rumLen=n}return f.__rumLead};'
+		. 'var f1=0,sc=0,ib=0,bt="",lead=function(f){if(!f||f.tagName!=="FORM")return 0;var n=f.elements?f.elements.length:0;if(f.__rumLead===void 0||(f.__rumLead===0&&f.__rumLen!==n)){f.__rumLead=f.querySelector("input[type=email]")?1:0;f.__rumLen=n}return f.__rumLead};'
 		. 'var pf=function(t){return t?t.form||(t.closest&&t.closest("form"))||0:0};'
-		. 'document.addEventListener("input",function(e){if(f1||!e.isTrusted)return;if(lead(pf(e.target))){f1=1;s("form_start")}},true);'
+		. 'document.addEventListener("beforeinput",function(e){bt=str(e.inputType||"")},true);'
+		. 'document.addEventListener("input",function(e){var k=bt;bt="";if(f1||!e.isTrusted)return;if(lead(pf(e.target))){f1=1;s("form_start","&it="+(k||"none"))}},true);'
 		. 'document.addEventListener("click",function(e){if(sc)return;var t=e.target;if(!t||!t.closest)return;var b=t.closest("button[type=submit],input[type=submit],button:not([type])");if(lead(pf(b))){sc=1;s("submit_attempt");setTimeout(function(){if(sc){s("submit_failed");sc=0}},500)}},true);'
 		. 'document.addEventListener("keydown",function(e){if(sc||(e.key!=="Enter"&&e.keyCode!==13))return;var t=e.target;if(!t||t.tagName!=="INPUT"||/^(checkbox|radio|submit|button|file|image|reset|range|color|hidden)$/.test((t.type||"text").toLowerCase()))return;if(lead(pf(t))){var k=e;setTimeout(function(){if(k.defaultPrevented||sc)return;sc=1;s("submit_attempt");setTimeout(function(){if(sc){s("submit_failed");sc=0}},500)},0)}},true);'
 		. 'var pend=0,jd=function(f,fin){var b=f.querySelector(".wsf-invalid")||f.querySelector(":invalid");if(b&&b.querySelector&&!b.validationMessage){var x=b.querySelector(":invalid");if(x)b=x}if(!b){if(fin||f.isConnected===false){pend=0;s("submit_ok","&why=native")}else setTimeout(function(){if(pend&&pend.f===f)jd(f,1)},1600);return}pend=0;if(ib>=5)return;ib++;s("submit_blocked","&why=browser&field="+enc(str(b.name||b.id).slice(0,60)))};'

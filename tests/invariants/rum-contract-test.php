@@ -129,6 +129,8 @@ $armed_logs = frl_test_rum_request(
 		'field' => 'email',
 		'why'   => 'server',
 		'ref'   => '4HWXV6JB3WVH',
+		'it'    => 'none',
+		'b'     => 'abc123',
 		't'     => '1234',
 	)
 );
@@ -142,13 +144,17 @@ frl_test_same( implode( "\t", $columns ), $lines[0] ?? '', 'header equals FRL_RU
 $fields = isset( $lines[1] ) ? explode( "\t", $lines[1] ) : array();
 frl_test_same( count( $columns ), count( $fields ), 'row has exactly one field per column' );
 frl_test_same( 'submit_blocked', $fields[1] ?? '', 'event lands in the event column' );
-frl_test_same( 'form_ref', $columns[ count( $columns ) - 1 ], 'last column is form_ref' );
+frl_test_same( 'build', $columns[ count( $columns ) - 1 ], 'last column is build' );
 $field_at = array_search( 'field', $columns, true );
 frl_test_same( 'email', false !== $field_at ? ( $fields[ $field_at ] ?? '' ) : '', 'field value lands in the field column' );
 $ref_at = array_search( 'form_ref', $columns, true );
 frl_test_same( '4HWXV6JB3WVH', false !== $ref_at ? ( $fields[ $ref_at ] ?? '' ) : '', 'form ref lands in the last column' );
 $why_at = array_search( 'submit_why', $columns, true );
 frl_test_same( 'server', false !== $why_at ? ( $fields[ $why_at ] ?? '' ) : '', 'submit verdict lands in its column' );
+$it_at = array_search( 'input_type', $columns, true );
+frl_test_same( 'none', false !== $it_at ? ( $fields[ $it_at ] ?? '' ) : '', 'input type lands in its column' );
+$build_at = array_search( 'build', $columns, true );
+frl_test_same( 'abc123', false !== $build_at ? ( $fields[ $build_at ] ?? '' ) : '', 'build id lands in the last column' );
 frl_test_ok( 1 === preg_match( '/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', $fields[0] ?? '' ), 'timestamp column is ISO-8601 UTC' );
 
 // 7. New columns: derived values and the whitelists that keep crafted input out.
@@ -179,7 +185,7 @@ frl_test_same( '', $by_name['redirect'], 'a missing timing part stays empty' );
 frl_test_same( '2', $by_name['errors_dropped'], 'dropped error count lands in its column' );
 frl_test_same( 'fbclid', $by_name['click_id'], 'click id name lands in its column' );
 frl_test_ok( (int) $by_name['page_age'] >= 3500, 'page age = receive time - render time - elapsed (' . $by_name['page_age'] . ')' );
-$bad_logs  = frl_test_rum_request( $tmp, true, array( 'e' => 'vitals', 'v' => 'hack0', 'cid' => 'evil', 'es' => 'bogus', 'why' => 'because', 'ref' => "a\tb\n" ) );
+$bad_logs  = frl_test_rum_request( $tmp, true, array( 'e' => 'vitals', 'v' => 'hack0', 'cid' => 'evil', 'es' => 'bogus', 'why' => 'because', 'ref' => "a\tb\n", 'it' => 'insert<script>', 'b' => 'ABC/../' ) );
 $bad_files = (array) glob( $bad_logs . '/beacon-*.tsv' );
 $bad_lines = $bad_files ? file( $bad_files[0], FILE_IGNORE_NEW_LINES ) : array();
 $bad_by    = array_combine( $columns, array_pad( explode( "\t", $bad_lines[1] ?? '' ), count( $columns ), '' ) );
@@ -188,6 +194,8 @@ frl_test_same( '', $bad_by['error_source'], 'an unknown error source is rejected
 frl_test_same( '', $bad_by['page_age'], 'no render time means no page age' );
 frl_test_same( '', $bad_by['submit_why'], 'an unknown submit verdict is rejected' );
 frl_test_same( 'ab', $bad_by['form_ref'], 'a tab and newline cannot break the row' );
+frl_test_same( '', $bad_by['input_type'], 'an unknown input type is rejected' );
+frl_test_same( '', $bad_by['build'], 'a build id that is not base36 is rejected' );
 
 // Zero and negative numbers are not measurements: they stay empty, so "unknown" never reads as "none".
 $zero_logs  = frl_test_rum_request( $tmp, true, array( 'e' => 'vitals', 'v' => 'zero0', 'dr' => '0', 'ttfb' => '0', 'tls' => '-5', 'r' => '0' ) );

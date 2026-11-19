@@ -91,6 +91,8 @@ const FRL_RUM_COLUMNS = array(
 	'errors_dropped',
 	'submit_why',
 	'form_ref',
+	'input_type',
+	'build',
 );
 
 // 'x' creates the file only if it does not exist yet, so the header is written exactly once.
@@ -208,6 +210,17 @@ if ( ! in_array( $frl_es, array( 'own', 'inline', 'third' ), true ) ) {
 	$frl_es = '';
 }
 
+// How the form was first filled: a real keystroke or paste, or an autofill that arrives with no
+// beforeinput event at all (`none`).
+$frl_it = isset( $frl_in['it'] ) && is_string( $frl_in['it'] ) ? $frl_in['it'] : '';
+if ( ! in_array( $frl_it, array( 'none', 'insertText', 'insertFromPaste', 'insertReplacementText', 'insertCompositionText', 'insertFromDrop', 'insertFromYank', 'insertLineBreak' ), true ) ) {
+	$frl_it = '';
+}
+
+// Printer build: the printer file's modification time in base36, so rows written by a cached old script can
+// be told from fresh ones without relying on the deploy time.
+$frl_build = isset( $frl_in['b'] ) && is_string( $frl_in['b'] ) && preg_match( '/^[a-z0-9]{1,8}$/', $frl_in['b'] ) ? $frl_in['b'] : '';
+
 // Why a submit ended: browser blocked it, the client refused it, the request failed, the server refused it,
 // or a plain form passed the browser's own validation (native).
 $frl_why = isset( $frl_in['why'] ) && is_string( $frl_in['why'] ) ? $frl_in['why'] : '';
@@ -269,6 +282,8 @@ $frl_line = implode(
 		frl_rum_int( $frl_in, 'dr' ),
 		$frl_why,
 		frl_rum_clean( isset( $frl_in['ref'] ) ? $frl_in['ref'] : '', 20 ),
+		$frl_it,
+		$frl_build,
 	)
 ) . "\n";
 
