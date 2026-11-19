@@ -21,7 +21,7 @@ http_response_code( 204 );
 $frl_in = ! empty( $_POST ) ? $_POST : $_GET; // phpcs:ignore WordPress.Security.NonceVerification -- anonymous telemetry, no state change.
 
 $frl_event = isset( $frl_in['e'] ) && is_string( $frl_in['e'] ) ? $frl_in['e'] : '';
-if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned', 'js_error', 'vitals', 'form_start', 'submit_attempt', 'submit_ok', 'submit_blocked', 'submit_failed', 'submit_unresolved' ), true ) ) {
+if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned', 'js_error', 'vitals', 'form_start', 'form_typed', 'submit_attempt', 'submit_ok', 'submit_blocked', 'submit_failed', 'submit_unresolved' ), true ) ) {
 	exit;
 }
 
