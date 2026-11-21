@@ -64,6 +64,9 @@ const FRL_ENV_PBS_STAGING = array(
 const FRL_ENV_PBS_RU_SUBDOMAIN = array(
 	'extends'    => 'FRL_ENV_PBS_TEMPLATE',
 	'prefix'     => 'pbs_ru',
+	'modules'    => array(
+		'subdomain_adapter' => true,
+	),
 	'wp_options' => array(
 		'blog_public' => 0,
 	),
