@@ -127,6 +127,8 @@ Modules live in `modules/{name}/`. Each module has a main entry file (`{name}.ph
 
 Modules are disposable by design — any module can be deleted without affecting core plugin functionality.
 
+`modules/subdomain_adapter/` is the one module that ships outside every env list: it rewrites URLs for language-subdomain mirrors (`ru.pbservices.ge`) and is doubly gated (module toggle + `FRL_SUBDOMAIN_ADAPTER_MAP`), so it is inert until enabled in an env config. See `modules/subdomain_adapter/SUBDOMAIN-ADAPTER.md`.
+
 ## Design Conventions
 
 - **Re-entrancy guard:** `frl_is_already_running($key)` — static array preventing duplicate execution within one request. Used across cache operations, environment enforcement, rewriter cache clearing, and hook registration.

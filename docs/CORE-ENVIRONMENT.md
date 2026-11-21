@@ -251,7 +251,7 @@ All cache clearing is centralized through the orchestrator via `env_*` operation
 
 | Hook | Context |
 |------|---------|
-| `frl_environment_before_wp_options` | Before WP options are applied |
+| `frl_environment_before_wp_options` | Before WP options are applied. `do_action_ref_array` with `array( &$config, &$results )` — callbacks must declare `array &$results` to report changes to the classifier |
 | `frl_environment_state_changed` | Filter to force state change detection |
 | `frl_before_env_enforce_full` / `frl_after_env_enforce_full` | Around full enforcement cache operation |
 | `frl_before_env_enforce_url_change` / `frl_after_env_enforce_url_change` | Around URL change cache operation |

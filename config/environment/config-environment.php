@@ -9,6 +9,7 @@ require_once __DIR__ . '/config-defaults.php';
 // --- Environment Map ---
 const FRL_ENV_MAP = array(
 	'pbservices.ge'                         => 'FRL_ENV_PBS_PRODUCTION',
+	'ru.pbservices.ge'                      => 'FRL_ENV_PBS_RU_SUBDOMAIN',
 	'pbproperty.ge'                         => 'FRL_ENV_PBP_PRODUCTION',
 	'pbnova.com'                            => 'FRL_ENV_PBNOVA_PRODUCTION',
 	'fralenuvole.art'                       => 'FRL_ENV_FRALENUVOLE_PRODUCTION',
@@ -56,6 +57,15 @@ const FRL_ENV_PBS_STAGING = array(
 		'wsform_use_cron' => false,
 		'cta_webhook'     => true,
 		'cta_use_cron'    => false,
+	),
+);
+
+/** RU Subdomain - PBS replica on Russian server */
+const FRL_ENV_PBS_RU_SUBDOMAIN = array(
+	'extends'    => 'FRL_ENV_PBS_TEMPLATE',
+	'prefix'     => 'pbs_ru',
+	'wp_options' => array(
+		'blog_public' => 0,
 	),
 );
 

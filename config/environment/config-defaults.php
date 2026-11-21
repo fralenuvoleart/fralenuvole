@@ -36,14 +36,15 @@ const FRL_ENV_DEFAULT = array(
 	),
 	// Module keys: underscores only — hyphens break variable-name auto-discovery.
 	'modules'        => array(
-		'pbs'             => false,
-		'pbproperty'      => false,
-		'pbnova'          => false,
-		'frl'             => false,
-		'wsform'          => true,
-		'call_to_actions' => false,
-		'thirdparty'      => true,
-		'acf'             => false,
+		'pbs'               => false,
+		'pbproperty'        => false,
+		'pbnova'            => false,
+		'frl'               => false,
+		'wsform'            => true,
+		'call_to_actions'   => false,
+		'thirdparty'        => true,
+		'acf'               => false,
+		'subdomain_adapter' => false,
 	),
 	'wp_options'     => array(
 		'blog_public' => 1,
