@@ -1164,6 +1164,11 @@ class Frl_Subdomain_Adapter {
 	 * The 301 leaves this host, so the rewriter's base/slug translations never run
 	 * on it; applying them here avoids a second redirect on the target host.
 	 *
+	 * The rewriter rebuilds its result on the CURRENT home_url() and drops the
+	 * query string (Frl_Rewriter_Path_Utils::parse_url_segments()/rebuild_url()),
+	 * which on a subdomain would point the redirect straight back at this host.
+	 * So only the path is handed over, and scheme/host/query/fragment are restored.
+	 *
 	 * @param string $url Target URL on the primary main domain.
 	 * @param mixed  $obj Queried WP_Post or WP_Term.
 	 * @return string
@@ -1173,13 +1178,31 @@ class Frl_Subdomain_Adapter {
 			return $url;
 		}
 
-		$rewriter = Frl_Rewriter::init();
-
-		if ( $obj instanceof \WP_Term ) {
-			return $rewriter->filter_term_link( $url, $obj, (string) $obj->taxonomy );
+		$parts = wp_parse_url( $url );
+		if ( empty( $parts['host'] ) ) {
+			return $url;
 		}
 
-		return $rewriter->filter_post_link( $url, $obj );
+		$scheme    = $parts['scheme'] ?? 'https';
+		$authority = $parts['host'] . ( isset( $parts['port'] ) ? ':' . $parts['port'] : '' );
+		$bare      = "{$scheme}://{$authority}" . ( $parts['path'] ?? '/' );
+
+		$rewriter  = Frl_Rewriter::init();
+		$rewritten = $obj instanceof \WP_Term
+			? $rewriter->filter_term_link( $bare, $obj, (string) $obj->taxonomy )
+			: $rewriter->filter_post_link( $bare, $obj );
+
+		$path      = (string) ( wp_parse_url( $rewritten, PHP_URL_PATH ) ?? '/' );
+		$canonical = "{$scheme}://{$authority}{$path}";
+
+		if ( isset( $parts['query'] ) && $parts['query'] !== '' ) {
+			$canonical .= '?' . $parts['query'];
+		}
+		if ( isset( $parts['fragment'] ) && $parts['fragment'] !== '' ) {
+			$canonical .= '#' . $parts['fragment'];
+		}
+
+		return $canonical;
 	}
 
 	/**
@@ -1303,16 +1326,17 @@ class Frl_Subdomain_Adapter {
 		}
 
 		// Flush rewrite rules. This triggers:
-		// 1. update_option_permalink_structure → clear_rewriter_caches() (options→rewriter→permalinks)
+		// 1. update_option_permalink_structure → Frl_Rewriter::on_permalink_structure_update()
+		//    which, under frl_flush_rewrite_rules()'s direct-flush guard, only invalidates
+		//    rewriter → permalinks (it is not the options cascade).
 		// 2. Polylang's clean_languages_cache() via hook at polylang/src/model.php:119
 		// 3. flush_rewrite_rules(true) + Litespeed notification
-		// No separate cache clear needed — language-dependent cache groups (translations,
-		// postdata, metafields) are keyed by language and will naturally fetch fresh data.
+		// Language-keyed groups (translations, postdata, metafields) fetch fresh data by design.
 		frl_flush_rewrite_rules();
 
-		// Set generic flag to suppress redundant cache clearing by EM's classifier.
-		// Any hooked callback can set this to signal that cache operations are complete.
-		$results['cache_cleared'] = true;
+		// Deliberately NOT setting $results['cache_cleared']: the options cascade is not
+		// cleared here, and EM's classifier is the only place that knows whether plugins,
+		// modules or $force also changed in this request (it then picks options/full).
 
 		// Log the change (always, not just in debug mode).
 		frl_log(
