@@ -127,7 +127,7 @@ Modules live in `modules/{name}/`. Each module has a main entry file (`{name}.ph
 
 Modules are disposable by design — any module can be deleted without affecting core plugin functionality.
 
-`modules/subdomain_adapter/` is the one module registered but disabled by default (`config/environment/config-defaults.php:47`): it rewrites URLs for language-subdomain mirrors (`ru.pbservices.ge`) and is doubly gated (module toggle + `FRL_SUBDOMAIN_ADAPTER_MAP`). It is enabled by exactly one env, `FRL_ENV_PBS_RU_SUBDOMAIN` (`config/environment/config-environment.php:63`), so it activates only on that host. See `modules/subdomain_adapter/SUBDOMAIN-ADAPTER.md`.
+`modules/subdomain_adapter/` is the one module registered but disabled in `FRL_ENV_DEFAULT` (`config/environment/config-defaults.php:47`): it rewrites URLs for language-subdomain mirrors (`ru.pbservices.ge`) and is doubly gated (module toggle + `FRL_SUBDOMAIN_ADAPTER_MAP`). Every PBS env enables it — `FRL_ENV_PBS_TEMPLATE` for live and staging, and `FRL_ENV_PBS_RU_SUBDOMAIN` explicitly — while non-PBS sites never do. The toggle option defaults to `0` and is only written when the environment is enforced, so uploading the code activates nothing by itself. See `modules/subdomain_adapter/SUBDOMAIN-ADAPTER.md`.
 
 ## Design Conventions
 

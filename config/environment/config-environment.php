@@ -23,8 +23,9 @@ const FRL_ENV_MAP = array(
 const FRL_ENV_PBS_TEMPLATE = array(
 	'prefix'         => 'pbs',
 	'modules'        => array(
-		'pbs'             => true,
-		'call_to_actions' => true,
+		'pbs'               => true,
+		'call_to_actions'   => true,
+		'subdomain_adapter' => true,
 	),
 	'plugin_options' => array(
 		'schema_founder_name' => 'Rati (Iese) Abashmadze',

@@ -1,7 +1,7 @@
 # Subdomain Adapter — Architecture Reference
 
 > Restored 2026-11-21 from commit `fdceb52`, after being removed in `2a5f25e`. Registered but disabled
-> by default; enabled by `FRL_ENV_PBS_RU_SUBDOMAIN` only. See the module header for the
+> in `FRL_ENV_DEFAULT`; enabled by the PBS envs only. See the module header for the
 > `FRL_SUBDOMAIN_ADAPTER_MAP` gate.
 
 ## Design Goal
@@ -77,10 +77,15 @@ define('FRL_SUBDOMAIN_ADAPTER_MAP', [
 
 Module activation is controlled via the environment system:
 
-- [`config/environment/config-defaults.php`](../../config/environment/config-defaults.php:47) — `'subdomain_adapter' => false`, which registers the module (so its option, config file and admin section exist) while keeping it off.
-- [`config/environment/config-environment.php`](../../config/environment/config-environment.php:63) — enabled in `FRL_ENV_PBS_RU_SUBDOMAIN` only (`'subdomain_adapter' => true`), i.e. on `ru.pbservices.ge`. Main-domain and staging envs leave it off.
+- [`config/environment/config-defaults.php`](../../config/environment/config-defaults.php:47) — `'subdomain_adapter' => false`. This only *registers* the module (option, config file and admin section exist); it does not enable it.
+- [`config/environment/config-environment.php`](../../config/environment/config-environment.php:28) — enabled in `FRL_ENV_PBS_TEMPLATE`, so `pbservices.ge`, its staging site and (by inheritance) `ru.pbservices.ge` all run it.
+- [`config/environment/config-environment.php`](../../config/environment/config-environment.php:69) — `FRL_ENV_PBS_RU_SUBDOMAIN` states it again explicitly, so the RU host never depends on the template.
 
-The toggle is the option `frl_module_subdomain_adapter`, written by `apply_modules_options()` when the environment is enforced. Enabling it is deliberately bundled with the RU host mapping: `frl_is_valid_environment_host()` treats `ru.pbservices.ge` as a full environment, and Polylang's directory mode must not run there without this module's `pll_default_language` / `pll_check_canonical_url` / `home_url` overrides.
+Non-PBS sites (`FRL_ENV_PBP_*`, `FRL_ENV_PBNOVA_*`, `FRL_ENV_FRALENUVOLE_*`) never enable it.
+
+The toggle is the option `frl_module_subdomain_adapter`, written by `apply_modules_options()` when the environment is enforced (admin action or host change), never on a plain frontend request. Its default is hardcoded `0` in `frl_modules_load_options_defaults()`, so a fresh install — or an install whose row was deleted — loads no module until an environment is enforced.
+
+Enabling it is deliberately bundled with the host mapping: `frl_is_valid_environment_host()` treats `ru.pbservices.ge` as a full environment, and Polylang's directory mode must not run there without this module's `pll_default_language` / `pll_check_canonical_url` / `home_url` overrides.
 
 ---
 
