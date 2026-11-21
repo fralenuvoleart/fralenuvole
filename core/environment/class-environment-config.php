@@ -138,7 +138,30 @@ class Frl_Environment_Config {
 		$final_config['env_host']            = $matched_map_key;     // Add the environment host (from FRL_ENV_MAP key)
 		$final_config['current_environment'] = $instance_partial_name; // Add the name of the instance-specific constant used
 
+		// Modules are only managed when a layer above the defaults declares them.
+		$final_config['modules_managed'] = self::collect_declared_module_keys(
+			array( $type_partial_config, $extends_partial_config, $instance_partial_config )
+		);
+
 		return $final_config;
+	}
+
+	/**
+	 * Collects the module keys declared by the env layers, ignoring FRL_ENV_DEFAULT.
+	 *
+	 * Layers follow the merge order: type, extends template, instance.
+	 *
+	 * @param array $layers Env-side config layers.
+	 * @return array Module name => true, one entry per declared key.
+	 */
+	private static function collect_declared_module_keys( array $layers ): array {
+		$declared = array();
+		foreach ( $layers as $layer ) {
+			if ( is_array( $layer ) && frl_is_array_not_empty( $layer, 'modules' ) ) {
+				$declared += array_fill_keys( array_keys( $layer['modules'] ), true );
+			}
+		}
+		return $declared;
 	}
 
 	/**

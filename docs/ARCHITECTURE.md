@@ -127,7 +127,7 @@ Modules live in `modules/{name}/`. Each module has a main entry file (`{name}.ph
 
 Modules are disposable by design — any module can be deleted without affecting core plugin functionality.
 
-`modules/subdomain_adapter/` is registered but never enabled by an environment: `FRL_ENV_DEFAULT` lists it as `false` (`config/environment/config-defaults.php:47`) and no env adds it — the PBS template's `modules` block carries a comment saying so. Activation is therefore a manual decision (the `frl_module_subdomain_adapter` toggle), never a deploy side effect. It rewrites URLs for language-subdomain mirrors (`ru.pbservices.ge`) and stays doubly gated (module toggle + `FRL_SUBDOMAIN_ADAPTER_MAP`). Note that `apply_modules_options()` iterates the *resolved* module list, defaults included, so an environment enforcement writes `0` back — to run it on a host, list it as `true` in that host's env. See `modules/subdomain_adapter/SUBDOMAIN-ADAPTER.md`.
+`modules/subdomain_adapter/` is registered but never enabled by an environment: `FRL_ENV_DEFAULT` lists it as `false` (`config/environment/config-defaults.php:47`) and no env adds it — the PBS template's `modules` block carries a comment saying so. Activation is therefore a manual decision (the `frl_module_subdomain_adapter` toggle) that no environment ever overrides: `apply_modules_options()` only writes modules an env layer declares (`modules_managed`; `FRL_ENV_DEFAULT` is excluded), so an unlisted module keeps its manual value. It rewrites URLs for language-subdomain mirrors (`ru.pbservices.ge`) and stays doubly gated (module toggle + `FRL_SUBDOMAIN_ADAPTER_MAP`). See `modules/subdomain_adapter/SUBDOMAIN-ADAPTER.md`.
 
 ## Design Conventions
 

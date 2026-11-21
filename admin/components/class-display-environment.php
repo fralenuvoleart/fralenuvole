@@ -681,10 +681,14 @@ class Frl_Environment_Display {
 		if ( frl_is_array_not_empty( $env_config, 'modules' ) ) {
 			// Get modules (which is a flat array with module name => boolean values)
 			$modules = $env_config['modules'];
+			// Only env-declared modules are managed; the rest are manual toggles.
+			if ( isset( $env_config['modules_managed'] ) && is_array( $env_config['modules_managed'] ) ) {
+				$modules = array_intersect_key( $modules, $env_config['modules_managed'] );
+			}
 
 			// If no modules defined
 			if ( empty( $modules ) ) {
-				$output .= frl_ui_render_table_row( 'No modules configured', '' );
+				$output .= frl_ui_render_table_row( 'No modules managed by this environment', '' );
 			} else {
 				// Separate modules into enabled and disabled arrays
 				$enabled_modules  = array();

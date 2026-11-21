@@ -85,7 +85,8 @@ Layer 4: Instance constant        ← The specific constant from FRL_ENV_MAP
 | `type` | `'production'` or `'staging'` |
 | `webhook_config` | Webhook configuration key for WS Form |
 | `plugins` | `{active: [], inactive: []}` |
-| `modules` | `{module_name: bool}` |
+| `modules` | `{module_name: bool}` — effective module states, always including `FRL_ENV_DEFAULT` |
+| `modules_managed` | `{module_name: true}` — keys declared by the type/template/instance layers (computed, not written by hand) |
 | `wp_options` | WordPress core options (e.g., `blog_public`) |
 | `plugin_options` | Plugin-specific options (value or `'file'` for snippet loading) |
 
@@ -156,7 +157,7 @@ Stored state: `{host, siteurl, home, hash, last_updated?}`. Persisted to DB opti
 
 **`apply_plugin_options()`:** For each key in `plugin_options`: skips if ignored, loads file content if value is `'file'`, normalizes booleans to `'1'`/`'0'`, calls `frl_update_option()` with deferred cache clearing (`$clear_cache = false`). All cache clearing is centralized in the change-type classifier in `enforce_environment_settings()`.
 
-**`apply_modules_options()`:** Iterates `modules` config, updates `module_{name}` options. Same deferred cache clearing pattern.
+**`apply_modules_options()`:** Iterates `modules` restricted to `modules_managed`, updates `module_{name}` options. Modules that only exist in `FRL_ENV_DEFAULT` are left alone, so an admin toggle on them survives enforcement. Same deferred cache clearing pattern.
 
 **`clear_website_transients_if_needed()`:** Guarded by `FRL_ENV_CLEAR_WEBSITE_TRANSIENTS` (always `true`). Uses `frl_cache_remember()` with `YEAR_IN_SECONDS` TTL to clear only once per destination host.
 

@@ -193,6 +193,9 @@ class Frl_Environment_Applier {
 	/**
 	 * Manage module activation states based on environment config.
 	 *
+	 * Only modules declared by the env layers are touched; a module that merely exists in
+	 * FRL_ENV_DEFAULT is left to the admin (manual toggle).
+	 *
 	 * @param array $config The environment configuration array.
 	 * @param array &$results Reference to results array to populate.
 	 * @param bool $force_mode Whether to force application (unused here, kept for signature consistency).
@@ -203,7 +206,16 @@ class Frl_Environment_Applier {
 			return;
 		}
 
-		foreach ( $config['modules'] as $module => $should_be_active ) {
+		$modules = $config['modules'];
+		// Older/hand-built configs carry no managed list: keep the previous behaviour there.
+		if ( isset( $config['modules_managed'] ) && is_array( $config['modules_managed'] ) ) {
+			$modules = array_intersect_key( $modules, $config['modules_managed'] );
+		}
+		if ( empty( $modules ) ) {
+			return;
+		}
+
+		foreach ( $modules as $module => $should_be_active ) {
 			$option_name        = 'module_' . $module;
 			$current_status_raw = frl_get_option( $option_name );
 

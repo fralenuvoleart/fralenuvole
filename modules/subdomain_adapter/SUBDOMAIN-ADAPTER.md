@@ -82,7 +82,7 @@ Module activation is controlled via the environment system, but this module is d
 
 The toggle is the option `frl_module_subdomain_adapter`. Turn it on per install from the Modules admin page or `wp option update frl_module_subdomain_adapter 1`.
 
-**Caveat — the environment still owns the option.** `apply_modules_options()` iterates the *resolved* module list, which is `FRL_ENV_DEFAULT`'s list merged with the env's, so `subdomain_adapter => false` is always present: any environment enforcement (admin action, host change) writes `0` and switches a manual enable off again. If the module is meant to run on a host permanently, list it as `true` in that host's env instead of relying on the toggle.
+**The environment does not own the option.** `apply_modules_options()` only touches modules an env layer declares (`modules_managed`, built from the type/template/instance constants — `FRL_ENV_DEFAULT` excluded), so a module that no env lists keeps whatever the admin set. Enabling it by hand therefore survives every environment enforcement; if you ever want the env to own it again, list it in that host's `modules` block.
 
 Enabling it is best bundled with the host mapping: `frl_is_valid_environment_host()` treats `ru.pbservices.ge` as a full environment, and Polylang's directory mode must not run there without this module's `pll_default_language` / `pll_check_canonical_url` / `home_url` overrides.
 
