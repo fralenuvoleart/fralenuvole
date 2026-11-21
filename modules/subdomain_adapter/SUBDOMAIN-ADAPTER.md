@@ -1,7 +1,7 @@
 # Subdomain Adapter — Architecture Reference
 
-> Restored 2026-11-21 from commit `fdceb52`, after being removed in `2a5f25e`. Registered but disabled
-> in `FRL_ENV_DEFAULT`; enabled by the PBS envs only. See the module header for the
+> Restored 2026-11-21 from commit `fdceb52`, after being removed in `2a5f25e`. Registered but deliberately
+> not enabled by any environment — activation is manual. See the module header for the
 > `FRL_SUBDOMAIN_ADAPTER_MAP` gate.
 
 ## Design Goal
@@ -75,17 +75,16 @@ define('FRL_SUBDOMAIN_ADAPTER_MAP', [
 
 ### Environment Integration
 
-Module activation is controlled via the environment system:
+Module activation is controlled via the environment system, but this module is deliberately left out of it:
 
-- [`config/environment/config-defaults.php`](../../config/environment/config-defaults.php:47) — `'subdomain_adapter' => false`. This only *registers* the module (option, config file and admin section exist); it does not enable it.
-- [`config/environment/config-environment.php`](../../config/environment/config-environment.php:28) — enabled in `FRL_ENV_PBS_TEMPLATE`, so `pbservices.ge`, its staging site and (by inheritance) `ru.pbservices.ge` all run it.
-- [`config/environment/config-environment.php`](../../config/environment/config-environment.php:69) — `FRL_ENV_PBS_RU_SUBDOMAIN` states it again explicitly, so the RU host never depends on the template.
+- [`config/environment/config-defaults.php`](../../config/environment/config-defaults.php:47) — `'subdomain_adapter' => false`. This *registers* the module (option, config file, admin section) and is the only place it appears.
+- No env lists it, and [`config/environment/config-environment.php:25-30`](../../config/environment/config-environment.php) says so in a comment: neither `FRL_ENV_PBS_TEMPLATE` (live, staging) nor `FRL_ENV_PBS_RU_SUBDOMAIN` turns it on. Uploading code never activates it.
 
-Non-PBS sites (`FRL_ENV_PBP_*`, `FRL_ENV_PBNOVA_*`, `FRL_ENV_FRALENUVOLE_*`) never enable it.
+The toggle is the option `frl_module_subdomain_adapter`. Turn it on per install from the Modules admin page or `wp option update frl_module_subdomain_adapter 1`.
 
-The toggle is the option `frl_module_subdomain_adapter`, written by `apply_modules_options()` when the environment is enforced (admin action or host change), never on a plain frontend request. Its default is hardcoded `0` in `frl_modules_load_options_defaults()`, so a fresh install — or an install whose row was deleted — loads no module until an environment is enforced.
+**Caveat — the environment still owns the option.** `apply_modules_options()` iterates the *resolved* module list, which is `FRL_ENV_DEFAULT`'s list merged with the env's, so `subdomain_adapter => false` is always present: any environment enforcement (admin action, host change) writes `0` and switches a manual enable off again. If the module is meant to run on a host permanently, list it as `true` in that host's env instead of relying on the toggle.
 
-Enabling it is deliberately bundled with the host mapping: `frl_is_valid_environment_host()` treats `ru.pbservices.ge` as a full environment, and Polylang's directory mode must not run there without this module's `pll_default_language` / `pll_check_canonical_url` / `home_url` overrides.
+Enabling it is best bundled with the host mapping: `frl_is_valid_environment_host()` treats `ru.pbservices.ge` as a full environment, and Polylang's directory mode must not run there without this module's `pll_default_language` / `pll_check_canonical_url` / `home_url` overrides.
 
 ---
 

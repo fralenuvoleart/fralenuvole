@@ -23,9 +23,9 @@ const FRL_ENV_MAP = array(
 const FRL_ENV_PBS_TEMPLATE = array(
 	'prefix'         => 'pbs',
 	'modules'        => array(
-		'pbs'               => true,
-		'call_to_actions'   => true,
-		'subdomain_adapter' => true,
+		'pbs'             => true,
+		'call_to_actions' => true,
+		// subdomain_adapter is deliberately unmanaged here: its activation is a manual decision.
 	),
 	'plugin_options' => array(
 		'schema_founder_name' => 'Rati (Iese) Abashmadze',
@@ -65,9 +65,6 @@ const FRL_ENV_PBS_STAGING = array(
 const FRL_ENV_PBS_RU_SUBDOMAIN = array(
 	'extends'    => 'FRL_ENV_PBS_TEMPLATE',
 	'prefix'     => 'pbs_ru',
-	'modules'    => array(
-		'subdomain_adapter' => true,
-	),
 	'wp_options' => array(
 		'blog_public' => 0,
 	),
