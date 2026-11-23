@@ -6,6 +6,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/config-defaults.php';
 
+// --- Option write guards ---
+/**
+ * Callbacks that rewrite every programmatic `active_plugins` write.
+ *
+ * Freesoul Deactivate Plugins answers `pre_update_option_active_plugins` with the list it
+ * captured at bootstrap, which silently reverts the environment plugin reset.
+ */
+const FRL_ENV_BLOCKING_ACTIVE_PLUGIN_FILTERS = array( 'eos_dp_return_all_plugins' );
+
 // --- Environment Map ---
 const FRL_ENV_MAP = array(
 	'pbservices.ge'                         => 'FRL_ENV_PBS_PRODUCTION',

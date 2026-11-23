@@ -39,21 +39,15 @@ class Frl_Environment_Plugin_Manager {
 	}
 
 	/**
-	 * Callbacks that rewrite every programmatic `active_plugins` write.
-	 *
-	 * Freesoul Deactivate Plugins hooks `pre_update_option_active_plugins` to answer with the
-	 * list it captured at bootstrap, which silently reverts this reset.
-	 */
-	private const BLOCKING_ACTIVE_PLUGIN_FILTERS = array( 'eos_dp_return_all_plugins' );
-
-	/**
 	 * Suspend the third-party filters that revert `active_plugins` writes.
+	 *
+	 * The callback list lives in `FRL_ENV_BLOCKING_ACTIVE_PLUGIN_FILTERS` (config).
 	 *
 	 * @return array<string, int> Suspended callbacks mapped to their priority.
 	 */
 	private static function suspend_blocking_filters(): array {
 		$suspended = array();
-		foreach ( self::BLOCKING_ACTIVE_PLUGIN_FILTERS as $callback ) {
+		foreach ( FRL_ENV_BLOCKING_ACTIVE_PLUGIN_FILTERS as $callback ) {
 			$priority = has_filter( 'pre_update_option_active_plugins', $callback );
 			if ( false === $priority ) {
 				continue;
