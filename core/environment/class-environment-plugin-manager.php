@@ -39,6 +39,44 @@ class Frl_Environment_Plugin_Manager {
 	}
 
 	/**
+	 * Callbacks that rewrite every programmatic `active_plugins` write.
+	 *
+	 * Freesoul Deactivate Plugins hooks `pre_update_option_active_plugins` to answer with the
+	 * list it captured at bootstrap, which silently reverts this reset.
+	 */
+	private const BLOCKING_ACTIVE_PLUGIN_FILTERS = array( 'eos_dp_return_all_plugins' );
+
+	/**
+	 * Suspend the third-party filters that revert `active_plugins` writes.
+	 *
+	 * @return array<string, int> Suspended callbacks mapped to their priority.
+	 */
+	private static function suspend_blocking_filters(): array {
+		$suspended = array();
+		foreach ( self::BLOCKING_ACTIVE_PLUGIN_FILTERS as $callback ) {
+			$priority = has_filter( 'pre_update_option_active_plugins', $callback );
+			if ( false === $priority ) {
+				continue;
+			}
+			remove_filter( 'pre_update_option_active_plugins', $callback, $priority );
+			$suspended[ $callback ] = $priority;
+		}
+		return $suspended;
+	}
+
+	/**
+	 * Re-attach the filters suspended by suspend_blocking_filters().
+	 *
+	 * @param array<string, int> $suspended Suspended callbacks mapped to their priority.
+	 * @return void
+	 */
+	private static function restore_blocking_filters( array $suspended ): void {
+		foreach ( $suspended as $callback => $priority ) {
+			add_filter( 'pre_update_option_active_plugins', $callback, $priority );
+		}
+	}
+
+	/**
 	 * Process plugins activation/deactivation based on environment.
 	 *
 	 * @param array $plugins Array of plugin paths to process.
@@ -79,24 +117,29 @@ class Frl_Environment_Plugin_Manager {
 		}
 
 		if ( ! empty( $plugins_to_change ) ) {
-			if ( $should_deactivate ) {
-				foreach ( $plugins_to_change as $plugin ) {
-					deactivate_plugins( array( $plugin ), false );
-					if ( is_plugin_active( $plugin ) ) {
-						$results['plugins']['update_error'][] = "{$plugin}: failed to deactivate";
-					} else {
-						$results['plugins']['deactivated'][] = $plugin;
+			$suspended_filters = self::suspend_blocking_filters();
+			try {
+				if ( $should_deactivate ) {
+					foreach ( $plugins_to_change as $plugin ) {
+						deactivate_plugins( array( $plugin ), false );
+						if ( is_plugin_active( $plugin ) ) {
+							$results['plugins']['update_error'][] = "{$plugin}: failed to deactivate";
+						} else {
+							$results['plugins']['deactivated'][] = $plugin;
+						}
+					}
+				} else {
+					foreach ( $plugins_to_change as $plugin ) {
+						$result = activate_plugin( $plugin, '', false, false );
+						if ( is_wp_error( $result ) ) {
+							$results['plugins']['update_error'][] = "{$plugin}: " . $result->get_error_message();
+						} else {
+							$results['plugins']['activated'][] = $plugin;
+						}
 					}
 				}
-			} else {
-				foreach ( $plugins_to_change as $plugin ) {
-					$result = activate_plugin( $plugin, '', false, false );
-					if ( is_wp_error( $result ) ) {
-						$results['plugins']['update_error'][] = "{$plugin}: " . $result->get_error_message();
-					} else {
-						$results['plugins']['activated'][] = $plugin;
-					}
-				}
+			} finally {
+				self::restore_blocking_filters( $suspended_filters );
 			}
 		}
 

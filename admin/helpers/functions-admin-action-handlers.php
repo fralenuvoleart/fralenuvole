@@ -333,10 +333,11 @@ function frl_handle_action_reset_environment() {
 		$format_list( __( 'Plugins Deactivated', FRL_PREFIX ), $results['plugins']['deactivated'] ?? array() );
 		$format_list( __( 'Plugins Ignored', FRL_PREFIX ), $results['plugins']['ignored'] ?? array() );
 		if ( ! empty( $results['plugins']['update_error'] ) ) {
+			$update_errors   = (array) $results['plugins']['update_error'];
 			$message_parts[] = sprintf(
 				'<strong style="color: red;">%s</strong>: %s',
 				__( 'Plugin Update Issue', FRL_PREFIX ),
-				esc_html( $results['plugins']['update_error'] )
+				implode( ', ', array_map( 'esc_html', $update_errors ) )
 			);
 			$notice_type     = 'warning'; // Downgrade to warning if there was a plugin update issue
 		}
