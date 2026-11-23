@@ -51,10 +51,12 @@ const FRL_ENV_PBS_PRODUCTION = array(
 	'extends'        => 'FRL_ENV_PBS_TEMPLATE',
 	'counterpart'    => 'stg-pbservicesge-staging.kinsta.cloud',
 	'plugin_options' => array(
-		'wsform_webhook'  => true,
-		'wsform_use_cron' => true,
-		'cta_webhook'     => true,
-		'cta_use_cron'    => false,
+		'wsform_webhook'          => true,
+		'wsform_use_cron'         => true,
+		'cta_webhook'             => true,
+		'cta_use_cron'            => false,
+		'debugger_rum'            => true,
+		'thirdparty_cache_warmer' => true,
 	),
 );
 
