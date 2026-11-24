@@ -22,7 +22,7 @@ if ( get_option( frl_prefix( 'wsform_phone_validation' ), '0' ) ) {
 }
 
 // Serve WS Form's inline footer config as a cached static file.
-if ( get_option( frl_prefix( 'wsform_external_footer' ), '1' ) ) {
+if ( get_option( frl_prefix( 'wsform_external_footer' ), '0' ) ) {
 	require_once __DIR__ . '/external-footer-wsform.php';
 }
 
