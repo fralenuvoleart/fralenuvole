@@ -141,6 +141,7 @@ function frl_load_core_components() {
 	// These init functions handle their own internal guards:
 	// - frl_environment_enforce_settings() calls frl_environment_is_loaded() which returns false if EM file wasn't loaded
 	// - frl_shortcodes_init() / frl_themekit_init() are always safe (files loaded unconditionally above)
+	// Deliberate: registered every request; the manager self-throttles 60s admin / 300s front.
 	add_action(
 		'init',
 		'frl_environment_enforce_settings',

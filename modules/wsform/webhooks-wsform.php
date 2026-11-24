@@ -210,7 +210,10 @@ function frl_wsf_submit_webhook( $submit ) {
 		}
 
 		// Admin option wins. Falls back to per-webhook constant, then hardcoded true.
-		$use_cron = filter_var( frl_get_option( 'wsform_use_cron' ), FILTER_VALIDATE_BOOLEAN ) ?? $config['use_cron'] ?? true;
+		$use_cron_opt = frl_get_option( 'wsform_use_cron' );
+		$use_cron     = ( $use_cron_opt !== '' && $use_cron_opt !== null && $use_cron_opt !== false )
+			? filter_var( $use_cron_opt, FILTER_VALIDATE_BOOLEAN )
+			: ( $config['use_cron'] ?? true );
 
 		// Include webhook_url: multiple configs can share a form_id, and dedup must be per-destination.
 		$dedup_key      = 'wsf_' . ( $submit->id ?? wp_generate_uuid4() ) . '_' . md5( $webhook_url );

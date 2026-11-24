@@ -282,7 +282,18 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 			'rewriter',
 			$cache_key,
 			function () {
-				return $this->generate_rules();
+				try {
+					return $this->generate_rules();
+				} catch ( \Throwable $e ) {
+					frl_log(
+						'Rewriter generate_rules() failed in feature {feature}: {error}',
+						array(
+							'feature' => $this->get_name(),
+							'error'   => $e->getMessage(),
+						)
+					);
+					return array();
+				}
 			}
 		);
 

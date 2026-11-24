@@ -146,7 +146,7 @@ class Frl_Subdomain_Adapter_Robots {
 	 * @param  string $site_path       The site path prefix.
 	 * @return array
 	 */
-	public function filter_tsf_robots_txt_sections( array $robots_sections, string $site_path ): array {
+	public function filter_tsf_robots_txt_sections( array $robots_sections, string $site_path = '' ): array {
 		// Guard: adapter must be configured.
 		if ( ! $this->adapter->is_configured() ) {
 			return $robots_sections;
@@ -179,16 +179,19 @@ class Frl_Subdomain_Adapter_Robots {
 			}
 
 			if ( ! empty( $subdomain_hosts ) ) {
+				$subdomain_hosts_lc                     = array_map( 'strtolower', $subdomain_hosts );
 				$robots_sections['sitemaps']['sitemaps'] = array_values(
 					array_filter(
 						$robots_sections['sitemaps']['sitemaps'],
-						function ( string $url ) use ( $subdomain_hosts ): bool {
-							foreach ( $subdomain_hosts as $host ) {
-								if ( str_contains( $url, $host ) ) {
-									return false;
-								}
+						function ( $url ) use ( $subdomain_hosts_lc ): bool {
+							if ( ! is_string( $url ) ) {
+								return true;
 							}
-							return true;
+							$url_host = wp_parse_url( $url, PHP_URL_HOST );
+							if ( ! is_string( $url_host ) || $url_host === '' ) {
+								return true;
+							}
+							return ! in_array( strtolower( $url_host ), $subdomain_hosts_lc, true );
 						}
 					)
 				);

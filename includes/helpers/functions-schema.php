@@ -82,6 +82,15 @@ function frl_schema_resolve_post_source( int $post_id, string $source, \WP_Post 
 function frl_get_contact_page_url(): string {
 	$page = get_page_by_path( 'contact' );
 	if ( $page ) {
+		if ( function_exists( 'frl_get_post_translation' ) && function_exists( 'frl_get_language' ) ) {
+			$translated_id = frl_get_post_translation( $page->ID, frl_get_language() );
+			if ( ! empty( $translated_id ) ) {
+				$url = get_permalink( $translated_id );
+				if ( $url ) {
+					return $url;
+				}
+			}
+		}
 		return get_permalink( $page );
 	}
 	return frl_get_home_url() . '/contact/';
@@ -433,8 +442,8 @@ function frl_schema_should_translate_key( string $key, string $current_path, arr
 		$rule    = $is_skip ? substr( $entry, 1 ) : $entry;
 
 		$matches = str_contains( $rule, '.' )
-			? str_starts_with( $current_path, $rule )  // dot-path prefix match
-			: $key === $rule;                         // bare key exact match
+			? ( $current_path === $rule || str_starts_with( $current_path, $rule . '.' ) ) // dot-path exact or child prefix match
+			: $key === $rule;                                                              // bare key exact match
 
 		if ( $matches ) {
 			if ( $is_skip ) {
@@ -464,7 +473,7 @@ function frl_schema_replace_placeholders_callback( array $props, callable $callb
 				'/\{\{([^}]+)\}\}/',
 				$callback,
 				$value
-			);
+			) ?? $value;
 		} else {
 			$result[ $key ] = $value;
 		}

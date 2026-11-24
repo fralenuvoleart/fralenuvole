@@ -122,7 +122,7 @@ All verification flows through `_frl_verify_nonce_core()` (`includes/helpers/fun
 | `frl_verify_simple_nonce()` | `:762` | Static action name, auto-prefixed. Default cap: `FRL_PLUGIN_ACCESS` |
 | `frl_verify_dynamic_nonce()` | `:788` | Pattern-based action with `{placeholder}` replacement |
 | `frl_verify_plugin_action_nonce()` | `:630` | Plugin action dispatch — requires `FRL_PLUGIN_ACCESS` |
-| `frl_verify_admin_action_nonce()` | `:649` | Settings form save — no capability check, custom redirect on failure |
+| `frl_verify_admin_action_nonce()` | `:649` | Settings form save — requires `FRL_PLUGIN_ACCESS` (`frl_has_access()`), custom redirect on nonce failure |
 
 ## Action Button Rendering
 

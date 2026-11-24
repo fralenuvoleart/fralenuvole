@@ -349,9 +349,9 @@ class Frl_Cache_Display {
 					$group_display,
 					frl_ui_render_status_dot_boolean( $group_info['is_heavy'], '', false ),
 					frl_ui_render_status_dot_boolean( $group_info['is_language'], '', false ),
-					$this->format_ttl( $group_info['ttl'] ),
-					number_format( $group_info['count'] ),
-					$group_info['size'],
+					esc_html( $this->format_ttl( $group_info['ttl'] ) ),
+					esc_html( number_format( $group_info['count'] ) ),
+					esc_html( $group_info['size'] ),
 				),
 				false,
 				"group-{$group_name}-row"

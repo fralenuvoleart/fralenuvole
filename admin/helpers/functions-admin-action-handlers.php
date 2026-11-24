@@ -481,7 +481,7 @@ function frl_handle_action_reset_plugin() {
 			// 'default' key should exist in field definitions from $full_fields.
 			// If it might be missing for some, a fallback or stricter check is needed.
 			$value_to_restore       = $field_definition['default'] ?? null;
-			$autoload_from_config   = $field_definition['autoload'] ?? 'yes';
+			$autoload_from_config   = $field_definition['autoload'] ?? 'no';
 			$type_for_normalization = $field_definition['type'] ?? 'text';
 
 			if ( empty( $option_key_to_use ) ) {

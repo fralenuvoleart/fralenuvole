@@ -265,8 +265,8 @@ class Frl_Subdomain_Adapter_Legacy {
 	 * @param string $content The post content HTML.
 	 * @return string The transformed content.
 	 */
-	public function filter_the_content( string $content ): string {
-		if ( ! $this->should_transform() ) {
+	public function filter_the_content( $content ) {
+		if ( ! is_string( $content ) || ! $this->should_transform() ) {
 			return $content;
 		}
 
@@ -298,8 +298,8 @@ class Frl_Subdomain_Adapter_Legacy {
 	 * @param array  $block         The block data.
 	 * @return string The transformed block content.
 	 */
-	public function filter_render_block( string $block_content, array $block ): string {
-		if ( ! $this->should_transform() ) {
+	public function filter_render_block( $block_content, $block ) {
+		if ( ! is_string( $block_content ) || ! is_array( $block ) || ! $this->should_transform() ) {
 			return $block_content;
 		}
 
@@ -327,15 +327,18 @@ class Frl_Subdomain_Adapter_Legacy {
 			}
 		}
 
-		// Static per-request block cache: avoid re-processing identical block HTML.
+		// Static per-request block cache (bounded at 500 entries).
 		static $block_cache = array();
 		$sig                = md5( $block_content );
 		if ( isset( $block_cache[ $sig ] ) ) {
 			return $block_cache[ $sig ];
 		}
 
-		$block_cache[ $sig ] = $this->transform_urls_in_html( $block_content );
-		return $block_cache[ $sig ];
+		$transformed = $this->transform_urls_in_html( $block_content );
+		if ( count( $block_cache ) < 500 ) {
+			$block_cache[ $sig ] = $transformed;
+		}
+		return $transformed;
 	}
 
 	// -------------------------------------------------------------------------
@@ -391,12 +394,17 @@ class Frl_Subdomain_Adapter_Legacy {
 	 * @return string The transformed URL.
 	 */
 	private function transform_single_content_url( Frl_Subdomain_Adapter $adapter, string $url ): string {
-		// Static per-request result cache: avoid re-computing when the same URL
-		// appears multiple times in the same HTML (e.g., nav links in header + footer).
+		// Static per-request result cache (bounded at 500 entries).
 		static $url_cache = array();
 		if ( isset( $url_cache[ $url ] ) ) {
 			return $url_cache[ $url ];
 		}
+		$cache_store = static function ( string $key, string $val ) use ( &$url_cache ): string {
+			if ( count( $url_cache ) < 500 ) {
+				$url_cache[ $key ] = $val;
+			}
+			return $val;
+		};
 
 		$parsed = wp_parse_url( $url );
 		if ( empty( $parsed['host'] ) ) {
@@ -408,8 +416,7 @@ class Frl_Subdomain_Adapter_Legacy {
 					)
 				);
 			}
-			$url_cache[ $url ] = $url;
-			return $url_cache[ $url ];
+			return $cache_store( $url, $url );
 		}
 
 		$host   = strtolower( $parsed['host'] );
@@ -426,8 +433,7 @@ class Frl_Subdomain_Adapter_Legacy {
 		// recognized hosts only, so this branch should never be reached. If it does,
 		// the host wasn't in the domain map — return unchanged.
 		if ( ! $is_main_domain && ! $is_subdomain ) {
-			$url_cache[ $url ] = $url;
-			return $url_cache[ $url ]; // Not a recognized domain.
+			return $cache_store( $url, $url ); // Not a recognized domain.
 		}
 
 		// Extract language from path prefix.
@@ -455,15 +461,13 @@ class Frl_Subdomain_Adapter_Legacy {
 					)
 				);
 			}
-			$url_cache[ $url ] = $url;
-			return $url_cache[ $url ]; // Cannot determine language.
+			return $cache_store( $url, $url ); // Cannot determine language.
 		}
 
 		// Look up where this language's content should live.
 		$target_host = $this->resolve_target_host( $map, $subdomain_info, $host, $lang );
 		if ( $target_host === null ) {
-			$url_cache[ $url ] = $url;
-			return $url_cache[ $url ];
+			return $cache_store( $url, $url );
 		}
 
 		// Strip the language prefix from the path (if present).
@@ -493,12 +497,10 @@ class Frl_Subdomain_Adapter_Legacy {
 
 		// Avoid re-processing: if same as input, return as-is.
 		if ( $result === $url ) {
-			$url_cache[ $url ] = $url;
-			return $url_cache[ $url ];
+			return $cache_store( $url, $url );
 		}
 
-		$url_cache[ $url ] = $result;
-		return $url_cache[ $url ];
+		return $cache_store( $url, $result );
 	}
 
 	/**
@@ -526,7 +528,7 @@ class Frl_Subdomain_Adapter_Legacy {
 
 		// Current URL host is a subdomain for a different language.
 		// Find the primary main domain for this subdomain and resolve from there.
-		if ( isset( $subdomain_info[ $current_url_host ] ) ) {
+		if ( isset( $subdomain_info[ $current_url_host ]['main_domains'][0] ) ) {
 			$primary_main = $subdomain_info[ $current_url_host ]['main_domains'][0];
 			$config       = $map[ $primary_main ] ?? array();
 			if ( isset( $config[ $lang ] ) && $config[ $lang ] !== '' ) {

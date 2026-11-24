@@ -63,91 +63,93 @@ function frl_process_plugin_actions() {
 	$is_processing = true;
 	$result        = array();
 
-	// Listed actions need the nonce the button builder emits; purge/warm actions stay capability-only.
-	if ( in_array( $action, frl_actions_requiring_nonce(), true ) && ! frl_verify_plugin_action_nonce( $action ) ) {
-		frl_add_admin_notice( __( 'Security check failed. Please try again.', FRL_PREFIX ), 'error' );
-		frl_safe_redirect();
-	}
-
-	// Define the action registry
-	$action_registry = array(
-		'clear_dashboard'           => 'frl_handle_action_clear_dashboard',
-		'clear_cache_light'         => 'frl_handle_action_clear_cache_light',
-		'clear_cache_all'           => 'frl_handle_action_clear_cache_all',
-		'clear_wp_alloptions'       => 'frl_handle_action_clear_wp_alloptions',
-		'clear_plugin_transients'   => 'frl_handle_action_clear_plugin_transients',
-		'clear_website_transients'  => 'frl_handle_action_clear_website_transients',
-		'clear_scripts_tags'        => 'frl_handle_action_clear_scripts_tags',
-		'clear_shortcodes'          => 'frl_handle_action_clear_shortcodes',
-		'reset_environment'         => 'frl_handle_action_reset_environment',
-		'reset_environment_ignored' => 'frl_handle_action_reset_environment_ignored',
-		'reset_debug_config'        => 'frl_handle_action_reset_debug_config',
-		'reset_plugin'              => 'frl_handle_action_reset_plugin',
-		'delete_mu_plugins'         => 'frl_handle_action_delete_mu_plugins',
-		'delete_orphan_options'     => 'frl_handle_action_delete_orphan_options',
-		'sync_mu_plugins'           => 'frl_handle_action_sync_mu_plugins',
-		'flush_rewrite_rules'       => 'frl_handle_action_flush_rewrite_rules',
-		// Add other static actions here if needed
-	);
-
-	/**
-	 * Filter the action registry so modules can register their own actions.
-	 *
-	 * @param array<string,string> $action_registry Map of action key => handler function.
-	 */
-	$action_registry = apply_filters( 'frl_action_registry', $action_registry );
-
-	// Check if the action is in the registry
-	if ( isset( $action_registry[ $action ] ) ) {
-		$handler_function = $action_registry[ $action ];
-		// @phpstan-ignore function.alreadyNarrowedType
-		if ( function_exists( $handler_function ) ) {
-			$result = $handler_function();
-		} else {
-			// Log error if handler function doesn't exist
-			frl_log( 'Admin action handler function not found: {function}', array( 'function' => $handler_function ) );
-			$result = array(
-				'success'       => false,
-				'message_parts' => array( __( 'Action handler missing.', FRL_PREFIX ) ),
-				'notice_type'   => 'error',
-			);
+	try {
+		// Listed actions need the nonce the button builder emits; purge/warm actions stay capability-only.
+		if ( in_array( $action, frl_actions_requiring_nonce(), true ) && ! frl_verify_plugin_action_nonce( $action ) ) {
+			frl_add_admin_notice( __( 'Security check failed. Please try again.', FRL_PREFIX ), 'error' );
+			frl_safe_redirect();
 		}
-	} elseif ( str_starts_with( $action, 'clear_cache_' ) ) {
-		// Check for dynamic cache clear action pattern
-		if ( function_exists( 'frl_handle_action_clear_cache_group' ) ) {
-			$result = frl_handle_action_clear_cache_group( $action );
-		} else {
-			frl_log( 'Admin action handler function not found: frl_handle_action_clear_cache_group' );
-			$result = array(
-				'success'       => false,
-				'message_parts' => array( __( 'Action handler missing.', FRL_PREFIX ) ),
-				'notice_type'   => 'error',
-			);
-		}
-	} else {
-		// Handle unknown actions
-		$result = array(
-			'success'       => false,
-			'message_parts' => array( __( 'Unknown action specified.', FRL_PREFIX ) ),
-			'notice_type'   => 'warning',
+
+		// Define the action registry
+		$action_registry = array(
+			'clear_dashboard'           => 'frl_handle_action_clear_dashboard',
+			'clear_cache_light'         => 'frl_handle_action_clear_cache_light',
+			'clear_cache_all'           => 'frl_handle_action_clear_cache_all',
+			'clear_wp_alloptions'       => 'frl_handle_action_clear_wp_alloptions',
+			'clear_plugin_transients'   => 'frl_handle_action_clear_plugin_transients',
+			'clear_website_transients'  => 'frl_handle_action_clear_website_transients',
+			'clear_scripts_tags'        => 'frl_handle_action_clear_scripts_tags',
+			'clear_shortcodes'          => 'frl_handle_action_clear_shortcodes',
+			'reset_environment'         => 'frl_handle_action_reset_environment',
+			'reset_environment_ignored' => 'frl_handle_action_reset_environment_ignored',
+			'reset_debug_config'        => 'frl_handle_action_reset_debug_config',
+			'reset_plugin'              => 'frl_handle_action_reset_plugin',
+			'delete_mu_plugins'         => 'frl_handle_action_delete_mu_plugins',
+			'delete_orphan_options'     => 'frl_handle_action_delete_orphan_options',
+			'sync_mu_plugins'           => 'frl_handle_action_sync_mu_plugins',
+			'flush_rewrite_rules'       => 'frl_handle_action_flush_rewrite_rules',
+			// Add other static actions here if needed
 		);
+
+		/**
+		 * Filter the action registry so modules can register their own actions.
+		 *
+		 * @param array<string,string> $action_registry Map of action key => handler function.
+		 */
+		$action_registry = apply_filters( 'frl_action_registry', $action_registry );
+
+		// Check if the action is in the registry
+		if ( isset( $action_registry[ $action ] ) ) {
+			$handler_function = $action_registry[ $action ];
+			// @phpstan-ignore function.alreadyNarrowedType
+			if ( function_exists( $handler_function ) ) {
+				$result = $handler_function();
+			} else {
+				// Log error if handler function doesn't exist
+				frl_log( 'Admin action handler function not found: {function}', array( 'function' => $handler_function ) );
+				$result = array(
+					'success'       => false,
+					'message_parts' => array( __( 'Action handler missing.', FRL_PREFIX ) ),
+					'notice_type'   => 'error',
+				);
+			}
+		} elseif ( str_starts_with( $action, 'clear_cache_' ) ) {
+			// Check for dynamic cache clear action pattern
+			if ( function_exists( 'frl_handle_action_clear_cache_group' ) ) {
+				$result = frl_handle_action_clear_cache_group( $action );
+			} else {
+				frl_log( 'Admin action handler function not found: frl_handle_action_clear_cache_group' );
+				$result = array(
+					'success'       => false,
+					'message_parts' => array( __( 'Action handler missing.', FRL_PREFIX ) ),
+					'notice_type'   => 'error',
+				);
+			}
+		} else {
+			// Handle unknown actions
+			$result = array(
+				'success'       => false,
+				'message_parts' => array( __( 'Unknown action specified.', FRL_PREFIX ) ),
+				'notice_type'   => 'warning',
+			);
+		}
+
+		// Centralized feedback and redirect
+		$notice_message = '';
+		$notice_type    = 'info'; // Default type
+
+		// Format message based on handler result structure
+		if ( ! empty( $result['message_parts'] ) ) {
+			$notice_message = implode( "<br>\n", $result['message_parts'] );
+			$notice_type    = $result['notice_type'] ?? 'info';
+		} // If handler returned empty message_parts (e.g., clear_dashboard), no notice is added here.
+
+		if ( ! empty( $notice_message ) ) {
+			frl_add_admin_notice( $notice_message, $notice_type, 45 );
+		}
+	} finally {
+		$is_processing = false; // Always reset processing flag
 	}
-
-	// Centralized feedback and redirect
-	$notice_message = '';
-	$notice_type    = 'info'; // Default type
-
-	// Format message based on handler result structure
-	if ( ! empty( $result['message_parts'] ) ) {
-		$notice_message = implode( "<br>\n", $result['message_parts'] );
-		$notice_type    = $result['notice_type'] ?? 'info';
-	} // If handler returned empty message_parts (e.g., clear_dashboard), no notice is added here.
-
-	if ( ! empty( $notice_message ) ) {
-		frl_add_admin_notice( $notice_message, $notice_type, 45 );
-	}
-
-	$is_processing = false; // Reset processing flag
 
 	// Always redirect after processing an action
 	frl_safe_redirect();

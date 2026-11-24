@@ -257,6 +257,8 @@ function frl_translator_acf_taxonomy( mixed $value, int|string $post_id, array $
 			if ( ! empty( FRL_TRANSLATOR_TAXONOMIES ) && ! frl_string_matches_pattern( $term->taxonomy ?? '', FRL_TRANSLATOR_TAXONOMIES ) ) { // @phpstan-ignore-line
 				return $term;
 			}
+			// Clone to avoid mutating cached WP_Term objects in place.
+			$term       = clone $term;
 			$term->name = frl_get_translation( $term->name );
 			if ( isset( $term->description ) && is_string( $term->description ) ) {
 				$term->description = frl_get_translation( $term->description );
@@ -307,6 +309,7 @@ function frl_translator_filter_get_terms( array $terms, array $taxonomies, array
 			if ( ! empty( FRL_TRANSLATOR_TAXONOMIES ) && ! frl_string_matches_pattern( $term->taxonomy ?? '', FRL_TRANSLATOR_TAXONOMIES ) ) { // @phpstan-ignore-line
 				continue;
 			}
+			$term       = clone $term;
 			$term->name = frl_get_translation( $term->name );
 			if ( isset( $term->description ) && is_string( $term->description ) ) {
 				$term->description = frl_get_translation( $term->description );
@@ -335,6 +338,7 @@ function frl_translator_filter_get_term( mixed $term, string $taxonomy ): mixed 
 	if ( ! empty( FRL_TRANSLATOR_TAXONOMIES ) && ! frl_string_matches_pattern( $term->taxonomy ?? '', FRL_TRANSLATOR_TAXONOMIES ) ) { // @phpstan-ignore-line
 		return $term;
 	}
+	$term = clone $term;
 	if ( isset( $term->name ) && is_string( $term->name ) ) {
 		$term->name = frl_get_translation( $term->name );
 	}
@@ -544,10 +548,13 @@ function frl_translator_get_cache_callback( string $type, array $args, ?bool &$i
 			return null; // Unsupported type
 		}
 
-		// Centralized unhook/re-hook logic
+		// Centralized unhook/re-hook logic — always restore filter even if getter throws.
 		remove_filter( $filter, $callback, $priority );
-		$raw_value = ( $getter )( ...$getter_args );
-		add_filter( $filter, $callback, $priority, $num_args );
+		try {
+			$raw_value = ( $getter )( ...$getter_args );
+		} finally {
+			add_filter( $filter, $callback, $priority, $num_args );
+		}
 
 		if ( is_string( $raw_value ) && ! empty( $raw_value ) ) {
 			return frl_translator_apply( $raw_value );

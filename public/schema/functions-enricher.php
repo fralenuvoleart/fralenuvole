@@ -80,8 +80,8 @@ function frl_schema_builder_build_term_properties( int $post_id, array $type_map
 			continue;
 		}
 
-		// Fetch terms once per post + taxonomy, reuse across type maps.
-		$cache_key = $post_id . '|' . $taxonomy;
+		// Fetch terms once per post + taxonomy + field, reuse across type maps.
+		$cache_key = $post_id . '|' . $taxonomy . '|' . $field;
 		if ( ! isset( $taxonomy_cache[ $cache_key ] ) ) {
 			$terms                        = frl_get_post_terms( $post_id, $taxonomy, $field );
 			$taxonomy_cache[ $cache_key ] = ( is_array( $terms ) ) ? array_values( array_filter( $terms, 'is_string' ) ) : array();
@@ -261,8 +261,8 @@ function frl_schema_builder_build_person_from_ref( int $ref_id, array $field_def
 	$person = array( '@type' => 'Person' );
 
 	foreach ( $field_def as $sub_field => $source ) {
-		// Skip reserved key — it's the ref source, not a Person property
-		if ( $sub_field === '_ref' ) {
+		// Skip internal meta keys (_ref, _fallback, etc.) — not Person properties.
+		if ( str_starts_with( (string) $sub_field, '_' ) ) {
 			continue;
 		}
 

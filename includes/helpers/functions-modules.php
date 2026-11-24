@@ -324,7 +324,7 @@ function frl_modules_module_get_file_path( $module_key ) {
 		return $main_file_paths[ $module_key ];
 	}
 
-	if ( empty( $module_key ) || ! is_string( $module_key ) || str_contains( $module_key, '/' ) || str_contains( $module_key, '\\' ) ) {
+	if ( empty( $module_key ) || ! is_string( $module_key ) || str_contains( $module_key, '/' ) || str_contains( $module_key, '\\' ) || str_contains( $module_key, '..' ) ) {
 		// Basic validation for module key to prevent path traversal issues.
 		// Module keys should be simple directory/file names.
 		frl_log( 'Modules: Invalid module key provided for frl_modules_module_get_file_path: {key}', array( 'key' => $module_key ) );
@@ -360,7 +360,7 @@ function frl_modules_module_get_config_file_path( $module_key ) {
 		return $config_file_paths[ $module_key ];
 	}
 
-	if ( empty( $module_key ) || ! is_string( $module_key ) || str_contains( $module_key, '/' ) || str_contains( $module_key, '\\' ) ) {
+	if ( empty( $module_key ) || ! is_string( $module_key ) || str_contains( $module_key, '/' ) || str_contains( $module_key, '\\' ) || str_contains( $module_key, '..' ) ) {
 		// Basic validation for module key to prevent path traversal issues.
 		frl_log( 'Modules: Invalid module key provided in frl_modules_module_get_config_file_path for: {key}', array( 'key' => $module_key ) );
 		$config_file_paths[ $module_key ] = false;

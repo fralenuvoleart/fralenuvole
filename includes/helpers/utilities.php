@@ -811,7 +811,18 @@ function frl_filter_staging_domains( array $domains ): array {
 function frl_set_force_reload_flag(): void {
 	$name = frl_prefix( 'force_reload' );
 	// Set a cookie that expires in 1 minute
-	setcookie( $name, '1', time() + 60, COOKIEPATH ?: '/', COOKIE_DOMAIN, is_ssl(), true );
+	setcookie(
+		$name,
+		'1',
+		array(
+			'expires'  => time() + 60,
+			'path'     => COOKIEPATH ?: '/',
+			'domain'   => COOKIE_DOMAIN,
+			'secure'   => is_ssl(),
+			'httponly' => true,
+			'samesite' => 'Lax',
+		)
+	);
 }
 
 /**
@@ -826,7 +837,18 @@ function frl_check_and_clear_force_reload_flag(): bool {
 	}
 
 	// Clear the cookie immediately
-	setcookie( $name, '', time() - 3600, COOKIEPATH ?: '/', COOKIE_DOMAIN, is_ssl(), true );
+	setcookie(
+		$name,
+		'',
+		array(
+			'expires'  => time() - 3600,
+			'path'     => COOKIEPATH ?: '/',
+			'domain'   => COOKIE_DOMAIN,
+			'secure'   => is_ssl(),
+			'httponly' => true,
+			'samesite' => 'Lax',
+		)
+	);
 	return true;
 }
 

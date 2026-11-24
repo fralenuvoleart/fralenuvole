@@ -155,6 +155,19 @@ All admin actions are capability-gated via `frl_has_access()` and nonce-verified
 
 **Admin "Hard Reset":** Can take several seconds — expected cost of chaining `purge_all()` + `clear_transients()` + `flush_rewrite_rules(true)`. Paid only on explicit admin request, never on visitor-facing pages.
 
+## Accepted Design Decisions
+
+Deliberate choices that look like bugs on a first read. Each is marked in code with a single line
+starting `// Deliberate:` immediately above the statement it protects; the entry names the function
+rather than a line number, so renaming is safe and the marker is the source of truth.
+
+| Marker site | Decision | Why it stays |
+|---|---|---|
+| `frl_has_access()` — `includes/helpers/functions-access-control.php` | `frl_has_access()` returns true for every request when `FRL_MODE === 'migrate'` | `?frlmode=migrate` is the operator's recovery switch on a broken install, so it must work for an anonymous request. Capability gating it would make the escape hatch unusable exactly when it is needed. State changes still require nonces. |
+| `frl_plugins_loaded()` — `fralenuvole.php` | `frl_environment_enforce_settings()` is registered on `init` for every request | The manager self-throttles (60 s for admins, 300 s for visitors) and only applies when state changed or `$force` is set. Registering conditionally would mean the state check itself never runs. |
+| beacon writer — `core/debugger/rum/rum-receiver.php` | The RUM beacon TSV stores the visitor IP | The file is a private diagnostics artifact under `uploads/`, reachable only through the log manager. The IP column exists so visits can be joined with server logs; without it the log has no key. |
+| `frl_auto_backup_on_upgrade()` — `includes/plugin-lifecycle.php` | The pre-upgrade backup exports every option value unfiltered | The snapshot must be complete and restorable after a failed upgrade. The directory is `.htaccess`-guarded and never served, so redacting values would only break restores. |
+
 ## Where to Start Reading
 
 1. `includes/bootstrap.php` → `fralenuvole.php` → `includes/main.php` — see exactly what loads and when

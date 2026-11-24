@@ -69,8 +69,10 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 
 	private Frl_Rewriter_Coordinator $coordinator;
 
-	private static ?self $instance        = null;
-	private static bool $hooks_registered = false;
+	private static ?self $instance          = null;
+	private static bool $hooks_registered   = false;
+	private static array $feature_match_lru = array();
+	private static array $feature_order_lru = array();
 
 	/**
 	 * Private constructor - use init() to get instance
@@ -214,17 +216,9 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 				function () use ( $url, $obj, $features ) {
 					$transformed_url = $url;
 
-					// Dispatcher cache: map object signature -> applicable features (LRU pattern).
-					// $cache_order is keyed by signature (value unused) so both the "touch"
-					// (move-to-end) and "evict oldest" operations are O(1) via unset()/re-insert
-					// and array_key_first(), instead of O(n) array_diff()/array_shift() on a
-					// plain indexed array. PHP preserves associative-array insertion order.
-					static $feature_match_cache = array();
-					static $cache_order         = array();
-					// Build a signature that normalizes to base WP classes to prevent
-					// cache fragmentation from subclasses (e.g., WC_Product extends WP_Post).
-					// Using spl_object_id ensures true identity even for different instances
-					// of the same class with the same post_type.
+					// Dispatcher cache: map object signature -> applicable features (class-level LRU).
+					// $feature_order_lru is keyed by signature (value unused) so both "touch"
+					// (move-to-end) and "evict oldest" are O(1) via unset()/re-insert and array_key_first().
 					$base_class = ( $obj instanceof WP_Post ) ? 'WP_Post' : ( ( $obj instanceof WP_Term ) ? 'WP_Term' : get_class( $obj ) );
 					$signature  = $base_class;
 					if ( isset( $obj->post_type ) ) {
@@ -234,20 +228,20 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 					}
 
 					// LRU memory guard: evict oldest entries when cache exceeds 1024
-					if ( count( $feature_match_cache ) >= 1024 && ! isset( $feature_match_cache[ $signature ] ) ) {
+					if ( count( self::$feature_match_lru ) >= 1024 && ! isset( self::$feature_match_lru[ $signature ] ) ) {
 						// Remove oldest 10% of entries
-						$evict_count = (int) ceil( count( $cache_order ) * 0.1 );
-						for ( $i = 0; $i < $evict_count && ! empty( $cache_order ); $i++ ) {
-							$oldest = array_key_first( $cache_order );
-							unset( $cache_order[ $oldest ], $feature_match_cache[ $oldest ] );
+						$evict_count = (int) ceil( count( self::$feature_order_lru ) * 0.1 );
+						for ( $i = 0; $i < $evict_count && ! empty( self::$feature_order_lru ); $i++ ) {
+							$oldest = array_key_first( self::$feature_order_lru );
+							unset( self::$feature_order_lru[ $oldest ], self::$feature_match_lru[ $oldest ] );
 						}
 					}
 
-					if ( isset( $feature_match_cache[ $signature ] ) ) {
-						$applicable = $feature_match_cache[ $signature ];
+					if ( isset( self::$feature_match_lru[ $signature ] ) ) {
+						$applicable = self::$feature_match_lru[ $signature ];
 						// Move to end of LRU order — O(1) touch via unset + re-insert
-						unset( $cache_order[ $signature ] );
-						$cache_order[ $signature ] = true;
+						unset( self::$feature_order_lru[ $signature ] );
+						self::$feature_order_lru[ $signature ] = true;
 					} else {
 						$applicable = array();
 						foreach ( $features as $feature ) {
@@ -255,8 +249,8 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 								$applicable[] = $feature;
 							}
 						}
-						$feature_match_cache[ $signature ] = $applicable;
-						$cache_order[ $signature ]         = true;
+						self::$feature_match_lru[ $signature ] = $applicable;
+						self::$feature_order_lru[ $signature ] = true;
 					}
 
 					// Early return if no features apply to this specific object

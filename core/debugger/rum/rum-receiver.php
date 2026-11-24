@@ -254,6 +254,7 @@ $frl_line = implode(
 		// Kept percent-encoded: decoding would let frl_rum_clean() strip non-ASCII slugs.
 		frl_rum_clean( isset( $frl_in['p'] ) ? $frl_in['p'] : '', 600 ),
 		// REMOTE_ADDR is the visitor IP on Kinsta (verified on staging, same as CF-Connecting-IP).
+		// Deliberate: private diagnostics file; the IP column joins visits with server logs.
 		isset( $_SERVER['REMOTE_ADDR'] ) ? preg_replace( '/[^0-9a-fA-F:\.]/', '', (string) $_SERVER['REMOTE_ADDR'] ) : '',
 		frl_rum_free_text( $frl_ua, 400 ),
 		frl_rum_clean( isset( $_COOKIE['_ga'] ) ? $_COOKIE['_ga'] : '', 60 ),

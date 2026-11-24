@@ -28,8 +28,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 add_action(
 	'admin_menu',
 	function () {
-		// Bail if Polylang isn't active — this file is Polylang-only.
-		if ( ! frl_is_polylang_active() ) {
+		// Bail if Polylang isn't active or initialized — this file is Polylang-only.
+		if ( ! frl_is_polylang_active() || ! function_exists( 'PLL' ) || ! PLL() ) {
 			return;
 		}
 

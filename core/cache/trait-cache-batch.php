@@ -50,7 +50,10 @@ trait Frl_Cache_Batch_Trait {
 		}
 
 		$query      = "SELECT option_name, option_value FROM {$wpdb->options} WHERE " . implode( ' OR ', $or_clauses );
-		$db_results = self::safe_db_query( $query, array(), 'batch_preload_transients' );
+		$db_results = self::safe_db_query( $query, null, 'batch_preload_transients' );
+		if ( $db_results === null ) {
+			return;
+		}
 
 		// Distribute results by group prefix
 		$by_group = array();
@@ -147,7 +150,7 @@ trait Frl_Cache_Batch_Trait {
 			}
 
 			return $result;
-		} catch ( Exception $e ) {
+		} catch ( \Throwable $e ) {
 			if ( $supports_transactions ) {
 				$wpdb->query( 'ROLLBACK' );
 			}

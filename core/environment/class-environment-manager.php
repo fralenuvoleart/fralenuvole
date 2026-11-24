@@ -168,188 +168,185 @@ class Frl_Environment_Manager {
 			return null;
 		}
 
-		$results = array(
-			'wp_options'     => array(
-				'updated' => array(),
-				'skipped' => array(),
-			),
-			'plugin_options' => array(
-				'updated'      => array(),
-				'file_loaded'  => array(),
-				'file_missing' => array(),
-				'error'        => array(),
-				'ignored'      => array(),
-			),
-			'plugins'        => array(
-				'activated'    => array(),
-				'deactivated'  => array(),
-				'ignored'      => array(),
-				'no_change'    => array(),
-				'update_error' => array(),
-			),
-			'modules'        => array(
-				'activated'   => array(),
-				'deactivated' => array(),
-				'no_change'   => array(),
-			),
-			'config_found'   => false,
-			'message'        => '',
-		);
+		try {
+			$results = array(
+				'wp_options'     => array(
+					'updated' => array(),
+					'skipped' => array(),
+				),
+				'plugin_options' => array(
+					'updated'      => array(),
+					'file_loaded'  => array(),
+					'file_missing' => array(),
+					'error'        => array(),
+					'ignored'      => array(),
+				),
+				'plugins'        => array(
+					'activated'    => array(),
+					'deactivated'  => array(),
+					'ignored'      => array(),
+					'no_change'    => array(),
+					'update_error' => array(),
+				),
+				'modules'        => array(
+					'activated'   => array(),
+					'deactivated' => array(),
+					'no_change'   => array(),
+				),
+				'config_found'   => false,
+				'message'        => '',
+			);
 
-		// Get domain config - this must happen before throttle logic if throttle depends on config (it doesn't currently)
-		// and before result population using config.
-		$config = self::get_domain_config();
+			// Get domain config - this must happen before throttle logic if throttle depends on config (it doesn't currently)
+			// and before result population using config.
+			$config = self::get_domain_config();
 
-		// If config is null, log the issue (already logged in get_domain_config) and exit early.
-		if ( $config === null ) {
-			$results['message'] = __( 'Could not determine environment configuration.', FRL_PREFIX );
-			frl_is_already_running( __METHOD__, true ); // Reset recursion flag
-			return $force ? $results : null; // Return results if forced
-		}
-
-		// Populate results that depend on config *after* checking config is not null.
-		$results['config_found']       = true;
-		$results['environment_type']   = $config['type'] ?? 'unknown';
-		$results['environment_prefix'] = $config['prefix'] ?? 'unknown';
-
-		$last_check_timestamp = frl_cache_get( self::CACHE_GROUP, self::CACHE_KEY_LAST_CHECK );
-
-		// Check if environment state has changed before throttling
-		$state_changed = self::check_environment_state();
-
-		// Admin and migrate-mode users: 60s throttle. Others: 300s.
-		$is_migrate       = defined( 'FRL_MODE' ) && FRL_MODE === 'migrate';
-		$throttle_seconds = ( $force || $is_migrate ) ? 0 : ( frl_has_access() ? 60 : 300 );
-
-		// Apply throttle only when not forced AND no state change
-		if ( ! $force && ! $is_migrate && ! $state_changed && $throttle_seconds > 0 && $last_check_timestamp && ( time() - $last_check_timestamp < $throttle_seconds ) ) {
-			frl_is_already_running( __METHOD__, true ); // Reset recursion flag
-			return null;
-		}
-
-		// Update last check time for non-forced path (regardless of state change). Safe and idempotent.
-		if ( ! $force && ! $is_migrate ) {
-			frl_cache_set( self::CACHE_GROUP, self::CACHE_KEY_LAST_CHECK, time() );
-		}
-
-		// Apply settings if state changed or force is true
-		if ( $state_changed || $force || $is_migrate ) {
-			// Prepare context and results for a single synthetic log at the end
-			$origin_host  = isset( $_SERVER['HTTP_HOST'] ) ? $_SERVER['HTTP_HOST'] : '';
-			$dest_host    = $config['env_host'] ?? ( $config['current_host'] ?? '' );
-			$dest_siteurl = ! empty( $dest_host ) ? ( 'https://' . $dest_host ) : '';
-			$dest_home    = $dest_siteurl;
-
-			// Website transients purge moved to final state_changed block after operations
-
-			// Suppress manual-edit tracking: these writes are the config being applied.
-			$previous_suppress = Frl_Environment_Monitor::suppress_tracking( true );
-			try {
-				// Apply WordPress options from config
-				Frl_Environment_Applier::apply_wordpress_options( $config, $results, $force ); // Pass force
-
-				// Apply domain-specific configuration
-				Frl_Environment_Applier::apply_plugin_options( $config, $results, $force ); // Pass force
-			} finally {
-				Frl_Environment_Monitor::suppress_tracking( $previous_suppress );
+			// If config is null, log the issue (already logged in get_domain_config) and exit early.
+			if ( $config === null ) {
+				$results['message'] = __( 'Could not determine environment configuration.', FRL_PREFIX );
+				return $force ? $results : null; // Return results if forced
 			}
 
-			// Apply plugin management
-			Frl_Environment_Plugin_Manager::apply_plugins_activation_status( $config, $results );
+			// Populate results that depend on config *after* checking config is not null.
+			$results['config_found']       = true;
+			$results['environment_type']   = $config['type'] ?? 'unknown';
+			$results['environment_prefix'] = $config['prefix'] ?? 'unknown';
 
-			// Apply module management
-			Frl_Environment_Applier::apply_modules_options( $config, $results, $force ); // Pass force
+			$last_check_timestamp = frl_cache_get( self::CACHE_GROUP, self::CACHE_KEY_LAST_CHECK );
 
-			// --- Change-type classifier: select cache operation by what changed ---
-			// All cache clearing is now executed through the orchestrator (FRL_CACHE_OPERATIONS)
-			// for centralized visibility in get_operation_map().
-			$env_op = '';
+			// Check if environment state has changed before throttling
+			$state_changed = self::check_environment_state();
 
-			// Check if a hooked callback already handled cache clearing during
-			// frl_environment_before_wp_options. This prevents redundant cache operations
-			// when a module already performed a full clear.
-			$cache_already_cleared = ! empty( $results['cache_cleared'] );
+			// Admin and migrate-mode users: 60s throttle. Others: 300s.
+			$is_migrate       = defined( 'FRL_MODE' ) && FRL_MODE === 'migrate';
+			$throttle_seconds = ( $force || $is_migrate ) ? 0 : ( frl_has_access() ? 60 : 300 );
 
-			if ( ! $cache_already_cleared ) {
-				if ( $force ) {
-					$env_op = 'env_enforce_full';
-				} else {
-					$changed_wp_opts     = ! empty( $results['wp_options']['updated'] );
-					$changed_plugin_opts = ! empty( $results['plugin_options']['updated'] )
-											|| ! empty( $results['plugin_options']['file_loaded'] );
-					$changed_plugins     = ! empty( $results['plugins']['activated'] )
-											|| ! empty( $results['plugins']['deactivated'] );
-					$changed_modules     = ! empty( $results['modules']['activated'] )
-											|| ! empty( $results['modules']['deactivated'] );
+			// Apply throttle only when not forced AND no state change
+			if ( ! $force && ! $is_migrate && ! $state_changed && $throttle_seconds > 0 && $last_check_timestamp && ( time() - $last_check_timestamp < $throttle_seconds ) ) {
+				return null;
+			}
 
-					if ( $changed_plugins || $changed_modules ) {
+			// Update last check time for non-forced path (regardless of state change). Safe and idempotent.
+			if ( ! $force && ! $is_migrate ) {
+				frl_cache_set( self::CACHE_GROUP, self::CACHE_KEY_LAST_CHECK, time() );
+			}
+
+			// Apply settings if state changed or force is true
+			if ( $state_changed || $force || $is_migrate ) {
+				// Prepare context and results for a single synthetic log at the end
+				$origin_host  = isset( $_SERVER['HTTP_HOST'] ) ? $_SERVER['HTTP_HOST'] : '';
+				$dest_host    = $config['env_host'] ?? ( $config['current_host'] ?? '' );
+				$dest_siteurl = ! empty( $dest_host ) ? ( 'https://' . $dest_host ) : '';
+				$dest_home    = $dest_siteurl;
+
+				// Website transients purge moved to final state_changed block after operations
+
+				// Suppress manual-edit tracking: these writes are the config being applied.
+				$previous_suppress = Frl_Environment_Monitor::suppress_tracking( true );
+				try {
+					// Apply WordPress options from config
+					Frl_Environment_Applier::apply_wordpress_options( $config, $results, $force ); // Pass force
+
+					// Apply domain-specific configuration
+					Frl_Environment_Applier::apply_plugin_options( $config, $results, $force ); // Pass force
+				} finally {
+					Frl_Environment_Monitor::suppress_tracking( $previous_suppress );
+				}
+
+				// Apply plugin management
+				Frl_Environment_Plugin_Manager::apply_plugins_activation_status( $config, $results );
+
+				// Apply module management
+				Frl_Environment_Applier::apply_modules_options( $config, $results, $force ); // Pass force
+
+				// --- Change-type classifier: select cache operation by what changed ---
+				// All cache clearing is now executed through the orchestrator (FRL_CACHE_OPERATIONS)
+				// for centralized visibility in get_operation_map().
+				$env_op = '';
+
+				// Check if a hooked callback already handled cache clearing during
+				// frl_environment_before_wp_options. This prevents redundant cache operations
+				// when a module already performed a full clear.
+				$cache_already_cleared = ! empty( $results['cache_cleared'] );
+
+				if ( ! $cache_already_cleared ) {
+					if ( $force ) {
 						$env_op = 'env_enforce_full';
-					} elseif ( $changed_wp_opts
-						&& ( in_array( 'siteurl', $results['wp_options']['updated'], true )
-							|| in_array( 'home', $results['wp_options']['updated'], true ) )
-					) {
-						$env_op = 'env_enforce_url_change';
-					} elseif ( $changed_plugin_opts || $changed_wp_opts ) {
-						$env_op = 'env_enforce_options';
+					} else {
+						$changed_wp_opts     = ! empty( $results['wp_options']['updated'] );
+						$changed_plugin_opts = ! empty( $results['plugin_options']['updated'] )
+												|| ! empty( $results['plugin_options']['file_loaded'] );
+						$changed_plugins     = ! empty( $results['plugins']['activated'] )
+												|| ! empty( $results['plugins']['deactivated'] );
+						$changed_modules     = ! empty( $results['modules']['activated'] )
+												|| ! empty( $results['modules']['deactivated'] );
+
+						if ( $changed_plugins || $changed_modules ) {
+							$env_op = 'env_enforce_full';
+						} elseif ( $changed_wp_opts
+							&& ( in_array( 'siteurl', $results['wp_options']['updated'], true )
+								|| in_array( 'home', $results['wp_options']['updated'], true ) )
+						) {
+							$env_op = 'env_enforce_url_change';
+						} elseif ( $changed_plugin_opts || $changed_wp_opts ) {
+							$env_op = 'env_enforce_options';
+						}
+						// Nothing changed → $env_op stays empty, orchestrator call is skipped.
 					}
-					// Nothing changed → $env_op stays empty, orchestrator call is skipped.
 				}
-			}
 
-			// Execute selected operation through orchestrator for centralized visibility.
-			if ( $env_op ) {
-				Frl_Cache_Operations::run( $env_op );
-			}
-
-			$current_state = self::get_current_state( true );
-
-			// Store final state with timestamp
-			frl_update_option( self::ENVIRONMENT_STATE, $current_state, false );
-
-			frl_cache_set( self::CACHE_GROUP, self::CACHE_KEY, $current_state );
-
-			// Clear throttle on state change or force
-			frl_cache_clear( self::CACHE_GROUP, self::CACHE_KEY_LAST_CHECK );
-
-			$results['message'] = __( 'Environment settings applied.', FRL_PREFIX );
-
-			// Finalize: optional website transients purge and single log at the end of the routine
-			if ( ( $state_changed && ! $force ) || $is_migrate ) {
-				$transients = Frl_Environment_Applier::clear_website_transients_if_needed( $config, $dest_host );
-
-				Frl_Environment_Utils::log_environment_change(
-					$config,
-					$origin_host,
-					$dest_host,
-					$dest_siteurl,
-					$dest_home,
-					$transients
-				);
-
-				// Redirect to plugin admin page if user has access (and not already there/doing action)
-				// This helps confirm the migration visually.
-				if ( frl_has_access() ) {
-					nocache_headers();
-					frl_safe_redirect( FRL_PLUGIN_ADMIN_URL );
+				// Execute selected operation through orchestrator for centralized visibility.
+				if ( $env_op ) {
+					Frl_Cache_Operations::run( $env_op );
 				}
+
+				$current_state = self::get_current_state( true );
+
+				// Store final state with timestamp
+				frl_update_option( self::ENVIRONMENT_STATE, $current_state, false );
+
+				frl_cache_set( self::CACHE_GROUP, self::CACHE_KEY, $current_state );
+
+				// Clear throttle on state change or force
+				frl_cache_clear( self::CACHE_GROUP, self::CACHE_KEY_LAST_CHECK );
+
+				$results['message'] = __( 'Environment settings applied.', FRL_PREFIX );
+
+				// Finalize: optional website transients purge and single log at the end of the routine
+				if ( ( $state_changed && ! $force ) || $is_migrate ) {
+					$transients = Frl_Environment_Applier::clear_website_transients_if_needed( $config, $dest_host );
+
+					Frl_Environment_Utils::log_environment_change(
+						$config,
+						$origin_host,
+						$dest_host,
+						$dest_siteurl,
+						$dest_home,
+						$transients
+					);
+
+					// Redirect to plugin admin page if user has access (and not already there/doing action)
+					// This helps confirm the migration visually.
+					if ( frl_has_access() ) {
+						nocache_headers();
+						frl_safe_redirect( FRL_PLUGIN_ADMIN_URL );
+					}
+				}
+			} else {
+				$results['message'] = __( 'Environment settings check skipped (no state change detected).', FRL_PREFIX );
 			}
-		} else {
-			$results['message'] = __( 'Environment settings check skipped (no state change detected).', FRL_PREFIX );
-		}
 
-		// Mark as complete
-		if ( $force ) {
-			// Reset the has_run flag when forcing
-			frl_is_already_running( __CLASS__, true );
-		}
-
-		// Reset method recursion flag
-		frl_is_already_running( __METHOD__, true );
-
-		// Store result in transient cache for 5 minutes unless forced (only when state changed)
-		if ( ! $force && $state_changed ) {
-			$cache_key = frl_prefix( 'env_check' ) . '_' . md5( isset( $_SERVER['HTTP_HOST'] ) ? $_SERVER['HTTP_HOST'] : 'default' );
-			set_transient( $cache_key, $results, 5 * MINUTE_IN_SECONDS );
+			// Store result in transient cache for 5 minutes unless forced (only when state changed)
+			if ( ! $force && $state_changed ) {
+				$cache_key = frl_prefix( 'env_check' ) . '_' . md5( isset( $_SERVER['HTTP_HOST'] ) ? $_SERVER['HTTP_HOST'] : 'default' );
+				set_transient( $cache_key, $results, 5 * MINUTE_IN_SECONDS );
+			}
+		} finally {
+			// Always reset recursion flags.
+			if ( $force ) {
+				frl_is_already_running( __CLASS__, true );
+			}
+			frl_is_already_running( __METHOD__, true );
 		}
 
 		// Always return results if forced, otherwise only return if there were changes

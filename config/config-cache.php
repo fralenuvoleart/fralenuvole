@@ -79,7 +79,7 @@ const FRL_CACHE_HEAVY_GROUPS = array(
 	'staticdata',
 	'blocks',
 	'postdata',
-	'shortodes',
+	'shortcodes',
 	'translations',
 	'permalinks',
 	'rewriter',

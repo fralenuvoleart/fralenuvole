@@ -209,7 +209,8 @@ class Frl_Environment_Monitor {
 				Frl_Environment_Manager::reset_customizations();
 
 				if ( $current_user_id && $auth_cookie ) {
-					wp_set_auth_cookie( $current_user_id, true );
+					$remember = isset( $auth_cookie['expiration'] ) && ( (int) $auth_cookie['expiration'] - time() ) > ( 2 * DAY_IN_SECONDS );
+					wp_set_auth_cookie( $current_user_id, $remember );
 				}
 
 				// Set force reload flag (now using stable cookie-based helper)

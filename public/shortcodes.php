@@ -1085,7 +1085,7 @@ function frl_shortcode_slug( $atts ) {
 			if ( $segment === '' ) {
 				return '';
 			}
-			return esc_html( $segment );
+			return $segment;
 		}
 	);
 

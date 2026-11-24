@@ -32,20 +32,30 @@ class Frl_Rewriter_Config_Validator {
 	 * @return array Array of warning messages
 	 */
 	public static function get_validation_warnings(): array {
-		$warnings = array();
-
 		// Only run in admin context
 		if ( ! is_admin() ) {
-			return $warnings;
+			return array();
 		}
 
-		$warnings = array_merge( $warnings, self::check_duplicate_translations() );
-		$warnings = array_merge( $warnings, self::check_semantic_overlaps() );
-		$warnings = array_merge( $warnings, self::check_language_conflicts() );
-		$warnings = array_merge( $warnings, self::warn_missing_cpt_mappings_when_post_base_set() );
-		$warnings = array_merge( $warnings, self::warn_when_top_level_pages_exceed_cap() );
+		$warnings = frl_cache_remember(
+			'admin',
+			'rewriter_validation_warnings',
+			function () {
+				$warnings   = array();
+				$categories = get_categories( array( 'hide_empty' => false ) );
 
-		return $warnings;
+				$warnings = array_merge( $warnings, self::check_duplicate_translations() );
+				$warnings = array_merge( $warnings, self::check_semantic_overlaps( $categories ) );
+				$warnings = array_merge( $warnings, self::check_language_conflicts( $categories ) );
+				$warnings = array_merge( $warnings, self::warn_missing_cpt_mappings_when_post_base_set() );
+				$warnings = array_merge( $warnings, self::warn_when_top_level_pages_exceed_cap() );
+
+				return $warnings;
+			},
+			300
+		);
+
+		return is_array( $warnings ) ? $warnings : array();
 	}
 
 	/**
@@ -177,13 +187,13 @@ class Frl_Rewriter_Config_Validator {
 	 *
 	 * @return array Array of warning messages
 	 */
-	private static function check_semantic_overlaps(): array {
+	private static function check_semantic_overlaps( ?array $categories = null ): array {
 		$warnings = array();
 
 		// Check if category names match CPT slugs
 		$remove_tax_base = frl_get_option( 'rewriter_remove_tax_base' );
 		if ( str_contains( $remove_tax_base, 'category' ) ) {
-			$categories = get_categories( array( 'hide_empty' => false ) );
+			$categories = $categories ?? get_categories( array( 'hide_empty' => false ) );
 
 			if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
 				foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $cpt_slug ) {
@@ -202,15 +212,16 @@ class Frl_Rewriter_Config_Validator {
 	/**
 	 * Check for language code conflicts with actual slugs
 	 *
+	 * @param array|null $categories Pre-fetched category list (optional).
 	 * @return array Array of warning messages
 	 */
-	private static function check_language_conflicts(): array {
+	private static function check_language_conflicts( ?array $categories = null ): array {
 		$warnings = array();
 
 		$active_languages = Frl_Rewriter_Path_Utils::get_active_languages_safe();
 
 		// Check if any language codes match category slugs
-		$categories = get_categories( array( 'hide_empty' => false ) );
+		$categories = $categories ?? get_categories( array( 'hide_empty' => false ) );
 		foreach ( $categories as $category ) {
 			if ( in_array( $category->slug, $active_languages, true ) ) {
 				$warnings[] = "Category slug '{$category->slug}' matches language code. This may cause URL parsing conflicts.";

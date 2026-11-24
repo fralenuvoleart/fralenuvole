@@ -142,6 +142,11 @@ final class Frl_Rewriter_Path_Utils {
 			}
 			return implode( '://', array( $parts[0], $collapsed ) );
 		}
+		// Preserve protocol-relative URLs (leading //).
+		if ( str_starts_with( $url, '//' ) ) {
+			$collapsed = preg_replace( '#/{2,}#', '/', substr( $url, 2 ) );
+			return $collapsed === null ? $url : '//' . $collapsed;
+		}
 		// No scheme: collapse all redundant slashes.
 		$result = preg_replace( '#/{2,}#', '/', $url );
 		if ( $result === null ) {

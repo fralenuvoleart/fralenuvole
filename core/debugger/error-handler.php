@@ -200,7 +200,11 @@ function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): b
 		// plain string; error_log() receives a string. Neither triggers PHP
 		// serialization — no need for serialization-error pre-checks here.
 		if ( function_exists( 'frl_log_add_details' ) ) {
-			$line = frl_log_add_details( $line );
+			try {
+				$line = frl_log_add_details( $line );
+			} catch ( \Throwable $e ) {
+				// Never let logging enrichment break the error handler.
+			}
 		}
 
 		$detailed_log_cache[ $error_signature ] = $line;

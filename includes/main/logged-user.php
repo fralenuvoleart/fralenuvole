@@ -47,7 +47,11 @@ function frl_admin_bar_menu_render() {
 		return;
 	}
 
-	$user_id = frl_get_current_user()->ID;
+	$user = frl_get_current_user();
+	if ( ! $user ) {
+		return;
+	}
+	$user_id = $user->ID;
 	$lang    = frl_get_language();
 
 	$cache_key = "{$lang}_adminbar_uid{$user_id}";
@@ -477,8 +481,10 @@ function frl_trace_logged_user_visits() {
 	// Check for duplicates (same user, same URL, within 5 minutes)
 	foreach ( $visits as $visit ) {
 		if (
+			is_array( $visit ) &&
+			isset( $visit['page'], $visit['timestamp'] ) &&
 			$visit['page'] === $current_url && // Compare against the full URL
-			( strtotime( $visit['timestamp'] ) > ( time() - 300 ) )
+			( strtotime( (string) $visit['timestamp'] ) > ( time() - 300 ) )
 		) {
 			// Already tracked this page recently
 			return;

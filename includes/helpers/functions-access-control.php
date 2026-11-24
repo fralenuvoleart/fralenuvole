@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return bool True if the user has access, false otherwise.
  */
 function frl_has_access( $capability = FRL_PLUGIN_ACCESS ) {
-	// Bypass access check in migrate mode (break-glass)
+	// Deliberate: ?frlmode=migrate is the anonymous recovery switch. Do not gate it.
 	if ( defined( 'FRL_MODE' ) && FRL_MODE === 'migrate' ) {
 		return true;
 	}
@@ -647,12 +647,17 @@ function frl_verify_plugin_action_nonce( $action_name ) {
  * @return bool True if nonce is valid
  */
 function frl_verify_admin_action_nonce( $nonce_field = '_wpnonce', $nonce_action = FRL_PREFIX . '_save_options', $redirect_url_base = '', $redirect_args = array() ) {
-	// Use simple nonce for basic verification (no capability check, return false on failure)
+	// Check capability before saving plugin options.
+	if ( ! frl_has_access() ) {
+		wp_die( __( 'You do not have sufficient permissions to access this page.', FRL_PREFIX ) );
+	}
+
+	// Verify nonce + capability.
 	$verified = frl_verify_simple_nonce(
 		$nonce_action,    // Use the full action as-is
 		$nonce_field,
 		'POST',
-		null,             // No capability check
+		FRL_PLUGIN_ACCESS,
 		false,            // Don't die, let us handle errors
 		true              // raw_action = true (don't prefix)
 	);

@@ -407,17 +407,8 @@ class Frl_Cache_Manager {
 			return null;
 		}
 
-		// Store in runtime cache
-		self::set_runtime( $cache_key, $data, $group );
-
-		// Persist data if needed
-		$ttl = $ttl ?? ( self::$default_ttls[ $group ] ?? self::$default_ttls['default'] );
-
-		if ( self::is_object_cache_truly_functional() ) {
-			wp_cache_set( $cache_key, self::wrap_transient_value( $data ), self::PREFIX . $group, $ttl );
-		} elseif ( self::use_transient_fallback( $group ) ) {
-			set_transient( self::PREFIX . $cache_key, self::wrap_transient_value( $data ), $ttl );
-		}
+		// Store via self::set() so closure sanitization & serialization rules match set()/remember().
+		self::set( $group, $key, $data, $ttl );
 
 		return $data;
 	}
@@ -766,7 +757,8 @@ class Frl_Cache_Manager {
 				// auth state — avoids 3 redundant Set-Cookie headers on every purge.
 				$post_user = wp_get_current_user();
 				if ( (int) $post_user->ID !== (int) $current_user_id || ! wp_validate_auth_cookie( '', 'logged_in' ) ) {
-					wp_set_auth_cookie( $current_user_id, true );
+					$remember = isset( $auth_cookie['expiration'] ) && ( (int) $auth_cookie['expiration'] - time() ) > ( 2 * DAY_IN_SECONDS );
+					wp_set_auth_cookie( $current_user_id, $remember );
 				}
 				wp_set_current_user( $current_user_id );
 			}
@@ -942,7 +934,10 @@ class Frl_Cache_Manager {
 						$wpdb->esc_like( $timeout_prefix ) . '%'
 					);
 
-						$db_results = self::safe_db_query( $query, array(), 'load_all_group_transients' );
+						$db_results = self::safe_db_query( $query, null, 'load_all_group_transients' );
+						if ( $db_results === null ) {
+							return $return_values ? $result : null;
+						}
 
 						// Prepare arrays for both values and WordPress's option cache
 						$wp_cache   = array();

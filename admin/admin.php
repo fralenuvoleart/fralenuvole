@@ -452,8 +452,11 @@ function frl_get_file_nicename( $filename, $as_title = false ) {
 	// Convert to lowercase
 	$basename = strtolower( $basename );
 
-	// Remove numbers at the end of the basename
-	$basename = preg_replace( '/-?\d+$/', '', $basename );
+	// Remove numbers at the end of the basename, unless the basename is purely numeric.
+	$stripped = preg_replace( '/-?\d+$/', '', $basename );
+	if ( is_string( $stripped ) && $stripped !== '' ) {
+		$basename = $stripped;
+	}
 
 	if ( $as_title ) {
 		// For title format: replace underscores and hyphens with spaces

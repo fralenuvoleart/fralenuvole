@@ -144,7 +144,7 @@ function frl_schema_generator_build_repeater( int $post_id, array $def, array $p
 		$index = (string) ( $i + 1 );
 		foreach ( $row as $prop => $value ) {
 			// {{index}} replacement
-			if ( str_contains( $value, '{{index}}' ) ) {
+			if ( is_string( $value ) && str_contains( $value, '{{index}}' ) ) {
 				$value = str_replace( '{{index}}', $index, $value );
 			}
 			// Placeholder replacement
@@ -207,7 +207,7 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 		}
 
 		// Extract h2/h3 headings
-		preg_match_all( '/<h([23])[^>]*>(.*?)<\/h[23]>/i', $content, $matches, PREG_SET_ORDER );
+		preg_match_all( '/<h([23])[^>]*>(.*?)<\/h[23]>/is', $content, $matches, PREG_SET_ORDER );
 		if ( empty( $matches ) ) {
 			return null;
 		}

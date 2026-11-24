@@ -15,13 +15,17 @@ class Frl_Environment_Config {
 		$cache_key_base = isset( $_SERVER['HTTP_HOST'] ) ? strtolower( $_SERVER['HTTP_HOST'] ) : site_url();
 		$cache_key      = 'domain_config_' . md5( $cache_key_base );
 
-		return frl_cache_remember(
+		// Cache false sentinel for unmapped hosts so repeated requests do not rebuild/log.
+		$cached = frl_cache_remember(
 			Frl_Environment_Manager::CACHE_GROUP,
 			$cache_key,
 			function () {
-				return self::build_domain_config();
+				$config = self::build_domain_config();
+				return $config ?? false;
 			}
 		);
+
+		return $cached === false ? null : $cached;
 	}
 
 	/**

@@ -26,6 +26,7 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 
 
 	private array $taxonomy_slugs = array();
+	private bool $config_loaded   = false;
 
 	public function __construct() {
 		// Property initialisation only. All hook registration happens in register_additional_hooks(),
@@ -115,8 +116,9 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 	 * @return bool True if the feature is enabled
 	 */
 	public function is_enabled(): bool {
-		// Defensive: ensure config is loaded even if called before init/20
-		if ( empty( $this->taxonomy_slugs ) ) {
+		// Defensive: ensure config is loaded even if called before init/20.
+		// If called before taxonomies are registered on init, load_configuration() will still run again at init/20.
+		if ( ! $this->config_loaded ) {
 			$this->load_configuration();
 		}
 		return ! empty( $this->taxonomy_slugs );
@@ -128,6 +130,11 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 	 * @return void
 	 */
 	public function load_configuration(): void {
+		$this->taxonomy_slugs = array();
+		if ( did_action( 'init' ) ) {
+			$this->config_loaded = true;
+		}
+
 		$config = $this->get_option( 'rewriter_remove_tax_base' );
 		if ( empty( trim( $config ) ) ) {
 			return;

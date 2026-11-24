@@ -559,6 +559,11 @@ class Frl_Settings_Fields {
 			// 'tab' will be added later
 		);
 
+		// Explicit capability gate before nonce verification.
+		if ( ! frl_has_access() ) {
+			wp_die( __( 'You do not have sufficient permissions to save these settings.', FRL_PREFIX ) );
+		}
+
 		// Use centralized nonce verification (assuming frl_verify_admin_action_nonce handles exit on failure)
 		frl_verify_admin_action_nonce( '_wpnonce', FRL_PREFIX . '_save_options', $redirect_url_base, $redirect_args );
 
@@ -749,6 +754,9 @@ class Frl_Settings_Fields {
 			} elseif ( in_array( $field_type, array( 'textarea', 'textlist' ), true ) ) {
 				$compare_current = frl_normalize_text_for_comparison( $current_value );
 				$compare_new     = frl_normalize_text_for_comparison( $new_value );
+			} elseif ( is_array( $current_value ) || is_array( $new_value ) ) {
+				$compare_current = is_array( $current_value ) ? $current_value : array();
+				$compare_new     = is_array( $new_value ) ? $new_value : array();
 			} else {
 				// Default string comparison for other types
 				$compare_current = (string) $current_value;

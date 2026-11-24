@@ -222,9 +222,9 @@ function frl_add_avatar_upload_field( $user ) {
 
 							// Create a new media frame
 							frame = wp.media({
-								title: '<?php _e( 'Select or Upload Avatar', FRL_PREFIX ); ?>',
+								title: '<?php echo esc_js( __( 'Select or Upload Avatar', FRL_PREFIX ) ); ?>',
 								button: {
-									text: '<?php _e( 'Use this image', FRL_PREFIX ); ?>'
+									text: '<?php echo esc_js( __( 'Use this image', FRL_PREFIX ) ); ?>'
 								},
 								library: {
 									type: 'image'
@@ -235,14 +235,14 @@ function frl_add_avatar_upload_field( $user ) {
 							// When an image is selected in the media frame...
 							frame.on('select', function() {
 								var attachment = frame.state().get('selection').first().toJSON();
-								$('#<?php echo FRL_PREFIX; ?>_avatar_id').val(attachment.id);
+								$('#<?php echo esc_js( FRL_PREFIX ); ?>_avatar_id').val(attachment.id);
 
 								var imgPreview = '<img src="' + attachment.url + '" style="max-width: 100px; height: auto; border-radius: 50%;">';
 								$('.custom-avatar-preview').html(imgPreview);
 
 								// Add remove button if not present
 								if ($('#remove_avatar_button').length === 0) {
-									$('.custom-avatar-container #upload_avatar_button').after(' <button type="button" class="button" id="remove_avatar_button"><?php _e( 'Remove', FRL_PREFIX ); ?></button>');
+									$('.custom-avatar-container #upload_avatar_button').after(' <button type="button" class="button" id="remove_avatar_button"><?php echo esc_js( __( 'Remove', FRL_PREFIX ) ); ?></button>');
 								}
 							});
 
@@ -272,6 +272,10 @@ function frl_add_avatar_upload_field( $user ) {
  * @return void
  */
 function frl_save_custom_avatar( $user_id ) {
+	if ( ! current_user_can( 'edit_user', $user_id ) ) {
+		return;
+	}
+
 	// Verify nonce before processing avatar upload
 	if ( ! check_admin_referer( 'update-user_' . $user_id ) ) {
 		return;

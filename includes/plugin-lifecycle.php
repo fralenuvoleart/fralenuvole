@@ -41,7 +41,9 @@ function frl_activate_plugin(): void {
 		frl_mu_plugins_sync();
 	}
 
-	frl_update_option( 'translation_version', 1 );
+	if ( empty( frl_get_option( 'translation_version' ) ) ) {
+		frl_update_option( 'translation_version', 1 );
+	}
 
 	// Activation fires before 'init': flush on the next admin/cron request.
 	// frl_request_rewrite_flush() already schedules its own cron fallback, so the
@@ -214,6 +216,7 @@ function frl_rename_plugin_option( $old_key, $new_key ): void {
  * @return void
  */
 function frl_auto_backup_on_upgrade(): void {
+	// Deliberate: pre-upgrade backup is unfiltered so it stays restorable. No redaction.
 	if ( ! function_exists( 'frl_has_access' ) || ! frl_has_access() ) {
 		return;
 	}
@@ -265,6 +268,10 @@ function frl_auto_backup_on_upgrade(): void {
 	$filepath = $backups_dir . '/' . $filename;
 
 	$json = json_encode( $settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
+	if ( false === $json ) {
+		frl_log( 'Settings backup skipped: json_encode() failed' );
+		return;
+	}
 	file_put_contents( $filepath, $json );
 
 	// Maintain only the 5 most recent backups

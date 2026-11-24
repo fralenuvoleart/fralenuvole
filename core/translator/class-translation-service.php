@@ -383,7 +383,10 @@ final class Frl_Translation_Service {
 
 				// Get translated term ID and term
 				$translated_id   = $this->adapter->get_object_id( $term_id, $taxonomy, true, $language );
-				$translated_term = get_term( $translated_id );
+				$translated_term = get_term( $translated_id, $taxonomy );
+				if ( ! $translated_term || is_wp_error( $translated_term ) ) {
+					return '#';
+				}
 
 				$link = get_term_link( $translated_term );
 				return is_wp_error( $link ) ? '#' : $link;
@@ -592,10 +595,10 @@ final class Frl_Translation_Service {
 			}
 		}
 
-		// Create readable identifier: lowercase, underscores, max 64 chars
+		// Create readable identifier: lowercase, underscores, max 64 chars (multibyte-safe)
 		$identifier = str_replace( '-', '_', sanitize_title( $str ) );
-		if ( strlen( $identifier ) > 64 ) {
-			$identifier = substr( $identifier, 0, 60 ) . '_' . substr( md5( $str ), 0, 3 );
+		if ( mb_strlen( $identifier, 'UTF-8' ) > 64 ) {
+			$identifier = mb_substr( $identifier, 0, 60, 'UTF-8' ) . '_' . substr( md5( $str ), 0, 3 );
 		}
 		$domain = $this->name;
 		$this->adapter->register_string( $domain, $identifier, $str );

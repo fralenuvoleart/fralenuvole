@@ -41,7 +41,7 @@ function frl_add_critical_css() {
 			FRL_PREFIX,
 			gmdate( 'Y-m-d-H:i', $css['mtime'] ),
 			FRL_NAME,
-			$css['css']
+			str_ireplace( '</style', '', $css['css'] )
 		);
 	}
 }

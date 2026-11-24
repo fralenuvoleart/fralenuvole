@@ -21,13 +21,6 @@ add_action(
 	0
 );
 
-add_filter(
-	'wsf_pre_render',
-	'frl_pbnova_set_monday_field',
-	10,
-	2
-);
-
 add_action(
 	'wp_after_insert_post',
 	'frl_pbnova_after_insert_post',
@@ -62,29 +55,6 @@ add_filter(
 function frl_pbnova_load_public_scripts() {
 	$assets = array( 'pbnova-public-js' => 'modules/pbnova/assets/js/public.js' );
 	frl_enqueue_scripts( $assets, 'pbnova_public' );
-}
-
-/**
- * Translate labels and options, and set field default values
- */
-function frl_pbnova_set_monday_field( $form, $preview ) {
-	/** @disregard P1010 Undefined type */
-	$fields = wsf_form_get_fields( $form );
-
-	foreach ( $fields as $object ) {
-		/** @disregard P1010 Undefined type */
-		$field = wsf_field_get_object( $form, $object->id );
-
-		if ( isset( $field->meta->default_value ) ) {
-			$default = $field->meta->default_value;
-
-			if ( 'Service-Type' === $field->label ) {
-				$field->meta->default_value = $default;
-			}
-		}
-	}
-
-	return $form;
 }
 
 function frl_pbnova__acf_update_has_content( $post, $update, $post_before ) {

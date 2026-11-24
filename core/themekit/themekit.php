@@ -438,7 +438,7 @@ function frl_themekit_remove_provider_styles() {
 function frl_themekit_get_query_signature() {
 	$parts = array();
 	foreach ( FRL_THEMEKIT_TRACKED_QUERY_PARAMS as $param ) {
-		if ( ! empty( $_GET[ $param ] ) ) {
+		if ( ! empty( $_GET[ $param ] ) && is_string( $_GET[ $param ] ) ) {
 			$parts[] = $param . '_' . md5( sanitize_text_field( $_GET[ $param ] ) );
 		}
 	}

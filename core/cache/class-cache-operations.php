@@ -80,63 +80,65 @@ final class Frl_Cache_Operations {
 			'success'   => true,
 		);
 
-		// Before hook.
-		if ( ! empty( $config['hooks']['before'] ) ) {
-			do_action( $config['hooks']['before'], $operation );
-		}
+		// Before hook + steps + after hook inside try/finally so guard always resets.
+		try {
+			if ( ! empty( $config['hooks']['before'] ) ) {
+				do_action( $config['hooks']['before'], $operation );
+			}
 
-		// Execute all steps sequentially (no early abort).
-		foreach ( $config['steps'] as $index => $step ) {
-			$fn   = $step['fn'];
-			$args = $step['args'] ?? array();
+			// Execute all steps sequentially (no early abort).
+			foreach ( $config['steps'] as $index => $step ) {
+				$fn   = $step['fn'];
+				$args = $step['args'] ?? array();
 
-			$step_result = array(
-				'step'     => $index + 1,
-				'function' => is_array( $fn ) ? implode( '::', $fn ) : $fn,
-				'args'     => $args,
-				'success'  => false,
-			);
+				$step_result = array(
+					'step'     => $index + 1,
+					'function' => is_array( $fn ) ? implode( '::', $fn ) : $fn,
+					'args'     => $args,
+					'success'  => false,
+				);
 
-			if ( is_callable( $fn ) ) {
-				try {
-					$returned               = call_user_func_array( $fn, $args );
-					$step_result['success'] = true;
-					$step_result['result']  = $returned;
-				} catch ( Throwable $e ) {
-					$step_result['error'] = $e->getMessage();
+				if ( is_callable( $fn ) ) {
+					try {
+						$returned               = call_user_func_array( $fn, $args );
+						$step_result['success'] = true;
+						$step_result['result']  = $returned;
+					} catch ( Throwable $e ) {
+						$step_result['error'] = $e->getMessage();
+						frl_log(
+							'Cache operation step failed: {fn} - {error}',
+							array(
+								'fn'    => $step_result['function'],
+								'error' => $e->getMessage(),
+							)
+						);
+					}
+				} else {
+					$step_result['error'] = sprintf(
+						'Required function/method is not callable: %s',
+						$step_result['function']
+					);
 					frl_log(
-						'Cache operation step failed: {fn} - {error}',
-						array(
-							'fn'    => $step_result['function'],
-							'error' => $e->getMessage(),
-						)
+						'Cache operation step not callable: {fn}',
+						array( 'fn' => $step_result['function'] )
 					);
 				}
-			} else {
-				$step_result['error'] = sprintf(
-					'Required function/method is not callable: %s',
-					$step_result['function']
-				);
-				frl_log(
-					'Cache operation step not callable: {fn}',
-					array( 'fn' => $step_result['function'] )
-				);
+
+				$results['steps'][] = $step_result;
+
+				if ( ! $step_result['success'] ) {
+					$results['success'] = false;
+					// Continue to next step — no abort.
+				}
 			}
 
-			$results['steps'][] = $step_result;
-
-			if ( ! $step_result['success'] ) {
-				$results['success'] = false;
-				// Continue to next step — no abort.
+			// After hook.
+			if ( isset( $config['hooks']['after'] ) ) {
+				do_action( $config['hooks']['after'], $operation, $results );
 			}
+		} finally {
+			frl_is_already_running( $guard_key, true );
 		}
-
-		// After hook.
-		if ( isset( $config['hooks']['after'] ) ) {
-			do_action( $config['hooks']['after'], $operation, $results );
-		}
-
-		frl_is_already_running( $guard_key, true );
 
 		return $results;
 	}

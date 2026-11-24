@@ -80,6 +80,8 @@ class Frl_Tag_Validator {
 				CURLOPT_RETURNTRANSFER       => true,
 				CURLOPT_FOLLOWLOCATION       => true,
 				CURLOPT_MAXREDIRS            => 5,
+				CURLOPT_PROTOCOLS            => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+				CURLOPT_REDIR_PROTOCOLS      => CURLPROTO_HTTP | CURLPROTO_HTTPS,
 				CURLOPT_TIMEOUT              => 30,
 				// TLS verification kept ON (unlike an earlier version of this code): this tool is
 				// manage_options-gated, but a MITM able to feed it fabricated "validated" content
@@ -686,8 +688,10 @@ class Frl_Tag_Validator {
 			return; // Already checked in the parent method
 		}
 
-		$type      = $item['@type'];
-		$item_desc = 'item ' . ( $index + 1 ) . " ({$type})";
+		$raw_type   = $item['@type'];
+		$type_label = is_array( $raw_type ) ? implode( ', ', array_map( 'strval', $raw_type ) ) : (string) $raw_type;
+		$type       = is_array( $raw_type ) ? (string) reset( $raw_type ) : (string) $raw_type;
+		$item_desc  = 'item ' . ( $index + 1 ) . " ({$type_label})";
 
 		// Basic required properties for most schema types
 		$common_props = array( 'name' );

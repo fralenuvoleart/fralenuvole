@@ -59,6 +59,9 @@ function frl_send_webhook_async( string $url, array $data, ?string $dedup_key = 
 		)
 	);
 	if ( false === $scheduled ) {
+		if ( $dedup_key !== null && $dedup_key !== '' ) {
+			frl_delete_transient( 'dedup_' . md5( $dedup_key ) );
+		}
 		frl_log( 'WEBHOOK ERROR: frl_send_webhook_async() — wp_schedule_single_event failed' );
 		return false;
 	}
@@ -179,12 +182,18 @@ function frl_send_webhook( string $url, array $data, ?string $dedup_key = null, 
 		);
 	}
 
-	$ch     = curl_init( $url );
 	$result = array(
 		'success'   => false,
 		'http_code' => 0,
 		'error'     => null,
 	);
+
+	$ch = curl_init( $url );
+	if ( false === $ch ) {
+		$result['error'] = 'Failed to initialize cURL handle';
+		frl_log( 'WEBHOOK ERROR: curl_init() failed for {url}', array( 'url' => $url ) );
+		return $result;
+	}
 
 	try {
 		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
