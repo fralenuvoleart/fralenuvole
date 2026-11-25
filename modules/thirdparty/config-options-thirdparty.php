@@ -30,12 +30,19 @@ $frl_thirdparty_default_fields = array(
 		'sanitize_callback' => 'absint',
 		'autoload'          => 'no',
 	),
-	'thirdparty_cache_warmer_url' => array(
+	'thirdparty_cache_warmer_url'   => array(
 		'label'             => 'Cache Warmer URL',
 		'description'       => 'External cache warmer endpoint. If empty, the "Warm Server Cache" admin bar action is hidden.',
 		'type'              => 'text',
 		'default'           => '',
 		'sanitize_callback' => 'esc_url_raw',
 		'autoload'          => 'no',
+	),
+	'thirdparty_importmap_polyfill' => array(
+		'label'             => 'Import Map Polyfill',
+		'description'       => 'Load self-hosted es-module-shims (~23 KB gzip) only on older browsers without import map support (Chrome < 89, Safari < 16.4) so WordPress Interactivity API blocks work.',
+		'type'              => 'checkbox',
+		'default'           => 0,
+		'sanitize_callback' => 'absint',
 	),
 );

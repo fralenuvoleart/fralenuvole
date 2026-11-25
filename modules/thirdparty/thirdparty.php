@@ -10,6 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/importmap-polyfill/importmap-polyfill.php';
+
 add_action( 'wp_enqueue_scripts', 'frl_thirdparty_public_scripts', FRL_THEMEKIT_STYLE_PRIORITY['modules'], 1 );
 
 add_action( 'admin_enqueue_scripts', 'frl_thirdparty_admin_scripts', 0, 0 );
