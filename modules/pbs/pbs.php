@@ -58,10 +58,20 @@ function frl_pbs_load_public_scripts() {
 function frl_pbs_set_monday_field( $form, $preview ) {
 	/** @disregard P1010 Undefined type */
 	$fields = wsf_form_get_fields( $form );
+	if ( ! is_iterable( $fields ) ) {
+		return $form;
+	}
 
 	foreach ( $fields as $object ) {
+		if ( ! is_object( $object ) || ! isset( $object->id ) ) {
+			continue;
+		}
 		/** @disregard P1010 Undefined type */
 		$field = wsf_field_get_object( $form, $object->id );
+
+		if ( ! is_object( $field ) || ! isset( $field->label, $field->meta ) ) {
+			continue;
+		}
 
 		if ( 'Service-Type' === $field->label && empty( $field->meta->default_value ) ) {
 			$field->meta->default_value = 'Webpage';

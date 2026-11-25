@@ -1484,52 +1484,95 @@ class Frl_Cache_Manager {
 	 *                  is not applicable (non-Redis backend, missing drop-in API,
 	 *                  or eval failure) — the caller must then use per-group flushes.
 	 */
-	private static function flush_groups_redis( array $groups ): ?int {
-		global $wp_object_cache;
-
+	/**
+	 * Shared Redis Lua group-scan runner for flush, count, and size measurement.
+	 *
+	 * Validates object-cache health, Redis provider, and backend API, builds anchored
+	 * Lua patterns via redis_group_pattern(), and dispatches eval() for Predis/PhpRedis.
+	 *
+	 * @param string[] $groups         Cache groups to scan (must be >= 1).
+	 * @param callable $script_builder Receives $backend array and returns Lua script string.
+	 * @param string   $op_label       Human-readable operation label for failure logs.
+	 * @param bool     $allow_ocp      Whether Object Cache Pro backends are allowed.
+	 * @param bool     $log_skip       Whether to log when skipped on non-Redis/inactive backends.
+	 * @return array{result: mixed, groups: string[], backend: array}|null Eval payload or null on skip/error.
+	 */
+	private static function eval_redis_group_scan( array $groups, callable $script_builder, string $op_label, bool $allow_ocp = true, bool $log_skip = false ): ?array {
 		if ( empty( $groups ) || ! self::is_object_cache_truly_functional() ) {
-			frl_log( 'FRL Cache: combined Redis flush skipped — object cache not functional or no groups', array(), false );
+			if ( $log_skip ) {
+				frl_log( 'FRL Cache: ' . $op_label . ' skipped — object cache not functional or no groups', array(), false );
+			}
 			return null;
 		}
 
 		$provider = self::get_provider_details();
 		if ( ! str_contains( strtolower( (string) ( $provider['slug'] ?? '' ) ), 'redis' ) ) {
-			frl_log(
-				'FRL Cache: combined Redis flush skipped — provider "{slug}" is not Redis',
-				array( 'slug' => $provider['slug'] ?? 'unknown' ),
-				false
-			);
+			if ( $log_skip ) {
+				frl_log(
+					'FRL Cache: ' . $op_label . ' skipped — provider "{slug}" is not Redis',
+					array( 'slug' => $provider['slug'] ?? 'unknown' ),
+					false
+				);
+			}
 			return null;
 		}
 
 		$backend = self::get_redis_backend();
 		if ( $backend === null ) {
-			frl_log( 'FRL Cache: combined Redis flush skipped — no supported Redis backend API (drop-in redis_instance/build_key/redis_status or Object Cache Pro client/config)', array(), false );
+			if ( $log_skip ) {
+				frl_log( 'FRL Cache: ' . $op_label . ' skipped — no supported Redis backend API (drop-in redis_instance/build_key/redis_status or Object Cache Pro client/config)', array(), false );
+			}
 			return null;
 		}
 
-		// Object Cache Pro: defer to its own per-group flush (already one scan per
-		// group) instead of our reconstructed pattern. The pattern is derived from
-		// OCP internals and cannot be verified here, so a wrong match could mark
-		// groups flushed without actually deleting them. Count/size (read-only)
-		// still use the pattern.
-		if ( 'ocp' === $backend['flavor'] ) {
+		if ( ! $allow_ocp && 'ocp' === $backend['flavor'] ) {
 			return null;
 		}
 
-		$redis = $backend['client'];
-
-		// One anchored Lua pattern per group. The drop-in supplies its key layout
-		// via build_key() so we never reconstruct salt/blog prefixes ourselves.
+		$groups   = array_values( $groups );
 		$patterns = array();
 		foreach ( $groups as $group ) {
 			$patterns[] = self::redis_group_pattern( $backend, $group );
 		}
 
-		$version    = $backend['version'];
-		$delete_cmd = ( $version !== '' && version_compare( $version, '4.0.0', '>=' ) ) ? 'unlink' : 'del';
+		$script = (string) $script_builder( $backend );
+		$redis  = $backend['client'];
 
-		$script = <<<LUA
+		try {
+			// Patterns are passed as ARGV (num_keys = 0): Redis 7 ACLs key-check
+			// declared KEYS against key globs; ARGV is never key-checked.
+			if ( is_a( $redis, 'Predis\Client' ) ) {
+				$result = $redis->eval( $script, 0, ...$patterns );
+			} else {
+				$result = $redis->eval( $script, $patterns, 0 );
+			}
+		} catch ( \Throwable $e ) {
+			frl_log(
+				'FRL Cache: ' . $op_label . ' failed, falling back: {error}',
+				array( 'error' => $e->getMessage() ),
+				false
+			);
+			return null;
+		}
+
+		return array(
+			'result'  => $result,
+			'groups'  => $groups,
+			'backend' => $backend,
+		);
+	}
+
+	private static function flush_groups_redis( array $groups ): ?int {
+		global $wp_object_cache;
+
+		// Object Cache Pro defers to its own per-group flush ($allow_ocp = false).
+		$scan = self::eval_redis_group_scan(
+			$groups,
+			static function ( array $backend ): string {
+				$version    = $backend['version'];
+				$delete_cmd = ( $version !== '' && version_compare( $version, '4.0.0', '>=' ) ) ? 'unlink' : 'del';
+
+				return <<<LUA
 			local cur = 0
 			local i = 0
 			local tmp
@@ -1550,80 +1593,42 @@ class Frl_Cache_Manager {
 			until 0 == cur
 			return i
 LUA;
+			},
+			'combined Redis group flush',
+			false,
+			true
+		);
 
-		try {
-			// Patterns are passed as ARGV (num_keys = 0): Redis 7 ACLs key-check
-			// the declared KEYS against the user's key glob, and a Lua pattern
-			// (e.g. "^prefix:group:.*") is not a valid key name. ARGV is never
-			// key-checked; only real keys returned by SCAN are accessed.
-			if ( is_a( $redis, 'Predis\Client' ) ) {
-				$deleted = $redis->eval( $script, 0, ...$patterns );
-			} else {
-				// PhpRedis: eval( string $script, array $args = [], int $num_keys = 0 ).
-				$deleted = $redis->eval( $script, $patterns, 0 );
-			}
-		} catch ( \Throwable $e ) {
-			frl_log(
-				'FRL Cache: combined Redis group flush failed, falling back to per-group flush: {error}',
-				array( 'error' => $e->getMessage() ),
-				false
-			);
+		if ( $scan === null ) {
 			return null;
 		}
 
-		// Drop the drop-in's own in-request cache too: it may hold plugin entries
-		// read earlier this request, which would otherwise be served stale.
-		// Runtime-only flush (no Redis round-trip); purges are rare admin actions.
+		// Drop the drop-in's own in-request cache too so entries read earlier this request aren't served stale.
 		if ( method_exists( $wp_object_cache, 'flush_runtime' ) ) {
 			$wp_object_cache->flush_runtime();
 		}
 
-		self::$storage_batch_flushed += array_fill_keys( $groups, true );
+		self::$storage_batch_flushed += array_fill_keys( $scan['groups'], true );
 
-		return (int) $deleted;
+		return (int) $scan['result'];
 	}
 
 	/**
-		* Count persistent cache keys per group on the Redis backend.
-		*
-		* Read-only twin of flush_groups_redis(): a single keyspace SCAN tallies
-		* matches per group pattern without deleting anything. Returns null when the
-		* backend is not Redis or the drop-in lacks the required API, so callers can
-		* fall back to the per-request runtime count.
-		*
-		* @param string[] $groups Cache groups to count.
-		* @return array<string,int>|null Map of group => key count, or null if unavailable.
-		*/
+	 * Count persistent cache keys per group on the Redis backend.
+	 *
+	 * Read-only twin of flush_groups_redis(): a single keyspace SCAN tallies
+	 * matches per group pattern without deleting anything. Returns null when the
+	 * backend is not Redis or the drop-in lacks the required API, so callers can
+	 * fall back to the per-request runtime count.
+	 *
+	 * @param string[] $groups Cache groups to count.
+	 * @return array<string,int>|null Map of group => key count, or null if unavailable.
+	 */
 	public static function count_groups_redis( array $groups ): ?array {
-		global $wp_object_cache;
-
-		if ( empty( $groups ) || ! self::is_object_cache_truly_functional() ) {
-			return null;
-		}
-
-		$provider = self::get_provider_details();
-		if ( ! str_contains( strtolower( (string) ( $provider['slug'] ?? '' ) ), 'redis' ) ) {
-			return null;
-		}
-
-		$backend = self::get_redis_backend();
-		if ( $backend === null ) {
-			return null;
-		}
-
-		$redis = $backend['client'];
-
-		$groups = array_values( $groups );
-
-		// One anchored Lua pattern per group. Each backend supplies its key layout.
-		$patterns = array();
-		foreach ( $groups as $group ) {
-			$patterns[] = self::redis_group_pattern( $backend, $group );
-		}
-
-		// Single SCAN; tally matches per pattern index. Each key matches at most
-		// one group (patterns are anchored and mutually exclusive).
-		$script = <<<LUA
+		$scan = self::eval_redis_group_scan(
+			$groups,
+			static function (): string {
+				return <<<'LUA'
 			local cur = 0
 			local counts = {}
 			for i = 1, #ARGV do counts[i] = 0 end
@@ -1643,34 +1648,19 @@ LUA;
 			until 0 == cur
 			return counts
 LUA;
+			},
+			'Redis group count'
+		);
 
-		try {
-			// Patterns via ARGV (num_keys = 0) — see flush_groups_redis() for why.
-			if ( is_a( $redis, 'Predis\Client' ) ) {
-				$result = $redis->eval( $script, 0, ...$patterns );
-			} else {
-				// PhpRedis: eval( string $script, array $args = [], int $num_keys = 0 ).
-				$result = $redis->eval( $script, $patterns, 0 );
-			}
-		} catch ( \Throwable $e ) {
-			frl_log(
-				'FRL Cache: Redis group count failed, falling back to runtime count: {error}',
-				array( 'error' => $e->getMessage() ),
-				false
-			);
+		if ( $scan === null || ! is_array( $scan['result'] ) ) {
 			return null;
 		}
 
-		if ( ! is_array( $result ) ) {
-			return null;
-		}
-
-		// Map the ordered Lua result array back to group names.
 		$counts = array();
 		$i      = 0;
-		foreach ( $result as $value ) {
-			if ( isset( $groups[ $i ] ) ) {
-				$counts[ $groups[ $i ] ] = (int) $value;
+		foreach ( $scan['result'] as $value ) {
+			if ( isset( $scan['groups'][ $i ] ) ) {
+				$counts[ $scan['groups'][ $i ] ] = (int) $value;
 			}
 			++$i;
 		}
@@ -1679,55 +1669,28 @@ LUA;
 	}
 
 	/**
-		* Measure persistent cache size per group on the Redis backend.
-		*
-		* Read-only twin of flush_groups_redis(): ONE keyspace SCAN accumulates the
-		* per-group footprint via MEMORY USAGE (Redis >= 4) or STRLEN, without
-		* deleting anything. Returns null when the backend is not Redis / the drop-in
-		* lacks the required API / eval fails, so callers fall back to the transient
-		* SQL size.
-		*
-		* @param string[] $groups Cache groups to measure.
-		* @return array<string,int>|null Map of group => bytes, or null if unavailable.
-		*/
+	 * Measure persistent cache size per group on the Redis backend.
+	 *
+	 * Read-only twin of flush_groups_redis(): ONE keyspace SCAN accumulates the
+	 * per-group footprint via MEMORY USAGE (Redis >= 4) or STRLEN, without
+	 * deleting anything. Returns null when the backend is not Redis / the drop-in
+	 * lacks the required API / eval fails, so callers fall back to the transient
+	 * SQL size.
+	 *
+	 * @param string[] $groups Cache groups to measure.
+	 * @return array<string,int>|null Map of group => bytes, or null if unavailable.
+	 */
 	public static function measure_groups_redis( array $groups ): ?array {
-		global $wp_object_cache;
+		$scan = self::eval_redis_group_scan(
+			$groups,
+			static function ( array $backend ): string {
+				// OCP often runs a restricted ACL forbidding MEMORY USAGE/INFO; use STRLEN there.
+				$version   = ( 'ocp' === $backend['flavor'] ) ? '' : self::redis_backend_version( $backend );
+				$size_expr = ( $version !== '' && version_compare( $version, '4.0.0', '>=' ) )
+					? "redis.call('MEMORY', 'USAGE', v)"
+					: "redis.call('STRLEN', v)";
 
-		if ( empty( $groups ) || ! self::is_object_cache_truly_functional() ) {
-			return null;
-		}
-
-		$provider = self::get_provider_details();
-		if ( ! str_contains( strtolower( (string) ( $provider['slug'] ?? '' ) ), 'redis' ) ) {
-			return null;
-		}
-
-		$backend = self::get_redis_backend();
-		if ( $backend === null ) {
-			return null;
-		}
-
-		$redis = $backend['client'];
-
-		$groups = array_values( $groups );
-
-		// One anchored Lua pattern per group. Each backend supplies its key layout.
-		$patterns = array();
-		foreach ( $groups as $group ) {
-			$patterns[] = self::redis_group_pattern( $backend, $group );
-		}
-
-		// MEMORY USAGE (Redis >= 4) reflects the real footprint; STRLEN is the fallback.
-		// Object Cache Pro sites commonly run a restricted Redis ACL that forbids
-		// MEMORY USAGE (and often INFO), so use the broadly-allowed STRLEN there and
-		// skip the version probe entirely.
-		$version   = ( 'ocp' === $backend['flavor'] ) ? '' : self::redis_backend_version( $backend );
-		$size_expr = ( $version !== '' && version_compare( $version, '4.0.0', '>=' ) )
-			? "redis.call('MEMORY', 'USAGE', v)"
-			: "redis.call('STRLEN', v)";
-
-		// Single SCAN; accumulate per-pattern byte size. Each key matches one group.
-		$script = <<<LUA
+				return <<<LUA
 			local cur = 0
 			local sizes = {}
 			for i = 1, #ARGV do sizes[i] = 0 end
@@ -1748,34 +1711,19 @@ LUA;
 			until 0 == cur
 			return sizes
 LUA;
+			},
+			'Redis group size measurement'
+		);
 
-		try {
-			// Patterns via ARGV (num_keys = 0) — see flush_groups_redis() for why.
-			if ( is_a( $redis, 'Predis\Client' ) ) {
-				$result = $redis->eval( $script, 0, ...$patterns );
-			} else {
-				// PhpRedis: eval( string $script, array $args = [], int $num_keys = 0 ).
-				$result = $redis->eval( $script, $patterns, 0 );
-			}
-		} catch ( \Throwable $e ) {
-			frl_log(
-				'FRL Cache: Redis group size measurement failed, falling back to transient size: {error}',
-				array( 'error' => $e->getMessage() ),
-				false
-			);
+		if ( $scan === null || ! is_array( $scan['result'] ) ) {
 			return null;
 		}
 
-		if ( ! is_array( $result ) ) {
-			return null;
-		}
-
-		// Map the ordered Lua result array back to group names.
 		$sizes = array();
 		$i     = 0;
-		foreach ( $result as $value ) {
-			if ( isset( $groups[ $i ] ) ) {
-				$sizes[ $groups[ $i ] ] = (int) $value;
+		foreach ( $scan['result'] as $value ) {
+			if ( isset( $scan['groups'][ $i ] ) ) {
+				$sizes[ $scan['groups'][ $i ] ] = (int) $value;
 			}
 			++$i;
 		}
@@ -2048,8 +1996,8 @@ LUA;
 			// Same split as purge_all(): one counter per storage backend.
 			$object_cache = self::is_object_cache_truly_functional();
 
-			// Get all defined groups from TTL config
-			$all_groups = array_keys( self::$default_ttls );
+			// Get all defined groups from TTL config (excluding the 'default' fallback TTL scalar).
+			$all_groups = array_diff( array_keys( self::$default_ttls ), array( 'default' ) );
 
 			// Redis: flush all light groups in ONE keyspace scan instead of one
 			// SCAN per group in the loop below. Null on non-Redis → per-group path.

@@ -29,7 +29,7 @@ if ( ! defined( 'FRL_DIR_URL' ) ) {
 }
 
 if ( ! defined( 'FRL_PLUGIN_ADMIN_URL' ) ) {
-	define( 'FRL_PLUGIN_ADMIN_URL', get_admin_url() . 'admin.php?page=' . FRL_NAME );
+	define( 'FRL_PLUGIN_ADMIN_URL', get_admin_url() . 'options-general.php?page=' . FRL_NAME );
 }
 
 const FRL_MODULES_SECTION = 'modules';

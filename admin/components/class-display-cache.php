@@ -594,6 +594,39 @@ class Frl_Cache_Display {
 
 		// If no specific group requested, return all groups with comprehensive info
 		if ( $group === null ) {
+			// On non-object-cache sites, aggregate per-group transient counts & sizes in ONE SQL query
+			// instead of running 2 LIKE queries per group inside get_group_info().
+			if ( ! $cache_functional && null === $persistent_counts ) {
+				global $wpdb;
+				$transient_base = '_transient_' . $config['PREFIX'];
+				$rows           = $wpdb->get_results(
+					$wpdb->prepare(
+						"SELECT option_name, LENGTH(option_value) AS byte_len FROM $wpdb->options
+						WHERE option_name LIKE %s
+						AND option_name NOT LIKE %s",
+						$wpdb->esc_like( $transient_base ) . '%',
+						$wpdb->esc_like( '_transient_timeout_' ) . '%'
+					)
+				);
+				if ( is_array( $rows ) ) {
+					$persistent_counts = array_fill_keys( $persistent_groups, 0 );
+					$persistent_sizes  = array_fill_keys( $persistent_groups, 0 );
+					$base_len          = strlen( $transient_base );
+					foreach ( $rows as $row ) {
+						$rest = substr( (string) $row->option_name, $base_len );
+						$pos  = strpos( $rest, '_' );
+						if ( false === $pos ) {
+							continue;
+						}
+						$grp = substr( $rest, 0, $pos );
+						if ( isset( $persistent_counts[ $grp ] ) ) {
+							++$persistent_counts[ $grp ];
+							$persistent_sizes[ $grp ] += (int) $row->byte_len;
+						}
+					}
+				}
+			}
+
 			$groups_info = array();
 
 			// Get group metadata once
@@ -659,8 +692,9 @@ class Frl_Cache_Display {
 		// Get actual count.
 		$count = $runtime_count;
 		if ( is_array( $persistent_counts ) && isset( $persistent_counts[ $group ] ) ) {
-			// True persistent count from the Redis keyspace (plugin UI only).
-			$count = (int) $persistent_counts[ $group ];
+			// True persistent count from Redis keyspace or single-query transient aggregation.
+			$p_count = (int) $persistent_counts[ $group ];
+			$count   = ( $cache_functional || $p_count > 0 ) ? $p_count : $runtime_count;
 		} elseif ( ! $cache_functional && in_array( $group, $config['persistent_groups'], true ) ) {
 			global $wpdb;
 			$transient_prefix = '_transient_' . $config['PREFIX'] . $group . '_';

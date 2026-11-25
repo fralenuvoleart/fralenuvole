@@ -82,7 +82,7 @@ const FRL_CACHE_OPERATIONS = array(
 			array(
 				'fn'   => array( 'Frl_Cache_Manager', 'clear_group_with_dependencies' ),
 				'args' => array( 'options' ),
-				'note' => 'Clear options group with FRL_CACHE_DEPENDENCIES cascade: options → theme, html, environment, admin, adminui, rewriter → permalinks',
+				'note' => 'Clear options group with FRL_CACHE_DEPENDENCIES cascade: options → theme, html, environment, admin, adminui (rewriter excluded; driven by frl_rewriter_* hook + flush_rewrite_rules)',
 			),
 		),
 		'hooks' => array(
@@ -116,7 +116,7 @@ const FRL_CACHE_OPERATIONS = array(
 			array(
 				'fn'   => 'frl_flush_rewrite_rules',
 				'args' => array(),
-				'note' => 'Mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ Frl_Rewriter::on_permalink_structure_update() clears options→rewriter→permalinks + deletes exclusion patterns transient; → Polylang cleans language cache) + permalink_structure_changed, then runs one flush_rewrite_rules(true)',
+				'note' => 'Defers before wp_loaded; marks direct flush so Frl_Rewriter runs invalidate_rewriter_caches() (rewriter → permalinks + exclusion transient), notifies Polylang via permalink_structure_changed, then runs flush_rewrite_rules(true)',
 			),
 		),
 		'hooks' => array(
@@ -140,7 +140,7 @@ const FRL_CACHE_OPERATIONS = array(
 			array(
 				'fn'   => 'frl_flush_rewrite_rules',
 				'args' => array(),
-				'note' => 'Mirrors WP_Rewrite::set_permalink_structure(): fires update_option_permalink_structure (→ Frl_Rewriter::on_permalink_structure_update() clears options→rewriter→permalinks + deletes exclusion patterns transient; → Polylang cleans language cache) + permalink_structure_changed, then runs one flush_rewrite_rules(true)',
+				'note' => 'Defers before wp_loaded; marks direct flush so Frl_Rewriter runs invalidate_rewriter_caches() (rewriter → permalinks + exclusion transient), notifies Polylang via permalink_structure_changed, then runs flush_rewrite_rules(true)',
 			),
 		),
 		'hooks' => array(

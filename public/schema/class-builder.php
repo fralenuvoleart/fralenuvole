@@ -100,6 +100,11 @@ function frl_schema_generator_build( int $post_id, array $def, ?array $placehold
 		return null;
 	}
 
+	// Re-index list definitions so omitted empty entries never produce sparse JSON objects.
+	if ( ! empty( $result ) && array_is_list( $def ) ) {
+		$result = array_values( $result );
+	}
+
 	return ! empty( $result ) ? $result : null;
 }
 
@@ -115,17 +120,20 @@ function frl_schema_generator_build_repeater( int $post_id, array $def, array $p
 	$repeater = $def['repeater'];
 	$source   = $def['source'] ?? 'acf';
 
-	// Build field map from non-structural keys
-	$field_map = array();
+	// Partition field-backed keys from template properties (e.g. 'position' => '{{index}}').
+	$field_map    = array();
+	$static_props = array();
 	foreach ( $def as $key => $field_name ) {
 		if ( in_array( $key, array( 'repeater', 'source', '@type', '_if' ), true ) ) {
 			continue;
 		}
-		// Strip @field: prefix from field names
 		if ( is_string( $field_name ) && str_starts_with( $field_name, '@field:' ) ) {
-			$field_name = substr( $field_name, 7 );
+			$field_map[ $key ] = substr( $field_name, 7 );
+		} elseif ( is_string( $field_name ) && str_contains( $field_name, '{{' ) ) {
+			$static_props[ $key ] = $field_name;
+		} else {
+			$field_map[ $key ] = $field_name;
 		}
-		$field_map[ $key ] = $field_name;
 	}
 
 	$rows = frl_schema_get_repeater_rows( $post_id, $repeater, $source, $field_map );
@@ -141,8 +149,9 @@ function frl_schema_generator_build_repeater( int $post_id, array $def, array $p
 			$item['@type'] = $def['@type'];
 		}
 
-		$index = (string) ( $i + 1 );
-		foreach ( $row as $prop => $value ) {
+		$index  = (string) ( $i + 1 );
+		$merged = array_merge( $static_props, $row );
+		foreach ( $merged as $prop => $value ) {
 			// {{index}} replacement
 			if ( is_string( $value ) && str_contains( $value, '{{index}}' ) ) {
 				$value = str_replace( '{{index}}', $index, $value );
@@ -265,15 +274,18 @@ function frl_schema_generator_build_sourced( int $post_id, array $def, array $pl
 			if ( $taxonomy ) {
 				$terms = get_the_terms( $post_id, $taxonomy );
 				if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
-					$items[] = array(
-						'@type'    => 'ListItem',
-						'position' => $position,
-						'item'     => array(
-							'@id'  => get_term_link( $terms[0] ),
-							'name' => $terms[0]->name,
-						),
-					);
-					++$position;
+					$term_link = get_term_link( $terms[0] );
+					if ( ! is_wp_error( $term_link ) && is_string( $term_link ) ) {
+						$items[] = array(
+							'@type'    => 'ListItem',
+							'position' => $position,
+							'item'     => array(
+								'@id'  => $term_link,
+								'name' => $terms[0]->name,
+							),
+						);
+						++$position;
+					}
 				}
 			}
 		}

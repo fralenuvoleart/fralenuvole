@@ -481,13 +481,23 @@ class Frl_Settings_Fields {
 	}
 
 	/**
-	 * Sanitizes field values based on their field type
+	 * Sanitizes field values based on their field type (or explicit sanitize_callback).
 	 *
-	 * @param string $type The field type (checkbox, text, email, etc.)
-	 * @param mixed $value The value to sanitize
-	 * @return mixed The sanitized value
+	 * @param string $type              The field type (checkbox, text, email, etc.).
+	 * @param mixed  $value             The value to sanitize.
+	 * @param string $sanitize_callback Optional explicit callable from field config.
+	 * @return mixed The sanitized value.
 	 */
-	private static function sanitize_field_value( $type, $value ) {
+	private static function sanitize_field_value( $type, $value, $sanitize_callback = '' ) {
+		if (
+			is_string( $sanitize_callback ) &&
+			'' !== $sanitize_callback &&
+			is_callable( $sanitize_callback ) &&
+			! in_array( $type, array( 'html', 'custom', 'checkboxes' ), true )
+		) {
+			return call_user_func( $sanitize_callback, $value );
+		}
+
 		switch ( $type ) {
 			case 'checkbox':
 				return (int) ! ! $value;
@@ -661,7 +671,11 @@ class Frl_Settings_Fields {
 			} elseif ( isset( $_POST[ $prefixed_id ] ) ) {
 				// Note: sanitize_field_value handles the actual sanitization based on type
 				// Crucially, 'html' and 'custom' are returned as-is here (post wp_unslash()).
-				$submitted_value = self::sanitize_field_value( $field['type'], wp_unslash( $_POST[ $prefixed_id ] ) );
+				$submitted_value = self::sanitize_field_value(
+					$field['type'],
+					wp_unslash( $_POST[ $prefixed_id ] ),
+					$field['sanitize_callback'] ?? ''
+				);
 			} else {
 				// Field not in submission, skip
 				continue;

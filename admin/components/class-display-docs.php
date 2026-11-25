@@ -115,7 +115,7 @@ function frl_docs_get_documents() {
  * @return string Signature string (md5 hash).
  */
 function frl_docs_build_signature( $docs_dir ) {
-	$files  = glob( $docs_dir . '*.md', GLOB_NOSORT );
+	$files  = glob( $docs_dir . '*.md', GLOB_NOSORT ) ?: array();
 	$count  = count( $files );
 	$latest = 0;
 

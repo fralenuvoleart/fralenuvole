@@ -42,7 +42,7 @@ function frl_minify_css( $css ) {
 	);
 
 	// Spaces around braces and semicolons are already stripped above.
-	return trim( $minified );
+	return trim( $minified ?? $css );
 }
 
 /**

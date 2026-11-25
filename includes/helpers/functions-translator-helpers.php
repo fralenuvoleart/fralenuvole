@@ -254,7 +254,7 @@ function frl_translator_safe_mode( string $block_content ): string {
 		$block_content
 	);
 
-	$safe_cache[ $sig ] = $content;
+	$safe_cache[ $sig ] = $content ?? $block_content;
 	return $safe_cache[ $sig ];
 }
 
@@ -332,7 +332,7 @@ function frl_process_permalink_patterns( string $content ): string {
 		}
 		$l_start = preg_quote( $l_start, '/' );
 		$l_end   = preg_quote( FRL_TRANSLATOR_DELIMITER_LINK['end'], '/' );
-		return preg_replace( "/{$l_start}(.*?){$l_end}/", '#', $content );
+		return preg_replace( "/{$l_start}(.*?){$l_end}/", '#', $content ) ?? $content;
 	}
 	return Frl_Translation_Service::get_instance()->process_permalink_patterns( $content );
 }

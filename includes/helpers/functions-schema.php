@@ -325,13 +325,14 @@ function frl_schema_get_repeater_rows( int $post_id, string $repeater, string $s
  * @return array List of associative arrays.
  */
 function frl_schema_get_repeater_rows_acf( int $post_id, string $repeater, array $field_map ): array {
-	if ( ! function_exists( 'have_rows' ) ) {
+	if ( ! function_exists( 'have_rows' ) || ! function_exists( 'the_row' ) ) {
 		return array();
 	}
 
 	$rows = array();
 
 	while ( have_rows( $repeater, $post_id ) ) {
+		the_row();
 		$row = array();
 		foreach ( $field_map as $out_key => $field_name ) {
 			$val = function_exists( 'get_sub_field' ) ? get_sub_field( $field_name ) : null;
@@ -417,13 +418,12 @@ function frl_schema_resolve_value( int $post_id, string $raw, array $placeholder
 
 	$resolved = frl_schema_replace_placeholders( $raw, $placeholders );
 
-	// Placeholder was replaced → use directly
+	// Placeholder was replaced → use directly; unresolved {{...}} returns null without DB lookup.
 	if ( $resolved !== $raw ) {
 		return ( $resolved !== '' ) ? $resolved : null;
 	}
 
-	// Treat as field name → resolve via post meta
-	return frl_schema_extract_scalar_value( frl_get_post_meta( $post_id, $raw, true ) );
+	return null;
 }
 
 /**

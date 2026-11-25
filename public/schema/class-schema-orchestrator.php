@@ -195,16 +195,22 @@ class Frl_Schema_Orchestrator {
 		if ( is_category() || is_tag() || is_tax() ) {
 			$term = get_queried_object();
 			if ( $term instanceof \WP_Term ) {
-				$name  = $term->name;
-				$about = array(
-					'@type'            => 'DefinedTerm',
-					'name'             => $term->name,
-					'url'              => get_term_link( $term ),
-					'inDefinedTermSet' => array(
-						'@type' => 'DefinedTermSet',
-						'name'  => get_taxonomy( $term->taxonomy )->labels->name,
-					),
+				$name      = $term->name;
+				$term_link = get_term_link( $term );
+				$tax_obj   = get_taxonomy( $term->taxonomy );
+				$about     = array(
+					'@type' => 'DefinedTerm',
+					'name'  => $term->name,
 				);
+				if ( ! is_wp_error( $term_link ) && is_string( $term_link ) ) {
+					$about['url'] = $term_link;
+				}
+				if ( is_object( $tax_obj ) && isset( $tax_obj->labels->name ) ) {
+					$about['inDefinedTermSet'] = array(
+						'@type' => 'DefinedTermSet',
+						'name'  => $tax_obj->labels->name,
+					);
+				}
 			}
 		} elseif ( is_post_type_archive() ) {
 			$obj  = get_queried_object();

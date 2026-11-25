@@ -141,12 +141,19 @@ function frl_wsf_translate_fields( $form, $preview ) {
 
 			// Translate select options
 			if ( 'select' === $field->type ) {
-				$field->meta->placeholder_row = frl_get_translation( $field->meta->placeholder_row );
+				if ( isset( $field->meta->placeholder_row ) && is_string( $field->meta->placeholder_row ) ) {
+					$field->meta->placeholder_row = frl_get_translation( $field->meta->placeholder_row );
+				}
 
-				$rows = $field->meta->data_grid_select->groups[0]->rows;
-				foreach ( $rows as $key => $row ) {
-					$option = $row->data[0];
-					$field->meta->data_grid_select->groups[0]->rows[ $key ]->data[0] = frl_get_translation( $option );
+				$rows = $field->meta->data_grid_select->groups[0]->rows ?? null;
+				if ( is_iterable( $rows ) ) {
+					foreach ( $rows as $key => $row ) {
+						if ( ! is_object( $row ) || ! isset( $row->data[0] ) || ! is_string( $row->data[0] ) ) {
+							continue;
+						}
+						$option = $row->data[0];
+						$field->meta->data_grid_select->groups[0]->rows[ $key ]->data[0] = frl_get_translation( $option );
+					}
 				}
 			}
 		}

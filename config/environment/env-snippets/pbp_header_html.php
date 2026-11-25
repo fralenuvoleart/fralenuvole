@@ -1,1 +1,1 @@
-<link id="frl-pbp-css" rel="stylesheet" href="/wp-content/themes/pbp/style.css?v=<?php echo time(); ?>" media="all" />
+<link id="frl-pbp-css" rel="stylesheet" href="/wp-content/themes/pbp/style.css?v=<?php $frl_css = get_stylesheet_directory() . '/style.css'; echo esc_attr( file_exists( $frl_css ) ? (string) filemtime( $frl_css ) : FRL_VERSION ); ?>" media="all" />

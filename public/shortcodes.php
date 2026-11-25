@@ -459,7 +459,8 @@ function frl_langswitcher_inline_flag( string $slug, string $name ): string {
  * @return string HTML <select> element with inline <script>.
  */
 function frl_langswitcher_build_dropdown( array $elements ): string {
-	$name = 'lang_choice_1';
+	static $instance = 0;
+	$name            = 'lang_choice_' . ( ++$instance );
 
 	$options = '';
 	foreach ( $elements as $el ) {
@@ -1221,7 +1222,11 @@ function frl_shortcode_breadcrumbs( $atts ) {
 				$ancestors = get_ancestors( $term->term_id, $term->taxonomy );
 				$ancestors = array_reverse( $ancestors );
 				foreach ( $ancestors as $ancestor_id ) {
-					$links[] = sprintf( '<a href="%s">%s</a>', esc_url( get_term_link( $ancestor_id, $term->taxonomy ) ), esc_html( get_term_field( 'name', $ancestor_id, $term->taxonomy ) ) );
+					$term_link = get_term_link( $ancestor_id, $term->taxonomy );
+					$term_name = get_term_field( 'name', $ancestor_id, $term->taxonomy );
+					if ( ! is_wp_error( $term_link ) && is_string( $term_link ) && ! is_wp_error( $term_name ) && is_string( $term_name ) ) {
+						$links[] = sprintf( '<a href="%s">%s</a>', esc_url( $term_link ), esc_html( $term_name ) );
+					}
 				}
 
 				if ( $show_current ) {

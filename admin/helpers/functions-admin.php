@@ -123,12 +123,10 @@ function frl_normalize_html_content( $content, $for_comparison = false ) {
 		return '';
 	}
 
-	// Always strip slashes to avoid accumulation of backslashes with each save
-	$content = stripslashes( $content );
-
-	// For comparison purposes, normalize whitespace
+	// Input is already unslashed at the POST boundary via wp_unslash(); do not strip slashes twice.
+	// For comparison purposes, normalize whitespace.
 	if ( $for_comparison ) {
-		$content = trim( preg_replace( '/\s+/', ' ', $content ) );
+		$content = trim( preg_replace( '/\s+/', ' ', $content ) ?? $content );
 	}
 
 	return $content;

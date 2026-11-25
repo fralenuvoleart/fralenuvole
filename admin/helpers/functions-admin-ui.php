@@ -360,7 +360,7 @@ function frl_get_mu_plugins_status() {
 	);
 
 	// Get template files
-	$template_files = glob( $template_dir . '*.php' );
+	$template_files = glob( $template_dir . '*.php' ) ?: array();
 	$expected_files = array();
 
 	foreach ( $template_files as $template_file ) {
@@ -392,7 +392,7 @@ function frl_get_mu_plugins_status() {
 	}
 
 	// Check for orphaned files
-	$existing_mu_files = glob( $mu_plugin_dir . '/frl-*.php' );
+	$existing_mu_files = glob( $mu_plugin_dir . '/frl-*.php' ) ?: array();
 	foreach ( $existing_mu_files as $existing_file ) {
 		$filename = basename( $existing_file );
 		if ( ! in_array( $filename, $expected_files, true ) ) {

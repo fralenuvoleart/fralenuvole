@@ -314,7 +314,8 @@ function frl_build_featured_image_srcset( int $thumbnail_id, string $extension, 
 		return '';
 	}
 
-	$dirname = trailingslashit( dirname( $metadata['file'] ) );
+	$raw_dir = dirname( $metadata['file'] );
+	$dirname = ( '.' === $raw_dir || '' === $raw_dir ) ? '' : trailingslashit( $raw_dir );
 	$entries = array();
 
 	// Include full-size original
@@ -394,7 +395,8 @@ function frl_build_single_featured_image_preload( int $thumbnail_id, string $siz
 			$metadata = wp_get_attachment_metadata( $thumbnail_id );
 			if ( $metadata && ! empty( $metadata['file'] ) ) {
 				$upload_dir = wp_upload_dir();
-				$dirname    = trailingslashit( dirname( $metadata['file'] ) );
+				$raw_dir    = dirname( $metadata['file'] );
+				$dirname    = ( '.' === $raw_dir || '' === $raw_dir ) ? '' : trailingslashit( $raw_dir );
 				$sizes      = $metadata['sizes'] ?? array();
 
 				if ( isset( $sizes[ $size ] ) ) {
@@ -438,6 +440,9 @@ function frl_build_responsive_featured_image_preload( int $thumbnail_id, string 
 	}
 
 	$sizes = wp_get_attachment_image_sizes( $thumbnail_id, $image_size );
+	if ( ! is_string( $sizes ) || '' === $sizes ) {
+		$sizes = '100vw';
+	}
 
 	return array(
 		'srcset' => $srcset,

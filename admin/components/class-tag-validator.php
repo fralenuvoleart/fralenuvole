@@ -580,7 +580,9 @@ class Frl_Tag_Validator {
 
 		// Handle schemas with @graph array (multiple schema objects)
 		if ( isset( $data['@graph'] ) && is_array( $data['@graph'] ) ) {
-			$validation['status']     = 'valid'; // Start with valid status
+			if ( 'unknown' === $validation['status'] ) {
+				$validation['status'] = 'valid'; // Preserve @context error/warning if already set.
+			}
 			$validation['messages'][] = 'Found @graph with ' . count( $data['@graph'] ) . ' schema items';
 
 			// Track types found in the graph for reporting

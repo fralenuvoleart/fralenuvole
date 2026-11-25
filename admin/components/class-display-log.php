@@ -318,11 +318,11 @@ class Frl_Log_Manager {
 			return $entries;
 		}
 
-		$chunk_size        = 8192; // 8KB chunks
-		$buffer            = '';
-		$pos               = $file_size;
-		$timestamp_pattern = '/^\[(\d{2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2}:\d{2}) UTC\]/';
-		$current_entry     = null;
+		$chunk_size            = 8192; // 8KB chunks
+		$buffer                = '';
+		$pos                   = $file_size;
+		$timestamp_pattern     = '/^\[(\d{2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2}:\d{2}) UTC\]/';
+		$pending_continuations = array();
 
 		// Read file in reverse chunks
 		while ( $pos > 0 && count( $entries ) < $target_count ) {
@@ -352,47 +352,34 @@ class Frl_Log_Manager {
 				}
 
 				if ( preg_match( $timestamp_pattern, $line, $matches ) ) {
-					// Found start of an entry - finalize current entry if exists
-					if ( $current_entry !== null ) {
-						if ( $this->error_filter === 'all' || stripos( $current_entry['type'], $this->error_filter ) !== false ) {
-							$entries[] = $current_entry;
-							if ( count( $entries ) >= $target_count ) {
-								break 2; // Break out of both loops
-							}
+					// Timestamp header closes the entry whose continuation lines were buffered below it.
+					$date                  = isset( $matches[1] ) ? $matches[1] : '';
+					$type                  = $this->determine_error_type( $line );
+					$entry_lines           = array_merge( array( $line ), array_reverse( $pending_continuations ) );
+					$pending_continuations = array();
+
+					if ( $this->error_filter === 'all' || stripos( $type, $this->error_filter ) !== false ) {
+						$entries[] = array(
+							'date'    => $date,
+							'type'    => $type,
+							'message' => implode( "\n", $entry_lines ),
+							'lines'   => $entry_lines,
+						);
+						if ( count( $entries ) >= $target_count ) {
+							break 2; // Break out of both loops
 						}
 					}
-
-					// Start new entry (but we're going backwards, so this is actually the end)
-					$date = isset( $matches[1] ) ? $matches[1] : '';
-					$type = $this->determine_error_type( $line );
-
-					$current_entry = array(
-						'date'    => $date,
-						'type'    => $type,
-						'message' => $line,
-						'lines'   => array( $line ),
-					);
 				} else {
-					// This is a continuation line (prepend since we're going backwards)
-					if ( $current_entry !== null ) {
-						$current_entry['message'] = $line . "\n" . $current_entry['message'];
-						array_unshift( $current_entry['lines'], $line );
-					}
+					// Buffer continuation lines until we reach the timestamp header above them.
+					$pending_continuations[] = $line;
 				}
-			}
-		}
-
-		// Add final entry if exists
-		if ( $current_entry !== null && count( $entries ) < $target_count ) {
-			if ( $this->error_filter === 'all' || stripos( $current_entry['type'], $this->error_filter ) !== false ) {
-				$entries[] = $current_entry;
 			}
 		}
 
 		fclose( $handle );
 
-		// Since we collected in reverse order, reverse the array to get newest first
-		return array_reverse( $entries );
+		// Entries are already accumulated newest-first as we scanned from EOF.
+		return $entries;
 	}
 
 	/**
