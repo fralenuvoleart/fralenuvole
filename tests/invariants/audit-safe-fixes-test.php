@@ -221,4 +221,23 @@ frl_test_same( "  <div>\n    <span>ok</span>\n  </div>", $exported[ frl_prefix( 
 require FRL_TEST_PLUGIN_DIR . 'core/translator/field-translator.php';
 frl_test_same( '7', frl_translator_filter_get_terms( '7', array( 'category' ), array( 'fields' => 'count' ) ), 'CORE__TRANSLATOR-1: scalar term count passes through unchanged' );
 
+// 16. S3-1: '!' exclusion rules still override inherited subtree translation in frl_schema_should_translate_key().
+frl_test_same(
+	false,
+	frl_schema_should_translate_key( 'postalCode', 'address.postalCode', array( 'address', '!address.postalCode' ), true ),
+	'S3-1: ! exclusion rule overrides inherited subtree translation'
+);
+frl_test_same(
+	true,
+	frl_schema_should_translate_key( 'addressLocality', 'address.addressLocality', array( 'address', '!address.postalCode' ), true ),
+	'S3-1: non-excluded descendant still inherits subtree translation'
+);
+
+// 17. SLICE2-1: Frl_CPT_Base_Removal_Feature::applies_to_request() forwards extracted $lang to resolve_multi_cpt_slug().
+$cpt_base_src = file_get_contents( FRL_TEST_PLUGIN_DIR . 'core/rewriter/features/class-cpt-base-removal-feature.php' );
+frl_test_ok(
+	is_string( $cpt_base_src ) && str_contains( $cpt_base_src, 'resolve_multi_cpt_slug( $slug, $lang )' ),
+	'SLICE2-1: applies_to_request() passes URI-extracted $lang to resolve_multi_cpt_slug()'
+);
+
 frl_test_done();

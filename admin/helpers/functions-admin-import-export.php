@@ -305,17 +305,15 @@ function frl_post_ajax_import_settings() {
 			wp_send_json_error( array( 'message' => __( 'No valid settings found in import file.', FRL_PREFIX ) ) );
 		}
 
-		// Use batch update function with force_update=true for imports
+		// Use batch update function with force_update=true for imports.
 		$imported = frl_batch_update_options( $updates, true );
-
-		if ( $imported === 0 ) {
-			wp_send_json_error( array( 'message' => __( 'No settings were imported.', FRL_PREFIX ) ) );
-		}
 
 		// Fire settings-updated hook so debug/wp-config sync and module listeners run.
 		do_action( 'frl_settings_updated', $updates );
 
-		$message = sprintf( __( '%d plugin options were successfully imported.', FRL_PREFIX ), $imported );
+		$message = $imported > 0
+			? sprintf( __( '%d plugin options were successfully imported.', FRL_PREFIX ), $imported )
+			: __( 'All settings were already up to date (0 changed).', FRL_PREFIX );
 
 		// Add success notice for when page reloads
 		frl_add_admin_notice( $message, 'success' );

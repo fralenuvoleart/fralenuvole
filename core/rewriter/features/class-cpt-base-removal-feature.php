@@ -374,10 +374,12 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			return false;
 		}
 
-		// Skip language prefixes to get to the actual content
+		// Extract language prefix (matching resolve_request()) so flat-slug lookups
+		// query the URI's language instead of falling back to the default language.
+		$lang            = frl_get_default_language();
 		$available_langs = Frl_Rewriter_Path_Utils::get_active_languages_safe();
 		if ( count( $parts ) > 0 && in_array( $parts[0], $available_langs, true ) ) {
-			array_shift( $parts ); // Remove language prefix
+			$lang = array_shift( $parts );
 		}
 
 		if ( empty( $parts ) ) {
@@ -401,11 +403,11 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 
 		// Fast path: single multi-CPT resolution for flat slugs (skip per-CPT fallback on flat miss).
 		if ( ! str_contains( $slug, '/' ) ) {
-			return ! empty( $this->resolve_multi_cpt_slug( $slug ) );
+			return ! empty( $this->resolve_multi_cpt_slug( $slug, $lang ) );
 		}
 
 		foreach ( $this->cpt_slugs as $cpt ) {
-			$cache_key = $cpt . '|' . $slug;
+			$cache_key = $lang . '|' . $cpt . '|' . $slug;
 			if ( isset( $slug_hit_map[ $cache_key ] ) ) {
 				if ( $slug_hit_map[ $cache_key ] ) {
 					return true;
@@ -413,7 +415,7 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 				continue;
 			}
 
-			$post_id                    = frl_get_cpt_id_by_slug( $slug, $cpt );
+			$post_id                    = frl_get_cpt_id_by_slug( $slug, $cpt, $lang );
 			$exists                     = ( $post_id > 0 );
 			$slug_hit_map[ $cache_key ] = $exists;
 

@@ -432,13 +432,14 @@ function frl_schema_resolve_value( int $post_id, string $raw, array $placeholder
 /**
  * Determine if a key should be translated based on the translate keys config.
  *
- * @param string $key           The bare key name.
- * @param string $current_path  The full dot-path of the current key.
+ * @param string $key            The bare key name.
+ * @param string $current_path   The full dot-path of the current key.
  * @param array  $translate_keys FRL_SCHEMA_TRANSLATE_KEYS entries ('!' prefix = skip).
+ * @param bool   $inherited      Inherited subtree translation state ('!' rules still override).
  * @return bool True if this key should be translated.
  */
-function frl_schema_should_translate_key( string $key, string $current_path, array $translate_keys ): bool {
-	$should_translate = false;
+function frl_schema_should_translate_key( string $key, string $current_path, array $translate_keys, bool $inherited = false ): bool {
+	$should_translate = $inherited;
 
 	foreach ( $translate_keys as $entry ) {
 		$is_skip = str_starts_with( $entry, '!' );

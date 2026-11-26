@@ -40,7 +40,7 @@ function frl_schema_resolver_resolve( array $props, string $path = '', array $re
 	foreach ( $props as $key => $value ) {
 		$key_str      = (string) $key;
 		$current_path = $path ? "{$path}.{$key_str}" : $key_str;
-		$key_trans    = $translate_subtree || frl_schema_should_translate_key( $key_str, $current_path, $translate_keys );
+		$key_trans    = frl_schema_should_translate_key( $key_str, $current_path, $translate_keys, $translate_subtree );
 
 		if ( is_array( $value ) ) {
 			$result[ $key ] = frl_schema_resolver_resolve( $value, $current_path, $replacements, $key_trans );
