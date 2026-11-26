@@ -74,7 +74,7 @@ function frl_shortcode_acf_calculated( $atts ) {
 		return '';
 	}
 
-	// TEMPLATE mode
+	// TEMPLATE mode — cached by computation signature; no frontend GET DB writes.
 	if ( $operation === 'TEMPLATE' || $a['template'] !== '' ) {
 		if ( ! function_exists( 'frl_acf_render_template' ) ) {
 			return '';
@@ -83,17 +83,21 @@ function frl_shortcode_acf_calculated( $atts ) {
 		if ( $scope === null ) {
 			return '';
 		}
-		$template  = (string) $a['template'];
-		$urlencode = filter_var( $a['urlencode'], FILTER_VALIDATE_BOOLEAN );
-		$rendered  = frl_acf_render_template( $template, $source, $scope['post_id'], $urlencode );
+		$template   = (string) $a['template'];
+		$urlencode  = filter_var( $a['urlencode'], FILTER_VALIDATE_BOOLEAN );
+		$sig_hash   = md5( wp_json_encode( array( 'TEMPLATE', $template, $urlencode ) ) );
+		$compute_ck = $scope['cache_key'] . '_tpl_' . $sig_hash;
 
-		if ( $target !== '' ) {
-			frl_acf_calc_persist_and_warm( $target, $scope, (string) $rendered );
-		}
-		return $rendered;
+		return frl_cache_remember(
+			'shortcodes',
+			$compute_ck,
+			static function () use ( $template, $source, $scope, $urlencode ) {
+				return (string) frl_acf_render_template( $template, $source, $scope['post_id'], $urlencode );
+			}
+		);
 	}
 
-	// Numeric / CONCAT paths
+	// Numeric / CONCAT paths — cached by computation signature; no frontend GET DB writes.
 	$field_names = array_values(
 		array_filter(
 			array_map(
@@ -114,31 +118,32 @@ function frl_shortcode_acf_calculated( $atts ) {
 		return '';
 	}
 
-	$values = array();
-	foreach ( $field_names as $name ) {
-		$values[] = get_field( $name, $scope['pid'], false );
-	}
-
 	if ( ! function_exists( 'frl_acf_compute_value' ) ) {
 		return '';
 	}
 
-	$result = frl_acf_compute_value(
-		$operation,
-		$values,
-		array(
-			'decimals'  => $a['decimals'],
-			'separator' => $a['separator'],
-		)
+	$sig_hash   = md5( wp_json_encode( array( $operation, $field_names, $a['decimals'], $a['separator'] ) ) );
+	$compute_ck = $scope['cache_key'] . '_op_' . $sig_hash;
+
+	return frl_cache_remember(
+		'shortcodes',
+		$compute_ck,
+		static function () use ( $field_names, $scope, $operation, $a ) {
+			$values = array();
+			foreach ( $field_names as $name ) {
+				$values[] = get_field( $name, $scope['pid'], false );
+			}
+			$result = frl_acf_compute_value(
+				$operation,
+				$values,
+				array(
+					'decimals'  => $a['decimals'],
+					'separator' => $a['separator'],
+				)
+			);
+			return is_scalar( $result ) ? (string) $result : '';
+		}
 	);
-
-	$result_str = is_scalar( $result ) ? (string) $result : '';
-
-	if ( $target !== '' ) {
-		frl_acf_calc_persist_and_warm( $target, $scope, $result_str );
-	}
-
-	return $result_str;
 }
 
 /**

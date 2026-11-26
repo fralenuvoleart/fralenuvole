@@ -19,153 +19,140 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return array Array of grouped submission data: [lang][field_8_value] => count.
  */
 function frl_wsf_get_grouped_submission_data( $days = 30, $form_id = null, $start_date = null, $end_date = null, $include_cta = false ) {
-	// Sanitize inputs for cache key to prevent collisions
-	$safe_days       = (int) $days;
-	$safe_form_id    = $form_id !== null ? (int) $form_id : 'all';
-	$safe_start_date = sanitize_key( $start_date );
-	$safe_end_date   = sanitize_key( $end_date );
-
-	$cache_key = "grouped_submission_data_{$safe_days}_{$safe_form_id}_{$safe_start_date}_{$safe_end_date}" . ( $include_cta ? '_cta' : '' );
-	return frl_cache_remember(
-		'admin',
-		$cache_key,
-		function () use ( $start_date, $end_date, $form_id, $days, $include_cta ) {
-			// Determine final start and end dates based on inputs
-			if ( ! empty( $start_date ) ) {
-				if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $start_date ) ) {
-					$start_date = current_time( 'Y-m-d' );
-				}
-				if ( empty( $end_date ) ) {
-					$end_date = $start_date;
-				} elseif ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $end_date ) ) {
-					$end_date = $start_date;
-				}
-			} else {
-				// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Intentional: this must reflect the site's local calendar date (so "today" means local-today, not UTC-today) for correct date-range boundaries.
-				$end_date_time = current_time( 'timestamp' );
-				$end_date      = gmdate( 'Y-m-d', $end_date_time );
-				$start_date    = gmdate( 'Y-m-d', strtotime( '-' . max( 0, (int) $days - 1 ) . ' days', $end_date_time ) );
-			}
-
-			// Get dynamic field mappings from modular config
-			$all_configs = frl_wsf_get_all_webhook_configs();
-
-			$fields_map = array();
-			foreach ( $all_configs as $webhook_config ) {
-				$target_id = $webhook_config['form_id'] ?? null;
-				if ( $target_id !== null && ( (int) $target_id === (int) $form_id || $form_id === null ) ) {
-					$fields_map = $webhook_config['fields_map'] ?? array();
-					break;
-				}
-			}
-
-			if ( empty( $fields_map ) && ! empty( $all_configs ) ) {
-				$fields_map = $all_configs[0]['fields_map'] ?? array();
-			}
-
-			// Get the actual field IDs for the labels we need
-			$language_field = $fields_map['Language'] ?? null;
-			$service_field  = $fields_map['Service'] ?? null;
-			$page_url_field = $fields_map['Page URL'] ?? null;
-			$cta_field      = $include_cta ? ( $fields_map['CTA'] ?? null ) : null;
-
-			if ( empty( $language_field ) || empty( $service_field ) || empty( $page_url_field ) ) {
-				return array(
-					'grouped_counts' => array(),
-					'date_range'     => array(
-						'start' => $start_date,
-						'end'   => $end_date,
-					),
-					'form_id'        => $form_id,
-				);
-			}
-
-			// Define the meta keys needed for this specific grouping
-			$required_meta_keys = array( $language_field, $service_field, $page_url_field );
-			if ( $cta_field !== null ) {
-				$required_meta_keys[] = $cta_field;
-			}
-
-			// Fetch raw data using the reusable function
-			$raw_submissions = frl_wsf_get_raw_submission_meta( $required_meta_keys, $start_date, $end_date, $form_id );
-
-			// Pre-fetch the list of contact page slugs once
-			$contact_slugs = frl_wsf_get_page_translation_slugs( 'contact' );
-
-			// Process raw data into grouped counts
-			$grouped_counts = array();
-			if ( frl_is_array_not_empty( $raw_submissions ) ) {
-				foreach ( $raw_submissions as $submission ) {
-					// Get language from dynamic language field, default to '(No Language)' if missing or empty
-					$language = isset( $submission['meta'][ $language_field ] ) && ! empty( $submission['meta'][ $language_field ] ) ?
-							$submission['meta'][ $language_field ] :
-							'(No Language)';
-
-					// Get service field value, default to '(empty)' if missing
-					if ( isset( $submission['meta'][ $service_field ] ) && ! empty( $submission['meta'][ $service_field ] ) ) {
-						$group_value = 'Service: ' . $submission['meta'][ $service_field ];
-					} else {
-						// Service is empty, check page URL
-						$page_url = $submission['meta'][ $page_url_field ] ?? '';
-
-						if ( frl_string_contains_item_from_array( $page_url, $contact_slugs ) ) {
-							$group_value = 'Contact';
-						} elseif ( frl_is_homepage_url( $page_url ) ) {
-							$group_value = 'Homepage';
-						} else {
-							$group_value = 'Other Webpages';
-						}
-					}
-
-					$group_key = $group_value;
-					if ( $cta_field !== null ) {
-						$cta_value = ( isset( $submission['meta'][ $cta_field ] ) && ! empty( $submission['meta'][ $cta_field ] ) )
-						? $submission['meta'][ $cta_field ] : '';
-						$group_key = $group_value . '|||' . $cta_value;
-					}
-
-					if ( ! isset( $grouped_counts[ $language ] ) ) {
-						$grouped_counts[ $language ] = array();
-					}
-					if ( ! isset( $grouped_counts[ $language ][ $group_key ] ) ) {
-						$grouped_counts[ $language ][ $group_key ] = 0;
-					}
-					$grouped_counts[ $language ][ $group_key ]++;
-				}
-			}
-
-			// Sorting
-			$language_totals = array();
-			foreach ( $grouped_counts as $lang => $groups ) {
-				$language_totals[ $lang ] = array_sum( $groups );
-			}
-
-			// Languages by total (descending)
-			arsort( $language_totals );
-
-			// Groups within each language by count (descending)
-			foreach ( $grouped_counts as $lang => &$groups ) {
-				arsort( $groups );
-			}
-			unset( $groups ); // Unset reference after loop
-
-			// Rebuild in the new language order
-			$sorted_grouped_counts = array();
-			foreach ( $language_totals as $lang => $total ) {
-				if ( isset( $grouped_counts[ $lang ] ) ) {
-					$sorted_grouped_counts[ $lang ] = $grouped_counts[ $lang ]; // Add the already sorted inner array
-				}
-			}
-
-			return array(
-				'grouped_counts' => $sorted_grouped_counts,
-				'date_range'     => array(
-					'start' => $start_date,
-					'end'   => $end_date,
-				),
-				'form_id'        => $form_id,
-			);
+	// Determine final start and end dates based on inputs.
+	if ( ! empty( $start_date ) ) {
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $start_date ) ) {
+			$start_date = current_time( 'Y-m-d' );
 		}
+		if ( empty( $end_date ) ) {
+			$end_date = $start_date;
+		} elseif ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $end_date ) ) {
+			$end_date = $start_date;
+		}
+	} else {
+		// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Intentional: this must reflect the site's local calendar date (so "today" means local-today, not UTC-today) for correct date-range boundaries.
+		$end_date_time = current_time( 'timestamp' );
+		$end_date      = gmdate( 'Y-m-d', $end_date_time );
+		$start_date    = gmdate( 'Y-m-d', strtotime( '-' . max( 0, (int) $days - 1 ) . ' days', $end_date_time ) );
+	}
+
+	// Get dynamic field mappings from modular config.
+	$all_configs = frl_wsf_get_all_webhook_configs();
+
+	$fields_map = array();
+	foreach ( $all_configs as $webhook_config ) {
+		$target_id = $webhook_config['form_id'] ?? null;
+		if ( $target_id !== null && ( (int) $target_id === (int) $form_id || $form_id === null ) ) {
+			$fields_map = $webhook_config['fields_map'] ?? array();
+			break;
+		}
+	}
+
+	if ( empty( $fields_map ) && ! empty( $all_configs ) ) {
+		$fields_map = $all_configs[0]['fields_map'] ?? array();
+	}
+
+	// Get the actual field IDs for the labels we need.
+	$language_field = $fields_map['Language'] ?? null;
+	$service_field  = $fields_map['Service'] ?? null;
+	$page_url_field = $fields_map['Page URL'] ?? null;
+	$cta_field      = $include_cta ? ( $fields_map['CTA'] ?? null ) : null;
+
+	if ( empty( $language_field ) || empty( $service_field ) || empty( $page_url_field ) ) {
+		return array(
+			'grouped_counts' => array(),
+			'date_range'     => array(
+				'start' => $start_date,
+				'end'   => $end_date,
+			),
+			'form_id'        => $form_id,
+		);
+	}
+
+	// Define the meta keys needed for this specific grouping.
+	$required_meta_keys = array( $language_field, $service_field, $page_url_field );
+	if ( $cta_field !== null ) {
+		$required_meta_keys[] = $cta_field;
+	}
+
+	// Fetch raw data using the reusable function.
+	$raw_submissions = frl_wsf_get_raw_submission_meta( $required_meta_keys, $start_date, $end_date, $form_id );
+
+	// Pre-fetch the list of contact page slugs once.
+	$contact_slugs = frl_wsf_get_page_translation_slugs( 'contact' );
+
+	// Process raw data into grouped counts.
+	$grouped_counts = array();
+	if ( frl_is_array_not_empty( $raw_submissions ) ) {
+		foreach ( $raw_submissions as $submission ) {
+			// Get language from dynamic language field, default to '(No Language)' if missing or empty.
+			$language = isset( $submission['meta'][ $language_field ] ) && ! empty( $submission['meta'][ $language_field ] ) ?
+					$submission['meta'][ $language_field ] :
+					'(No Language)';
+
+			// Get service field value, default to '(empty)' if missing.
+			if ( isset( $submission['meta'][ $service_field ] ) && ! empty( $submission['meta'][ $service_field ] ) ) {
+				$group_value = 'Service: ' . $submission['meta'][ $service_field ];
+			} else {
+				// Service is empty, check page URL.
+				$page_url = $submission['meta'][ $page_url_field ] ?? '';
+
+				if ( frl_string_contains_item_from_array( $page_url, $contact_slugs ) ) {
+					$group_value = 'Contact';
+				} elseif ( frl_is_homepage_url( $page_url ) ) {
+					$group_value = 'Homepage';
+				} else {
+					$group_value = 'Other Webpages';
+				}
+			}
+
+			$group_key = $group_value;
+			if ( $cta_field !== null ) {
+				$cta_value = ( isset( $submission['meta'][ $cta_field ] ) && ! empty( $submission['meta'][ $cta_field ] ) )
+				? $submission['meta'][ $cta_field ] : '';
+				$group_key = $group_value . '|||' . $cta_value;
+			}
+
+			if ( ! isset( $grouped_counts[ $language ] ) ) {
+				$grouped_counts[ $language ] = array();
+			}
+			if ( ! isset( $grouped_counts[ $language ][ $group_key ] ) ) {
+				$grouped_counts[ $language ][ $group_key ] = 0;
+			}
+			++$grouped_counts[ $language ][ $group_key ];
+		}
+	}
+
+	// Sorting.
+	$language_totals = array();
+	foreach ( $grouped_counts as $lang => $groups ) {
+		$language_totals[ $lang ] = array_sum( $groups );
+	}
+
+	// Languages by total (descending).
+	arsort( $language_totals );
+
+	// Groups within each language by count (descending).
+	foreach ( $grouped_counts as $lang => &$groups ) {
+		arsort( $groups );
+	}
+	unset( $groups ); // Unset reference after loop.
+
+	// Rebuild in the new language order.
+	$sorted_grouped_counts = array();
+	foreach ( $language_totals as $lang => $total ) {
+		if ( isset( $grouped_counts[ $lang ] ) ) {
+			$sorted_grouped_counts[ $lang ] = $grouped_counts[ $lang ]; // Add the already sorted inner array.
+		}
+	}
+
+	return array(
+		'grouped_counts' => $sorted_grouped_counts,
+		'date_range'     => array(
+			'start' => $start_date,
+			'end'   => $end_date,
+		),
+		'form_id'        => $form_id,
 	);
 }
 

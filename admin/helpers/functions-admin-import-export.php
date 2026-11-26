@@ -599,11 +599,15 @@ function frl_prepare_settings_for_export( array $settings ): array {
 	$export = array();
 	foreach ( $settings as $key => $value ) {
 		if ( is_string( $value ) ) {
-			// Convert newlines to \n and remove extra whitespace
+			// Normalize line endings without altering indentation or stripping '0'.
 			$value = str_replace( array( "\r\n", "\r" ), "\n", $value );
-			$lines = explode( "\n", $value );
-			$lines = array_map( 'trim', $lines );
-			$value = implode( "\n", array_filter( $lines ) );
+			$field = function_exists( 'frl_get_all_plugin_options_settings' )
+				? frl_get_all_plugin_options_settings( $key )
+				: null;
+			if ( is_array( $field ) && ( $field['type'] ?? '' ) === 'textlist' ) {
+				$lines = array_map( 'trim', explode( "\n", $value ) );
+				$value = implode( "\n", array_filter( $lines, static fn( string $line ): bool => $line !== '' ) );
+			}
 		}
 		$export[ frl_prefix( $key ) ] = $value;
 	}

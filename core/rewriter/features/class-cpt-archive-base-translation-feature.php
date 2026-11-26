@@ -137,7 +137,7 @@ class Frl_CPT_Archive_Base_Translation_Feature extends Frl_Rewriter_Feature_Base
 			$lang_esc = Frl_Rewriter_Path_Utils::escape_for_regex( $lang, '#' );
 			$base_esc = Frl_Rewriter_Path_Utils::escape_for_regex( $translated, '#' );
 
-			$pagination = Frl_Rewriter_Path_Utils::parse_pagination( $path, "#^(?:{$lang_esc}/)?{$base_esc}/page/?([0-9]+)/?$#", null, 1 );
+			$pagination = Frl_Rewriter_Path_Utils::parse_pagination( $path, "#^((?:{$lang_esc}/)?{$base_esc})/page/?([0-9]+)/?$#", 1, 2 );
 			if ( preg_match( "#^(?:{$lang_esc}/)?{$base_esc}/?$#", $pagination['path'] ) ) {
 				$res = array(
 					'post_type' => $this->cpt_slug,

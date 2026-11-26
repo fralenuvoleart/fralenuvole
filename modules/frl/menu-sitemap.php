@@ -246,37 +246,42 @@ function frl_render_menu_tree( $items ) {
  * @return WP_Post|null Navigation post object or null
  */
 function frl_get_block_navigation_menu( $menu_name ) {
-	// Try by ID first
+	$current_lang = function_exists( 'frl_get_language' ) ? frl_get_language() : '';
+
+	// Try by ID first (resolve translated wp_navigation post when multilingual is active).
 	if ( is_numeric( $menu_name ) ) {
-		$post = get_post( (int) $menu_name );
+		$target_id = (int) $menu_name;
+		if ( '' !== $current_lang && function_exists( 'frl_get_post_translation' ) ) {
+			$translated_id = frl_get_post_translation( $target_id, $current_lang );
+			if ( $translated_id ) {
+				$target_id = (int) $translated_id;
+			}
+		}
+		$post = get_post( $target_id );
 		if ( $post && $post->post_type === 'wp_navigation' ) {
 			return $post;
 		}
 	}
 
-	// Try by name/slug
-	$posts = get_posts(
-		array(
-			'post_type'      => 'wp_navigation',
-			'posts_per_page' => 1,
-			'title'          => $menu_name,
-			'post_status'    => 'publish',
-		)
+	$base_args = array(
+		'post_type'        => 'wp_navigation',
+		'posts_per_page'   => 1,
+		'post_status'      => 'publish',
+		'suppress_filters' => false,
 	);
+	if ( '' !== $current_lang ) {
+		$base_args['lang'] = $current_lang;
+	}
+
+	// Try by title
+	$posts = get_posts( array_merge( $base_args, array( 'title' => $menu_name ) ) );
 
 	if ( ! empty( $posts ) ) {
 		return $posts[0];
 	}
 
 	// Try by slug (post_name)
-	$posts = get_posts(
-		array(
-			'post_type'      => 'wp_navigation',
-			'posts_per_page' => 1,
-			'name'           => sanitize_title( $menu_name ),
-			'post_status'    => 'publish',
-		)
-	);
+	$posts = get_posts( array_merge( $base_args, array( 'name' => sanitize_title( $menu_name ) ) ) );
 
 	if ( ! empty( $posts ) ) {
 		return $posts[0];

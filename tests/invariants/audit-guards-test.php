@@ -127,9 +127,9 @@ frl_test_ok(
 );
 
 // 6. Source-level contract: frl_get_file_nicename() preserves purely numeric basenames.
-$admin_src = file_get_contents( FRL_TEST_PLUGIN_DIR . 'admin/admin.php' );
-frl_test_ok( is_string( $admin_src ), 'admin/admin.php readable' );
-preg_match( '/function frl_get_file_nicename\(.*?\n\}/s', (string) $admin_src, $nicename_match );
+$media_src = file_get_contents( FRL_TEST_PLUGIN_DIR . 'includes/main/media.php' );
+frl_test_ok( is_string( $media_src ), 'includes/main/media.php readable' );
+preg_match( '/function frl_get_file_nicename\(.*?\n\}/s', (string) $media_src, $nicename_match );
 frl_test_ok( ! empty( $nicename_match[0] ), 'frl_get_file_nicename() body found' );
 frl_test_ok(
 	str_contains( $nicename_match[0], "\$stripped !== ''" ),

@@ -14,9 +14,9 @@ require_once __DIR__ . '/config-constants-pbs.php';
 require_once __DIR__ . '/custom-post-types.php';
 
 add_action(
-	'init',
+	'wp_enqueue_scripts',
 	'frl_pbs_load_public_scripts',
-	10,
+	FRL_THEMEKIT_STYLE_PRIORITY['modules'],
 	0
 );
 
@@ -28,10 +28,15 @@ add_filter(
 );
 
 /**
- * Add common scripts on frontend requests only.
+ * Add common scripts on frontend requests only (when active language has configured substrings).
  */
 function frl_pbs_load_public_scripts() {
-	if ( is_admin() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI ) || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+	if ( ! frl_is_valid_frontend_page_request() ) {
+		return;
+	}
+
+	$substrings = PBS_JS_REMOVE_HTML_STRINGS[ frl_get_language() ] ?? '';
+	if ( '' === $substrings ) {
 		return;
 	}
 
@@ -43,14 +48,11 @@ function frl_pbs_load_public_scripts() {
 		return;
 	}
 
-	// Inline script with version check
 	$data = array(
 		'selector'   => PBS_JS_REMOVE_HTML_SELECTOR,
-		'substrings' => PBS_JS_REMOVE_HTML_STRINGS[ frl_get_language() ] ?? '', // Unknown language: empty.
+		'substrings' => $substrings,
 	);
 	wp_localize_script( $handle, 'pbsSettings', $data );
-
-	// The function call is now handled within the JavaScript file after document load
 }
 
 

@@ -468,24 +468,42 @@ add_action(
 			return;
 		}
 
-		// Check for child page of 'about' (English) or any translated parent.
-		// Try English first, then search for any page ending with /{$slug}.
-		$page = get_page_by_path( "about/{$slug}", OBJECT, 'page' );
-		if ( ! $page ) {
-			// Fallback: find any published page with this slug, regardless of parent.
-			$candidates = get_posts(
-				array(
-					'name'        => $slug,
-					'post_type'   => 'page',
-					'post_status' => 'publish',
-					'numberposts' => 1,
-				)
-			);
-			if ( ! empty( $candidates ) ) {
-				$page = $candidates[0];
+		// Check for published child page of 'about' (or its translated parent for the requested language).
+		$page     = null;
+		$req_lang = ! empty( $wp->query_vars['lang'] ) ? (string) $wp->query_vars['lang'] : '';
+
+		if ( '' !== $req_lang ) {
+			$about_page = get_page_by_path( 'about', OBJECT, 'page' );
+			$parent_id  = ( $about_page && 'publish' === $about_page->post_status ) ? (int) $about_page->ID : 0;
+			if ( $parent_id > 0 && function_exists( 'frl_get_post_translation' ) ) {
+				$translated_parent = frl_get_post_translation( $parent_id, $req_lang );
+				if ( $translated_parent ) {
+					$parent_id = (int) $translated_parent;
+				}
+			}
+
+			if ( $parent_id > 0 ) {
+				$candidates = get_posts(
+					array(
+						'name'             => $slug,
+						'post_type'        => 'page',
+						'post_status'      => 'publish',
+						'post_parent'      => $parent_id,
+						'lang'             => $req_lang,
+						'numberposts'      => 1,
+						'suppress_filters' => false,
+					)
+				);
+				if ( ! empty( $candidates ) ) {
+					$page = $candidates[0];
+				}
 			}
 		}
+
 		if ( ! $page ) {
+			$page = get_page_by_path( 'about/' . $slug, OBJECT, 'page' );
+		}
+		if ( ! $page || 'publish' !== $page->post_status ) {
 			return;
 		}
 

@@ -23,10 +23,6 @@ return array(
 	'image'            => array(
 		'@source' => 'featured_image',
 	),
-	'author'           => array(
-		'@type' => 'Person',
-		'@id'   => '{{post_permalink}}#Person',
-	),
 	'publisher'        => array(
 		'@type' => 'Organization',
 		'@id'   => '{{schema_org_url}}#Organization',

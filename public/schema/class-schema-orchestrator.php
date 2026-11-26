@@ -283,9 +283,12 @@ class Frl_Schema_Orchestrator {
 			return array();
 		}
 
+		$tv          = frl_get_option( 'translation_version' ) ?: 1;
+		$toggle_hash = $this->get_toggle_hash();
+
 		return frl_cache_remember(
 			'postdata',
-			frl_generate_cache_key( 'post', (string) $post_id, 'schema', 'v' . frl_get_post_cache_version( $post_id ) ),
+			frl_generate_cache_key( 'post', (string) $post_id, 'schema', 'v' . frl_get_post_cache_version( $post_id ), 'tv' . $tv, $toggle_hash ),
 			function () use ( $post_id, $post_type ) {
 				$schemas = array();
 				$types   = $this->get_types_for_post_type( $post_type, $post_id );

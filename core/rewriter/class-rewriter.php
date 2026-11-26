@@ -640,17 +640,14 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 					3
 				);
 
+				// Fast path: rewrite_rules is autoloaded — skip transient reads on normal requests.
+				if ( get_option( 'rewrite_rules' ) !== false ) {
+					return;
+				}
+
 				// Repair absent rewrite_rules (normal WP state during any flush cycle):
 				// one attempt per minute, five per hour, then automatic repair pauses.
 				$retry_count = (int) frl_get_transient( 'rewrite_flush_retry_count' );
-
-				// Rules present: a previous repair worked, so drop the backoff state.
-				if ( get_option( 'rewrite_rules' ) !== false ) {
-					if ( $retry_count > 0 ) {
-						frl_delete_transient( 'rewrite_flush_retry_count' );
-					}
-					return;
-				}
 
 				if ( $retry_count >= 5 ) {
 					frl_log(

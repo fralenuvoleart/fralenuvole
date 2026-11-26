@@ -674,6 +674,11 @@ class Frl_Settings_Fields {
 			$option_key  = $field['id'];
 			$prefixed_id = frl_prefix( $option_key );
 
+			// Skip fields in restricted sections so hidden checkboxes are not reset to 0.
+			if ( isset( $field['section'] ) && apply_filters( 'frl_is_section_restricted', false, $field['section'] ) ) {
+				continue;
+			}
+
 			// Skip restricted fields if current user doesn't have access
 			if (
 				in_array( $option_key, $restricted_fields_keys, true ) ||

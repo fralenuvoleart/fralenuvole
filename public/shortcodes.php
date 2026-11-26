@@ -1079,7 +1079,7 @@ function frl_shortcode_category_link( $atts, $content = null ) {
 		return '';
 	}
 	$identifier = trim( wp_strip_all_tags( $content ) );
-	$cache_key  = 'cat_link_' . sanitize_key( $identifier ) . '_tv' . ( frl_get_option( 'translation_version' ) ?: 1 );
+	$cache_key  = 'cat_link_' . md5( $identifier ) . '_tv' . ( frl_get_option( 'translation_version' ) ?: 1 );
 
 	$link = frl_shortcode_cached_lookup(
 		$cache_key,

@@ -279,50 +279,54 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 	 * @param string $slug The post slug (without CPT base) to resolve.
 	 * @return array{cpt: string, id: int, name: string}|array{} Match data, or empty array if no match.
 	 */
-	private function resolve_multi_cpt_slug( string $slug ): array {
+	private function resolve_multi_cpt_slug( string $slug, ?string $lang = null ): array {
 		static $multi_index = array();
 
-		if ( array_key_exists( $slug, $multi_index ) ) {
-			return $multi_index[ $slug ];
+		if ( '' === $slug || str_contains( $slug, '/' ) ) {
+			return array();
 		}
 
-		$context   = 'multicpt';
-		$index_key = frl_get_language() . '|' . $slug;
+		$resolved_lang = ( null !== $lang && '' !== $lang ) ? $lang : frl_get_language();
+		$index_key     = $resolved_lang . '|' . $slug;
+
+		if ( array_key_exists( $index_key, $multi_index ) ) {
+			return $multi_index[ $index_key ];
+		}
+
+		$context = 'multicpt';
 
 		// Known miss: no query, and no per-URL cache key created.
 		if ( frl_slug_negative_get( $context, $index_key ) ) {
-			$multi_index[ $slug ] = array();
-			return $multi_index[ $slug ];
+			$multi_index[ $index_key ] = array();
+			return $multi_index[ $index_key ];
 		}
 
-		$cache_key = 'rewriter_cpt_multislug_' . md5( $slug );
+		$cache_key = 'rewriter_cpt_multislug_' . md5( $index_key );
 		$cached    = frl_cache_get( 'permalinks', $cache_key, null );
 		if ( is_array( $cached ) ) {
-			$multi_index[ $slug ] = $cached;
-			return $multi_index[ $slug ];
+			$multi_index[ $index_key ] = $cached;
+			return $multi_index[ $index_key ];
 		}
 
-		// Single direct query instead of get_page_by_path() multi-query approach
-		$posts = get_posts(
-			array(
-				'name'           => $slug,
-				'post_type'      => $this->cpt_slugs,
-				'post_status'    => 'publish',
-				'posts_per_page' => 1,
-				'fields'         => 'ids',
-			)
+		// Single direct query scoped to active language (no separate get_post() round-trip).
+		$query_args = array(
+			'name'           => $slug,
+			'post_type'      => $this->cpt_slugs,
+			'post_status'    => 'publish',
+			'posts_per_page' => 1,
 		);
+		if ( '' !== $resolved_lang ) {
+			$query_args['lang'] = $resolved_lang;
+		}
+		$posts = get_posts( $query_args );
 
 		$match = array();
-		if ( ! empty( $posts ) ) {
-			$post = get_post( $posts[0] );
-			if ( $post && isset( $post->ID, $post->post_type ) ) {
-				$match = array(
-					'cpt'  => $post->post_type,
-					'id'   => (int) $post->ID,
-					'name' => basename( $slug ),
-				);
-			}
+		if ( ! empty( $posts ) && is_object( $posts[0] ) && isset( $posts[0]->ID, $posts[0]->post_type ) ) {
+			$match = array(
+				'cpt'  => $posts[0]->post_type,
+				'id'   => (int) $posts[0]->ID,
+				'name' => basename( $slug ),
+			);
 		}
 
 		if ( $match ) {
@@ -331,13 +335,13 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			frl_slug_negative_mark( $context, $index_key );
 		}
 
-		$multi_index[ $slug ] = $match;
+		$multi_index[ $index_key ] = $match;
 
 		if ( count( $multi_index ) > 4096 ) {
-			$multi_index = array( $slug => $match );
+			$multi_index = array( $index_key => $match );
 		}
 
-		return $multi_index[ $slug ];
+		return $multi_index[ $index_key ];
 	}
 
 	/**
@@ -396,9 +400,9 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 		// The multi-CPT fast path above is shared via resolve_multi_cpt_slug() instead.
 		static $slug_hit_map = array();
 
-		// Fast path: single multi-CPT resolution via direct query (shared with resolve_request()).
-		if ( $this->resolve_multi_cpt_slug( $slug ) ) {
-			return true;
+		// Fast path: single multi-CPT resolution for flat slugs (skip per-CPT fallback on flat miss).
+		if ( ! str_contains( $slug, '/' ) ) {
+			return ! empty( $this->resolve_multi_cpt_slug( $slug ) );
 		}
 
 		foreach ( $this->cpt_slugs as $cpt ) {
@@ -439,7 +443,10 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			return array();
 		}
 
-		$uri   = Frl_Rewriter_Path_Utils::extract_request_path( $request_uri );
+		$uri = Frl_Rewriter_Path_Utils::extract_request_path( $request_uri );
+		if ( '' === $uri ) {
+			return array();
+		}
 		$parts = explode( '/', rtrim( $uri, '/' ) );
 		$lang  = frl_get_default_language(); // Assume default
 
@@ -450,11 +457,17 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 		}
 
 		$slug = implode( '/', $parts );
+		if ( '' === $slug ) {
+			return array();
+		}
 
 		// Check for pagination.
 		$pagination = Frl_Rewriter_Path_Utils::parse_pagination( $slug, '#^(.+?)/page/?([0-9]+)/?$#', 1, 2 );
 		$slug       = $pagination['path'];
 		$paged      = $pagination['paged'];
+		if ( '' === $slug ) {
+			return array();
+		}
 
 		// Per-request cache for the $slug_hit_map fallback loop below. Note: this static is
 		// method-scoped and intentionally NOT shared with applies_to_request()'s — the two
@@ -462,16 +475,19 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 		// The multi-CPT fast path below is shared via resolve_multi_cpt_slug() instead.
 		static $slug_hit_map = array();
 
-		// Fast path: single multi-CPT resolution via direct query (shared with applies_to_request()).
-		$multi_match = $this->resolve_multi_cpt_slug( $slug );
-		if ( $multi_match ) {
-			$cpt  = $multi_match['cpt'];
-			$post = (object) array(
-				'ID'        => $multi_match['id'],
-				'post_name' => basename( $slug ),
-				'post_type' => $cpt,
-			);
-			return $this->build_query_vars( $post, $cpt, $lang, $paged, $slug );
+		// Fast path: single multi-CPT resolution for flat slugs (skip per-CPT fallback on flat miss).
+		if ( ! str_contains( $slug, '/' ) ) {
+			$multi_match = $this->resolve_multi_cpt_slug( $slug, $lang );
+			if ( $multi_match ) {
+				$cpt  = $multi_match['cpt'];
+				$post = (object) array(
+					'ID'        => $multi_match['id'],
+					'post_name' => basename( $slug ),
+					'post_type' => $cpt,
+				);
+				return $this->build_query_vars( $post, $cpt, $lang, $paged, $slug );
+			}
+			return array();
 		}
 
 		foreach ( $this->cpt_slugs as $cpt ) {

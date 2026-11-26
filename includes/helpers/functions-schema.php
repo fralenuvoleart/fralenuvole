@@ -505,7 +505,7 @@ function frl_schema_merge_properties( array $schema, array $props ): array {
 		}
 
 		if ( is_array( $value ) ) {
-			if ( ! isset( $schema[ $key ] ) || ! is_array( $schema[ $key ] ) ) {
+			if ( ! isset( $schema[ $key ] ) || ! is_array( $schema[ $key ] ) || array_is_list( $value ) ) {
 				$schema[ $key ] = $value;
 			} else {
 				$schema[ $key ] = array_replace_recursive( $schema[ $key ], $value );

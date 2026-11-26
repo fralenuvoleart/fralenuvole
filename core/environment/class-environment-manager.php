@@ -107,25 +107,18 @@ class Frl_Environment_Manager {
 	 * @return bool True if state changed, false otherwise.
 	 */
 	private static function check_environment_state() {
-		static $result = false;
-		if ( frl_is_already_running( __METHOD__ ) ) {
-			return $result;
-		}
-
 		$cached_state  = frl_cache_get( self::CACHE_GROUP, self::CACHE_KEY );
 		$stored_state  = $cached_state ?: frl_get_option( self::ENVIRONMENT_STATE );
 		$from_options  = (bool) ( $stored_state && ! $cached_state );
 		$state_changed = Frl_Environment_State::check_environment_state( $stored_state );
 
 		if ( $state_changed ) {
-			$result = true;
-			return $result;
+			return true;
 		} elseif ( $from_options && $stored_state ) {
 			frl_cache_set( self::CACHE_GROUP, self::CACHE_KEY, $stored_state );
 		}
 
-		$result = false;
-		return $result;
+		return false;
 	}
 
 	/**

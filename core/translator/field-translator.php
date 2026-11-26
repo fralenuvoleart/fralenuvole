@@ -105,8 +105,8 @@ function frl_translator_apply( mixed $value ): mixed {
 		return $value;
 	}
 
-	// Process permalink patterns (##...##) first, then translate the result.
-	return frl_get_translation( frl_process_permalink_patterns( $value ) );
+	// Translate first with ##...## placeholders intact, then expand permalink patterns on the translated string.
+	return frl_process_permalink_patterns( frl_get_translation( $value ) );
 }
 
 /**
@@ -291,13 +291,13 @@ function frl_translator_acf_taxonomy( mixed $value, int|string $post_id, array $
 /**
  * Filter: translate term objects from get_terms when enabled.
  *
- * @param array $terms List of terms.
- * @param array $taxonomies Taxonomies to fetch.
- * @param array $args Query arguments.
- * @return array Translated terms.
+ * @param mixed $terms      List of terms, or count string/int when fields='count'.
+ * @param mixed $taxonomies Taxonomies to fetch (array or null).
+ * @param array $args       Query arguments.
+ * @return mixed Translated terms or original scalar count.
  */
-function frl_translator_filter_get_terms( array $terms, array $taxonomies, array $args ): array {
-	if ( ! frl_is_valid_frontend_page_request() ) {
+function frl_translator_filter_get_terms( mixed $terms, mixed $taxonomies, array $args ): mixed {
+	if ( ! is_array( $terms ) || ! frl_is_valid_frontend_page_request() ) {
 		return $terms;
 	}
 

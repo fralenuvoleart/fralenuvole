@@ -232,10 +232,23 @@ function frl_auto_backup_on_upgrade(): void {
 		return;
 	}
 
+	// Ensure export helper is available on any wp-admin screen (not just the plugin settings page).
+	if ( ! function_exists( 'frl_prepare_settings_for_export' ) ) {
+		$export_helper = FRL_DIR_PATH . 'admin/helpers/functions-admin-import-export.php';
+		if ( is_file( $export_helper ) ) {
+			require_once $export_helper;
+		}
+	}
+	if ( ! function_exists( 'frl_get_plugin_options_db' ) || ! function_exists( 'frl_prepare_settings_for_export' ) ) {
+		return;
+	}
+
 	$backups_dir = FRL_DIR_PATH . 'backups';
 
 	if ( ! is_dir( $backups_dir ) ) {
-		wp_mkdir_p( $backups_dir );
+		if ( ! wp_mkdir_p( $backups_dir ) ) {
+			return;
+		}
 		// Dual syntax: 'Require all denied' is Apache 2.4+; the IfModule fallback
 		// keeps the directory protected on Apache 2.2 (mod_authz_core absent).
 		file_put_contents(
@@ -252,10 +265,6 @@ function frl_auto_backup_on_upgrade(): void {
 	}
 
 	if ( ! is_writable( $backups_dir ) ) {
-		return;
-	}
-
-	if ( ! function_exists( 'frl_get_plugin_options_db' ) || ! function_exists( 'frl_prepare_settings_for_export' ) ) {
 		return;
 	}
 

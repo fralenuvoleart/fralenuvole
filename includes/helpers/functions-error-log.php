@@ -37,32 +37,43 @@ function frl_log( $message, $context = array(), $force_email = true ) {
 	if ( frl_is_log_manager_request() ) {
 		return; // Early exit
 	}
-	$is_admin_debug = ! is_scalar( $message ) && empty( $context ) && frl_has_access();
 
-	$debug_send_email = ! $is_admin_debug && $force_email && frl_get_option( 'error_reporting_email' );
+	// Guard against re-entrancy when cold option/module loading triggers frl_log().
+	static $is_logging = false;
+	$nested            = $is_logging;
+	$is_logging        = true;
 
-	// Format directly so request-specific URL/hook/caller context is never served stale from cache.
-	$formatted_message = frl_format_log_message( $message, $context );
+	try {
+		$is_admin_debug   = ! $nested && ! is_scalar( $message ) && empty( $context ) && frl_has_access();
+		$debug_send_email = ! $nested && ! $is_admin_debug && $force_email && frl_get_option( 'error_reporting_email' );
 
-	// Email throttling: per-request hash set prevents duplicate emails; sanitize avoids Closure serialization errors.
-	if ( $debug_send_email ) {
-		static $emailed_hashes = array();
-		try {
-			$safe_payload = function_exists( 'frl_sanitize_for_serialization' )
-				? frl_sanitize_for_serialization( array( $message, $context ) )
-				: array( is_scalar( $message ) ? $message : gettype( $message ), array_keys( (array) $context ) );
-			$message_hash = md5( serialize( $safe_payload ) );
-		} catch ( \Throwable $e ) {
-			$message_hash = md5( $formatted_message );
+		// Format directly so request-specific URL/hook/caller context is never served stale from cache.
+		$formatted_message = frl_format_log_message( $message, $context );
+
+		// Email throttling: per-request hash set prevents duplicate emails; sanitize avoids Closure serialization errors.
+		if ( $debug_send_email ) {
+			static $emailed_hashes = array();
+			try {
+				$safe_payload = function_exists( 'frl_sanitize_for_serialization' )
+					? frl_sanitize_for_serialization( array( $message, $context ) )
+					: array( is_scalar( $message ) ? $message : gettype( $message ), array_keys( (array) $context ) );
+				$message_hash = md5( serialize( $safe_payload ) );
+			} catch ( \Throwable $e ) {
+				$message_hash = md5( $formatted_message );
+			}
+			if ( ! isset( $emailed_hashes[ $message_hash ] ) ) {
+				$emailed_hashes[ $message_hash ] = true;
+				frl_email_error_notification( $formatted_message );
+			}
 		}
-		if ( ! isset( $emailed_hashes[ $message_hash ] ) ) {
-			$emailed_hashes[ $message_hash ] = true;
-			frl_email_error_notification( $formatted_message );
+
+		// Always log to preserve error frequency information
+		error_log( $formatted_message );
+	} finally {
+		if ( ! $nested ) {
+			$is_logging = false;
 		}
 	}
-
-	// Always log to preserve error frequency information
-	error_log( $formatted_message );
 }
 
 /**

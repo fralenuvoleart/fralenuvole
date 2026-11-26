@@ -16,6 +16,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 add_action( 'init', 'frl_add_image_sizes', 12, 0 );
 add_action( 'init', 'frl_enable_custom_avatar', 12, 0 );
 add_filter( 'image_size_names_choose', 'frl_add_image_size_names_choice', 10, 1 );
+// Registered in includes/main/media.php so REST /wp/v2/media (Block Editor) uploads execute them.
+add_filter( 'sanitize_file_name', 'frl_get_file_nicename', 10, 1 );
+add_action( 'add_attachment', 'frl_update_image_metadata', 10, 1 );
+add_filter( 'upload_mimes', 'frl_enable_mime_support', 10, 1 );
 
 /**
  * Register custom image sizes based on plugin options.
@@ -301,5 +305,110 @@ function frl_enqueue_avatar_scripts( $hook ) {
 	if ( $hook === 'profile.php' || $hook === 'user-edit.php' ) {
 		wp_enqueue_media();
 	}
+}
+
+/**
+ * Extend allowed upload MIME types.
+ *
+ * Adds support for WebP and SVG formats based on plugin settings.
+ *
+ * @param array $mimes Associative array of allowed file types.
+ * @return array Modified array of allowed file types.
+ */
+function frl_enable_mime_support( array $mimes ): array {
+	if ( frl_get_option( 'image_mime_support' ) ) {
+		$mimes['webp'] = 'image/webp';
+		$mimes['svg']  = 'image/svg+xml';
+	}
+
+	return $mimes;
+}
+
+/**
+ * Sanitize a filename or convert it to a readable title.
+ *
+ * Handles transliteration of accented characters, case normalization,
+ * and removal of trailing numbers.
+ *
+ * @param string $filename The original filename to sanitize.
+ * @param bool   $as_title Whether to format as a title (true) or filename (false).
+ * @return string The sanitized filename or formatted title.
+ */
+function frl_get_file_nicename( $filename, $as_title = false ) {
+	// Only sanitize media library / gallery uploads; skip plugin/theme installs
+	// and other non-media sanitize_file_name() calls.
+	if ( ! $as_title && ! frl_is_media_upload_request() ) {
+		return $filename;
+	}
+
+	if ( ! frl_get_option( 'image_filename_sanitize' ) ) {
+		return $filename;
+	}
+
+	$extension = '';
+	$basename  = $filename;
+
+	if ( str_contains( $filename, '.' ) ) {
+		$extension = ! $as_title ? '.' . pathinfo( $filename, PATHINFO_EXTENSION ) : '';
+		$basename  = pathinfo( $filename, PATHINFO_FILENAME );
+	}
+
+	if ( function_exists( 'transliterator_transliterate' ) ) {
+		$basename = transliterator_transliterate( 'Any-Latin; Latin-ASCII', $basename );
+	} else {
+		$basename = remove_accents( $basename );
+	}
+
+	$basename = strtolower( $basename );
+
+	// Remove trailing numbers unless the basename is purely numeric.
+	$stripped = preg_replace( '/-?\d+$/', '', $basename );
+	if ( is_string( $stripped ) && $stripped !== '' ) {
+		$basename = $stripped;
+	}
+
+	if ( $as_title ) {
+		$title = str_replace( array( '-', '_' ), ' ', $basename );
+		$title = preg_replace( '/[^a-z0-9 ]/', '', $title );
+		$title = preg_replace( '/\s+/', ' ', $title );
+
+		return ucwords( trim( $title ) );
+	}
+
+	$clean_name = str_replace( '_', '-', $basename );
+	$clean_name = preg_replace( '/[^a-z0-9-]/', '', $clean_name );
+	$clean_name = preg_replace( '/-+/', '-', $clean_name );
+
+	return trim( $clean_name, '-' ) . $extension;
+}
+
+/**
+ * Automatically set image metadata based on the filename during upload.
+ *
+ * @param int $attachment_id The ID of the newly uploaded attachment.
+ * @return void
+ */
+function frl_update_image_metadata( $attachment_id ) {
+	if ( ! frl_get_option( 'image_filename_sanitize' ) ) {
+		return;
+	}
+
+	if ( ! wp_attachment_is_image( $attachment_id ) ) {
+		return;
+	}
+
+	$filename  = basename( get_attached_file( $attachment_id ) );
+	$img_title = frl_get_file_nicename( $filename, true );
+
+	update_post_meta( $attachment_id, '_wp_attachment_image_alt', $img_title );
+
+	wp_update_post(
+		array(
+			'ID'           => $attachment_id,
+			'post_title'   => $img_title,
+			'post_excerpt' => $img_title,
+			'post_content' => $img_title,
+		)
+	);
 }
 

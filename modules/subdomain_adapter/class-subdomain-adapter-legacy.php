@@ -150,15 +150,15 @@ class Frl_Subdomain_Adapter_Legacy {
 
 		$target_url = $this->build_redirect_target( $path, $lang, $target_host );
 
+		// Preserve query string (unslashed) BEFORE the self-redirect loop check so query-stringed routes don't loop.
+		if ( ! empty( $_GET ) ) {
+			$target_url = add_query_arg( wp_unslash( $_GET ), $target_url );
+		}
+
 		// Avoid redirect loops: if the target equals current URL, don't redirect.
 		$current_full = home_url( $uri );
 		if ( rtrim( $current_full, '/' ) === rtrim( $target_url, '/' ) ) {
 			return;
-		}
-
-		// Preserve query string.
-		if ( ! empty( $_GET ) ) {
-			$target_url = add_query_arg( $_GET, $target_url );
 		}
 
 		add_filter(

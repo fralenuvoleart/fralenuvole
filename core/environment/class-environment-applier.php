@@ -178,8 +178,15 @@ class Frl_Environment_Applier {
 					} elseif ( $value_from_config === '0' || $value_from_config === 0 ) {
 						$processed_value = '0';
 					}
-					frl_update_option( $key, $processed_value, false );
-					if ( $old_value_for_results !== $processed_value ) {
+
+					// Normalize target value using the option's declared type before diffing so
+					// textlist indentation/blank lines never cause false-positive updates/purges.
+					$opt_meta         = frl_get_all_plugin_options_settings( $key );
+					$opt_type         = is_array( $opt_meta ) && isset( $opt_meta['type'] ) ? (string) $opt_meta['type'] : 'text';
+					$normalized_value = frl_normalize_option( $processed_value, $opt_type );
+
+					if ( $old_value_for_results !== $normalized_value ) {
+						frl_update_option( $key, $normalized_value, false );
 						if ( ! isset( $results['plugin_options']['updated'] ) ) {
 							$results['plugin_options']['updated'] = array();
 						}

@@ -73,11 +73,56 @@ function frl_add_header_html(): void {
 }
 
 /**
+ * Enqueue custom external, root-relative, or plugin-relative assets from an option.
+ *
+ * @param string $option_key Option key ('header_scripts' or 'footer_scripts').
+ * @param bool   $in_footer  Whether JS files load in the footer.
+ * @return void
+ */
+function frl_enqueue_option_scripts( string $option_key, bool $in_footer ): void {
+	$assets = frl_get_processed_assets_from_option( $option_key );
+	if ( empty( $assets ) || ! is_array( $assets ) ) {
+		return;
+	}
+
+	foreach ( $assets as $handle => $raw_src ) {
+		$src = trim( (string) $raw_src );
+		if ( '' === $src ) {
+			continue;
+		}
+
+		$is_external = (bool) preg_match( '#^https?://#i', $src ) || str_starts_with( $src, '//' );
+		$version     = null;
+		if ( $is_external ) {
+			$url = $src;
+		} elseif ( str_starts_with( $src, '/' ) ) {
+			$url        = $src;
+			$local_path = ABSPATH . ltrim( (string) wp_parse_url( $src, PHP_URL_PATH ), '/' );
+			if ( is_file( $local_path ) ) {
+				$version = (string) filemtime( $local_path );
+			}
+		} else {
+			$url        = FRL_DIR_URL . ltrim( $src, '/' );
+			$local_path = FRL_DIR_PATH . ltrim( $src, '/' );
+			if ( is_file( $local_path ) ) {
+				$version = (string) filemtime( $local_path );
+			}
+		}
+
+		$path_ext = strtolower( pathinfo( (string) wp_parse_url( $url, PHP_URL_PATH ), PATHINFO_EXTENSION ) );
+		if ( 'css' === $path_ext ) {
+			wp_enqueue_style( (string) $handle, $url, array(), $version );
+		} else {
+			wp_enqueue_script( (string) $handle, $url, array(), $version, array( 'in_footer' => $in_footer ) );
+		}
+	}
+}
+
+/**
  * Enqueue custom scripts defined in the header_scripts option.
  */
 function frl_add_header_scripts() {
-	$assets = frl_get_processed_assets_from_option( 'header_scripts' );
-	frl_enqueue_scripts( $assets, 'header_scripts' );
+	frl_enqueue_option_scripts( 'header_scripts', false );
 }
 
 /**
@@ -102,8 +147,7 @@ function frl_add_footer_html(): void {
  * Enqueue custom scripts defined in the footer_scripts option.
  */
 function frl_add_footer_scripts() {
-	$assets = frl_get_processed_assets_from_option( 'footer_scripts' );
-	frl_enqueue_scripts( $assets, 'footer_scripts' );
+	frl_enqueue_option_scripts( 'footer_scripts', true );
 }
 
 /**

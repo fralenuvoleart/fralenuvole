@@ -10,6 +10,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  * This file orchestrates theme modifications.
  */
 
+// Remove core block patterns at init:9 BEFORE WP core's _register_core_block_patterns_and_categories() at init:10.
+add_action( 'init', 'frl_themekit_maybe_remove_core_block_patterns', 9, 0 );
+
+/**
+ * Early init hook to remove core block patterns before WordPress core registers them at init:10.
+ *
+ * @return void
+ */
+function frl_themekit_maybe_remove_core_block_patterns(): void {
+	if ( frl_get_option( 'themekit_remove_wp_patterns' ) ) {
+		frl_themekit_remove_core_block_patterns();
+	}
+}
+
 /**
  * Initialize Themekit modules and hooks.
  *
@@ -57,10 +71,7 @@ function frl_themekit_init() {
 		add_filter( 'wp_theme_json_data_user', 'frl_themekit_font_display_swap_filter' );
 	}
 
-	// Remove WP Block Patterns conditionally (Frontend/Backend)
-	if ( frl_get_option( 'themekit_remove_wp_patterns' ) ) {
-		frl_themekit_remove_core_block_patterns();
-	}
+	// Core block pattern removal is handled earlier at init:9 via frl_themekit_maybe_remove_core_block_patterns().
 
 	// Remove provider-specific block patterns (themes/plugins) if configured
 	$provider_patterns_raw = frl_get_option( 'themekit_remove_provider_patterns' ) ?: '';

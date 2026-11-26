@@ -263,7 +263,8 @@ function frl_run_disable_comments_batch(): void {
  * Deliberate: secondary queries are scoped to public, published, non-password-protected content by design.
  */
 function frl_alter_query( WP_Query $query ): void {
-	if ( ! $query instanceof WP_Query || $query->is_main_query() ) {
+	// Scope secondary-query overrides strictly to frontend requests (never wp-admin or REST).
+	if ( $query->is_main_query() || frl_is_admin() || frl_is_rest_api_request() ) {
 		return;
 	}
 

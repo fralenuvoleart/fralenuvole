@@ -157,4 +157,68 @@ frl_test_ok( is_string( $rum_src ) && str_contains( $rum_src, "add_action( 'add_
 $cm_src = file_get_contents( FRL_TEST_PLUGIN_DIR . 'core/cache/class-cache-manager.php' );
 frl_test_ok( is_string( $cm_src ) && ! str_contains( $cm_src, 'function atomic_clear_group' ), 'CORE__CACHE-7: dead atomic_clear_group() removed' );
 
+// 12. PUBLIC__SCHEMA-1: frl_schema_merge_properties() replaces list properties cleanly without dropping items.
+$merged_schema = frl_schema_merge_properties(
+	array(
+		'@type'  => 'BlogPosting',
+		'author' => array(
+			'@type' => 'Person',
+			'name'  => 'Old',
+		),
+	),
+	array(
+		'author' => array(
+			array(
+				'@type' => 'Person',
+				'name'  => 'Author A',
+			),
+			array(
+				'@type' => 'Person',
+				'name'  => 'Author B',
+			),
+		),
+	)
+);
+frl_test_ok( array_is_list( $merged_schema['author'] ), 'PUBLIC__SCHEMA-1: list author property remains a list after merge' );
+frl_test_same( 2, count( $merged_schema['author'] ), 'PUBLIC__SCHEMA-1: both authors preserved after merge' );
+
+// 13. PUBLIC__SCHEMA-2: nested address strings are translated while structural keys stay untouched.
+if ( ! function_exists( 'frl_get_translation' ) ) {
+	function frl_get_translation( $value ) {
+		return 'TR:' . $value;
+	}
+}
+require FRL_TEST_PLUGIN_DIR . 'config/config-schema.php';
+require FRL_TEST_PLUGIN_DIR . 'public/schema/class-resolver.php';
+$resolved_nested = frl_schema_resolver_resolve(
+	array(
+		'@type'   => 'Organization',
+		'address' => array(
+			'@type'           => 'PostalAddress',
+			'addressLocality' => 'Tbilisi',
+			'url'             => 'https://example.com',
+		),
+	),
+	'',
+	array( '{{site_name}}' => 'Example' )
+);
+frl_test_same( 'PostalAddress', $resolved_nested['address']['@type'], 'PUBLIC__SCHEMA-2: nested @type is not translated' );
+frl_test_same( 'TR:Tbilisi', $resolved_nested['address']['addressLocality'], 'PUBLIC__SCHEMA-2: nested addressLocality is translated' );
+frl_test_same( 'https://example.com', $resolved_nested['address']['url'], 'PUBLIC__SCHEMA-2: nested url is not translated' );
+
+// 14. ADMIN__HELPERS-2: frl_prepare_settings_for_export() preserves '0' and HTML indentation.
+require FRL_TEST_PLUGIN_DIR . 'admin/helpers/functions-admin-import-export.php';
+$exported = frl_prepare_settings_for_export(
+	array(
+		'zero_val' => '0',
+		'html_val' => "  <div>\r\n    <span>ok</span>\r\n  </div>",
+	)
+);
+frl_test_same( '0', $exported[ frl_prefix( 'zero_val' ) ], 'ADMIN__HELPERS-2: string "0" is preserved on export' );
+frl_test_same( "  <div>\n    <span>ok</span>\n  </div>", $exported[ frl_prefix( 'html_val' ) ], 'ADMIN__HELPERS-2: indentation preserved and CRLF normalized' );
+
+// 15. CORE__TRANSLATOR-1: frl_translator_filter_get_terms() passes scalar counts through without TypeError.
+require FRL_TEST_PLUGIN_DIR . 'core/translator/field-translator.php';
+frl_test_same( '7', frl_translator_filter_get_terms( '7', array( 'category' ), array( 'fields' => 'count' ) ), 'CORE__TRANSLATOR-1: scalar term count passes through unchanged' );
+
 frl_test_done();

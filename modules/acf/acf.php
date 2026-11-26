@@ -89,17 +89,23 @@ function frl_acf_process_calc_options( array $calc_options ): void {
 			continue;
 		}
 
-		$old = get_field( $target, 'option', false );
-		if ( $old !== $new ) {
+		if ( function_exists( 'get_field_object' ) && ! call_user_func( 'get_field_object', $target, 'option', false ) ) {
+			if ( function_exists( 'frl_log' ) ) {
+				frl_log( 'ACF calculated option target field missing: {target}', array( 'target' => $target ), false );
+			}
+			continue;
+		}
+
+		// Compare normalized string representations so numeric float/int vs stored string ('10' vs 10.0) never false-triggers.
+		$old     = get_field( $target, 'option', false );
+		$old_str = ( false !== $old && is_scalar( $old ) ) ? (string) $old : null;
+		$new_str = is_scalar( $new ) ? (string) $new : '';
+
+		if ( $old_str !== $new_str ) {
 			if ( function_exists( 'update_field' ) ) {
-				$ok = (bool) call_user_func( 'update_field', $target, $new, 'option' );
-				if ( ! $ok && function_exists( 'frl_log' ) ) {
-					frl_log( 'ACF calculated option update failed for {target}', array( 'target' => $target ) );
-				}
-			} else {
-				if ( function_exists( 'frl_log' ) ) {
-					frl_log( 'ACF update_field() not available when saving calculated option {target}', array( 'target' => $target ) );
-				}
+				call_user_func( 'update_field', $target, $new, 'option' );
+			} elseif ( function_exists( 'frl_log' ) ) {
+				frl_log( 'ACF update_field() not available when saving calculated option {target}', array( 'target' => $target ), false );
 			}
 		}
 	}

@@ -210,7 +210,6 @@ final class Frl_Translation_Service {
 			return $str;
 		}
 
-		$this->queue_string_registration( array( $str ) );
 		$version = $this->get_translation_version();
 		// Include $language in the cache key: the cache manager's automatic
 		// language prefix (generate_key) uses frl_get_language() which returns
@@ -222,6 +221,8 @@ final class Frl_Translation_Service {
 			'translations',
 			$cache_key,
 			function () use ( $str, $language ) {
+				// Queue registration only on cache miss to avoid shutdown churn on every hit.
+				$this->queue_string_registration( array( $str ) );
 				$translation = $this->adapter->translate_string( $str, $language );
 				if ( $translation !== null ) {
 					return frl_validate_html_fragment( $translation );
@@ -265,12 +266,6 @@ final class Frl_Translation_Service {
 		$cached_data  = frl_cache_get( 'blocks', $cache_key );
 
 		if ( is_array( $cached_data ) ) {
-			// Preserve the original per-render string registration (idempotent, deduped
-			// inside queue_string_registration()) while skipping the expensive
-			// build_translation_mappings() adapter/DB work on a cache hit.
-			if ( ! empty( $cached_data['strings'] ) ) {
-				$this->queue_string_registration( $cached_data['strings'] );
-			}
 			$translated_html = $this->apply_translation_mappings( $block_content, $cached_data['mappings'] ?? array() );
 			$translated_html = apply_filters( 'frl_block_translation_filter', $translated_html );
 			return $translated_html ?: $block_content;

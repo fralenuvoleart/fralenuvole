@@ -71,20 +71,43 @@ function frl_cta_webhook_handler() {
 	$page_url = sanitize_url( wp_unslash( $_POST['page_url'] ?? '' ) );
 
 	if ( ! empty( $page_url ) && defined( 'CTA_SERVICE_META' ) ) {
-		// Cache the page_url → service lookup to avoid url_to_postid() DB query on every click.
-		$service_key = 'cta_service_' . md5( $page_url );
-		$cached_meta = frl_get_transient( $service_key );
-		if ( false !== $cached_meta ) {
-			$service = $cached_meta;
-		} else {
-			$post_id = url_to_postid( $page_url );
-			if ( $post_id > 0 ) {
-				$meta = frl_get_post_meta( $post_id, CTA_SERVICE_META, true );
-				if ( ! empty( $meta ) ) {
-					$service = sanitize_text_field( $meta );
+		// Only resolve same-host URLs and strip ad-click query strings (gclid/fbclid/utm_*) before caching.
+		$parsed    = wp_parse_url( $page_url );
+		$home_host = strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+		$url_host  = strtolower( (string) ( $parsed['host'] ?? '' ) );
+
+		if ( '' !== $url_host && $url_host === $home_host ) {
+			$scheme     = $parsed['scheme'] ?? 'https';
+			$path       = $parsed['path'] ?? '/';
+			$lookup_url = $scheme . '://' . $url_host . $path;
+			if ( ! empty( $parsed['query'] ) ) {
+				parse_str( (string) $parsed['query'], $q_args );
+				$keep = array_intersect_key(
+					$q_args,
+					array(
+						'p'       => true,
+						'page_id' => true,
+					)
+				);
+				if ( ! empty( $keep ) ) {
+					$lookup_url = add_query_arg( $keep, $lookup_url );
 				}
 			}
-			frl_set_transient( $service_key, $service, HOUR_IN_SECONDS );
+
+			$service_key = 'cta_service_' . md5( $lookup_url );
+			$cached_meta = frl_get_transient( $service_key );
+			if ( false !== $cached_meta ) {
+				$service = $cached_meta;
+			} else {
+				$post_id = url_to_postid( $lookup_url );
+				if ( $post_id > 0 ) {
+					$meta = frl_get_post_meta( $post_id, CTA_SERVICE_META, true );
+					if ( ! empty( $meta ) ) {
+						$service = sanitize_text_field( $meta );
+					}
+				}
+				frl_set_transient( $service_key, $service, HOUR_IN_SECONDS );
+			}
 		}
 	}
 

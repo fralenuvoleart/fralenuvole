@@ -70,7 +70,7 @@ class Frl_Dashboard_Renderer {
 		$widget_html = frl_cache_remember(
 			'admin',
 			$cache_key,
-			function () use ( $widget_config, $id, $cache_key, $refresh_button ) {
+			function () use ( $widget_config, $id ) {
 				// Lazy load core widget file if path is provided
 				if ( ! empty( $widget_config['render_file'] ) ) {
 					if ( is_readable( $widget_config['render_file'] ) ) {
@@ -91,38 +91,38 @@ class Frl_Dashboard_Renderer {
 				// Check if the specific render callback is callable
 				if ( isset( $widget_config['render_callback'] ) && is_callable( $widget_config['render_callback'] ) ) {
 					// Execute the designated callback function and RETURN its string output
-					$content = call_user_func( $widget_config['render_callback'] );
-
-					if ( $refresh_button ) {
-						$refresh_button_html = '';
-
-						// Add refresh widget button
-						$refresh_button_html = self::_render_refresh_button( 'admin', $cache_key );
-
-						$refresh_button_html = '<div class="frl-widget-action">' . $refresh_button_html . '</div>';
-
-						$content .= '<div class="frl-dashboard-widget-footer">' . $refresh_button_html . '</div>';
-					}
-				} else {
-					// Log error or display message if callback is invalid/missing
-					frl_log(
-						"Invalid or missing render_callback for widget '{id}'. Provided: {callback}",
-						array(
-							'id'       => $id,
-							'callback' => $widget_config['render_callback'] ?? 'N/A',
-						)
-					);
-					// Return error HTML string
-					return "<div class='widget-error'><p class='error'>Error rendering widget '{$id}': Invalid callback.</p></div>";
+					return call_user_func( $widget_config['render_callback'] );
 				}
 
-				$final_html = '<div class="frl-dashboard-widget">' . $content . '</div>';
-				return $final_html;
+				// Log error or display message if callback is invalid/missing
+				frl_log(
+					"Invalid or missing render_callback for widget '{id}'. Provided: {callback}",
+					array(
+						'id'       => $id,
+						'callback' => $widget_config['render_callback'] ?? 'N/A',
+					)
+				);
+				// Return error HTML string
+				return "<div class='widget-error'><p class='error'>Error rendering widget '{$id}': Invalid callback.</p></div>";
 			},
 			$cache_ttl
 		);
 
-		echo $widget_html;
+		if ( str_starts_with( $widget_html, "<div class='widget-error'>" ) ) {
+			echo $widget_html;
+			return;
+		}
+
+		// Render per-user refresh button and nonce outside the shared widget cache.
+		$footer_html = '';
+		if ( $refresh_button ) {
+			$refresh_button_html = self::_render_refresh_button( 'admin', $cache_key );
+			if ( $refresh_button_html !== '' ) {
+				$footer_html = '<div class="frl-dashboard-widget-footer"><div class="frl-widget-action">' . $refresh_button_html . '</div></div>';
+			}
+		}
+
+		echo '<div class="frl-dashboard-widget">' . $widget_html . $footer_html . '</div>';
 	}
 
 	/**

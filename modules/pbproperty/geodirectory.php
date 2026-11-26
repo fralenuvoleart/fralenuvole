@@ -73,6 +73,26 @@ function frl_pbproperty_geodir_init(): void {
 }
 
 /**
+ * Helper: Append current-language property ID filter using dynamic $wpdb->posts table name.
+ *
+ * @param string $where SQL WHERE clause fragment.
+ * @return string
+ */
+function frl_pbproperty_append_language_where( string $where ): string {
+	global $wpdb;
+	$property_ids = frl_pbproperty_get_properties_ids();
+
+	if ( ! empty( $property_ids ) ) {
+		$properties_by_lang = implode( ',', array_map( 'intval', $property_ids ) );
+		$where             .= " AND {$wpdb->posts}.ID IN ({$properties_by_lang}) ";
+	} else {
+		$where .= ' AND 1=0 ';
+	}
+
+	return $where;
+}
+
+/**
  * Filter: Restrict widget listings to current language properties
  *
  * @param string $where     SQL WHERE clause fragment.
@@ -80,16 +100,7 @@ function frl_pbproperty_geodir_init(): void {
  * @return string
  */
 function frl_pbproperty_geodir_filter_widget_listings_where( $where, $post_type ) {
-	$property_ids = frl_pbproperty_get_properties_ids();
-
-	if ( ! empty( $property_ids ) ) {
-		$properties_by_lang = implode( ',', array_map( 'intval', $property_ids ) );
-		$where             .= ' AND pbp_posts.ID IN (' . $properties_by_lang . ') ';
-	} else {
-		$where .= ' AND 1=0 ';
-	}
-
-	return $where;
+	return frl_pbproperty_append_language_where( (string) $where );
 }
 
 /**
@@ -100,21 +111,12 @@ function frl_pbproperty_geodir_filter_widget_listings_where( $where, $post_type 
  * @return string
  */
 function frl_pbproperty_geodir_posts_where( $where, $query ) {
-	$queried = is_object( $query ) ? $query->get_queried_object() : null;
+	$queried = ( $query instanceof WP_Query ) ? $query->get_queried_object() : null;
 	if ( ! isset( $queried->post_name ) || 'search' !== $queried->post_name ) {
 		return $where;
 	}
 
-	$property_ids = frl_pbproperty_get_properties_ids();
-
-	if ( ! empty( $property_ids ) ) {
-		$properties_by_lang = implode( ',', array_map( 'intval', $property_ids ) );
-		$where             .= ' AND pbp_posts.ID IN (' . $properties_by_lang . ') ';
-	} else {
-		$where .= ' AND 1=0 ';
-	}
-
-	return $where;
+	return frl_pbproperty_append_language_where( (string) $where );
 }
 
 /**

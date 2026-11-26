@@ -486,16 +486,20 @@ function frl_trace_logged_user_visits() {
 	// Get existing visit data from user meta
 	$visits = frl_get_user_meta( $user_id, 'user_visits' ) ?: array();
 
-	// Check for duplicates (same user, same URL, within 5 minutes)
+	// Check for duplicates (same user, same URL, within 5 minutes — parse stored site-local time via wp_timezone()).
+	$tz     = function_exists( 'wp_timezone' ) ? wp_timezone() : new DateTimeZone( 'UTC' );
+	$cutoff = time() - 300;
 	foreach ( $visits as $visit ) {
 		if (
 			is_array( $visit ) &&
 			isset( $visit['page'], $visit['timestamp'] ) &&
-			$visit['page'] === $current_url && // Compare against the full URL
-			( strtotime( (string) $visit['timestamp'] ) > ( time() - 300 ) )
+			$visit['page'] === $current_url
 		) {
-			// Already tracked this page recently
-			return;
+			$visit_dt = date_create_immutable_from_format( 'Y-m-d H:i:s', (string) $visit['timestamp'], $tz );
+			if ( false !== $visit_dt && $visit_dt->getTimestamp() > $cutoff ) {
+				// Already tracked this page recently
+				return;
+			}
 		}
 	}
 
