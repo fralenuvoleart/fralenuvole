@@ -26,9 +26,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 function frl_wsf_render_dashboard_widget( $form_id = null, $grouped_counts = null, $show_cta = false ) {
 	ob_start();
 
+	$cta_totals = array();
+
 	if ( $grouped_counts === null ) {
-		$grouped_data   = frl_wsf_get_grouped_submission_data( 7, $form_id );
-		$grouped_counts = $grouped_data['grouped_counts'] ?? array();
+		// Fetch with CTA keys once for per-form widgets so we don't run a second 7-day query below.
+		$fetch_cta      = ( $form_id !== null );
+		$grouped_data   = frl_wsf_get_grouped_submission_data( 7, $form_id, null, null, $fetch_cta );
+		$raw_counts     = $grouped_data['grouped_counts'] ?? array();
+		$grouped_counts = array();
+
+		if ( $fetch_cta && ! $show_cta ) {
+			foreach ( $raw_counts as $lang => $groups ) {
+				foreach ( $groups as $key => $count ) {
+					$parts     = explode( '|||', (string) $key, 2 );
+					$service   = $parts[0];
+					$cta       = $parts[1] ?? '';
+					$cta_label = $cta !== '' ? $cta : '(No CTA)';
+
+					$cta_totals[ $cta_label ]            = ( $cta_totals[ $cta_label ] ?? 0 ) + $count;
+					$grouped_counts[ $lang ][ $service ] = ( $grouped_counts[ $lang ][ $service ] ?? 0 ) + $count;
+				}
+			}
+		} else {
+			$grouped_counts = $raw_counts;
+		}
 	}
 
 	// Calculate the overall maximum count for scaling across all languages
@@ -93,24 +114,15 @@ function frl_wsf_render_dashboard_widget( $form_id = null, $grouped_counts = nul
 			return max( 0, min( 100, $log_ratio * 100 ) );
 		};
 
-		// CTA subtotals — extract from composite keys or fetch separately for per-form widgets
-		$cta_totals = array();
-		foreach ( $grouped_counts as $lang => $groups ) {
-			foreach ( $groups as $key => $count ) {
-				if ( str_contains( (string) $key, '|||' ) ) {
-					$cta                      = explode( '|||', $key, 2 )[1];
-					$cta_label                = $cta !== '' ? $cta : '(No CTA)';
-					$cta_totals[ $cta_label ] = ( $cta_totals[ $cta_label ] ?? 0 ) + $count;
-				}
-			}
-		}
-		if ( empty( $cta_totals ) && $form_id !== null ) {
-			$cta_data = frl_wsf_get_grouped_submission_data( 7, $form_id, null, null, true );
-			foreach ( ( $cta_data['grouped_counts'] ?? array() ) as $lang => $groups ) {
+		// CTA subtotals — extract from composite keys if not already derived during the single fetch above.
+		if ( empty( $cta_totals ) ) {
+			foreach ( $grouped_counts as $lang => $groups ) {
 				foreach ( $groups as $key => $count ) {
-					$cta                      = explode( '|||', $key, 2 )[1] ?? '';
-					$cta_label                = $cta !== '' ? $cta : '(No CTA)';
-					$cta_totals[ $cta_label ] = ( $cta_totals[ $cta_label ] ?? 0 ) + $count;
+					if ( str_contains( (string) $key, '|||' ) ) {
+						$cta                      = explode( '|||', $key, 2 )[1];
+						$cta_label                = $cta !== '' ? $cta : '(No CTA)';
+						$cta_totals[ $cta_label ] = ( $cta_totals[ $cta_label ] ?? 0 ) + $count;
+					}
 				}
 			}
 		}

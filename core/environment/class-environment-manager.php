@@ -112,11 +112,10 @@ class Frl_Environment_Manager {
 			return $result;
 		}
 
-		$stored_state = frl_cache_get( self::CACHE_GROUP, self::CACHE_KEY ) ?:
-			frl_get_option( self::ENVIRONMENT_STATE );
-		$from_options = $stored_state && ! frl_cache_get( self::CACHE_GROUP, self::CACHE_KEY );
-
-		$state_changed = Frl_Environment_State::check_environment_state();
+		$cached_state  = frl_cache_get( self::CACHE_GROUP, self::CACHE_KEY );
+		$stored_state  = $cached_state ?: frl_get_option( self::ENVIRONMENT_STATE );
+		$from_options  = (bool) ( $stored_state && ! $cached_state );
+		$state_changed = Frl_Environment_State::check_environment_state( $stored_state );
 
 		if ( $state_changed ) {
 			$result = true;

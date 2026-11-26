@@ -17,12 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 $frl_thirdparty_default_fields = array(
 	// Add a section title to the modules tab
-	'thirdparty_section_title'    => array(
+	'thirdparty_section_title'      => array(
 		'label'       => 'Third-Party Module',
 		'type'        => 'section_title',
 		'description' => 'Third-Party module settings',
 	),
-	'thirdparty_cache_warmer'     => array(
+	'thirdparty_cache_warmer'       => array(
 		'label'             => 'Warm cache after full purge',
 		'description'       => 'Schedule the external cache warmer 10 minutes after a full cache purge.',
 		'type'              => 'checkbox',

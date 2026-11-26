@@ -95,13 +95,6 @@ const FRL_RUM_COLUMNS = array(
 	'build',
 );
 
-// 'x' creates the file only if it does not exist yet, so the header is written exactly once.
-$frl_new = @fopen( $frl_file, 'x' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions
-if ( $frl_new ) {
-	fwrite( $frl_new, implode( "\t", FRL_RUM_COLUMNS ) . "\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions
-	fclose( $frl_new ); // phpcs:ignore WordPress.WP.AlternativeFunctions
-}
-
 // Hard cap per day so a flood cannot fill the disk.
 if ( is_file( $frl_file ) && filesize( $frl_file ) > 20 * 1024 * 1024 ) {
 	exit;
@@ -122,20 +115,23 @@ function frl_rum_clean( $value, $max ) {
 }
 
 /**
- * Reads a millisecond/count parameter as a non-negative integer; empty when absent, blank or <= 0.
- * Zero is never a real measurement here, so it stays empty rather than turning "unknown" into "none".
- * Values are clamped to one hour of milliseconds, so a crafted number cannot distort a column.
+ * Reads a millisecond/count parameter as a clamped non-negative integer; empty when absent or out of range.
  *
- * @param array  $in  Request array (POST or GET).
- * @param string $key Parameter name.
+ * @param array  $in         Request array (POST or GET).
+ * @param string $key        Parameter name.
+ * @param bool   $allow_zero Whether 0 is accepted as a valid value.
+ * @param int    $max        Upper clamp bound (default 1 hour in ms).
  * @return string
  */
-function frl_rum_int( $in, $key ) {
+function frl_rum_int( $in, $key, $allow_zero = false, $max = 3600000 ) {
 	if ( ! isset( $in[ $key ] ) || ! is_scalar( $in[ $key ] ) || '' === (string) $in[ $key ] ) {
 		return '';
 	}
 	$n = (int) $in[ $key ];
-	return $n > 0 ? (string) min( $n, 3600000 ) : '';
+	if ( $allow_zero ? ( $n < 0 ) : ( $n <= 0 ) ) {
+		return '';
+	}
+	return (string) min( $n, $max );
 }
 
 /**
@@ -262,14 +258,14 @@ $frl_line = implode(
 		frl_rum_clean( isset( $_COOKIE['_channel_reference_id'] ) ? $_COOKIE['_channel_reference_id'] : '', 40 ),
 		frl_rum_free_text( isset( $frl_in['msg'] ) ? $frl_in['msg'] : '', 300 ),
 		frl_rum_free_text( isset( $frl_in['src'] ) ? $frl_in['src'] : '', 200 ),
-		( isset( $frl_in['line'] ) && is_scalar( $frl_in['line'] ) && '' !== (string) $frl_in['line'] ? (string) (int) $frl_in['line'] : '' ),
+		frl_rum_int( $frl_in, 'line', true ),
 		frl_rum_free_text( isset( $frl_in['stack'] ) ? $frl_in['stack'] : '', 400 ),
-		( isset( $frl_in['lcp'] ) && is_scalar( $frl_in['lcp'] ) && '' !== (string) $frl_in['lcp'] ? (string) (int) $frl_in['lcp'] : '' ),
+		frl_rum_int( $frl_in, 'lcp', true ),
 		frl_rum_clean( isset( $frl_in['cls'] ) ? $frl_in['cls'] : '', 8 ),
-		( isset( $frl_in['inp'] ) && is_scalar( $frl_in['inp'] ) && '' !== (string) $frl_in['inp'] ? (string) (int) $frl_in['inp'] : '' ),
-		( isset( $frl_in['fcp'] ) && is_scalar( $frl_in['fcp'] ) && '' !== (string) $frl_in['fcp'] ? (string) (int) $frl_in['fcp'] : '' ),
+		frl_rum_int( $frl_in, 'inp', true ),
+		frl_rum_int( $frl_in, 'fcp', true ),
 		frl_rum_clean( isset( $frl_in['utm'] ) ? $frl_in['utm'] : '', 50 ),
-		( isset( $frl_in['vw'] ) && is_scalar( $frl_in['vw'] ) && '' !== (string) $frl_in['vw'] ? (string) (int) $frl_in['vw'] : '' ),
+		frl_rum_int( $frl_in, 'vw', true ),
 		frl_rum_clean( isset( $frl_in['field'] ) ? $frl_in['field'] : '', 60 ),
 		frl_rum_int( $frl_in, 'ttfb' ),
 		frl_rum_int( $frl_in, 'redirect' ),
@@ -288,7 +284,20 @@ $frl_line = implode(
 	)
 ) . "\n";
 
-@file_put_contents( $frl_file, $frl_line, FILE_APPEND | LOCK_EX ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions
+// Atomic header creation + row append under LOCK_EX prevents UTC-midnight header/row races.
+$frl_fp = @fopen( $frl_file, 'a+' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions
+if ( $frl_fp ) {
+	if ( flock( $frl_fp, LOCK_EX ) ) {
+		$frl_stat    = fstat( $frl_fp );
+		$frl_payload = ( is_array( $frl_stat ) && 0 === (int) $frl_stat['size'] )
+			? implode( "\t", FRL_RUM_COLUMNS ) . "\n" . $frl_line
+			: $frl_line;
+		fwrite( $frl_fp, $frl_payload ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		fflush( $frl_fp );
+		flock( $frl_fp, LOCK_UN );
+	}
+	fclose( $frl_fp ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+}
 
 // About once per 500 hits, delete beacon files older than 30 days.
 try {
@@ -297,9 +306,14 @@ try {
 	$frl_prune = false;
 }
 if ( $frl_prune ) {
-	foreach ( (array) glob( $frl_dir . '/beacon-*.tsv' ) as $frl_old ) {
-		if ( filemtime( $frl_old ) < time() - 30 * 86400 ) {
-			@unlink( $frl_old ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+	$frl_matches = glob( $frl_dir . '/beacon-*.tsv' );
+	if ( is_array( $frl_matches ) ) {
+		$frl_cutoff = time() - 30 * 86400;
+		foreach ( $frl_matches as $frl_old ) {
+			$frl_mtime = @filemtime( $frl_old ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			if ( false !== $frl_mtime && $frl_mtime < $frl_cutoff ) {
+				@unlink( $frl_old ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			}
 		}
 	}
 }

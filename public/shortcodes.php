@@ -992,39 +992,13 @@ function frl_shortcode_slug( $atts ) {
 		$id_attr_raw = '';
 	}
 
-	if ( $pid_attr > 0 ) {
-		$slug = (string) get_post_field( 'post_name', $pid_attr );
-		if ( $slug === '' ) {
+	if ( $pid_attr > 0 || $id_attr_raw === '' ) {
+		$target_post_id = $pid_attr > 0 ? $pid_attr : frl_get_current_post_id();
+		if ( $target_post_id <= 0 ) {
 			return '';
 		}
-		$curr_cache_key = frl_build_cache_key( $slug, 'slug' ) . '_v' . frl_get_post_cache_version( $pid_attr );
-		return frl_cache_remember(
-			'shortcodes',
-			$curr_cache_key,
-			function () use ( $slug ) {
-				return esc_html( $slug );
-			}
-		);
-	}
-
-	if ( $id_attr_raw === '' ) {
-		// Default: return current post slug
-		$post_id = frl_get_current_post_id();
-		if ( $post_id > 0 ) {
-			$slug = (string) get_post_field( 'post_name', $post_id );
-			if ( $slug === '' ) {
-				return '';
-			}
-			$curr_cache_key = frl_build_cache_key( $slug, 'slug' ) . '_v' . frl_get_post_cache_version( $post_id );
-			return frl_cache_remember(
-				'shortcodes',
-				$curr_cache_key,
-				function () use ( $slug ) {
-					return esc_html( $slug );
-				}
-			);
-		}
-		return '';
+		$slug = (string) get_post_field( 'post_name', $target_post_id );
+		return $slug !== '' ? esc_html( $slug ) : '';
 	}
 
 	$slug_to_translate = $id_attr_raw;

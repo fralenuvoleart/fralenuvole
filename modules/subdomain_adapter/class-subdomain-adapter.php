@@ -577,7 +577,7 @@ class Frl_Subdomain_Adapter {
 			return $redirect_url;
 		}
 
-		if ( $language->slug === $this->current_subdomain_lang ) {
+		if ( is_object( $language ) && isset( $language->slug ) && $language->slug === $this->current_subdomain_lang ) {
 			return false;
 		}
 
@@ -1236,7 +1236,13 @@ class Frl_Subdomain_Adapter {
 		// Translating page_on_front on a subdomain request would bake the
 		// subdomain's translated page ID into the global rewrite_rules option,
 		// corrupting routing for all other languages.
-		if ( self::$flush_depth > 0 || ! $this->is_on_subdomain() || self::is_generating_rewrite_rules() ) {
+		if (
+			self::$flush_depth > 0 ||
+			! $this->is_on_subdomain() ||
+			self::is_generating_rewrite_rules() ||
+			! function_exists( 'pll_get_post' ) ||
+			! frl_translator_is_enabled()
+		) {
 			return (int) $page_id;
 		}
 		$translation = pll_get_post( (int) $page_id, $this->current_subdomain_lang );
@@ -1252,7 +1258,13 @@ class Frl_Subdomain_Adapter {
 	 * @return int Translated page ID in the subdomain's language, or the original.
 	 */
 	public function filter_option_page_for_posts( $page_id ): int {
-		if ( self::$flush_depth > 0 || ! $this->is_on_subdomain() || self::is_generating_rewrite_rules() ) {
+		if (
+			self::$flush_depth > 0 ||
+			! $this->is_on_subdomain() ||
+			self::is_generating_rewrite_rules() ||
+			! function_exists( 'pll_get_post' ) ||
+			! frl_translator_is_enabled()
+		) {
 			return (int) $page_id;
 		}
 		$translation = pll_get_post( (int) $page_id, $this->current_subdomain_lang );

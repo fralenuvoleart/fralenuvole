@@ -51,7 +51,8 @@ function frl_schema_builder_get_term_map(): array {
 	 *
 	 * @param array $map Schema type => field definition array.
 	 */
-	return apply_filters( 'frl_schema_term_map', $map );
+	$map = (array) apply_filters( 'frl_schema_term_map', $map );
+	return $map;
 }
 
 /**
@@ -145,7 +146,8 @@ function frl_schema_builder_get_person_map(): array {
 	 *
 	 * @param array $map Schema type => person field defs.
 	 */
-	return apply_filters( 'frl_schema_person_map', $map );
+	$map = (array) apply_filters( 'frl_schema_person_map', $map );
+	return $map;
 }
 
 /**

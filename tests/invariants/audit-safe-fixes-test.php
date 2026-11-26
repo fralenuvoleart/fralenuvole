@@ -131,4 +131,30 @@ frl_test_ok(
 	'ROOT-7: FRL_FIELD_ATTRIBUTES retains sanitize_callback'
 );
 
+// 8. ROOT-4: Production default config enables custom_robots_txt without leading tab indentation.
+require FRL_TEST_PLUGIN_DIR . 'config/environment/config-defaults.php';
+frl_test_same(
+	true,
+	FRL_ENV_DEFAULT_PRODUCTION['plugin_options']['enable_custom_robots'] ?? null,
+	'ROOT-4: FRL_ENV_DEFAULT_PRODUCTION enables enable_custom_robots'
+);
+frl_test_ok(
+	! str_contains( FRL_ENV_DEFAULT_PRODUCTION['plugin_options']['custom_robots_txt'] ?? '', "\t" ),
+	'ROOT-4: custom_robots_txt has no leading tab indentation'
+);
+
+// 9. ROOT-5 & ROOT-6: frl-mu-plugin.php guards with is_file() and zz-cache-flush-logger.php is removed.
+$mu_src = file_get_contents( FRL_TEST_PLUGIN_DIR . 'assets/mu/frl-mu-plugin.php' );
+frl_test_ok( is_string( $mu_src ) && str_contains( $mu_src, 'is_file(' ), 'ROOT-5: frl-mu-plugin.php guards bootstrap with is_file()' );
+frl_test_ok( ! file_exists( FRL_TEST_PLUGIN_DIR . 'assets/mu/zz-cache-flush-logger.php' ), 'ROOT-6: zz-cache-flush-logger.php deleted' );
+
+// 10. CORE__DEBUGGER-2 & CORE__DEBUGGER-3: RUM sync never calls frl_get_option('debugger_rum', true) and hooks add_option_.
+$rum_src = file_get_contents( FRL_TEST_PLUGIN_DIR . 'core/debugger/rum/rum.php' );
+frl_test_ok( is_string( $rum_src ) && ! str_contains( $rum_src, "frl_get_option( 'debugger_rum', true )" ), 'CORE__DEBUGGER-3: rum.php never bypasses option cache on frontend' );
+frl_test_ok( is_string( $rum_src ) && str_contains( $rum_src, "add_action( 'add_option_'" ), 'CORE__DEBUGGER-2: rum.php hooks add_option_ for first-time option creation' );
+
+// 11. CORE__CACHE-7: dead atomic_clear_group() removed from Frl_Cache_Manager.
+$cm_src = file_get_contents( FRL_TEST_PLUGIN_DIR . 'core/cache/class-cache-manager.php' );
+frl_test_ok( is_string( $cm_src ) && ! str_contains( $cm_src, 'function atomic_clear_group' ), 'CORE__CACHE-7: dead atomic_clear_group() removed' );
+
 frl_test_done();

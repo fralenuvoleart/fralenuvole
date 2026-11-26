@@ -173,8 +173,20 @@ function frl_themekit_frontend_body_classes( $classes ) {
 		$cache_key .= '_uid' . $current_user->ID;
 	}
 
-	$object_id  = (int) get_queried_object_id();
-	$cache_key .= '_id' . $object_id;
+	$object_id   = (int) get_queried_object_id();
+	$object_type = 'other';
+	if ( is_singular() ) {
+		$object_type = 'post';
+	} elseif ( is_category() || is_tag() || is_tax() ) {
+		$object_type = 'term';
+	} elseif ( is_author() ) {
+		$object_type = 'user';
+	}
+
+	$cache_key .= '_' . $object_type . '_id' . $object_id;
+	if ( 'post' === $object_type && $object_id > 0 ) {
+		$cache_key .= '_v' . frl_get_post_cache_version( $object_id );
+	}
 
 	// Avoid key collisions for routes where object_id is 0 (home, search, 404, etc.)
 	if ( $object_id === 0 ) {
@@ -188,15 +200,16 @@ function frl_themekit_frontend_body_classes( $classes ) {
 		$cache_key .= '_themekit_body_classes_' . $query_signature;
 	}
 
-	return frl_cache_remember(
+	// Cache only custom classes so current-request WP $classes are never leaked across views.
+	$custom_classes = frl_cache_remember(
 		'postdata',
 		$cache_key,
-		function () use ( $classes, $current_user ) {
+		function () use ( $current_user ) {
 			$queried_object = get_queried_object();
 			$custom_classes = array();
 
 			// Add simplified page classes
-			if ( is_singular() ) {
+			if ( is_singular() && $queried_object instanceof WP_Post ) {
 				// Simple classes for individual posts - minimal queries
 				$post = $queried_object;
 
@@ -210,7 +223,7 @@ function frl_themekit_frontend_body_classes( $classes ) {
 
 				// Add current post slug
 				$custom_classes[] = 'slug-' . sanitize_html_class( $post->post_name );
-			} elseif ( is_category() || is_tag() || is_tax() ) {
+			} elseif ( ( is_category() || is_tag() || is_tax() ) && $queried_object instanceof WP_Term ) {
 				// Archive pages - term already loaded, no extra queries
 				$term             = $queried_object;
 				$custom_classes[] = 'tax-' . sanitize_html_class( $term->taxonomy );
@@ -219,7 +232,7 @@ function frl_themekit_frontend_body_classes( $classes ) {
 				// Fallback to URL path parsing for other cases
 				$request_uri = $_SERVER['REQUEST_URI'] ?? '';
 				if ( ! empty( $request_uri ) ) {
-					$path = trim( parse_url( $request_uri, PHP_URL_PATH ), '/' );
+					$path = trim( (string) ( parse_url( $request_uri, PHP_URL_PATH ) ?? '' ), '/' );
 					if ( ! empty( $path ) ) {
 						$segments         = explode( '/', $path );
 						$custom_classes[] = 'path-' . sanitize_html_class( end( $segments ) );
@@ -241,10 +254,12 @@ function frl_themekit_frontend_body_classes( $classes ) {
 				}
 			}
 
-			return array_merge( $classes, $custom_classes );
+			return $custom_classes;
 		},
 		HOUR_IN_SECONDS
 	);
+
+	return is_array( $custom_classes ) ? array_merge( $classes, $custom_classes ) : $classes;
 }
 
 /**
@@ -362,9 +377,9 @@ function frl_themekit_remove_provider_styles() {
 		return;
 	}
 
-	$cache_key = 'themekit_remove_styles_' . md5( $raw );
-
-	$handles_to_remove = frl_cache_remember(
+	// Cache only the parsed token list; match against each request's live $wp_styles handles.
+	$cache_key = 'themekit_remove_style_tokens_' . md5( $raw );
+	$tokens    = frl_cache_remember(
 		'theme',
 		$cache_key,
 		function () use ( $raw ) {
@@ -373,7 +388,7 @@ function frl_themekit_remove_provider_styles() {
 				return array();
 			}
 
-			$tokens = array_values(
+			return array_values(
 				array_filter(
 					array_map(
 						function ( $row ) {
@@ -384,48 +399,39 @@ function frl_themekit_remove_provider_styles() {
 					fn( $v ) => $v !== ''
 				)
 			);
-
-			if ( empty( $tokens ) ) {
-				return array();
-			}
-
-			$wp_styles = wp_styles();
-			if ( ! $wp_styles || empty( $wp_styles->registered ) ) {
-				return array();
-			}
-
-			$matched = array();
-			foreach ( $wp_styles->registered as $handle => $style ) {
-				$handle_l = strtolower( (string) $handle );
-				$src      = strtolower( (string) ( $style->src ?? '' ) );
-
-				foreach ( $tokens as $t ) {
-					if ( $t === '' ) {
-						continue;
-					}
-					// Exact handle match (e.g., 'global-styles')
-					$match = ( $handle_l === $t )
-					// Handle contains token (some providers prefix handles)
-					|| str_contains( $handle_l, $t )
-					// URL path contains provider slug under plugins/themes
-					|| ( $src !== '' && (
-						str_contains( $src, '/plugins/' . $t . '/' )
-						|| str_contains( $src, '/themes/' . $t . '/' )
-					) );
-
-					if ( $match ) {
-						$matched[] = $handle;
-						break;
-					}
-				}
-			}
-			return $matched;
 		}
 	);
 
-	foreach ( $handles_to_remove as $handle ) {
-		wp_dequeue_style( $handle );
-		wp_deregister_style( $handle );
+	if ( empty( $tokens ) || ! is_array( $tokens ) ) {
+		return;
+	}
+
+	$wp_styles = wp_styles();
+	if ( ! $wp_styles || empty( $wp_styles->registered ) ) {
+		return;
+	}
+
+	foreach ( $wp_styles->registered as $handle => $style ) {
+		$handle_l = strtolower( (string) $handle );
+		$src      = strtolower( (string) ( $style->src ?? '' ) );
+
+		foreach ( $tokens as $t ) {
+			if ( $t === '' ) {
+				continue;
+			}
+			$match = ( $handle_l === $t )
+				|| str_contains( $handle_l, $t )
+				|| ( $src !== '' && (
+					str_contains( $src, '/plugins/' . $t . '/' )
+					|| str_contains( $src, '/themes/' . $t . '/' )
+				) );
+
+			if ( $match ) {
+				wp_dequeue_style( $handle );
+				wp_deregister_style( $handle );
+				break;
+			}
+		}
 	}
 }
 

@@ -624,12 +624,10 @@ final class Frl_Rewriter implements Frl_Rewriter_Interface {
 						if ( 'language' === $taxonomy ) {
 							// Language deletion needs a full flush, not just a version bump.
 							self::clear_rewriter_caches( true );
-						} else {
-							Frl_Rewriter_Path_Utils::invalidate_exclusion_patterns();
 						}
 					},
 					10,
-					5
+					3
 				);
 				add_action(
 					'edited_term',

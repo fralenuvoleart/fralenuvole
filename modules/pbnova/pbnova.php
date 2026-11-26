@@ -13,14 +13,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Load constants
 require_once __DIR__ . '/config-constants-pbnova.php';
 
-// Load public scripts
-add_action(
-	'init',
-	'frl_pbnova_load_public_scripts',
-	10,
-	0
-);
-
 add_action(
 	'wp_after_insert_post',
 	'frl_pbnova_after_insert_post',
@@ -48,14 +40,6 @@ add_filter(
 	10,
 	3
 );
-
-/**
- * Add common scripts
- */
-function frl_pbnova_load_public_scripts() {
-	$assets = array( 'pbnova-public-js' => 'modules/pbnova/assets/js/public.js' );
-	frl_enqueue_scripts( $assets, 'pbnova_public' );
-}
 
 function frl_pbnova__acf_update_has_content( $post, $update, $post_before ) {
 	// Normalize $post to WP_Post for safety (codex allows int|WP_Post)

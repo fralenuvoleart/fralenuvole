@@ -537,7 +537,7 @@ class Frl_Cache_Manager {
 			}
 		}
 
-		if ( $group === 'options' ) {
+		if ( $group === 'options' && in_array( 'all_options', $keys, true ) ) {
 			$stats = array(
 				'runtime'      => 0,
 				'persistent'   => 0,
@@ -580,16 +580,23 @@ class Frl_Cache_Manager {
 			// Exclude admin notices from deletion
 			$exclude_pattern = $wpdb->esc_like( '_transient_' . FRL_PREFIX . '_admin_notices' );
 
-			// Count transients first (only count main transients, not timeouts)
-			$count_query = $wpdb->prepare(
-				"SELECT COUNT(*) FROM $wpdb->options
-                WHERE option_name LIKE %s
+			// Select matching option names first so we both count main transients and evict WP's 'options' cache.
+			$select_query = $wpdb->prepare(
+				"SELECT option_name FROM $wpdb->options
+                WHERE (option_name LIKE %s OR option_name LIKE %s)
                 AND option_name NOT LIKE %s",
 				$like_pattern_transient,
+				$like_pattern_timeout,
 				$exclude_pattern . '%'
 			);
-
-			$count = self::safe_db_get_var( $count_query, 0, 'count_transients_for_deletion' );
+			$option_names = $wpdb->get_col( $select_query );
+			$option_names = is_array( $option_names ) ? $option_names : array();
+			$count        = 0;
+			foreach ( $option_names as $opt_name ) {
+				if ( ! str_starts_with( (string) $opt_name, '_transient_timeout_' ) ) {
+					++$count;
+				}
+			}
 
 			// Delete transients and their timeouts
 			$delete_query = $wpdb->prepare(
@@ -609,6 +616,17 @@ class Frl_Cache_Manager {
 				frl_log( 'FRL Cache DB Error in delete_transients: {error}', array( 'error' => $wpdb->last_error ) );
 				frl_log( 'FRL Cache Delete Query: {query}', array( 'query' => $delete_query ) );
 				return array( 'transients' => 0 );
+			}
+
+			// Evict deleted rows from WP's in-memory 'options' cache so same-request reads never see stale values.
+			if ( ! empty( $option_names ) ) {
+				if ( function_exists( 'wp_cache_delete_multiple' ) ) {
+					wp_cache_delete_multiple( $option_names, 'options' );
+				} else {
+					foreach ( $option_names as $opt_name ) {
+						wp_cache_delete( $opt_name, 'options' );
+					}
+				}
 			}
 
 			// Store accurate count (only main transients, not timeouts)
@@ -703,6 +721,9 @@ class Frl_Cache_Manager {
 		if ( empty( $groups ) ) {
 			return $stats;
 		}
+
+		// Reset per-cascade cleared map so earlier single-group clears never block this batch.
+		self::$groups_cleared = array();
 
 		$batch_flushed = self::flush_groups_redis( $groups );
 		if ( $batch_flushed !== null ) {
@@ -935,9 +956,9 @@ class Frl_Cache_Manager {
 					);
 
 						$db_results = self::safe_db_query( $query, null, 'load_all_group_transients' );
-						if ( $db_results === null ) {
-							return $return_values ? $result : null;
-						}
+					if ( $db_results === null ) {
+						return $return_values ? $result : null;
+					}
 
 						// Prepare arrays for both values and WordPress's option cache
 						$wp_cache   = array();
@@ -1206,8 +1227,8 @@ class Frl_Cache_Manager {
 				}
 			} else {
 				// Clear entire group
-				$stats['persistent'] = self::purge_group_storage( $group );
-				$stats['runtime']   += self::purge_group_runtime( $group );
+				$stats['persistent'] += self::purge_group_storage( $group );
+				$stats['runtime']    += self::purge_group_runtime( $group );
 
 				// Also clear the group's "fully loaded" status
 				if ( isset( self::$loaded_groups[ $group ] ) ) {
@@ -1233,8 +1254,11 @@ class Frl_Cache_Manager {
 			}
 		} finally {
 			--self::$cascade_depth;
-			if ( $batched_here && self::$cascade_depth === 0 ) {
-				self::$storage_batch_flushed = array();
+			if ( self::$cascade_depth === 0 ) {
+				self::$groups_cleared = array();
+				if ( $batched_here ) {
+					self::$storage_batch_flushed = array();
+				}
 			}
 		}
 
@@ -1599,7 +1623,10 @@ LUA;
 			true
 		);
 
-		if ( $scan === null ) {
+		if ( $scan === null || ! is_numeric( $scan['result'] ) ) {
+			if ( $scan !== null ) {
+				frl_log( 'FRL Cache: combined Redis group flush returned non-numeric result, falling back to per-group flush', array(), false );
+			}
 			return null;
 		}
 
@@ -1796,111 +1823,6 @@ LUA;
 		// for the 'options' group in a single request, the operations
 		// wp_cache_delete('alloptions', 'options') and frl_get_option('__reset__') are idempotent and relatively cheap, with minimal impact.
 		frl_is_already_running( __CLASS__, true );
-	}
-
-	/**
-	 * Atomic cache group clearing with rollback support.
-	 *
-	 * @param string $group Cache group to clear.
-	 * @param array|null $specific_keys Optional array of specific keys to clear.
-	 * @return array{group: string, runtime_cleared: int, persistent_cleared: int, transaction_used: bool, success: bool} Operation statistics.
-	 */
-	public static function atomic_clear_group( $group, ?array $specific_keys = null ) {
-		global $wpdb;
-
-		if ( frl_is_already_running( __METHOD__ ) ) {
-			return array(
-				'group'              => $group,
-				'runtime_cleared'    => 0,
-				'persistent_cleared' => 0,
-				'transaction_used'   => false,
-				'success'            => false,
-			);
-		}
-
-		try {
-			$stats = array(
-				'group'              => $group,
-				'runtime_cleared'    => 0,
-				'persistent_cleared' => 0,
-				'transaction_used'   => false,
-				'success'            => false,
-			);
-
-			// For object cache, use existing methods (no transaction needed)
-			if ( self::is_object_cache_truly_functional() ) {
-				$cg_result                   = self::clear_group_with_dependencies( $group, null, false );
-				$stats['runtime_cleared']    = $cg_result['runtime'] ?? 0;
-				$stats['persistent_cleared'] = $cg_result['persistent'] ?? 0;
-				$stats['success']            = true;
-				$stats['group']              = $group;
-				return $stats;
-			}
-
-			// For transients, use transaction-based clearing
-			if ( isset( self::$persistent_groups_map[ $group ] ) ) {
-				$stats['transaction_used'] = true;
-
-				$result = self::execute_with_transaction(
-					function () use ( $group, $specific_keys, $wpdb ) {
-
-						if ( $specific_keys !== null ) {
-							// Clear specific keys
-							$transient_keys = array();
-							$timeout_keys   = array();
-
-							foreach ( $specific_keys as $key ) {
-								$cache_key        = self::generate_key( $group, $key );
-								$transient_keys[] = '_transient_' . self::PREFIX . $cache_key;
-								$timeout_keys[]   = '_transient_timeout_' . self::PREFIX . $cache_key;
-							}
-
-							$all_keys = array_merge( $transient_keys, $timeout_keys );
-							return self::safe_batch_delete_transients( $all_keys );
-						} else {
-							// Clear entire group
-							$prefix         = '_transient_' . self::PREFIX . $group . '_';
-							$timeout_prefix = '_transient_timeout_' . self::PREFIX . $group . '_';
-
-							// Get all keys for this group
-							$query = $wpdb->prepare(
-								"SELECT option_name FROM $wpdb->options
-                             WHERE option_name LIKE %s OR option_name LIKE %s",
-								$wpdb->esc_like( $prefix ) . '%',
-								$wpdb->esc_like( $timeout_prefix ) . '%'
-							);
-
-							frl_flush_db(); // Ensure clean database state
-							$keys_to_delete = $wpdb->get_col( $query );
-
-							if ( ! empty( $keys_to_delete ) ) {
-								return self::safe_batch_delete_transients( $keys_to_delete );
-							}
-
-							return array( 'deleted_count' => 0 );
-						}
-					},
-					'atomic_clear_group_' . $group
-				);
-
-				if ( $result !== false ) {
-					$stats['persistent_cleared'] = $result['deleted_count'] ?? 0;
-					$stats['success']            = true;
-				}
-			}
-
-			// Clear runtime cache regardless of transaction result
-			$stats['runtime_cleared'] = self::purge_group_runtime( $group );
-
-			// Set success for runtime-only groups
-			if ( ! isset( self::$persistent_groups_map[ $group ] ) ) {
-				$stats['success'] = true;
-			}
-
-			return $stats;
-		} finally {
-			frl_is_already_running( __METHOD__, true );
-		}
 	}
 
 	/**

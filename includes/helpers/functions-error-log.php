@@ -41,24 +41,20 @@ function frl_log( $message, $context = array(), $force_email = true ) {
 
 	$debug_send_email = ! $is_admin_debug && $force_email && frl_get_option( 'error_reporting_email' );
 
-	// Throttle formatting via cache.
-	$message_hash   = md5( serialize( array( $message, $context ) ) );
-	$context_suffix = frl_is_admin() ? 'admin' : 'frontend';
-	$cache_key      = 'logs_' . $context_suffix . '_' . $message_hash;
+	// Format directly so request-specific URL/hook/caller context is never served stale from cache.
+	$formatted_message = frl_format_log_message( $message, $context );
 
-	$formatted_message = frl_cache_remember(
-		'admin',
-		$cache_key,
-		function () use ( $message, $context ) {
-			return frl_format_log_message( $message, $context );
-		}
-	);
-
-	// Email throttling: independent of formatting cache to avoid blocking
-	// cache population on slow SMTP connections. Uses a per-request static
-	// hash set to prevent duplicate emails within the same request.
+	// Email throttling: per-request hash set prevents duplicate emails; sanitize avoids Closure serialization errors.
 	if ( $debug_send_email ) {
 		static $emailed_hashes = array();
+		try {
+			$safe_payload = function_exists( 'frl_sanitize_for_serialization' )
+				? frl_sanitize_for_serialization( array( $message, $context ) )
+				: array( is_scalar( $message ) ? $message : gettype( $message ), array_keys( (array) $context ) );
+			$message_hash = md5( serialize( $safe_payload ) );
+		} catch ( \Throwable $e ) {
+			$message_hash = md5( $formatted_message );
+		}
 		if ( ! isset( $emailed_hashes[ $message_hash ] ) ) {
 			$emailed_hashes[ $message_hash ] = true;
 			frl_email_error_notification( $formatted_message );
@@ -154,12 +150,13 @@ function frl_format_log_message( $message, $context = array() ) {
 
 	// --- Determine Context ---
 	$caller_info = '';
-	// Get a limited backtrace for performance, but deep enough for context.
-	$trace = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 6 );
+	// Get a limited backtrace for performance, deep enough to reach past internal wrappers.
+	$trace = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 10 );
 
 	// List of internal utility functions to skip over to find the real caller.
 	$internal_helpers = array(
 		'frl_log',
+		'frl_error',
 		'frl_dump',
 		'frl_format_log_message',
 		'frl_json_decode',

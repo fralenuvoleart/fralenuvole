@@ -83,8 +83,10 @@ function frl_pbproperty_geodir_filter_widget_listings_where( $where, $post_type 
 	$property_ids = frl_pbproperty_get_properties_ids();
 
 	if ( ! empty( $property_ids ) ) {
-		$properties_by_lang = implode( ',', $property_ids );
+		$properties_by_lang = implode( ',', array_map( 'intval', $property_ids ) );
 		$where             .= ' AND pbp_posts.ID IN (' . $properties_by_lang . ') ';
+	} else {
+		$where .= ' AND 1=0 ';
 	}
 
 	return $where;
@@ -98,14 +100,18 @@ function frl_pbproperty_geodir_filter_widget_listings_where( $where, $post_type 
  * @return string
  */
 function frl_pbproperty_geodir_posts_where( $where, $query ) {
+	$queried = is_object( $query ) ? $query->get_queried_object() : null;
+	if ( ! isset( $queried->post_name ) || 'search' !== $queried->post_name ) {
+		return $where;
+	}
+
 	$property_ids = frl_pbproperty_get_properties_ids();
 
 	if ( ! empty( $property_ids ) ) {
-		$properties_by_lang = implode( ',', $property_ids );
-
-		if ( isset( $query->get_queried_object()->post_name ) && $query->get_queried_object()->post_name === 'search' ) {
-			$where .= ' AND pbp_posts.ID IN (' . $properties_by_lang . ') ';
-		}
+		$properties_by_lang = implode( ',', array_map( 'intval', $property_ids ) );
+		$where             .= ' AND pbp_posts.ID IN (' . $properties_by_lang . ') ';
+	} else {
+		$where .= ' AND 1=0 ';
 	}
 
 	return $where;

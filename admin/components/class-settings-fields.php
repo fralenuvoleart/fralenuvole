@@ -586,6 +586,24 @@ class Frl_Settings_Fields {
 	 * @return array [active_tab_index, active_tab_id, active_tab_fragment]
 	 */
 	private static function _get_active_tab_info(): array {
+		// Ensure form section tabs are registered during admin-post.php saves (not just page renders).
+		if ( function_exists( 'frl_get_default_fields_sections' ) && function_exists( 'frl_tab_register_tab' ) ) {
+			$existing_ids = array_column( frl_tab_get_sorted_tabs(), 'id' );
+			$position     = 1000;
+			foreach ( frl_get_default_fields_sections() as $section_id => $section_title ) {
+				if ( ! in_array( $section_id, $existing_ids, true ) ) {
+					frl_tab_register_tab(
+						$section_id,
+						array(
+							'title'    => $section_title,
+							'position' => $position,
+						)
+					);
+				}
+				$position += 10;
+			}
+		}
+
 		$post_action      = frl_prefix( 'active_tab' );
 		$active_tab_value = isset( $_POST[ $post_action ] ) ? sanitize_text_field( $_POST[ $post_action ] ) : '';
 		$is_fragment      = ! empty( $active_tab_value ) && str_starts_with( $active_tab_value, 'tabs-' );
@@ -806,8 +824,8 @@ class Frl_Settings_Fields {
 		$updated_count = 0;
 
 		if ( ! empty( $updates ) ) {
-			// Use the utility function to update options in batch
-			$updated_count = frl_batch_update_options( $updates );
+			// _prepare_update_batch() already diffed against DB; pass $force_update=true to avoid a second divergent diff.
+			$updated_count = frl_batch_update_options( $updates, true );
 
 			if ( $updated_count > 0 ) {
 				$updated = true;

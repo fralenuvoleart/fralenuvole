@@ -179,7 +179,7 @@ class Frl_Subdomain_Adapter_Robots {
 			}
 
 			if ( ! empty( $subdomain_hosts ) ) {
-				$subdomain_hosts_lc                     = array_map( 'strtolower', $subdomain_hosts );
+				$subdomain_hosts_lc                      = array_map( 'strtolower', $subdomain_hosts );
 				$robots_sections['sitemaps']['sitemaps'] = array_values(
 					array_filter(
 						$robots_sections['sitemaps']['sitemaps'],

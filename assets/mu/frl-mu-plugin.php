@@ -10,14 +10,21 @@
  */
 
 // Exit if accessed directly.
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 // MU plugin constants
 const FRL_MU_NAME = 'fralenuvole';
-$plugin_dir = WP_PLUGIN_DIR . '/' . FRL_MU_NAME . '/';
 
-// Load plugin bootstrap with config to initialize core, error handler
-// @phpstan-ignore requireOnce.fileNotFound
-require_once $plugin_dir . 'includes/bootstrap.php';
+// Isolated scope avoids leaking $plugin_dir into wp-settings.php global scope.
+( static function (): void {
+	$bootstrap = WP_PLUGIN_DIR . '/' . FRL_MU_NAME . '/includes/bootstrap.php';
+	if ( ! is_file( $bootstrap ) ) {
+		return;
+	}
+
+	// Load plugin bootstrap with config to initialize core, error handler.
+	// @phpstan-ignore requireOnce.fileNotFound
+	require_once $bootstrap;
+} )();

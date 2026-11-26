@@ -158,7 +158,7 @@ frl_test_same( 'abc123', false !== $build_at ? ( $fields[ $build_at ] ?? '' ) : 
 frl_test_ok( 1 === preg_match( '/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', $fields[0] ?? '' ), 'timestamp column is ISO-8601 UTC' );
 
 // 7. New columns: derived values and the whitelists that keep crafted input out.
-$new_logs = frl_test_rum_request(
+$new_logs  = frl_test_rum_request(
 	$tmp,
 	true,
 	array(
@@ -185,7 +185,20 @@ frl_test_same( '', $by_name['redirect'], 'a missing timing part stays empty' );
 frl_test_same( '2', $by_name['errors_dropped'], 'dropped error count lands in its column' );
 frl_test_same( 'fbclid', $by_name['click_id'], 'click id name lands in its column' );
 frl_test_ok( (int) $by_name['page_age'] >= 3500, 'page age = receive time - render time - elapsed (' . $by_name['page_age'] . ')' );
-$bad_logs  = frl_test_rum_request( $tmp, true, array( 'e' => 'vitals', 'v' => 'hack0', 'cid' => 'evil', 'es' => 'bogus', 'why' => 'because', 'ref' => "a\tb\n", 'it' => 'insert<script>', 'b' => 'ABC/../' ) );
+$bad_logs  = frl_test_rum_request(
+	$tmp,
+	true,
+	array(
+		'e'   => 'vitals',
+		'v'   => 'hack0',
+		'cid' => 'evil',
+		'es'  => 'bogus',
+		'why' => 'because',
+		'ref' => "a\tb\n",
+		'it'  => 'insert<script>',
+		'b'   => 'ABC/../',
+	)
+);
 $bad_files = (array) glob( $bad_logs . '/beacon-*.tsv' );
 $bad_lines = $bad_files ? file( $bad_files[0], FILE_IGNORE_NEW_LINES ) : array();
 $bad_by    = array_combine( $columns, array_pad( explode( "\t", $bad_lines[1] ?? '' ), count( $columns ), '' ) );
@@ -198,7 +211,18 @@ frl_test_same( '', $bad_by['input_type'], 'an unknown input type is rejected' );
 frl_test_same( '', $bad_by['build'], 'a build id that is not base36 is rejected' );
 
 // Zero and negative numbers are not measurements: they stay empty, so "unknown" never reads as "none".
-$zero_logs  = frl_test_rum_request( $tmp, true, array( 'e' => 'vitals', 'v' => 'zero0', 'dr' => '0', 'ttfb' => '0', 'tls' => '-5', 'r' => '0' ) );
+$zero_logs  = frl_test_rum_request(
+	$tmp,
+	true,
+	array(
+		'e'    => 'vitals',
+		'v'    => 'zero0',
+		'dr'   => '0',
+		'ttfb' => '0',
+		'tls'  => '-5',
+		'r'    => '0',
+	)
+);
 $zero_files = (array) glob( $zero_logs . '/beacon-*.tsv' );
 $zero_lines = $zero_files ? file( $zero_files[0], FILE_IGNORE_NEW_LINES ) : array();
 $zero_by    = array_combine( $columns, array_pad( explode( "\t", $zero_lines[1] ?? '' ), count( $columns ), '' ) );

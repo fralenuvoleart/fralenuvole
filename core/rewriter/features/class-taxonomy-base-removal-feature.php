@@ -219,9 +219,10 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			return array();
 		}
 
-		// Add explicit rules for configured prefixes to handle taxonomy terms under those prefixes
+		// Explicit prefix rules only apply unambiguously when a single taxonomy is configured;
+		// multiple taxonomies route through the catch-all resolver so earlier ones aren't overwritten.
 		$rules    = array();
-		$prefixes = $this->get_configured_prefixes();
+		$prefixes = ( count( $this->taxonomy_slugs ) === 1 ) ? $this->get_configured_prefixes() : array();
 
 		if ( ! empty( $prefixes ) ) {
 			foreach ( $this->taxonomy_slugs as $taxonomy ) {
@@ -289,11 +290,8 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			}
 		}
 
-		// CPT translation prefixes contributed by individual CPT features via filter.
-		// Frl_CPT_Archive_Base_Translation_Feature::contribute_url_prefixes() populates this.
-		$prefixes = (array) apply_filters( 'frl_rewriter_url_prefixes', $prefixes );
-
 		// Include static first segment from permalink structure if present (e.g., 'blog' in /blog/%postname%/).
+		// CPT archive bases (frl_rewriter_url_prefixes) are intentionally excluded from taxonomy term rules.
 		$static_base = $this->get_static_permalink_base();
 		if ( $static_base !== '' ) {
 			$prefixes[] = $static_base;

@@ -31,18 +31,18 @@ class Frl_Schema_Orchestrator {
 	private Frl_Schema_Context $context;
 
 	/**
-	 * Term property map from the builder.
+	 * Term property map from the builder (lazy-loaded on cache miss).
 	 *
-	 * @var array
+	 * @var array|null
 	 */
-	private array $term_map;
+	private ?array $term_map = null;
 
 	/**
-	 * Person property map from the builder.
+	 * Person property map from the builder (lazy-loaded on cache miss).
 	 *
-	 * @var array
+	 * @var array|null
 	 */
-	private array $person_map;
+	private ?array $person_map = null;
 
 	/**
 	 * Initialize the orchestrator and register the wp_head hook.
@@ -53,12 +53,10 @@ class Frl_Schema_Orchestrator {
 	}
 
 	/**
-	 * Constructor — resolves dynamic mappings once per request.
+	 * Constructor — defers term/person map loading until cache-miss builds in wp_head.
 	 */
 	public function __construct() {
-		$this->context    = new Frl_Schema_Context();
-		$this->term_map   = frl_schema_builder_get_term_map();
-		$this->person_map = frl_schema_builder_get_person_map();
+		$this->context = new Frl_Schema_Context();
 	}
 
 	/**
@@ -510,6 +508,16 @@ class Frl_Schema_Orchestrator {
 		// rebuild the separate '_global' map (saves its get_page_by_path query).
 		if ( function_exists( 'frl_schema_resolver_resolve' ) ) {
 			$schema = frl_schema_resolver_resolve( $schema, '', frl_schema_get_placeholders( $post_id ?? 0 ) );
+		}
+
+		// Lazy-load term/person maps on cache-miss singular builds (after modules/themes have loaded).
+		if ( $post_id ) {
+			if ( null === $this->term_map ) {
+				$this->term_map = frl_schema_builder_get_term_map();
+			}
+			if ( null === $this->person_map ) {
+				$this->person_map = frl_schema_builder_get_person_map();
+			}
 		}
 
 		// Merge term properties (dynamic — resolved from WP taxonomy data)

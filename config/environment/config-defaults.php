@@ -71,18 +71,8 @@ const FRL_ENV_DEFAULT = array(
 const FRL_ENV_DEFAULT_PRODUCTION = array(
 	// FRL_ENV_DEFAULT represents default production
 	'plugin_options' => array(
-		'custom_robots_txt' => '
-			User-agent: SemrushBot
-			User-agent: SiteAuditBot
-			User-agent: ClaudeBot
-			Allow: /
-			Crawl-delay: 10
-
-			User-agent: AhrefsBot
-			User-agent: AhrefsSiteAudit
-			User-agent: MJ12bot
-			Disallow: /
-		',
+		'enable_custom_robots' => true,
+		'custom_robots_txt'    => "User-agent: SemrushBot\nUser-agent: SiteAuditBot\nUser-agent: ClaudeBot\nAllow: /\nCrawl-delay: 10\n\nUser-agent: AhrefsBot\nUser-agent: AhrefsSiteAudit\nUser-agent: MJ12bot\nDisallow: /",
 	),
 );
 

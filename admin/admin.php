@@ -497,6 +497,10 @@ function frl_get_file_nicename( $filename, $as_title = false ) {
  * @return void
  */
 function frl_update_image_metadata( $attachment_id ) {
+	if ( ! frl_get_option( 'image_filename_sanitize' ) ) {
+		return;
+	}
+
 	// Make sure it's an image
 	if ( ! wp_attachment_is_image( $attachment_id ) ) {
 		return;

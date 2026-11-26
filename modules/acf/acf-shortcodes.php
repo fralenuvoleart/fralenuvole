@@ -49,33 +49,25 @@ function frl_shortcode_acf_calculated( $atts ) {
 
 	// Fast path: if only target is provided (no template/fields/etc.), use cached value
 	$target        = trim( (string) $a['target'] );
+	$source        = strtolower( trim( (string) $a['source'] ) ) ?: 'option';
+	$id_raw        = trim( (string) $a['id'] );
 	$has_overrides = ( $a['template'] !== '' ) || ( $a['fields'] !== '' );
+
 	if ( $target !== '' && ! $has_overrides ) {
-		$source = strtolower( trim( (string) $a['source'] ) ) ?: 'option';
-		// Build cache key with post scope when source is 'post'
-		if ( $source === 'post' ) {
-			$id_raw    = trim( (string) $a['id'] );
-			$post_id   = ( ctype_digit( $id_raw ) && (int) $id_raw > 0 ) ? (int) $id_raw : frl_get_current_post_id();
-			$cache_key = 'acf_calc_' . sanitize_key( $target ) . '_post_' . $post_id . '_v' . frl_get_post_cache_version( $post_id );
-		} else {
-			$cache_key = 'acf_calc_' . sanitize_key( $target ) . '_option';
+		$scope = frl_acf_calc_resolve_scope( $source, $id_raw, $target );
+		if ( $scope === null ) {
+			return '';
 		}
 		return frl_cache_remember(
 			'shortcodes',
-			$cache_key,
-			static function () use ( $target, $source, $a ) {
-				$pid = 'option';
-				if ( $source === 'post' ) {
-					$id_raw = trim( (string) $a['id'] );
-					$pid    = ( ctype_digit( $id_raw ) && (int) $id_raw > 0 ) ? (int) $id_raw : frl_get_current_post_id();
-				}
-					$val = get_field( $target, $pid, false );
-					return is_scalar( $val ) ? (string) $val : '';
+			$scope['cache_key'],
+			static function () use ( $target, $scope ) {
+				$val = get_field( $target, $scope['pid'], false );
+				return is_scalar( $val ) ? (string) $val : '';
 			}
 		);
 	}
 
-	$source     = strtolower( trim( (string) $a['source'] ) ) ?: 'option';
 	$operation  = strtoupper( trim( (string) $a['operation'] ) );
 	$fields_csv = (string) $a['fields'];
 	if ( $fields_csv === '' && $operation !== 'TEMPLATE' ) {
@@ -87,50 +79,21 @@ function frl_shortcode_acf_calculated( $atts ) {
 		if ( ! function_exists( 'frl_acf_render_template' ) ) {
 			return '';
 		}
-		$template = (string) $a['template'];
-		$post_id  = 0;
-		if ( $source === 'post' ) {
-			$id_raw = trim( (string) $a['id'] );
-			if ( $id_raw !== '' && ctype_digit( $id_raw ) ) {
-				$post_id = (int) $id_raw;
-			} else {
-				$post_id = frl_get_current_post_id();
-			}
-			if ( $post_id <= 0 ) {
-				return '';
-			}
+		$scope = frl_acf_calc_resolve_scope( $source, $id_raw, $target );
+		if ( $scope === null ) {
+			return '';
 		}
+		$template  = (string) $a['template'];
 		$urlencode = filter_var( $a['urlencode'], FILTER_VALIDATE_BOOLEAN );
-		$rendered  = frl_acf_render_template( $template, $source, $post_id, $urlencode );
+		$rendered  = frl_acf_render_template( $template, $source, $scope['post_id'], $urlencode );
 
-		// Persist to target if provided and exists as an ACF field
-		if ( $target !== '' && function_exists( 'update_field' ) ) {
-			$pid          = ( $source === 'post' && $post_id > 0 ) ? $post_id : 'option';
-			$field_exists = false;
-			if ( function_exists( 'get_field_object' ) ) {
-				$field_obj    = call_user_func( 'get_field_object', $target, $pid, false );
-				$field_exists = (bool) $field_obj;
-			}
-			if ( $field_exists ) {
-				call_user_func( 'update_field', $target, $rendered, $pid );
-				// Warm shortcode cache for this target (must match key format from fast path)
-				if ( $source === 'post' && $post_id > 0 ) {
-					$warm_cache_key = 'acf_calc_' . sanitize_key( $target ) . '_post_' . $post_id . '_v' . frl_get_post_cache_version( $post_id );
-				} else {
-					$warm_cache_key = 'acf_calc_' . sanitize_key( $target ) . '_option';
-				}
-				frl_cache_set( 'shortcodes', $warm_cache_key, (string) $rendered );
-			} else {
-				if ( function_exists( 'frl_log' ) ) {
-					frl_log( 'ACF shortcode target field missing – no-op persist', array( 'target' => $target ) );
-				}
-			}
+		if ( $target !== '' ) {
+			frl_acf_calc_persist_and_warm( $target, $scope, (string) $rendered );
 		}
 		return $rendered;
 	}
 
 	// Numeric / CONCAT paths
-	// Normalize field names
 	$field_names = array_values(
 		array_filter(
 			array_map(
@@ -146,28 +109,14 @@ function frl_shortcode_acf_calculated( $atts ) {
 		return '';
 	}
 
-	// Load values
+	$scope = frl_acf_calc_resolve_scope( $source, $id_raw, $target );
+	if ( $scope === null ) {
+		return '';
+	}
+
 	$values = array();
-	if ( $source === 'option' ) {
-		foreach ( $field_names as $name ) {
-			$values[] = get_field( $name, 'option', false );
-		}
-	} else {
-		// Post source: use provided id or current post
-		$post_id = 0;
-		$id_raw  = trim( (string) $a['id'] );
-		if ( $id_raw !== '' && ctype_digit( $id_raw ) ) {
-			$post_id = (int) $id_raw;
-		}
-		if ( $post_id <= 0 ) {
-			$post_id = frl_get_current_post_id();
-		}
-		if ( $post_id <= 0 ) {
-			return '';
-		}
-		foreach ( $field_names as $name ) {
-			$values[] = get_field( $name, $post_id, false );
-		}
+	foreach ( $field_names as $name ) {
+		$values[] = get_field( $name, $scope['pid'], false );
 	}
 
 	if ( ! function_exists( 'frl_acf_compute_value' ) ) {
@@ -185,29 +134,65 @@ function frl_shortcode_acf_calculated( $atts ) {
 
 	$result_str = is_scalar( $result ) ? (string) $result : '';
 
-	// Persist to target if provided and exists as an ACF field
-	if ( $target !== '' && function_exists( 'update_field' ) ) {
-		$pid          = ( $source === 'post' && isset( $post_id ) && $post_id > 0 ) ? (int) $post_id : 'option';
-		$field_exists = false;
-		if ( function_exists( 'get_field_object' ) ) {
-			$field_obj    = call_user_func( 'get_field_object', $target, $pid, false );
-			$field_exists = (bool) $field_obj;
-		}
-		if ( $field_exists ) {
-			call_user_func( 'update_field', $target, $result_str, $pid );
-			// Warm shortcode cache for this target (must match key format from fast path)
-			if ( $source === 'post' && isset( $post_id ) && $post_id > 0 ) {
-				$warm_cache_key = 'acf_calc_' . sanitize_key( $target ) . '_post_' . $post_id . '_v' . frl_get_post_cache_version( $post_id );
-			} else {
-				$warm_cache_key = 'acf_calc_' . sanitize_key( $target ) . '_option';
-			}
-			frl_cache_set( 'shortcodes', $warm_cache_key, (string) $result_str );
-		} else {
-			if ( function_exists( 'frl_log' ) ) {
-				frl_log( 'ACF shortcode target field missing – no-op persist', array( 'target' => $target ) );
-			}
-		}
+	if ( $target !== '' ) {
+		frl_acf_calc_persist_and_warm( $target, $scope, $result_str );
 	}
 
 	return $result_str;
+}
+
+/**
+ * Resolve post/option scope and shortcode cache key for [frl_acf_calculated].
+ *
+ * @param string $source 'option' or 'post'.
+ * @param string $id_raw Explicit post ID attribute or empty string.
+ * @param string $target Target field name.
+ * @return array{pid: int|string, post_id: int, cache_key: string}|null Null when source='post' has no valid post ID.
+ */
+function frl_acf_calc_resolve_scope( string $source, string $id_raw, string $target ): ?array {
+	if ( 'post' === $source ) {
+		$post_id = ( '' !== $id_raw && ctype_digit( $id_raw ) && (int) $id_raw > 0 )
+			? (int) $id_raw
+			: frl_get_current_post_id();
+		if ( $post_id <= 0 ) {
+			return null;
+		}
+		return array(
+			'pid'       => $post_id,
+			'post_id'   => $post_id,
+			'cache_key' => 'acf_calc_' . sanitize_key( $target ) . '_post_' . $post_id . '_v' . frl_get_post_cache_version( $post_id ),
+		);
+	}
+
+	return array(
+		'pid'       => 'option',
+		'post_id'   => 0,
+		'cache_key' => 'acf_calc_' . sanitize_key( $target ) . '_option',
+	);
+}
+
+/**
+ * Persist a calculated value to its ACF target field (when present) and warm the shortcode cache.
+ *
+ * @param string $target Target field name.
+ * @param array  $scope  Scope array from frl_acf_calc_resolve_scope().
+ * @param string $value  Calculated string value.
+ * @return void
+ */
+function frl_acf_calc_persist_and_warm( string $target, array $scope, string $value ): void {
+	if ( ! function_exists( 'update_field' ) ) {
+		return;
+	}
+
+	$field_exists = false;
+	if ( function_exists( 'get_field_object' ) ) {
+		$field_exists = (bool) call_user_func( 'get_field_object', $target, $scope['pid'], false );
+	}
+
+	if ( $field_exists ) {
+		call_user_func( 'update_field', $target, $value, $scope['pid'] );
+		frl_cache_set( 'shortcodes', $scope['cache_key'], $value );
+	} elseif ( function_exists( 'frl_log' ) ) {
+		frl_log( 'ACF shortcode target field missing – no-op persist', array( 'target' => $target ) );
+	}
 }

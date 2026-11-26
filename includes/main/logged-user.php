@@ -43,7 +43,10 @@ function frl_load_logged_user_scripts() {
  * @return void
  */
 function frl_admin_bar_menu_render() {
-	if ( ! frl_get_option( 'custom_ab_menu' ) || ! frl_has_access() ) {
+	$show_custom_menu = (bool) ( frl_get_option( 'custom_ab_menu' ) && frl_has_access() );
+	$remove_links     = (bool) frl_get_option( 'ab_remove_links' );
+
+	if ( ! $show_custom_menu && ! $remove_links ) {
 		return;
 	}
 
@@ -60,12 +63,14 @@ function frl_admin_bar_menu_render() {
 	$menu_data = frl_cache_remember(
 		'admin',
 		$cache_key,
-		function () {
+		function () use ( $show_custom_menu ) {
 			$data = array();
 
-			$data = frl_admin_bar_add_menu_primary( $data );
-			$data = frl_admin_bar_add_menu_secondary( $data );
-			$data = frl_admin_bar_add_cpt_links( $data );
+			if ( $show_custom_menu ) {
+				$data = frl_admin_bar_add_menu_primary( $data );
+				$data = frl_admin_bar_add_menu_secondary( $data );
+				$data = frl_admin_bar_add_cpt_links( $data );
+			}
 			$data = frl_admin_bar_remove_menu( $data );
 
 			/**
@@ -81,47 +86,50 @@ function frl_admin_bar_menu_render() {
 
 	global $wp_admin_bar;
 
-	frl_admin_bar_apply_data( $wp_admin_bar, $menu_data );
+	frl_admin_bar_apply_data( $wp_admin_bar, $menu_data, $show_custom_menu );
 }
 
 /**
  * Apply cached menu data to the WordPress admin bar.
  *
- * @param WP_Admin_Bar $wp_admin_bar The WordPress admin bar instance.
- * @param array $menu_data Cached menu configuration data.
+ * @param WP_Admin_Bar $wp_admin_bar     The WordPress admin bar instance.
+ * @param array        $menu_data        Cached menu configuration data.
+ * @param bool         $show_custom_menu Whether to render plugin admin menus/tools.
  * @return void
  */
-function frl_admin_bar_apply_data( $wp_admin_bar, array $menu_data ) {
-	// Add page-specific links (never cached, computed per-request)
-	frl_admin_bar_add_page_tools( $wp_admin_bar );
+function frl_admin_bar_apply_data( $wp_admin_bar, array $menu_data, bool $show_custom_menu = true ) {
+	if ( $show_custom_menu ) {
+		// Add page-specific links (never cached, computed per-request)
+		frl_admin_bar_add_page_tools( $wp_admin_bar );
 
-	// Apply cached CPT group
-	if ( ! empty( $menu_data['cpt_group'] ) ) {
-		$wp_admin_bar->add_group(
-			array(
-				'id'     => $menu_data['cpt_group']['id'],
-				'parent' => $menu_data['cpt_group']['parent'],
-			)
-		);
-	}
-
-	// Apply custom menu items (already verified truthy by caller)
-	if ( ! empty( $menu_data['menu_secondary'] ) ) {
-		foreach ( $menu_data['menu_secondary'] as $item ) {
-			$wp_admin_bar->add_menu( $item );
+		// Apply cached CPT group
+		if ( ! empty( $menu_data['cpt_group'] ) ) {
+			$wp_admin_bar->add_group(
+				array(
+					'id'     => $menu_data['cpt_group']['id'],
+					'parent' => $menu_data['cpt_group']['parent'],
+				)
+			);
 		}
-	}
 
-	if ( ! empty( $menu_data['menu_primary'] ) ) {
-		foreach ( $menu_data['menu_primary'] as $item ) {
-			$wp_admin_bar->add_menu( $item );
+		// Apply custom menu items (already verified truthy by caller)
+		if ( ! empty( $menu_data['menu_secondary'] ) ) {
+			foreach ( $menu_data['menu_secondary'] as $item ) {
+				$wp_admin_bar->add_menu( $item );
+			}
 		}
-	}
 
-	// Apply cached CPT links (skip the group entry)
-	foreach ( $menu_data as $key => $item ) {
-		if ( str_starts_with( $key, 'cpt_' ) && $key !== 'cpt_group' ) {
-			$wp_admin_bar->add_node( $item );
+		if ( ! empty( $menu_data['menu_primary'] ) ) {
+			foreach ( $menu_data['menu_primary'] as $item ) {
+				$wp_admin_bar->add_menu( $item );
+			}
+		}
+
+		// Apply cached CPT links (skip the group entry)
+		foreach ( $menu_data as $key => $item ) {
+			if ( str_starts_with( $key, 'cpt_' ) && $key !== 'cpt_group' ) {
+				$wp_admin_bar->add_node( $item );
+			}
 		}
 	}
 

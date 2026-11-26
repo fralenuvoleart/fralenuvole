@@ -85,9 +85,13 @@ function frl_plugins_loaded() {
 		return;
 	}
 
-	// Load public components strictly for frontend requests
+	// Load public components for frontend requests, plus login and REST requests where
+	// public/public.php registers login_enqueue_scripts and rest_endpoints hooks.
+	$is_login_request = isset( $GLOBALS['pagenow'] ) && in_array( $GLOBALS['pagenow'], array( 'wp-login.php', 'wp-register.php' ), true );
 	if ( frl_is_valid_frontend_page_request() ) {
 		frl_load_public_components();
+	} elseif ( $is_login_request || frl_is_rest_api_request() ) {
+		require_once FRL_DIR_PATH . 'public/public.php';
 	}
 
 	// Load modules file and apply filters to FRL_DEFAULT_FIELDS

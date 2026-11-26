@@ -10,22 +10,26 @@ if ( ! defined( 'ABSPATH' ) ) {
  * public.php - Frontend execution logic and hooks.
  */
 
-require_once __DIR__ . '/performance.php';
-
-add_action( 'wp_head', 'frl_add_header_html', 0, 0 );
-add_action( 'wp_head', 'frl_add_header_scripts', 0, 0 );
-add_action( 'wp_footer', 'frl_add_footer_html', 10, 0 );
-add_action( 'wp_footer', 'frl_add_footer_scripts', 10, 0 );
-add_action( 'wp_loaded', 'frl_public_scripts', 10, 1 );
-
+// Login branding and REST endpoint pruning run on login/REST contexts as well as frontend.
 add_action( 'login_enqueue_scripts', 'frl_login_page_branding', 10, 0 );
 add_filter( 'rest_endpoints', 'frl_disable_rest_endpoints', 10, 1 );
-add_filter( 'robots_txt', 'frl_append_custom_robots', 99, 2 );
 
-// The SEO Framework bypasses WordPress's `robots_txt` filter and uses its own
-// `the_seo_framework_robots_txt_sections` filter. Register a handler for it so
-// custom robots.txt content works when TSF is active.
-add_filter( 'the_seo_framework_robots_txt_sections', 'frl_append_custom_robots_tsf', 99, 2 );
+if ( frl_is_valid_frontend_page_request() ) {
+	require_once __DIR__ . '/performance.php';
+
+	add_action( 'wp_head', 'frl_add_header_html', 0, 0 );
+	add_action( 'wp_head', 'frl_add_header_scripts', 0, 0 );
+	add_action( 'wp_footer', 'frl_add_footer_html', 10, 0 );
+	add_action( 'wp_footer', 'frl_add_footer_scripts', 10, 0 );
+	add_action( 'wp_loaded', 'frl_public_scripts', 10, 1 );
+
+	add_filter( 'robots_txt', 'frl_append_custom_robots', 99, 2 );
+
+	// The SEO Framework bypasses WordPress's `robots_txt` filter and uses its own
+	// `the_seo_framework_robots_txt_sections` filter. Register a handler for it so
+	// custom robots.txt content works when TSF is active.
+	add_filter( 'the_seo_framework_robots_txt_sections', 'frl_append_custom_robots_tsf', 99, 2 );
+}
 
 /**
  * Enqueue public JavaScript assets for the frontend.

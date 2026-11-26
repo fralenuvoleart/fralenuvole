@@ -89,10 +89,9 @@ function frl_clear_post_cache( $post_id ) {
  * @return void
  */
 function frl_clear_option_cache( $option_name ) {
-	// Narrow to plugin-owned options only
-	$prefix = frl_prefix( '' );
-	if ( ! str_starts_with( $option_name, $prefix ) ) {
-		return; // Not our option – leave caches intact
+	// Only invalidate translated option caches for options tracked by FRL_TRANSLATOR_OPTIONS.
+	if ( ! defined( 'FRL_TRANSLATOR_OPTIONS' ) || ! in_array( $option_name, FRL_TRANSLATOR_OPTIONS, true ) ) {
+		return;
 	}
 
 	// No translated option caches exist when the translator is disabled —

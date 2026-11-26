@@ -15,14 +15,17 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return void
  */
 function frl_errors_init(): void {
-	// Intercept WordPress 'doing_it_wrong' notices
-	add_action( 'doing_it_wrong_run', 'frl_errors_handle_doing_it_wrong', -999, 3 );
+	$wp_debug     = defined( 'WP_DEBUG' ) && WP_DEBUG;
+	$wp_debug_log = defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG;
 
-	// Apply error reporting level from plugin options
-	frl_errors_set_level();
+	// Only override PHP error_reporting() when WP_DEBUG or WP_DEBUG_LOG is enabled.
+	if ( $wp_debug || $wp_debug_log ) {
+		frl_errors_set_level();
+	}
 
-	// Install custom error handler if WP_DEBUG_LOG is enabled
-	if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) { // @phpstan-ignore-line alwaysFalse
+	// Install custom error handler and doing_it_wrong interception only when WP_DEBUG_LOG is enabled.
+	if ( $wp_debug_log ) { // @phpstan-ignore-line alwaysFalse
+		add_action( 'doing_it_wrong_run', 'frl_errors_handle_doing_it_wrong', -999, 3 );
 		set_error_handler( 'frl_errors_handle_error' );
 	}
 
@@ -115,8 +118,10 @@ function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): b
 	static $backtrace_cache    = array();
 
 	$error_signature = md5( $errlevel . $errstring . $errfile . $errline );
-	if ( isset( $detailed_log_cache[ $error_signature ] ) ) {
-		error_log( $detailed_log_cache[ $error_signature ] );
+	if ( array_key_exists( $error_signature, $detailed_log_cache ) ) {
+		if ( null !== $detailed_log_cache[ $error_signature ] ) {
+			error_log( $detailed_log_cache[ $error_signature ] );
+		}
 		return ! $is_fatal;
 	}
 
@@ -156,15 +161,17 @@ function frl_errors_handle_error( $errlevel, $errstring, $errfile, $errline ): b
 			}
 		}
 
-		// Suppress errors originating outside the plugin directory if enabled
+		// Suppress errors originating outside the plugin directory if enabled (cached as null).
 		if ( frl_get_option( 'error_reporting_plugin', false ) ) {
 			if ( ! empty( $errfile ) && ! str_contains( $errfile, FRL_DIR_PATH ) ) {
+				$detailed_log_cache[ $error_signature ] = null;
 				return ! $is_fatal;
 			}
 		}
 
-		// Suppress based on custom rules
+		// Suppress based on custom rules (cached as null).
 		if ( frl_errors_is_suppression_match( $errstring ) ) {
+			$detailed_log_cache[ $error_signature ] = null;
 			return ! $is_fatal;
 		}
 
@@ -241,21 +248,35 @@ function frl_errors_handle_doing_it_wrong( $function_name, $message, $version ):
 			$file = $bt_cache[ $msg_hash ]['file'];
 			$line = $bt_cache[ $msg_hash ]['line'];
 		} else {
-			$bt   = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 6 );
+			// Skip WP hook/dispatcher frames so caller attribution lands on the real _doing_it_wrong() caller.
+			$bt   = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 12 );
 			$file = '';
 			$line = 0;
 
 			foreach ( $bt as $frame ) {
-				if ( ! empty( $frame['file'] ) && ! empty( $frame['line'] ) ) {
-					$file                  = (string) $frame['file'];
-					$line                  = (int) $frame['line'];
-					$bt_cache[ $msg_hash ] = array(
-						'file' => $file,
-						'line' => $line,
-					);
+				if ( empty( $frame['file'] ) || empty( $frame['line'] ) ) {
+					continue;
+				}
+				$frame_file = str_replace( '\\', '/', (string) $frame['file'] );
+				$frame_fn   = (string) ( $frame['function'] ?? '' );
+				if (
+					str_ends_with( $frame_file, 'wp-includes/class-wp-hook.php' ) ||
+					str_ends_with( $frame_file, 'wp-includes/plugin.php' ) ||
+					( str_ends_with( $frame_file, 'wp-includes/functions.php' ) && '_doing_it_wrong' === $frame_fn )
+				) {
+					continue;
+				}
+				$file = (string) $frame['file'];
+				$line = (int) $frame['line'];
+				if ( defined( 'FRL_DIR_PATH' ) && str_contains( $file, FRL_DIR_PATH ) ) {
 					break;
 				}
+				break;
 			}
+			$bt_cache[ $msg_hash ] = array(
+				'file' => $file,
+				'line' => $line,
+			);
 		}
 
 		if ( frl_errors_handle_error( E_USER_NOTICE, $error, $file, $line ) && defined( 'WP_DEBUG' ) && WP_DEBUG ) {

@@ -59,18 +59,21 @@ class Frl_Environment_State {
 	/**
 	 * Check if environment state has changed (host-only), with throttle handled by caller.
 	 *
+	 * Does not persist the new state prematurely; enforce_environment_settings() persists
+	 * ENVIRONMENT_STATE only after settings are applied.
+	 *
+	 * @param array|mixed $stored_state Optional pre-loaded stored state to avoid duplicate lookups.
 	 * @return bool True if state changed, false otherwise.
 	 */
-	public static function check_environment_state() {
-		static $result = false;
-
+	public static function check_environment_state( $stored_state = null ) {
 		if ( ! isset( $_SERVER['HTTP_HOST'] ) || empty( $_SERVER['HTTP_HOST'] ) ) {
-			$result = false;
-			return $result;
+			return false;
 		}
 
-		$stored_state = frl_cache_get( Frl_Environment_Manager::CACHE_GROUP, Frl_Environment_Manager::CACHE_KEY ) ?:
-			frl_get_option( Frl_Environment_Manager::ENVIRONMENT_STATE );
+		if ( null === $stored_state ) {
+			$stored_state = frl_cache_get( Frl_Environment_Manager::CACHE_GROUP, Frl_Environment_Manager::CACHE_KEY ) ?:
+				frl_get_option( Frl_Environment_Manager::ENVIRONMENT_STATE );
+		}
 
 		$state_changed = ! $stored_state || self::environment_host_changed( $stored_state );
 
@@ -92,15 +95,6 @@ class Frl_Environment_State {
 			$state_changed = (bool) apply_filters( 'frl_environment_state_changed', false, $config ?? array() );
 		}
 
-		if ( $state_changed ) {
-			$current_state = self::get_current_state();
-			frl_update_option( Frl_Environment_Manager::ENVIRONMENT_STATE, $current_state, false );
-			frl_cache_set( Frl_Environment_Manager::CACHE_GROUP, Frl_Environment_Manager::CACHE_KEY, $current_state );
-			$result = true;
-			return $result;
-		}
-
-		$result = false;
-		return $result;
+		return $state_changed;
 	}
 }

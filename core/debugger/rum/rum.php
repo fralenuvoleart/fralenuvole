@@ -25,21 +25,35 @@ add_action( 'wp_head', 'frl_debug_rum_print_head', -998, 0 );
 // Last thing in the body: its presence proves the whole HTML arrived.
 add_action( 'wp_footer', 'frl_debug_rum_print_end_marker', PHP_INT_MAX, 0 );
 
-// Turning the option off removes the receiver's marker file (see rum-receiver.php).
-add_action( 'update_option_' . frl_prefix( 'debugger_rum' ), 'frl_debug_rum_sync_marker', 10, 0 );
+// Turning the option on/off syncs the receiver's marker file using the hook's $new_value directly.
+add_action( 'update_option_' . frl_prefix( 'debugger_rum' ), 'frl_debug_rum_on_option_change', 10, 2 );
+add_action( 'add_option_' . frl_prefix( 'debugger_rum' ), 'frl_debug_rum_on_option_change', 10, 2 );
 // Option deletion does not fire update_option, so it needs its own cleanup.
 add_action( 'delete_option_' . frl_prefix( 'debugger_rum' ), 'frl_debug_rum_delete_marker', 10, 0 );
 
 /**
- * Creates or deletes the marker that allows rum-receiver.php to write, to match the option.
+ * Syncs beacon.on from add_option_/update_option_ (2nd arg is always the new value).
+ *
+ * @param mixed $first     Option name (add_option) or old value (update_option).
+ * @param mixed $new_value New option value.
  */
-function frl_debug_rum_sync_marker() {
+function frl_debug_rum_on_option_change( $first, $new_value ) {
+	frl_debug_rum_sync_marker( (bool) $new_value );
+}
+
+/**
+ * Creates or deletes the marker that allows rum-receiver.php to write, to match the option.
+ *
+ * @param bool|null $enabled Pre-resolved option state; falls back to cached option when null.
+ */
+function frl_debug_rum_sync_marker( ?bool $enabled = null ) {
 	$logs = frl_get_uploads_location( 'logs' );
 	if ( null === $logs ) {
 		return;
 	}
-	$marker = $logs['dir'] . '/beacon.on';
-	if ( frl_get_option( 'debugger_rum', true ) ) {
+	$is_enabled = ( null !== $enabled ) ? $enabled : (bool) frl_get_option( 'debugger_rum' );
+	$marker     = $logs['dir'] . '/beacon.on';
+	if ( $is_enabled ) {
 		if ( ! is_file( $marker ) && ( is_dir( $logs['dir'] ) || wp_mkdir_p( $logs['dir'] ) ) ) {
 			@touch( $marker ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
@@ -72,7 +86,7 @@ function frl_debug_rum_is_active(): bool {
 	if ( null === $active ) {
 		$active = frl_get_option( 'debugger_rum' ) && frl_is_valid_frontend_page_request() && ! is_user_logged_in();
 		if ( $active ) {
-			frl_debug_rum_sync_marker(); // Recreates the marker if missing (e.g. after deploy).
+			frl_debug_rum_sync_marker( true ); // Recreates the marker if missing without bypassing option cache.
 		}
 	}
 	return $active;

@@ -329,44 +329,54 @@ function frl_is_valid_page_request(): bool {
 
 	if ( frl_is_cli_request() ) {
 		$is_valid = false;
-		return $is_valid;
+		return false;
 	}
 	if ( frl_is_rest_api_request() ) {
 		$is_valid = false;
-		return $is_valid;
+		return false;
 	}
 	if ( frl_is_cron_job_request() ) {
 		$is_valid = false;
-		return $is_valid;
+		return false;
 	}
 	if ( ! frl_is_valid_environment_host() ) {
 		$is_valid = false;
-		return $is_valid;
+		return false;
 	}
 	if ( frl_is_heartbeat_ajax_request() ) {
 		$is_valid = false;
-		return $is_valid;
+		return false;
 	}
 	if ( frl_is_log_manager_request() ) {
 		$is_valid = false;
-		return $is_valid;
+		return false;
 	}
+
+	// Only memoize query-dependent HTML/404/attachment/REST_REQUEST checks after 'wp' has run.
+	$wp_ready = function_exists( 'did_action' ) && did_action( 'wp' ) > 0;
+
 	if ( ! frl_is_html_document_request() ) {
-		$is_valid = false;
-		return $is_valid;
+		if ( $wp_ready ) {
+			$is_valid = false;
+		}
+		return false;
 	}
 
 	if ( frl_is_administrator_action() ) {
-		$is_valid = true;
-		return $is_valid;
+		if ( $wp_ready ) {
+			$is_valid = true;
+		}
+		return true;
 	}
 	if ( frl_is_doing_ajax() ) {
 		$is_valid = false;
-		return $is_valid;
+		return false;
 	}
 
-	$is_valid = true;
-	return $is_valid;
+	if ( $wp_ready ) {
+		$is_valid = true;
+	}
+	return true;
 }
 
 /**
