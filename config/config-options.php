@@ -7,27 +7,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Runtime plugin options not defined elsewhere, to remove missing options flag
 const FRL_OPTIONS_RUNTIME = array(
-	'environment_state'                    => array(
+	'environment_state'          => array(
 		'type'    => 'text',
 		'default' => '',
 	),
-	'environment_ignore_plugins'           => array(
+	'environment_ignore_plugins' => array(
 		'type'    => 'text',
 		'default' => '',
 	),
-	'environment_ignore_options'           => array(
+	'environment_ignore_options' => array(
 		'type'    => 'text',
 		'default' => '',
 	),
-	'translation_version'                  => array(
+	'translation_version'        => array(
 		'type'    => 'text',
 		'default' => 1,
 	),
-	'rewriter_translate_cpt_slugs_service' => array(
-		'type'    => 'textlist',
-		'default' => '',
-	),
-	'plugin_version'                       => array(
+	'plugin_version'             => array(
 		'type'    => 'text',
 		'default' => '0.0.0',
 	),

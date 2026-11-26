@@ -683,7 +683,7 @@ class Frl_Log_Manager {
 			<h2 class="section-title log-manager-title">
 				Debug Log Viewer
 				<?php
-				$log_count = $this->get_log_entry_count( true );
+				$log_count = $this->get_log_entry_count( false );
 				if ( $log_count > 0 ) :
 					?>
 					<span class="log-count-bubble"><?php echo number_format_i18n( $log_count ); ?></span>

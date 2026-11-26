@@ -163,9 +163,8 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 
 		$this->cpt_slugs = $slugs;
 
-		// Latch only when every configured CPT resolved: a caller that runs before the
-		// CPTs are registered must retry later instead of caching a partial list.
-		if ( count( $slugs ) === $expected ) {
+		// Latch once every configured CPT resolved or after wp_loaded so unregistered slugs stop re-parsing.
+		if ( count( $slugs ) === $expected || did_action( 'wp_loaded' ) ) {
 			$this->config_loaded = true;
 		}
 	}

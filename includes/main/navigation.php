@@ -129,6 +129,20 @@ function frl_process_nav_menu_url_transforms( $block_content, $block ) {
 		return $block_content;
 	}
 
+	// Extract URL from block attributes and match pattern before invoking transform filters.
+	$raw_url = $block['attrs']['url'] ?? '';
+	if ( empty( $raw_url ) || ! is_string( $raw_url ) ) {
+		return $block_content;
+	}
+
+	// Decode URL-encoded characters for pattern matching.
+	$url = str_replace( '%7C', '|', $raw_url );
+
+	// Match #frl_url_{type}={value} pattern (# is optional).
+	if ( ! preg_match( '/^#?frl_url_([a-z0-9_]+)=(.+)$/', $url, $matches ) ) {
+		return $block_content;
+	}
+
 	/**
 	 * Collect URL transform handlers.
 	 *
@@ -139,28 +153,14 @@ function frl_process_nav_menu_url_transforms( $block_content, $block ) {
 	 */
 	$handlers = apply_filters( 'frl_nav_menu_url_transforms', array() );
 
-	if ( empty( $handlers ) ) {
-		return $block_content;
-	}
-
-	// Extract URL from block attributes
-	$raw_url = $block['attrs']['url'] ?? '';
-	if ( empty( $raw_url ) ) {
-		return $block_content;
-	}
-
-	// Decode URL-encoded characters for pattern matching
-	$url = str_replace( '%7C', '|', $raw_url );
-
-	// Match #frl_url_{type}={value} pattern (# is optional)
-	if ( ! preg_match( '/^#?frl_url_([a-z0-9_]+)=(.+)$/', $url, $matches ) ) {
+	if ( empty( $handlers ) || ! is_array( $handlers ) ) {
 		return $block_content;
 	}
 
 	$type  = $matches[1];
 	$value = $matches[2];
 
-	if ( ! isset( $handlers[ $type ] ) ) {
+	if ( ! isset( $handlers[ $type ] ) || ! is_callable( $handlers[ $type ] ) ) {
 		return $block_content;
 	}
 

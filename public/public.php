@@ -21,7 +21,7 @@ if ( frl_is_valid_frontend_page_request() ) {
 	add_action( 'wp_head', 'frl_add_header_scripts', 0, 0 );
 	add_action( 'wp_footer', 'frl_add_footer_html', 10, 0 );
 	add_action( 'wp_footer', 'frl_add_footer_scripts', 10, 0 );
-	add_action( 'wp_loaded', 'frl_public_scripts', 10, 1 );
+	add_action( 'wp_enqueue_scripts', 'frl_public_scripts', 10, 0 );
 
 	add_filter( 'robots_txt', 'frl_append_custom_robots', 99, 2 );
 

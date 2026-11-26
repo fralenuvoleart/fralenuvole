@@ -25,27 +25,45 @@ function frl_cta_webhook_handler() {
 		}
 	}
 
-	// Per-IP rate limit: max 30 requests per minute from the same IP.
+	// Per-IP fixed-window rate limit: max 30 requests per minute and 100 per day.
 	// Best-effort (TOCTOU): concurrent requests may both pass the gate.
 	// Acceptable — CTA webhooks are low-stakes analytics, not security-critical.
-	$client_ip   = frl_get_client_ip() ?: '0.0.0.0';
-	$rate_key    = 'frl_cta_rate_' . md5( $client_ip );
-	$rate_count  = (int) frl_get_transient( $rate_key );
+	$now         = time();
+	$client_ip   = frl_get_client_ip();
+	$rate_key    = 'cta_rate_' . md5( $client_ip );
 	$rate_window = CTA_WEBHOOK_RATE_WINDOW;
 	$rate_max    = CTA_WEBHOOK_RATE_LIMIT;
+	$rate_state  = frl_get_transient( $rate_key );
+	$rate_count  = ( is_array( $rate_state ) && ( $rate_state['reset'] ?? 0 ) > $now ) ? (int) $rate_state['count'] : 0;
+	$rate_reset  = ( is_array( $rate_state ) && ( $rate_state['reset'] ?? 0 ) > $now ) ? (int) $rate_state['reset'] : ( $now + $rate_window );
 
-	// Daily cap per IP
-	$daily_key   = 'frl_cta_daily_' . md5( $client_ip . gmdate( 'Ymd' ) );
-	$daily_count = (int) frl_get_transient( $daily_key );
+	$daily_key   = 'cta_daily_' . md5( $client_ip . gmdate( 'Ymd' ) );
 	$daily_max   = 100;
+	$daily_state = frl_get_transient( $daily_key );
+	$daily_count = ( is_array( $daily_state ) && ( $daily_state['reset'] ?? 0 ) > $now ) ? (int) $daily_state['count'] : 0;
+	$daily_reset = ( is_array( $daily_state ) && ( $daily_state['reset'] ?? 0 ) > $now ) ? (int) $daily_state['reset'] : ( $now + DAY_IN_SECONDS );
 
 	if ( $rate_count >= $rate_max || $daily_count >= $daily_max ) {
 		frl_log( 'CTA rate limit hit for IP: {ip}', array( 'ip' => $client_ip ) );
 		wp_send_json_error( 'Too many requests', 429 );
 	}
 
-	frl_set_transient( $rate_key, $rate_count + 1, $rate_window );
-	frl_set_transient( $daily_key, $daily_count + 1, DAY_IN_SECONDS );
+	frl_set_transient(
+		$rate_key,
+		array(
+			'count' => $rate_count + 1,
+			'reset' => $rate_reset,
+		),
+		max( 1, $rate_reset - $now )
+	);
+	frl_set_transient(
+		$daily_key,
+		array(
+			'count' => $daily_count + 1,
+			'reset' => $daily_reset,
+		),
+		max( 1, $daily_reset - $now )
+	);
 
 	// wp_unslash() before sanitizing: these free-text values (reference_id, UTM params, etc.)
 	// are sent verbatim to a third-party webhook — without unslashing, any submitted value
@@ -58,6 +76,19 @@ function frl_cta_webhook_handler() {
 
 	$env_config = frl_environment_get_config();
 	$env_prefix = $env_config['prefix'] ?? 'default';
+
+	// Allowlist action_id against configured CTA templates for this environment.
+	if ( defined( 'FRL_CTA_TEMPLATES' ) && isset( FRL_CTA_TEMPLATES[ $env_prefix ] ) && is_array( FRL_CTA_TEMPLATES[ $env_prefix ] ) ) {
+		$allowed_actions = array();
+		foreach ( FRL_CTA_TEMPLATES[ $env_prefix ] as $tpl_def ) {
+			if ( is_array( $tpl_def ) && ! empty( $tpl_def['action_id'] ) ) {
+				$allowed_actions[] = (string) $tpl_def['action_id'];
+			}
+		}
+		if ( ! empty( $allowed_actions ) && ! in_array( $action_id, $allowed_actions, true ) ) {
+			wp_send_json_error( 'Unknown action', 400 );
+		}
+	}
 
 	if ( ! defined( 'CTA_WEBHOOK_URLS' ) || empty( CTA_WEBHOOK_URLS[ $env_prefix ] ) ) {
 		wp_send_json_error( 'No webhook configured', 404 );

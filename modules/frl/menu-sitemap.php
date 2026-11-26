@@ -378,9 +378,8 @@ function frl_render_block_navigation_sitemap( $navigation_post, $parent_title, $
  * @param int   $parent_id Parent ID for nested items
  * @return array Flat array of navigation items
  */
-function frl_extract_block_navigation_items( $blocks, $parent_id = 0 ) {
-	$items   = array();
-	$counter = 0;
+function frl_extract_block_navigation_items( $blocks, $parent_id = 0, int &$counter = 0 ) {
+	$items = array();
 
 	foreach ( $blocks as $block ) {
 		if ( empty( $block['blockName'] ) ) {
@@ -402,7 +401,7 @@ function frl_extract_block_navigation_items( $blocks, $parent_id = 0 ) {
 
 			// Check for nested items in innerBlocks
 			if ( ! empty( $block['innerBlocks'] ) ) {
-				$children = frl_extract_block_navigation_items( $block['innerBlocks'], $item_id );
+				$children = frl_extract_block_navigation_items( $block['innerBlocks'], $item_id, $counter );
 				$items    = array_merge( $items, $children );
 			}
 		}
@@ -422,20 +421,32 @@ function frl_extract_block_navigation_items( $blocks, $parent_id = 0 ) {
 
 			// Extract children from innerBlocks
 			if ( ! empty( $block['innerBlocks'] ) ) {
-				$children = frl_extract_block_navigation_items( $block['innerBlocks'], $item_id );
+				$children = frl_extract_block_navigation_items( $block['innerBlocks'], $item_id, $counter );
 				$items    = array_merge( $items, $children );
 			}
 		}
 
-		// Handle page-list (auto-generated from pages)
+		// Handle page-list (auto-generated from pages, preserving hierarchy and parentPageID).
 		if ( $block['blockName'] === 'core/page-list' ) {
-			// Get pages as navigation items
-			$pages = get_pages( array( 'sort_column' => 'menu_order, post_title' ) );
+			$root_page_id = isset( $block['attrs']['parentPageID'] ) ? (int) $block['attrs']['parentPageID'] : 0;
+			$page_args    = array( 'sort_column' => 'menu_order, post_title' );
+			if ( $root_page_id > 0 ) {
+				$page_args['child_of'] = $root_page_id;
+			}
+			$pages       = get_pages( $page_args );
+			$page_id_map = array();
 			foreach ( $pages as $page ) {
 				++$counter;
-				$items[] = array(
-					'id'     => $parent_id ? $parent_id . '-' . $counter : $counter,
-					'parent' => $parent_id,
+				$page_id_map[ (int) $page->ID ] = $parent_id ? $parent_id . '-' . $counter : $counter;
+			}
+			foreach ( $pages as $page ) {
+				$post_parent   = (int) $page->post_parent;
+				$mapped_parent = ( $post_parent !== $root_page_id && isset( $page_id_map[ $post_parent ] ) )
+					? $page_id_map[ $post_parent ]
+					: $parent_id;
+				$items[]       = array(
+					'id'     => $page_id_map[ (int) $page->ID ],
+					'parent' => $mapped_parent,
 					'label'  => $page->post_title,
 					'url'    => get_permalink( $page->ID ),
 					'kind'   => 'post-type',
@@ -443,9 +454,9 @@ function frl_extract_block_navigation_items( $blocks, $parent_id = 0 ) {
 			}
 		}
 
-		// Handle navigation (root container) - recurse into innerBlocks
+		// Handle navigation (root container) - recurse into innerBlocks with shared counter.
 		if ( $block['blockName'] === 'core/navigation' && ! empty( $block['innerBlocks'] ) ) {
-			$children = frl_extract_block_navigation_items( $block['innerBlocks'], $parent_id );
+			$children = frl_extract_block_navigation_items( $block['innerBlocks'], $parent_id, $counter );
 			$items    = array_merge( $items, $children );
 		}
 	}

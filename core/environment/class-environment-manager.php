@@ -155,8 +155,8 @@ class Frl_Environment_Manager {
 			return null;
 		}
 
-		// Prevent recursion/re-entry within the same request unless forced
-		if ( frl_is_already_running( __METHOD__ ) || ( ! $force && frl_is_already_running( __CLASS__ ) ) ) {
+		// Prevent re-entry within the same request.
+		if ( frl_is_already_running( __METHOD__ ) ) {
 			return null;
 		}
 
@@ -334,10 +334,7 @@ class Frl_Environment_Manager {
 				set_transient( $cache_key, $results, 5 * MINUTE_IN_SECONDS );
 			}
 		} finally {
-			// Always reset recursion flags.
-			if ( $force ) {
-				frl_is_already_running( __CLASS__, true );
-			}
+			// Always reset recursion flag.
 			frl_is_already_running( __METHOD__, true );
 		}
 
@@ -409,35 +406,9 @@ class Frl_Environment_Manager {
 
 		$current_domain = strtolower( $_SERVER['HTTP_HOST'] );
 
-		$env_link         = '';
-		$current_env_type = $config['type'] ?? 'unknown';
-
-		foreach ( FRL_ENV_MAP as $domain => $env_const_name ) {
-			// Get the partial config array for the potential counterpart environment
-			if ( ! defined( $env_const_name ) ) {
-				continue; // Skip if constant not defined
-			}
-			$partial_config = constant( $env_const_name );
-			if ( ! is_array( $partial_config ) ) {
-				continue; // Skip if not an array
-			}
-
-			// Determine the type of this potential counterpart environment
-			// Check for explicit 'type' key first, otherwise infer from name
-			$counterpart_env_type = $partial_config['type'] ?? ( str_ends_with( $env_const_name, '_STAGING' ) ? 'staging' : 'production' );
-
-			// Compare with the current environment's type to find the opposite type
-			if ( $counterpart_env_type !== $current_env_type ) {
-
-				if ( ! empty( $config['counterpart'] ) && $domain === $config['counterpart'] ) {
-					$env_link = 'https://' . $domain;
-					break;
-				}
-			}
-		}
-
-		if ( ! $env_link || ! frl_has_access() ) {
-			$env_link = '';
+		$env_link = '';
+		if ( ! empty( $config['counterpart'] ) && isset( FRL_ENV_MAP[ $config['counterpart'] ] ) ) {
+			$env_link = 'https://' . $config['counterpart'];
 		}
 
 		// Get search engine indexing status

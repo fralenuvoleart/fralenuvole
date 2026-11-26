@@ -39,10 +39,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @param array $placeholders Pre-built placeholder map.
  * @return array|null Built schema array, or null if no content.
  */
-function frl_schema_generator_build( int $post_id, array $def, ?array $placeholders = null ): ?array {
+function frl_schema_generator_build( ?int $post_id, array $def, ?array $placeholders = null ): ?array {
 	if ( $placeholders === null ) {
 		$placeholders = frl_schema_get_placeholders( $post_id );
 	}
+	$post_id = $post_id ?? 0;
 
 	$result = array();
 

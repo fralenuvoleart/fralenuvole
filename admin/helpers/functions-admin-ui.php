@@ -551,122 +551,49 @@ function frl_update_wp_config_file( $options = array() ) {
 		return frl_error( 'read_failed', 'Failed to read wp-config.php' );
 	}
 
-	// Store original content to check if changes were made
+	// Store original content to check if changes were made.
 	$original_content = $config_content;
 
-	// Modify WP_DEBUG if requested
-	if ( $options['debug'] !== null ) {
-		$debug_value = $options['debug'] ? 'true' : 'false';
-
-		// Check if WP_DEBUG already exists
-		if ( preg_match( '/define\s*\(\s*[\'"]WP_DEBUG[\'"]\s*,\s*(.*?)\s*\)\s*;/i', $config_content ) ) {
-			// Update existing WP_DEBUG
-			$config_content = preg_replace(
-				'/define\s*\(\s*[\'"]WP_DEBUG[\'"]\s*,\s*(.*?)\s*\)\s*;/i',
-				"define('WP_DEBUG', $debug_value);",
-				$config_content
-			);
-		} else {
-			// Add WP_DEBUG if it doesn't exist - after the last define or before the table prefix
-			if ( preg_match( '/define\s*\(\s*[^\)]+\)\s*;/i', $config_content ) ) {
-				// Find the last define statement
-				preg_match_all( '/define\s*\(\s*[^\)]+\)\s*;/i', $config_content, $matches, PREG_OFFSET_CAPTURE );
-				$last_define = end( $matches[0] );
-				$pos         = $last_define[1] + strlen( $last_define[0] );
-
-				// Insert after the last define
-				$config_content = substr_replace(
-					$config_content,
-					"\n\ndefine('WP_DEBUG', $debug_value);",
-					$pos,
-					0
-				);
-			} else {
-				// If no define statements found, insert before table prefix
-				$config_content = preg_replace(
-					'/(.*?)(\$table_prefix\s*=\s*[\'"][^\'"]*[\'"];)/s',
-					"$1\ndefine('WP_DEBUG', $debug_value);\n$2",
-					$config_content
-				);
-			}
+	// Helper: replace an uncommented define() line or insert before stop-editing / $table_prefix.
+	$upsert_define = static function ( string $content, string $const_name, string $val_literal ): ?string {
+		$line_pattern = '/^([ \t]*)define\s*\(\s*[\'"]' . preg_quote( $const_name, '/' ) . '[\'"]\s*,[^;]*\)\s*;/mi';
+		if ( preg_match( $line_pattern, $content ) ) {
+			return preg_replace( $line_pattern, "$1define('{$const_name}', {$val_literal});", $content, 1 );
 		}
-	}
 
-	// Modify WP_DEBUG_LOG if requested
-	if ( $options['debug_log'] !== null ) {
-		$debug_log_value = $options['debug_log'] ? 'true' : 'false';
+		$statement = "define('{$const_name}', {$val_literal});";
 
-		// Check if WP_DEBUG_LOG already exists
-		if ( preg_match( '/define\s*\(\s*[\'"]WP_DEBUG_LOG[\'"]\s*,\s*(.*?)\s*\)\s*;/i', $config_content ) ) {
-			// Update existing WP_DEBUG_LOG
-			$config_content = preg_replace(
-				'/define\s*\(\s*[\'"]WP_DEBUG_LOG[\'"]\s*,\s*(.*?)\s*\)\s*;/i',
-				"define('WP_DEBUG_LOG', $debug_log_value);",
-				$config_content
-			);
-		} elseif ( str_contains( $config_content, 'WP_DEBUG' ) ) {
-			// Add after WP_DEBUG if it exists
-			$config_content = preg_replace(
-				'/(define\s*\(\s*[\'"]WP_DEBUG[\'"]\s*,\s*(.*?)\s*\)\s*;)/i',
-				"$1\ndefine('WP_DEBUG_LOG', $debug_log_value);",
-				$config_content
-			);
-		} else {
-			// Add at the appropriate place if WP_DEBUG doesn't exist
-			if ( $options['debug'] !== null ) {
-				// We already added WP_DEBUG, so add after it (it will be handled by the previous checks)
-				$config_content = preg_replace(
-					'/(define\s*\(\s*[\'"]WP_DEBUG[\'"]\s*,\s*(.*?)\s*\)\s*;)/i',
-					"$1\ndefine('WP_DEBUG_LOG', $debug_log_value);",
-					$config_content
-				);
-			} else {
-				// If WP_DEBUG still doesn't exist, add before table prefix
-				$config_content = preg_replace(
-					'/(.*?)(\$table_prefix\s*=\s*[\'"][^\'"]*[\'"];)/s',
-					"$1\ndefine('WP_DEBUG_LOG', $debug_log_value);\n$2",
-					$config_content
-				);
-			}
+		// Anchor before WordPress's stop-editing comment (outside any ABSPATH guard).
+		$stop_pattern = '/^([ \t]*\/\*\s*That\'s all,\s*stop editing!.*$)/mi';
+		if ( preg_match( $stop_pattern, $content ) ) {
+			return preg_replace( $stop_pattern, "{$statement}\n\n$1", $content, 1 );
 		}
-	}
 
-	// Modify WP_DEBUG_DISPLAY if requested
-	if ( $options['debug_display'] !== null ) {
-		$debug_display_value = $options['debug_display'] ? 'true' : 'false';
-
-		// Check if WP_DEBUG_DISPLAY already exists
-		if ( preg_match( '/define\s*\(\s*[\'"]WP_DEBUG_DISPLAY[\'"]\s*,\s*(.*?)\s*\)\s*;/i', $config_content ) ) {
-			// Update existing WP_DEBUG_DISPLAY
-			$config_content = preg_replace(
-				'/define\s*\(\s*[\'"]WP_DEBUG_DISPLAY[\'"]\s*,\s*(.*?)\s*\)\s*;/i',
-				"define('WP_DEBUG_DISPLAY', $debug_display_value);",
-				$config_content
-			);
-		} else {
-			// Add after WP_DEBUG_LOG if it exists
-			if ( str_contains( $config_content, 'WP_DEBUG_LOG' ) ) {
-				$config_content = preg_replace(
-					'/(define\s*\(\s*[\'"]WP_DEBUG_LOG[\'"]\s*,\s*(.*?)\s*\)\s*;)/i',
-					"$1\ndefine('WP_DEBUG_DISPLAY', $debug_display_value);",
-					$config_content
-				);
-			} elseif ( str_contains( $config_content, 'WP_DEBUG' ) ) {
-				// Or add after WP_DEBUG if it exists
-				$config_content = preg_replace(
-					'/(define\s*\(\s*[\'"]WP_DEBUG[\'"]\s*,\s*(.*?)\s*\)\s*;)/i',
-					"$1\ndefine('WP_DEBUG_DISPLAY', $debug_display_value);",
-					$config_content
-				);
-			} else {
-				// Add before table prefix if neither exist
-				$config_content = preg_replace(
-					'/(.*?)(\$table_prefix\s*=\s*[\'"][^\'"]*[\'"];)/s',
-					"$1\ndefine('WP_DEBUG_DISPLAY', $debug_display_value);\n$2",
-					$config_content
-				);
-			}
+		// Fallback: insert right before $table_prefix.
+		$prefix_pattern = '/^([ \t]*\$table_prefix\s*=\s*[\'"][^\'"]*[\'"]\s*;)/m';
+		if ( preg_match( $prefix_pattern, $content ) ) {
+			return preg_replace( $prefix_pattern, "{$statement}\n\n$1", $content, 1 );
 		}
+
+		return $content;
+	};
+
+	$const_map = array(
+		'debug'         => 'WP_DEBUG',
+		'debug_log'     => 'WP_DEBUG_LOG',
+		'debug_display' => 'WP_DEBUG_DISPLAY',
+	);
+
+	foreach ( $const_map as $opt_key => $const_name ) {
+		if ( $options[ $opt_key ] === null ) {
+			continue;
+		}
+		$val_literal = $options[ $opt_key ] ? 'true' : 'false';
+		$updated     = $upsert_define( $config_content, $const_name, $val_literal );
+		if ( ! is_string( $updated ) ) {
+			return frl_error( 'regex_failed', "Failed to update {$const_name} in wp-config.php" );
+		}
+		$config_content = $updated;
 	}
 
 	// Check if content was actually modified

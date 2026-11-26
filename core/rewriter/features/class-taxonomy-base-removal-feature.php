@@ -438,20 +438,38 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 		$segments = explode( '/', $slug );
 		if ( count( $segments ) >= 2 ) {
 			$post_name = end( $segments );
-			$posts     = get_posts(
-				array(
-					'name'           => $post_name,
-					'post_type'      => 'post',
-					'post_status'    => 'publish',
-					'posts_per_page' => 1,
-				)
-			);
-			if ( ! empty( $posts ) ) {
-				return array(
-					'name'      => $post_name,
-					'post_type' => 'post',
-					'lang'      => $lang,
-				);
+			if ( is_string( $post_name ) && '' !== $post_name ) {
+				$neg_key = ( '' !== $lang ? $lang : 'default' ) . '|' . $post_name;
+				if ( ! frl_slug_negative_get( 'tax_post_fallback', $neg_key ) ) {
+					$post_cache_key = 'rewriter_tax_post_fb_' . md5( $neg_key );
+					$post_id        = frl_cache_get( 'permalinks', $post_cache_key, null );
+					if ( null === $post_id ) {
+						$fb_args = array(
+							'name'           => $post_name,
+							'post_type'      => 'post',
+							'post_status'    => 'publish',
+							'posts_per_page' => 1,
+							'fields'         => 'ids',
+						);
+						if ( '' !== $lang ) {
+							$fb_args['lang'] = $lang;
+						}
+						$posts   = get_posts( $fb_args );
+						$post_id = ! empty( $posts ) ? (int) $posts[0] : 0;
+						if ( $post_id > 0 ) {
+							frl_cache_set( 'permalinks', $post_cache_key, $post_id );
+						} else {
+							frl_slug_negative_mark( 'tax_post_fallback', $neg_key );
+						}
+					}
+					if ( $post_id > 0 ) {
+						return array(
+							'name'      => $post_name,
+							'post_type' => 'post',
+							'lang'      => $lang,
+						);
+					}
+				}
 			}
 		}
 

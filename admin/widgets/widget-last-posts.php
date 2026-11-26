@@ -20,12 +20,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function frl_render_last_posts_widget() {
 	$args = array(
-		'post_type'      => get_post_types( array( 'public' => true ) ),
-		'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
-		'posts_per_page' => 5,
-		'orderby'        => 'modified',
-		'order'          => 'DESC',
-		'lang'           => '', // Deactivate Polylang filter to return posts across all languages
+		'post_type'           => get_post_types( array( 'public' => true ) ),
+		'post_status'         => array( 'publish', 'draft', 'pending', 'private' ),
+		'posts_per_page'      => 5,
+		'orderby'             => 'modified',
+		'order'               => 'DESC',
+		'no_found_rows'       => true,
+		'ignore_sticky_posts' => true,
+		'lang'                => '', // Deactivate Polylang filter to return posts across all languages
 	);
 
 	$last_posts = new WP_Query( $args );
@@ -51,32 +53,44 @@ function frl_render_last_posts_widget() {
 			$time_ago = human_time_diff( $modified_time, current_time( 'timestamp' ) ) . ' ' . __( 'ago', FRL_PREFIX );
 			// Resolve last editor: 1) First retrieve by _edit_last meta; 2) Fallback to post revisions.
 			$last_editor_id = (int) get_post_meta( $post_id, '_edit_last', true );
+			$editor         = $last_editor_id ? get_userdata( $last_editor_id ) : false;
 
-			if ( ! $last_editor_id || ! get_userdata( $last_editor_id ) ) {
+			if ( ! $editor ) {
 				$revisions = wp_get_post_revisions( $post_id, array( 'posts_per_page' => 5 ) );
 				if ( ! empty( $revisions ) ) {
 					foreach ( $revisions as $rev ) {
 						if ( ! wp_is_post_autosave( $rev ) && ! empty( $rev->post_author ) ) {
-							$last_editor_id = (int) $rev->post_author;
-							break;
+							$candidate = get_userdata( (int) $rev->post_author );
+							if ( $candidate ) {
+								$editor = $candidate;
+								break;
+							}
 						}
 					}
 				}
 			}
 
-			if ( $last_editor_id && get_userdata( $last_editor_id ) ) {
-				$author_name = get_the_author_meta( 'user_login', $last_editor_id );
-				$author_link = '/wp-admin/user-edit.php?user_id=' . $last_editor_id;
+			if ( $editor ) {
+				$author_name = $editor->user_login;
+				$author_link = admin_url( 'user-edit.php?user_id=' . (int) $editor->ID );
 			} else {
 				$author_id   = (int) get_the_author_meta( 'ID' );
 				$author_name = get_the_author_meta( 'user_login', $author_id );
-				$author_link = '/wp-admin/user-edit.php?user_id=' . $author_id;
+				$author_link = admin_url( 'user-edit.php?user_id=' . $author_id );
 			}
+
+			$edit_html = ! empty( $edit_link )
+				? '<a href="' . esc_url( $edit_link ) . '" class="post-edit"><span class="dashicons dashicons-edit"></span></a>'
+				: '';
+
+			$title_html = ! empty( $post_permalink )
+				? '<a href="' . esc_url( $post_permalink ) . '">' . esc_html( $post_title ) . '</a>'
+				: esc_html( $post_title );
 
 			$output .= sprintf(
 				'<article class="post-item">
                     <div class="post-edit">
-                        <a href="%1$s" class="post-edit"><span class="dashicons dashicons-edit"></span></a>
+                        %1$s
                     </div>
                     <div class="post-title">
                         %2$s
@@ -93,14 +107,12 @@ function frl_render_last_posts_widget() {
                         </div>
                     </div>
                 </article>',
-				esc_url( $edit_link ),
-				$edit_link
-					? '<a href="' . esc_url( $post_permalink ) . '">' . esc_html( $post_title ) . '</a>'
-					: esc_html( $post_title ),
+				$edit_html,
+				$title_html,
 				esc_attr( $post_type ),
 				esc_url( $post_type_link ),
 				esc_html( $post_type_label ),
-				esc_attr( gmdate( 'c', $modified_time ) ),
+				esc_attr( (string) get_the_modified_date( 'c' ) ),
 				esc_html( $time_ago ),
 				esc_url( $author_link ),
 				esc_html( $author_name )

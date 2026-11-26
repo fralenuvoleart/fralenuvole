@@ -558,7 +558,9 @@ class Frl_UI_Renderer {
 				}
 				$code = $code['examples'];
 			}
-			$code = implode( "\n\n", $code );
+			$code = is_array( $code ) ? implode( "\n\n", $code ) : (string) $code;
+		} else {
+			$code = (string) $code;
 		}
 
 		if ( empty( $code ) ) {
@@ -572,19 +574,16 @@ class Frl_UI_Renderer {
 
 		$id_attr       = ! empty( $id ) ? ' id="' . esc_attr( $id ) . '"' : '';
 		$display_style = $initially_hidden ? ' style="display:none;"' : '';
-
-		$code_html = "<div class='widget-code'>
-            <pre><code class='language-{$language}'>" . htmlspecialchars( $code ) . '</code></pre>
-        </div>';
+		$safe_lang     = esc_attr( (string) $language );
+		$inner_pre     = "<pre><code class='language-{$safe_lang}'>" . htmlspecialchars( $code ) . '</code></pre>';
 
 		// Standard code block (not in table row)
 		if ( ! $in_table_row ) {
-			return "<div{$id_attr} class='widget-code'{$display_style}>
-                <pre><code class='language-{$language}'>" . htmlspecialchars( $code ) . '</code></pre>
-            </div>';
+			return "<div{$id_attr} class='widget-code'{$display_style}>{$inner_pre}</div>";
 		}
 
 		// For table row structure, we need to wrap differently
+		$code_html    = "<div class='widget-code'>{$inner_pre}</div>";
 		$content_html = '<div id="' . esc_attr( $id ) . '" class="tag-example-content"' . $display_style . '>' . $code_html . '</div>';
 
 		return '<div class="widget-table-row widget-table-example-row">
@@ -815,7 +814,7 @@ class Frl_UI_Renderer {
 				$step   = isset( $field['step'] ) ? 'step="' . esc_attr( $field['step'] ) . '"' : '';
 				$size   = $field['size'] ?? 5;
 				$output = sprintf(
-					'<input name="%1$s" id="%1$s" type="%2$s" value="%3$s" class="regular-number %9$s" size="%4$s" placeholder="%5$s" %6$s %7$s %8$s/>',
+					'<input name="%1$s" id="%1$s" type="%2$s" value="%3$s" class="regular-number %9$s" size="%4$s" placeholder="%5$s" %6$s %7$s %8$s %10$s/>',
 					esc_attr( $field_id ),
 					esc_attr( $field['type'] ),
 					esc_attr( $value ),
@@ -824,7 +823,8 @@ class Frl_UI_Renderer {
 					$min,
 					$max,
 					$step,
-					esc_attr( $restricted_class )
+					esc_attr( $restricted_class ),
+					$disabled
 				);
 				break;
 
@@ -979,13 +979,14 @@ class Frl_UI_Renderer {
 	 */
 	public static function render_section_title( $field ) {
 		$classes     = isset( $field['classes'] ) ? esc_attr( $field['classes'] ) : '';
-		$id_attr     = isset( $field['id'] ) ? ' id="' . esc_attr( $field['id'] ) . '"' : '';
+		$id_class    = isset( $field['id'] ) ? esc_attr( $field['id'] ) : '';
+		$id_attr     = isset( $field['id'] ) ? ' id="' . $id_class . '"' : '';
 		$description = isset( $field['description'] ) ? wp_kses_post( $field['description'] ) : '';
 
 		return sprintf(
 			'<div class="format-section-title %s %s" %s>%s</div>',
 			$classes,
-			$field['id'],
+			$id_class,
 			$id_attr,
 			$description
 		);

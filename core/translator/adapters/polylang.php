@@ -83,18 +83,27 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface {
 	}
 
 	public function get_post_language( int $post_id ): ?string {
-		return function_exists( 'pll_get_post_language' ) ? pll_get_post_language( $post_id ) : null;
+		if ( ! function_exists( 'pll_get_post_language' ) ) {
+			return null;
+		}
+		$lang = pll_get_post_language( $post_id );
+		return ( is_string( $lang ) && '' !== $lang ) ? $lang : null;
 	}
 
 	public function get_term_language( int $term_id ): ?string {
-		return function_exists( 'pll_get_term_language' ) ? pll_get_term_language( $term_id ) : null;
+		if ( ! function_exists( 'pll_get_term_language' ) ) {
+			return null;
+		}
+		$lang = pll_get_term_language( $term_id );
+		return ( is_string( $lang ) && '' !== $lang ) ? $lang : null;
 	}
 
 	public function get_object_id( int $id, string $taxonomy, bool $fallback, string $language ): int {
 		// Polylang doesn't have a generic object_id like WPML,
 		// so we rely on the specific translation functions.
 		if ( function_exists( 'icl_object_id' ) ) {
-			return icl_object_id( $id, $taxonomy, $fallback, $language );
+			$translated = icl_object_id( $id, $taxonomy, $fallback, $language );
+			return $translated ? (int) $translated : $id;
 		}
 		return $id;
 	}

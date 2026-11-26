@@ -116,7 +116,13 @@ function frl_wsf_translate_invalid_text( $text ) {
 function frl_wsf_translate_fields( $form, $preview ) {
 	/** @disregard P1010 Undefined type */
 	$fields = wsf_form_get_fields( $form );
+	if ( ! is_iterable( $fields ) ) {
+		return $form;
+	}
 	foreach ( $fields as $object ) {
+		if ( ! is_object( $object ) || ! isset( $object->id ) ) {
+			continue;
+		}
 		/** @disregard P1010 Undefined type */
 		$field = wsf_field_get_object( $form, $object->id );
 
@@ -126,9 +132,8 @@ function frl_wsf_translate_fields( $form, $preview ) {
 		}
 
 		// Translate Labels
-		if ( empty( $field->meta->hidden ) ) {
-			$label        = $field->label;
-			$field->label = frl_get_translation( $label );
+		if ( empty( $field->meta->hidden ) && isset( $field->label ) && is_string( $field->label ) ) {
+			$field->label = frl_get_translation( $field->label );
 		}
 
 		// Translate fields
@@ -189,21 +194,26 @@ function frl_wsf_translate_submit_actions( $actions, $form, $submit ) {
 		return $actions;
 	}
 
-	// Check if we need the weekend inline-message override
-	// We look for a field with aria-label "Date" and value "Sat" or "Sun" in the submission data
+	// Check if we need the weekend inline-message override (unwrap WS Form's ['value' => ...] shape).
 	$is_weekend = false;
-	if ( isset( $submit->meta ) ) {
-		foreach ( $submit->meta as $key => $value ) {
-			if ( str_starts_with( $key, 'field_' ) ) {
-				$field_id = (int) str_replace( 'field_', '', $key );
-				/** @disregard P1010 Undefined type */
-				$field = wsf_field_get_object( $form, $field_id );
-				if ( $field && isset( $field->label ) && $field->label === 'Date' ) {
-					if ( $value === 'Sat' || $value === 'Sun' ) {
-						$is_weekend = true;
-						break;
-					}
-				}
+	if ( isset( $submit->meta ) && is_iterable( $submit->meta ) ) {
+		foreach ( $submit->meta as $key => $raw_value ) {
+			if ( ! is_string( $key ) || ! str_starts_with( $key, 'field_' ) ) {
+				continue;
+			}
+			$val = is_array( $raw_value ) ? ( $raw_value['value'] ?? reset( $raw_value ) ) : $raw_value;
+			if ( is_array( $val ) ) {
+				$val = reset( $val );
+			}
+			if ( $val !== 'Sat' && $val !== 'Sun' ) {
+				continue;
+			}
+			$field_id = (int) str_replace( 'field_', '', $key );
+			/** @disregard P1010 Undefined type */
+			$field = wsf_field_get_object( $form, $field_id );
+			if ( $field && isset( $field->label ) && $field->label === 'Date' ) {
+				$is_weekend = true;
+				break;
 			}
 		}
 	}

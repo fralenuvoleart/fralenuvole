@@ -114,7 +114,7 @@ function frl_dump( $variable ) {
 	static $hook_added   = false;
 
 	$formatted_message = frl_format_log_message( $variable, array() );
-	$dump_message      = str_replace( 'Frl_LOG:', strtoupper( FRL_PREFIX ) . '_DUMP:', $formatted_message );
+	$dump_message      = str_replace( strtoupper( FRL_PREFIX ) . '_LOG:', strtoupper( FRL_PREFIX ) . '_DUMP:', $formatted_message );
 
 	// Store in buffer
 	$debug_buffer[] = $dump_message;

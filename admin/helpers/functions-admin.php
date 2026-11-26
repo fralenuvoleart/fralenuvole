@@ -219,14 +219,12 @@ function frl_batch_update_options( $options, $force_update = false ) {
 			$should_update = ( $compare_new !== $compare_current );
 		}
 
-		// Update if forced or values differ
+		// Update if forced or values differ.
 		if ( $should_update ) {
-			// Update the option using the without_cache_clear function
-			frl_update_option( $key, $value, false );
-
-			// Increment counter and set flag to clear cache
-			++$updated;
-			$should_clear = true;
+			if ( frl_update_option( $key, $value, false ) ) {
+				++$updated;
+				$should_clear = true;
+			}
 		}
 	}
 

@@ -36,9 +36,12 @@ add_filter( 'frl_admin_bar_menu_data', 'frl_thirdparty_admin_bar_cache_warmer', 
 add_filter( 'frl_action_registry', 'frl_thirdparty_register_action', 10, 1 );
 
 add_filter(
-	'wp_script_modules_import_map_html',
-	function ( $html ) {
-		return str_replace( '<script id="wp-importmap"', '<script id="wp-importmap" data-noptimize="1"', $html );
+	'wp_inline_script_attributes',
+	function ( $attributes ) {
+		if ( is_array( $attributes ) && ( $attributes['id'] ?? '' ) === 'wp-importmap' ) {
+			$attributes['data-noptimize'] = '1';
+		}
+		return $attributes;
 	}
 );
 
@@ -141,36 +144,29 @@ function frl_thirdparty_dequeue_acpt_conditional_rules(): void {
  * @return array
  */
 function frl_greenshift_fix_rest_schemas( $endpoints ) {
-	static $done = false;
-	if ( $done ) {
-		return $endpoints;
-	}
-
 	$route = '/greenshift/v1/get-post-part';
 	if ( ! isset( $endpoints[ $route ] ) || ! is_array( $endpoints[ $route ] ) ) {
 		return $endpoints;
 	}
 
 	foreach ( $endpoints[ $route ] as $i => $endpoint ) {
-		if ( ! isset( $endpoint['args'] ) || ! is_array( $endpoint['args'] ) ) {
+		if ( ! isset( $endpoint['args']['post_id'] ) || ! is_array( $endpoint['args']['post_id'] ) ) {
 			continue;
 		}
-		if ( isset( $endpoint['args']['post_id'] ) ) {
-			$type = $endpoint['args']['post_id']['type'] ?? null;
-			if ( $type !== 'integer' ) {
-				$endpoints[ $route ][ $i ]['args']['post_id']['type'] = 'integer';
-			}
-			if ( ! isset( $endpoints[ $route ][ $i ]['args']['post_id']['sanitize_callback'] ) ) {
-				$endpoints[ $route ][ $i ]['args']['post_id']['sanitize_callback'] = 'absint';
-			}
-			if ( ! isset( $endpoints[ $route ][ $i ]['args']['post_id']['validate_callback'] ) ) {
-				$endpoints[ $route ][ $i ]['args']['post_id']['validate_callback'] = static function ( $value ) {
-					return is_numeric( $value );
-				};
-			}
+		$type = $endpoint['args']['post_id']['type'] ?? null;
+		if ( $type !== 'integer' ) {
+			$endpoints[ $route ][ $i ]['args']['post_id']['type'] = 'integer';
+		}
+		if ( ! isset( $endpoints[ $route ][ $i ]['args']['post_id']['sanitize_callback'] ) ) {
+			$endpoints[ $route ][ $i ]['args']['post_id']['sanitize_callback'] = 'absint';
+		}
+		if ( ! isset( $endpoints[ $route ][ $i ]['args']['post_id']['validate_callback'] ) ) {
+			$endpoints[ $route ][ $i ]['args']['post_id']['validate_callback'] = static function ( $value ) {
+				return is_numeric( $value );
+			};
 		}
 	}
-	$done = true;
+
 	return $endpoints;
 }
 

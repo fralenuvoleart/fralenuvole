@@ -175,12 +175,7 @@ function frl_pbproperty_translate_ajax_listings_output( $data ) {
 		return;
 	}
 
-	foreach ( PBP_TRANSLATE_STRINGS as $string ) {
-		$translation = frl_get_translation( $string );
-		if ( $translation !== $string ) {
-			$output = str_replace( $string, $translation, $output );
-		}
-	}
+	$output = frl_pbproperty_translate_html_strings( (string) $output );
 
 	ob_clean();
 	echo $output;
@@ -205,14 +200,7 @@ function frl_pbproperty_translate_geodir_the_content( $content ) {
 		return $content;
 	}
 
-	foreach ( PBP_TRANSLATE_STRINGS as $string ) {
-		$translation = frl_get_translation( $string );
-		if ( $translation !== $string ) {
-			$content = str_replace( $string, $translation, $content );
-		}
-	}
-
-	return $content;
+	return frl_pbproperty_translate_html_strings( (string) $content );
 }
 
 /**
@@ -254,30 +242,35 @@ function frl_pbproperty_geodir_translate_option_label( $html, $location, $cf, $p
 		return $html;
 	}
 
-	// Find the label for the stored value
-	$original_label = '';
-	foreach ( $options as $option ) {
-		// phpcs:ignore Universal.Operators.StrictComparisons.LooseEqual -- Intentional loose comparison: $option['value'] (parsed from GeoDirectory option string) and $stored_value (dynamic post field) may differ in type (e.g. int vs numeric string) while representing the same value.
-		if ( isset( $option['value'] ) && $option['value'] == $stored_value && ! empty( $option['label'] ) ) {
-			$original_label = $option['label'];
-			break;
-		}
+	// Normalize stored value into a list to support select, radio, and multiselect (array or CSV).
+	if ( is_array( $stored_value ) ) {
+		$stored_values = array_map( static fn( $v ) => trim( (string) $v ), $stored_value );
+	} else {
+		$stored_values = array_map( 'trim', explode( ',', (string) $stored_value ) );
 	}
-
-	if ( empty( $original_label ) ) {
+	$stored_values = array_values( array_filter( $stored_values, static fn( $v ) => '' !== $v ) );
+	if ( empty( $stored_values ) ) {
 		return $html;
 	}
 
-	// Translate the label
-	$translated_label = frl_get_translation( $original_label );
+	// Collect all matching option labels (for multiselect) and build deduplicated replacements.
+	$replacements = array();
+	foreach ( $options as $option ) {
+		if ( ! isset( $option['value'] ) || empty( $option['label'] ) ) {
+			continue;
+		}
+		if ( in_array( trim( (string) $option['value'] ), $stored_values, true ) ) {
+			$original_label   = (string) $option['label'];
+			$translated_label = frl_get_translation( $original_label );
+			if ( $translated_label !== $original_label ) {
+				$replacements[ '>' . $original_label . '<' ]             = '>' . $translated_label . '<';
+				$replacements[ '>' . esc_html( $original_label ) . '<' ] = '>' . esc_html( $translated_label ) . '<';
+			}
+		}
+	}
 
-	// If translation changed, replace in HTML output
-	if ( $translated_label !== $original_label ) {
-		$html = str_replace(
-			array( '>' . $original_label . '<', '>' . esc_html( $original_label ) . '<' ),
-			array( '>' . $translated_label . '<', '>' . esc_html( $translated_label ) . '<' ),
-			$html
-		);
+	if ( ! empty( $replacements ) ) {
+		$html = strtr( (string) $html, $replacements );
 	}
 
 	return $html;

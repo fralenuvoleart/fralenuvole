@@ -44,5 +44,6 @@ $frl_thirdparty_default_fields = array(
 		'type'              => 'checkbox',
 		'default'           => 0,
 		'sanitize_callback' => 'absint',
+		'autoload'          => 'no',
 	),
 );

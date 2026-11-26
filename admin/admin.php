@@ -255,6 +255,8 @@ function frl_remove_admin_menus() {
 		return;
 	}
 
+	$fallback_css = '';
+
 	$handles = frl_textlist_to_array(
 		frl_get_option( 'am_remove_links_handles' ) ?: ''
 	);
@@ -262,25 +264,34 @@ function frl_remove_admin_menus() {
 	if ( ! empty( $handles ) ) {
 		foreach ( $handles as $handle_parts ) {
 			// Handle both single strings and pipe-separated arrays
-			$handle = count( $handle_parts ) > 1 ? $handle_parts : $handle_parts[0];
-			frl_remove_admin_menus_item( $handle );
+			$handle        = count( $handle_parts ) > 1 ? $handle_parts : $handle_parts[0];
+			$fallback_css .= frl_remove_admin_menus_item( $handle );
 		}
 	}
 
-	if ( frl_has_access() ) {
-		return;
+	if ( ! frl_has_access() ) {
+		$handles_notadmin = frl_textlist_to_array(
+			frl_get_option( 'am_remove_links_handles_user' ) ?: ''
+		);
+
+		if ( ! empty( $handles_notadmin ) ) {
+			foreach ( $handles_notadmin as $handle_parts ) {
+				// Handle both single strings and pipe-separated arrays
+				$handle_notadmin = count( $handle_parts ) > 1 ? $handle_parts : $handle_parts[0];
+				$fallback_css   .= frl_remove_admin_menus_item( $handle_notadmin );
+			}
+		}
 	}
 
-	$handles_notadmin = frl_textlist_to_array(
-		frl_get_option( 'am_remove_links_handles_user' ) ?: ''
-	);
-
-	if ( ! empty( $handles_notadmin ) ) {
-		foreach ( $handles_notadmin as $handle_parts ) {
-			// Handle both single strings and pipe-separated arrays
-			$handle_notadmin = count( $handle_parts ) > 1 ? $handle_parts : $handle_parts[0];
-			frl_remove_admin_menus_item( $handle_notadmin );
-		}
+	if ( '' !== $fallback_css ) {
+		add_action(
+			'admin_print_styles',
+			static function () use ( $fallback_css ) {
+				echo '<style id="' . esc_attr( FRL_PREFIX ) . '-remove-adminmenu">' . $fallback_css . '</style>';
+			},
+			10,
+			0
+		);
 	}
 }
 
@@ -288,14 +299,13 @@ function frl_remove_admin_menus() {
  * Remove a specific menu or submenu item.
  *
  * If the item cannot be removed via standard WordPress functions,
- * it injects a CSS style to hide the element from the UI.
+ * returns fallback CSS to hide the element from the UI.
  *
  * @param string|array $handle Menu handle (string for main menu, array for submenu).
- * @return void
+ * @return string Fallback CSS rules, or empty string if removed via WP API.
  */
-function frl_remove_admin_menus_item( $handle ) {
+function frl_remove_admin_menus_item( $handle ): string {
 	$style = '';
-	$menu  = '';
 
 	if ( is_array( $handle ) ) {
 		$menu    = $handle[0] ?? '';
@@ -303,7 +313,6 @@ function frl_remove_admin_menus_item( $handle ) {
 
 		$submenu_removed = remove_submenu_page( $menu, $submenu );
 		if ( ! $submenu_removed ) {
-
 			$style .= frl_generate_style_remove_admin_menu( $submenu );
 		}
 	} elseif ( is_string( $handle ) ) {
@@ -313,32 +322,31 @@ function frl_remove_admin_menus_item( $handle ) {
 			$style .= frl_generate_style_remove_admin_menu( $menu, true );
 		}
 	}
-	if ( ! empty( $style ) ) {
-		add_action(
-			'admin_print_styles',
-			function () use ( $style, $menu ) {
-				echo '<style id="' . FRL_PREFIX . '-remove-adminmenu-' . $menu . '">' . $style . '</style>';
-			},
-			10,
-			0
-		);
-	}
+
+	return $style;
 }
 
 
 /**
  * Generate CSS to hide a specific admin menu item.
  *
- * @param string $target The menu handle or target to hide.
- * @param bool $is_class Whether to target by CSS class instead of href.
+ * @param string $target   The menu handle or target to hide.
+ * @param bool   $is_class Whether to target by CSS class instead of href.
  * @return string The generated CSS style string.
  */
 function frl_generate_style_remove_admin_menu( $target, $is_class = false ) {
-	$style = '#adminmenu li:has(>a[href*="' . $target . '"]) {display:none;}';
+	// Strip quotes, braces, and closing style tags from selector target.
+	$safe_target = str_ireplace( '</style', '', (string) $target );
+	$safe_target = str_replace( array( '"', "'", '\\', '{', '}', "\r", "\n" ), '', $safe_target );
+	if ( '' === $safe_target ) {
+		return '';
+	}
+
+	$style = '#adminmenu li:has(>a[href*="' . $safe_target . '"]) {display:none;}';
 
 	if ( $is_class ) {
-		$style .= '#adminmenu li[class*="' . $target . '"] {display:none;}';
-		$style .= '#adminmenu li>a[class*="' . $target . '"] {display:none;}';
+		$style .= '#adminmenu li[class*="' . $safe_target . '"] {display:none;}';
+		$style .= '#adminmenu li>a[class*="' . $safe_target . '"] {display:none;}';
 	}
 
 	return $style;

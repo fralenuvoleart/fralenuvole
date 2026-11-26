@@ -325,10 +325,11 @@ class Frl_Tab_Manager {
 		}
 
 		if ( isset( $_GET['settings-updated'] ) && $_GET['settings-updated'] === 'true' ) {
-			$saved_tab = frl_get_transient( 'active_settings_tab' );
+			$tab_key   = 'active_settings_tab_' . get_current_user_id();
+			$saved_tab = frl_get_transient( $tab_key );
 			if ( $saved_tab !== false ) {
 				$active_tab = $saved_tab;
-				frl_delete_transient( 'active_settings_tab' );
+				frl_delete_transient( $tab_key );
 			}
 		}
 
@@ -336,13 +337,13 @@ class Frl_Tab_Manager {
 	}
 
 	/**
-	 * Persist the active tab index in a transient for post-save redirection.
+	 * Persist the active tab index in a user-scoped transient for post-save redirection.
 	 *
 	 * @param mixed $active_tab The tab index to save.
 	 * @return void
 	 */
 	public static function save_active_tab( $active_tab ) {
-		frl_set_transient( 'active_settings_tab', intval( $active_tab ), HOUR_IN_SECONDS );
+		frl_set_transient( 'active_settings_tab_' . get_current_user_id(), intval( $active_tab ), HOUR_IN_SECONDS );
 	}
 
 	// =========================================================================
@@ -390,20 +391,16 @@ class Frl_Tab_Manager {
 			$has_access = frl_has_access();
 		}
 
-		foreach ( $hidden_tabs as $tab_id ) {
-			if ( ! $has_access ) {
-				add_filter(
-					'frl_is_section_restricted',
-					function ( $is_restricted, $section_id_to_check ) use ( $tab_id ) {
-						if ( $section_id_to_check === $tab_id ) {
-							return true;
-						}
-						return $is_restricted;
-					},
-					10,
-					2
-				);
-			}
+		if ( ! $has_access && ! empty( $hidden_tabs ) ) {
+			$hidden_tabs = array_values( (array) $hidden_tabs );
+			add_filter(
+				'frl_is_section_restricted',
+				static function ( $is_restricted, $section_id_to_check ) use ( $hidden_tabs ) {
+					return in_array( $section_id_to_check, $hidden_tabs, true ) ? true : $is_restricted;
+				},
+				10,
+				2
+			);
 		}
 
 		self::get_instance()->get_registry()->invalidate_cache();

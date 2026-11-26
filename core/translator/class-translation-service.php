@@ -519,7 +519,7 @@ final class Frl_Translation_Service {
 											'~^' . preg_quote( home_url(), '~' ) . '~',
 											rtrim( (string) $pll_home, '/' ),
 											$link
-										);
+										) ?? $link;
 									} else {
 										$link = apply_filters( 'wpml_permalink', $link, $language );
 									}
@@ -530,7 +530,9 @@ final class Frl_Translation_Service {
 						}
 					}
 				}
-				// If not resolved, fall through to generic handling below
+				// Unmatched archive:* slug must not fall through to taxonomy lookup.
+				$permalinks[ $original_slug ] = '#';
+				continue;
 			}
 
 			if ( str_contains( $original_slug, ':' ) ) {
@@ -933,7 +935,7 @@ final class Frl_Translation_Service {
 
 		$combined_pattern = "/{$t_start}(.*?){$t_end}|{$l_start}(.*?){$l_end}/";
 
-		return preg_replace_callback(
+		$result = preg_replace_callback(
 			$combined_pattern,
 			function ( $matched_value ) use ( $text_map, $permalink_map ) {
 				if ( ! empty( $matched_value[1] ) ) {
@@ -953,6 +955,8 @@ final class Frl_Translation_Service {
 			},
 			$content
 		);
+
+		return $result ?? $content;
 	}
 
 	/**
@@ -1065,7 +1069,7 @@ final class Frl_Translation_Service {
 			}
 		);
 
-		return preg_replace_callback(
+		$result = preg_replace_callback(
 			$link_pattern,
 			function ( $matched_value ) use ( $translated_permalinks ) {
 				$original = trim( $matched_value[1] );
@@ -1073,5 +1077,7 @@ final class Frl_Translation_Service {
 			},
 			$content
 		);
+
+		return $result ?? $content;
 	}
 }

@@ -55,7 +55,8 @@ function frl_add_image_sizes() {
 	);
 
 	foreach ( $image_sizes as $size ) {
-		add_image_size( $size[0], (int) $size[1], (int) $size[2], $size[3] ?? false );
+		// $size[3] is the human-readable media-picker label, not a crop flag.
+		add_image_size( $size[0], (int) $size[1], (int) $size[2], false );
 	}
 
 	$added = true;
@@ -152,9 +153,9 @@ function frl_get_avatar_data( $args, $id_or_email ) {
 	$user_id   = (int) $id_or_email;
 	$cache_key = 'avatar_uid' . $user_id;
 
-	// Cache avatar URL to reduce meta and attachment lookups
+	// Cache avatar URL in 'admin' (not globally preloaded 'options').
 	$sizes = frl_cache_remember(
-		'options',
+		'admin',
 		$cache_key,
 		function () use ( $user_id ) {
 			$attachment_id = frl_get_user_meta( $user_id, 'avatar' );
@@ -291,7 +292,7 @@ function frl_save_custom_avatar( $user_id ) {
 
 		// Invalidate avatar cache after update
 		$cache_key = 'avatar_uid' . $user_id;
-		frl_cache_clear( 'options', $cache_key );
+		frl_cache_clear( 'admin', $cache_key );
 	}
 }
 
@@ -354,7 +355,8 @@ function frl_get_file_nicename( $filename, $as_title = false ) {
 	}
 
 	if ( function_exists( 'transliterator_transliterate' ) ) {
-		$basename = transliterator_transliterate( 'Any-Latin; Latin-ASCII', $basename );
+		$transliterated = transliterator_transliterate( 'Any-Latin; Latin-ASCII', $basename );
+		$basename       = is_string( $transliterated ) ? $transliterated : remove_accents( $basename );
 	} else {
 		$basename = remove_accents( $basename );
 	}
@@ -378,8 +380,14 @@ function frl_get_file_nicename( $filename, $as_title = false ) {
 	$clean_name = str_replace( '_', '-', $basename );
 	$clean_name = preg_replace( '/[^a-z0-9-]/', '', $clean_name );
 	$clean_name = preg_replace( '/-+/', '-', $clean_name );
+	$clean_stem = trim( (string) $clean_name, '-' );
 
-	return trim( $clean_name, '-' ) . $extension;
+	// Preserve original filename instead of returning a bare '.ext' or empty string.
+	if ( '' === $clean_stem ) {
+		return $filename;
+	}
+
+	return $clean_stem . $extension;
 }
 
 /**
@@ -397,8 +405,15 @@ function frl_update_image_metadata( $attachment_id ) {
 		return;
 	}
 
-	$filename  = basename( get_attached_file( $attachment_id ) );
-	$img_title = frl_get_file_nicename( $filename, true );
+	$attached_file = get_attached_file( $attachment_id );
+	if ( ! is_string( $attached_file ) || '' === $attached_file ) {
+		return;
+	}
+
+	$img_title = frl_get_file_nicename( basename( $attached_file ), true );
+	if ( '' === $img_title ) {
+		return;
+	}
 
 	update_post_meta( $attachment_id, '_wp_attachment_image_alt', $img_title );
 

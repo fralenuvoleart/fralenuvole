@@ -1028,6 +1028,8 @@ class Frl_Subdomain_Adapter {
 			$prefix     = '/' . strtolower( $content_lang ) . '/';
 			if ( str_starts_with( $path_lower, $prefix ) ) {
 				$path = '/' . substr( $path, strlen( $prefix ) );
+			} elseif ( rtrim( $path_lower, '/' ) === '/' . strtolower( $content_lang ) ) {
+				$path = '/';
 			}
 			$transform_cache[ $cache_key ] = "{$scheme}://{$target_subdomain}{$path}{$query}{$fragment}";
 			return $transform_cache[ $cache_key ];
@@ -1043,6 +1045,8 @@ class Frl_Subdomain_Adapter {
 		$prefix     = '/' . strtolower( $content_lang ) . '/';
 		if ( str_starts_with( $path_lower, $prefix ) ) {
 			$path = '/' . substr( $path, strlen( $prefix ) );
+		} elseif ( rtrim( $path_lower, '/' ) === '/' . strtolower( $content_lang ) ) {
+			$path = '/';
 		}
 
 		if ( $content_lang !== $main_default ) {
@@ -1435,8 +1439,9 @@ class Frl_Subdomain_Adapter {
 
 		if ( ! $resolved ) {
 			$resolved = true;
-			if ( class_exists( 'Frl_Polylang_Adapter' ) ) {
-				$adapter = new Frl_Polylang_Adapter();
+			$class    = function_exists( 'frl_get_translation_adapter_class' ) ? frl_get_translation_adapter_class() : null;
+			if ( is_string( $class ) && class_exists( $class ) ) {
+				$adapter = new $class();
 			}
 		}
 

@@ -81,7 +81,10 @@ class Frl_Environment_Files {
 					return null;
 				}
 
-				$content = file_get_contents( $filepath );
+				$content = file_get_contents( $real_path );
+				if ( false === $content ) {
+					return null;
+				}
 
 				if ( str_contains( $content, '<?php' ) ) {
 					// Validate PHP syntax by evaluating in a sandbox.
@@ -98,22 +101,15 @@ class Frl_Environment_Files {
 					if ( ! function_exists( 'exec' ) ) {
 						frl_log( 'Skipping PHP syntax check for environment file (exec() unavailable on this host): {file}', array( 'file' => $filepath ) );
 					} else {
-						$temp_file = false;
 						try {
-							// Create a temporary file to test syntax
-							$temp_file = tempnam( sys_get_temp_dir(), 'env_' );
-							if ( false !== $temp_file ) {
-								file_put_contents( $temp_file, $content );
+							// Lint the verified file directly on disk (no temp file needed).
+							$output      = array();
+							$return_code = 0;
+							exec( 'php -l ' . escapeshellarg( $real_path ), $output, $return_code );
 
-								// Use php -l to check syntax
-								$output      = array();
-								$return_code = 0;
-								exec( 'php -l ' . escapeshellarg( $temp_file ), $output, $return_code );
-
-								if ( $return_code !== 0 ) {
-									$has_syntax_error = true;
-									$error_message    = implode( "\n", $output );
-								}
+							if ( $return_code !== 0 ) {
+								$has_syntax_error = true;
+								$error_message    = implode( "\n", $output );
 							}
 						} catch ( \Throwable $e ) {
 							// Catches both Exception and Error (e.g. exec() disabled at
@@ -122,10 +118,6 @@ class Frl_Environment_Files {
 							// check crash environment enforcement.
 							$has_syntax_error = true;
 							$error_message    = $e->getMessage();
-						} finally {
-							if ( is_string( $temp_file ) && file_exists( $temp_file ) ) {
-								unlink( $temp_file );
-							}
 						}
 
 						if ( $has_syntax_error ) {

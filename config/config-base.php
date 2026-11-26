@@ -49,17 +49,17 @@ const FRL_DEFAULT_EDITOR_CPT_ID = 18765;
 const FRL_ADMINBAR_CPT_LIST = array(
 	'page'  => array(
 		'title'  => 'All Pages',
-		'href'   => '/wp-admin/edit.php?post_type=page',
-		'access' => 'publish_pages',
+		'href'   => 'edit.php?post_type=page',
+		'access' => 'edit_pages',
 	),
 	'post'  => array(
 		'title'  => 'All Posts',
-		'href'   => '/wp-admin/edit.php',
+		'href'   => 'edit.php',
 		'access' => 'edit_posts',
 	),
 	'media' => array(
 		'title'  => 'All Media',
-		'href'   => '/wp-admin/upload.php',
+		'href'   => 'upload.php',
 		'access' => 'upload_files',
 	),
 );

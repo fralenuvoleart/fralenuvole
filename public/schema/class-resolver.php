@@ -45,8 +45,6 @@ function frl_schema_resolver_resolve( array $props, string $path = '', array $re
 		if ( is_array( $value ) ) {
 			$result[ $key ] = frl_schema_resolver_resolve( $value, $current_path, $replacements, $key_trans );
 		} elseif ( is_string( $value ) ) {
-			$value = frl_schema_replace_placeholders( $value, $replacements );
-
 			if ( $value === '_remove' ) {
 				$value = null;
 			} elseif ( $key_trans

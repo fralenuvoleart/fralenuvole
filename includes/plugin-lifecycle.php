@@ -281,15 +281,18 @@ function frl_auto_backup_on_upgrade(): void {
 		frl_log( 'Settings backup skipped: json_encode() failed' );
 		return;
 	}
-	file_put_contents( $filepath, $json );
+	if ( false === file_put_contents( $filepath, $json ) ) {
+		frl_log( 'Settings backup skipped: file_put_contents() failed for {file}', array( 'file' => $filepath ) );
+		return;
+	}
 
-	// Maintain only the 5 most recent backups
+	// Maintain only the 5 most recent backups.
 	$backups = glob( $backups_dir . '/*-frl-settings-*.json' );
 	if ( is_array( $backups ) && count( $backups ) > 5 ) {
 		usort(
 			$backups,
 			function ( $a, $b ) {
-				return filemtime( $a ) - filemtime( $b );
+				return (int) filemtime( $a ) <=> (int) filemtime( $b );
 			}
 		);
 		$to_delete = array_slice( $backups, 0, count( $backups ) - 5 );
@@ -320,10 +323,9 @@ function frl_deactivate_plugin(): void {
 
 	// An absent option makes WP_Rewrite::wp_rewrite_rules() regenerate lazily without our rules.
 	delete_option( 'rewrite_rules' );
-	// Best-effort fallback: the cron callback does not run once the plugin is inactive.
-	frl_schedule_rewrite_flush();
 	wp_clear_scheduled_hook( 'frl_daily_cache_cleanup' );
 	wp_clear_scheduled_hook( 'frl_flush_pending_rewrite_rules' );
+	wp_clear_scheduled_hook( 'frl_flush_rewrite_rules' );
 }
 
 /**
@@ -352,10 +354,9 @@ function frl_uninstall_plugin(): void {
 
 	// An absent option makes WP_Rewrite::wp_rewrite_rules() regenerate lazily without our rules.
 	delete_option( 'rewrite_rules' );
-	// Best-effort fallback: the cron callback does not run once the plugin is uninstalled.
-	frl_schedule_rewrite_flush();
 	wp_clear_scheduled_hook( 'frl_daily_cache_cleanup' );
 	wp_clear_scheduled_hook( 'frl_flush_pending_rewrite_rules' );
+	wp_clear_scheduled_hook( 'frl_flush_rewrite_rules' );
 }
 
 /**

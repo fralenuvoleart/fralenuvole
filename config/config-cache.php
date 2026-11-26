@@ -32,6 +32,7 @@ const FRL_CACHE_PERSISTENT_GROUPS = array(
 	'environment',  // Add environment group
 	'adminui',      // Used for admin interface assembly
 	'admin',        // Used for admin UI
+	'visits',       // Used for logged-in user visit deduplication
 );
 
 // Default TTL values for different cache groups
@@ -52,6 +53,7 @@ const FRL_CACHE_TTL = array(
 	'admin'        => HOUR_IN_SECONDS,     // 1 hour
 	'versions'     => HOUR_IN_SECONDS,     // 1 hour
 	'environment'  => HOUR_IN_SECONDS,     // 1 hour
+	'visits'       => 5 * MINUTE_IN_SECONDS, // 5 minutes (visit deduplication)
 	'default'      => HOUR_IN_SECONDS,     // 1 hour default
 );
 
@@ -123,6 +125,7 @@ const FRL_CACHE_DEPENDENCIES = array(
 	'versions'     => array(),
 	'blocks'       => array(),  // Translations dependency handled by versioned keys
 	'shortcodes'   => array(),  // Translations dependency handled by versioned keys
+	'visits'       => array(),
 );
 
 // Groups eagerly warmed at init by Frl_Cache_Manager::auto_preload().

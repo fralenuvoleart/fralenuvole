@@ -39,17 +39,64 @@ function frl_wsf_get_grouped_submission_data( $days = 30, $form_id = null, $star
 	// Get dynamic field mappings from modular config.
 	$all_configs = frl_wsf_get_all_webhook_configs();
 
+	// When $form_id is null, aggregate per configured form_id so each form uses its own field map.
+	if ( $form_id === null ) {
+		$seen_ids       = array();
+		$merged_counts  = array();
+		$resolved_start = $start_date;
+		$resolved_end   = $end_date;
+		foreach ( $all_configs as $webhook_config ) {
+			$cfg_form_id = $webhook_config['form_id'] ?? null;
+			if ( $cfg_form_id === null ) {
+				continue;
+			}
+			$cfg_form_id = (int) $cfg_form_id;
+			if ( isset( $seen_ids[ $cfg_form_id ] ) ) {
+				continue;
+			}
+			$seen_ids[ $cfg_form_id ] = true;
+			$sub                      = frl_wsf_get_grouped_submission_data( $days, $cfg_form_id, $start_date, $end_date, $include_cta );
+			$resolved_start           = $sub['date_range']['start'] ?? $resolved_start;
+			$resolved_end             = $sub['date_range']['end'] ?? $resolved_end;
+			foreach ( $sub['grouped_counts'] ?? array() as $lang => $groups ) {
+				foreach ( $groups as $gkey => $cnt ) {
+					$merged_counts[ $lang ][ $gkey ] = ( $merged_counts[ $lang ][ $gkey ] ?? 0 ) + $cnt;
+				}
+			}
+		}
+
+		$language_totals = array();
+		foreach ( $merged_counts as $lang => $groups ) {
+			$language_totals[ $lang ] = array_sum( $groups );
+		}
+		arsort( $language_totals );
+		foreach ( $merged_counts as $lang => &$groups ) {
+			arsort( $groups );
+		}
+		unset( $groups );
+
+		$sorted = array();
+		foreach ( $language_totals as $lang => $total ) {
+			$sorted[ $lang ] = $merged_counts[ $lang ];
+		}
+
+		return array(
+			'grouped_counts' => $sorted,
+			'date_range'     => array(
+				'start' => $resolved_start,
+				'end'   => $resolved_end,
+			),
+			'form_id'        => null,
+		);
+	}
+
 	$fields_map = array();
 	foreach ( $all_configs as $webhook_config ) {
 		$target_id = $webhook_config['form_id'] ?? null;
-		if ( $target_id !== null && ( (int) $target_id === (int) $form_id || $form_id === null ) ) {
+		if ( $target_id !== null && (int) $target_id === (int) $form_id ) {
 			$fields_map = $webhook_config['fields_map'] ?? array();
 			break;
 		}
-	}
-
-	if ( empty( $fields_map ) && ! empty( $all_configs ) ) {
-		$fields_map = $all_configs[0]['fields_map'] ?? array();
 	}
 
 	// Get the actual field IDs for the labels we need.

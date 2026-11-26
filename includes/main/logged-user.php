@@ -121,6 +121,11 @@ function frl_admin_bar_apply_data( $wp_admin_bar, array $menu_data, bool $show_c
 
 		if ( ! empty( $menu_data['menu_primary'] ) ) {
 			foreach ( $menu_data['menu_primary'] as $item ) {
+				// Build action URL per request so cached menu items never bake stale REQUEST_URI.
+				if ( isset( $item['_frl_action'] ) ) {
+					$item['href'] = add_query_arg( FRL_PREFIX . '_action', $item['_frl_action'] );
+					unset( $item['_frl_action'] );
+				}
 				$wp_admin_bar->add_menu( $item );
 			}
 		}
@@ -250,11 +255,11 @@ function frl_admin_bar_add_menu_primary( $data ) {
 		$alt   = $args['alt'];
 
 		$data['menu_primary'][ 'cache_' . $action ] = array(
-			'id'     => FRL_PREFIX . '-menu-child-' . $action,
-			'title'  => $title,
-			'href'   => add_query_arg( FRL_PREFIX . '_action', $action ),
-			'parent' => $parent_id,
-			'meta'   => array(
+			'id'          => FRL_PREFIX . '-menu-child-' . $action,
+			'title'       => $title,
+			'_frl_action' => $action,
+			'parent'      => $parent_id,
+			'meta'        => array(
 				'class' => FRL_PREFIX . '-ab-' . $action,
 				'title' => $alt,
 			),
@@ -359,11 +364,14 @@ function frl_admin_bar_add_cpt_links( $data ) {
 
 	foreach ( $cpt_list as $key => $value ) {
 		if ( frl_has_access( $value['access'] ) ) {
+			$href                  = str_starts_with( $value['href'], '/' ) || str_starts_with( $value['href'], 'http' )
+				? $value['href']
+				: admin_url( $value['href'] );
 			$data[ 'cpt_' . $key ] = array(
 				'id'     => 'cpt-menu-' . $key,
 				'title'  => $value['title'],
 				'parent' => $cpt_group_id,
-				'href'   => $value['href'],
+				'href'   => $href,
 			);
 		}
 	}
@@ -429,9 +437,17 @@ function frl_get_debug_log_count() {
  * @return void
  */
 function frl_trace_logged_user_visits() {
-	// Fast-path transient deduplication before any heavy work.
-	// This avoids fetching user meta and iterating stored visits on every
-	// page load when the same user visits the same URL within 5 minutes.
+	// Check for specific actions and option gating BEFORE hitting the visits cache.
+	// Note: clear_visits is handled by frl_post_clear_visits via admin-post.php.
+	if ( isset( $_GET['refresh_visits'] ) ) {
+		return; // Don't track visits initiated by refresh button.
+	}
+
+	if ( ! frl_is_logged_in() || ! frl_get_option( 'logged_user_visits' ) ) {
+		return;
+	}
+
+	// Fast-path transient deduplication before user-meta reads.
 	$user_id = get_current_user_id();
 	if ( $user_id && ! empty( $_SERVER['REQUEST_URI'] ) ) {
 		$request_hash = md5( ( $_SERVER['HTTP_HOST'] ?? '' ) . $_SERVER['REQUEST_URI'] );
@@ -439,17 +455,6 @@ function frl_trace_logged_user_visits() {
 		if ( frl_cache_get( 'visits', $dedup_key ) ) {
 			return;
 		}
-	}
-
-	// Check for specific actions FIRST
-	// Note: clear_visits is now handled by frl_post_clear_visits via admin-post.php
-	if ( isset( $_GET['refresh_visits'] ) ) {
-		return; // Don't track visits initiated by refresh button
-	}
-
-	// Only track for logged-in users and if option is enabled
-	if ( ! frl_is_logged_in() || ! frl_get_option( 'logged_user_visits' ) ) {
-		return;
 	}
 
 	// Skip invalid page requests OR administrator actions

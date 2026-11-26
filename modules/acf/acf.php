@@ -154,7 +154,11 @@ function frl_acf_compute_value( $op, array $values, array $args = array() ) {
 			return (float) $v;
 		}
 		if ( is_string( $v ) ) {
-			$n = (float) str_replace( ',', '', $v );
+			$cleaned = trim( str_replace( ',', '', $v ) );
+			if ( ! is_numeric( $cleaned ) ) {
+				return null;
+			}
+			$n = (float) $cleaned;
 			return is_finite( $n ) ? $n : null;
 		}
 		return null;
@@ -162,7 +166,10 @@ function frl_acf_compute_value( $op, array $values, array $args = array() ) {
 
 	if ( $op === 'CONCAT' ) {
 		$sep   = (string) ( $args['separator'] ?? '' );
-		$parts = array_filter( array_map( 'strval', $values ), static fn( $s ) => $s !== '' );
+		$parts = array_filter(
+			array_map( static fn( $v ) => is_scalar( $v ) ? (string) $v : '', $values ),
+			static fn( $s ) => $s !== ''
+		);
 		return implode( $sep, $parts );
 	}
 
@@ -241,11 +248,16 @@ function frl_acf_render_template( string $template, string $source = 'option', i
 			$template = implode( '', array_map( 'trim', $lines ) );
 		}
 	}
-	$cb = static function ( $m ) use ( $source, $post_id, $urlencode ) {
+	$pid      = ( $source === 'post' && $post_id > 0 ) ? $post_id : 'option';
+	$resolved = array();
+	$cb       = static function ( $m ) use ( $pid, $urlencode, &$resolved ) {
 		$name = $m[1];
-		$pid  = ( $source === 'post' && $post_id > 0 ) ? $post_id : 'option';
+		if ( array_key_exists( $name, $resolved ) ) {
+			return $resolved[ $name ];
+		}
 
-		// Log missing placeholder fields (only failures)
+		$val = null;
+		// Reuse get_field_object()['value'] instead of calling both get_field_object() and get_field().
 		if ( function_exists( 'get_field_object' ) ) {
 			$field_obj = call_user_func( 'get_field_object', $name, $pid, false );
 			if ( ! $field_obj && function_exists( 'frl_log' ) ) {
@@ -256,15 +268,19 @@ function frl_acf_render_template( string $template, string $source = 'option', i
 						'source'      => is_string( $pid ) ? $pid : (string) $pid,
 					)
 				);
+			} elseif ( is_array( $field_obj ) && array_key_exists( 'value', $field_obj ) ) {
+				$val = $field_obj['value'];
 			}
+		} elseif ( function_exists( 'get_field' ) ) {
+			$val = get_field( $name, $pid, false );
 		}
 
-		$val = get_field( $name, $pid, false );
 		$out = is_scalar( $val ) ? (string) $val : '';
 		if ( $urlencode && $out !== '' ) {
 			$out = rawurlencode( $out );
 		}
+		$resolved[ $name ] = $out;
 		return $out;
 	};
-	return preg_replace_callback( '/\{([a-zA-Z0-9_\-]+)\}/', $cb, $template );
+	return preg_replace_callback( '/\{([a-zA-Z0-9_\-]+)\}/', $cb, $template ) ?? $template;
 }

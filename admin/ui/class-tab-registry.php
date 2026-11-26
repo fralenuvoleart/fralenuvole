@@ -51,6 +51,9 @@ class Frl_Tab_Registry {
 			$this->register_custom( $tab_id, $args );
 			return;
 		}
+		if ( 'form' !== $type ) {
+			$type = 'form';
+		}
 
 		$defaults = array(
 			'title'          => '',
@@ -183,7 +186,7 @@ class Frl_Tab_Registry {
 		usort(
 			$all_tabs,
 			function ( $a, $b ) {
-				return $a['position'] - $b['position'];
+				return $a['position'] <=> $b['position'];
 			}
 		);
 

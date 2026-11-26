@@ -39,11 +39,7 @@ const FRL_ENV_PBS_TEMPLATE = array(
 	'plugin_options' => array(
 		'schema_founder_name' => 'Rati (Iese) Abashmadze',
 		'schema_founder_url'  => 'https://pbservices.ge/about/rati-abashmadze/',
-		'schema_org_sameas'   => '
-			https://www.facebook.com/PBservices.georgia
-			https://www.instagram.com/pbservices.ge
-			https://www.linkedin.com/company/pbservices/
-		',
+		'schema_org_sameas'   => "https://www.facebook.com/PBservices.georgia\nhttps://www.instagram.com/pbservices.ge\nhttps://www.linkedin.com/company/pbservices/",
 	),
 );
 
@@ -74,10 +70,13 @@ const FRL_ENV_PBS_STAGING = array(
 
 /** RU Subdomain - PBS replica on Russian server */
 const FRL_ENV_PBS_RU_SUBDOMAIN = array(
-	'extends'    => 'FRL_ENV_PBS_TEMPLATE',
-	'prefix'     => 'pbs_ru',
-	'wp_options' => array(
+	'extends'        => 'FRL_ENV_PBS_TEMPLATE',
+	'prefix'         => 'pbs_ru',
+	'wp_options'     => array(
 		'blog_public' => 0,
+	),
+	'plugin_options' => array(
+		'footer_html' => '',
 	),
 );
 

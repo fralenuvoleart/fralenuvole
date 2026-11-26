@@ -186,9 +186,13 @@ class Frl_Schema_Orchestrator {
 	 * @return array CollectionPage schema array.
 	 */
 	private function build_collection_page( array $item_list ): array {
-		$url   = frl_get_request_url();
-		$name  = '';
-		$about = null;
+		$raw_url = frl_get_request_url();
+		$parsed  = wp_parse_url( $raw_url );
+		$url     = ( ! empty( $parsed['scheme'] ) && ! empty( $parsed['host'] ) )
+			? $parsed['scheme'] . '://' . $parsed['host'] . ( $parsed['path'] ?? '/' )
+			: $raw_url;
+		$name    = '';
+		$about   = null;
 
 		if ( is_category() || is_tag() || is_tax() ) {
 			$term = get_queried_object();
@@ -232,7 +236,7 @@ class Frl_Schema_Orchestrator {
 			$page['about'] = $about;
 		}
 
-		return $page;
+		return frl_schema_strip_empty( $page ) ?: $page;
 	}
 
 	/**
@@ -486,7 +490,7 @@ class Frl_Schema_Orchestrator {
 		}
 
 		try {
-			$schema = frl_schema_generator_build( $post_id ?? 0, $def );
+			$schema = frl_schema_generator_build( $post_id, $def );
 		} catch ( \Throwable $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && function_exists( 'frl_log' ) ) {
 				frl_log(
@@ -506,11 +510,9 @@ class Frl_Schema_Orchestrator {
 
 		$type = $schema['@type'] ?? '';
 
-		// Translate keys matching FRL_SCHEMA_TRANSLATE_KEYS. Pass the post-aware
-		// placeholder map the builder already built so the resolver does not
-		// rebuild the separate '_global' map (saves its get_page_by_path query).
+		// Translate keys matching FRL_SCHEMA_TRANSLATE_KEYS.
 		if ( function_exists( 'frl_schema_resolver_resolve' ) ) {
-			$schema = frl_schema_resolver_resolve( $schema, '', frl_schema_get_placeholders( $post_id ?? 0 ) );
+			$schema = frl_schema_resolver_resolve( $schema, '', frl_schema_get_placeholders( $post_id ) );
 		}
 
 		// Lazy-load term/person maps on cache-miss singular builds (after modules/themes have loaded).

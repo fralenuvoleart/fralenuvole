@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - nocache: Bypasses the plugin's cache system.
  * - migrate: Applies Environment Manager Config to current environment.
  */
-if ( isset( $_GET['frlmode'] ) ) {
+if ( isset( $_GET['frlmode'] ) && ! defined( 'FRL_MODE' ) ) {
 	define( 'FRL_MODE', sanitize_key( $_GET['frlmode'] ) );
 }
 

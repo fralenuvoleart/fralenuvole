@@ -90,7 +90,6 @@ class Frl_Tag_Validator {
 				CURLOPT_SSL_VERIFYPEER       => true,
 				CURLOPT_SSL_VERIFYHOST       => 2,
 				CURLOPT_HTTPHEADER           => array(
-					'Host: ' . $host,
 					'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/96.0.4664.110 Safari/537.36',
 					'Accept: text/html,application/xhtml+xml,application/xml',
 					'Accept-Language: en-US,en;q=0.9',
@@ -520,8 +519,12 @@ class Frl_Tag_Validator {
 							// Apply formatting for better readability
 							$formatted_json = json_encode( $json_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 							if ( $formatted_json !== false ) {
-								// Replace the JSON content inside the element with the formatted version
-								$element = preg_replace( '/>.*?<\/script>/is', ">\n" . $formatted_json . "\n</script>", $element );
+								// Replace inner script body without PCRE backreference interpolation ($100, \1).
+								$element = preg_replace_callback(
+									'/>.*?<\/script>/is',
+									static fn() => ">\n" . $formatted_json . "\n</script>",
+									$element
+								) ?? $element;
 							}
 						}
 					} catch ( Exception $e ) {
@@ -590,7 +593,7 @@ class Frl_Tag_Validator {
 
 			// Validate each item in the graph
 			foreach ( $data['@graph'] as $index => $item ) {
-				if ( ! isset( $item['@type'] ) ) {
+				if ( ! is_array( $item ) || ! isset( $item['@type'] ) ) {
 					$validation['status']     = 'error';
 					$validation['messages'][] = 'Missing @type in @graph item ' . ( $index + 1 );
 					continue;
@@ -734,12 +737,16 @@ class Frl_Tag_Validator {
 	 */
 	private function validate_website_schema( $data, &$validation ) {
 		if ( ! isset( $data['name'] ) ) {
-			$validation['status']     = 'warning';
+			if ( $validation['status'] !== 'error' ) {
+				$validation['status'] = 'warning';
+			}
 			$validation['messages'][] = 'WebSite schema should include name property';
 		}
 
 		if ( ! isset( $data['url'] ) ) {
-			$validation['status']     = 'warning';
+			if ( $validation['status'] !== 'error' ) {
+				$validation['status'] = 'warning';
+			}
 			$validation['messages'][] = 'WebSite schema should include url property';
 		}
 	}
@@ -751,7 +758,9 @@ class Frl_Tag_Validator {
 	 */
 	private function validate_webpage_schema( $data, &$validation ) {
 		if ( ! isset( $data['name'] ) && ! isset( $data['headline'] ) ) {
-			$validation['status']     = 'warning';
+			if ( $validation['status'] !== 'error' ) {
+				$validation['status'] = 'warning';
+			}
 			$validation['messages'][] = 'WebPage schema should include name or headline property';
 		}
 
@@ -811,7 +820,9 @@ class Frl_Tag_Validator {
 	 */
 	private function validate_person_schema( $data, &$validation ) {
 		if ( ! isset( $data['name'] ) ) {
-			$validation['status']     = 'warning';
+			if ( $validation['status'] !== 'error' ) {
+				$validation['status'] = 'warning';
+			}
 			$validation['messages'][] = 'Person schema should include name property';
 		}
 	}
@@ -823,7 +834,9 @@ class Frl_Tag_Validator {
 	 */
 	private function validate_product_schema( $data, &$validation ) {
 		if ( ! isset( $data['name'] ) ) {
-			$validation['status']     = 'warning';
+			if ( $validation['status'] !== 'error' ) {
+				$validation['status'] = 'warning';
+			}
 			$validation['messages'][] = 'Product schema should include name property';
 		}
 
@@ -846,7 +859,9 @@ class Frl_Tag_Validator {
 	 */
 	private function validate_breadcrumb_schema( $data, &$validation ) {
 		if ( ! isset( $data['itemListElement'] ) || ! is_array( $data['itemListElement'] ) ) {
-			$validation['status']     = 'warning';
+			if ( $validation['status'] !== 'error' ) {
+				$validation['status'] = 'warning';
+			}
 			$validation['messages'][] = 'BreadcrumbList schema should include itemListElement array';
 		} else {
 			$items = $data['itemListElement'];
@@ -863,7 +878,9 @@ class Frl_Tag_Validator {
 	 */
 	private function validate_article_schema( $data, &$validation ) {
 		if ( ! isset( $data['headline'] ) ) {
-			$validation['status']     = 'warning';
+			if ( $validation['status'] !== 'error' ) {
+				$validation['status'] = 'warning';
+			}
 			$validation['messages'][] = 'Article schema should include headline property';
 		}
 
@@ -884,7 +901,9 @@ class Frl_Tag_Validator {
 	private function validate_service_schema( $data, &$validation ) {
 		// Required properties
 		if ( ! isset( $data['name'] ) ) {
-			$validation['status']     = 'warning';
+			if ( $validation['status'] !== 'error' ) {
+				$validation['status'] = 'warning';
+			}
 			$validation['messages'][] = 'Service schema should include name property';
 		}
 
@@ -910,7 +929,9 @@ class Frl_Tag_Validator {
 	private function validate_portfolio_schema( $data, &$validation ) {
 		// For portfolio-type schemas (ItemList or custom Collection)
 		if ( ! isset( $data['itemListElement'] ) && ! isset( $data['items'] ) ) {
-			$validation['status']     = 'warning';
+			if ( $validation['status'] !== 'error' ) {
+				$validation['status'] = 'warning';
+			}
 			$validation['messages'][] = 'Portfolio schema should include itemListElement or items property';
 		} else {
 			// Check if items exist and are properly formatted
@@ -1207,6 +1228,7 @@ class Frl_Tag_Validator {
 				}
 			} else {
 				$found_text = 'Not found';
+				$dot_status = 'disabled';
 			}
 		}
 		$status_html .= frl_ui_render_status_dot( $dot_status, $found_text, true );

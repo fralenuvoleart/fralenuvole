@@ -45,7 +45,7 @@ const FRL_CTA_TEMPLATES = array(
 		),
 		array(
 			'action_id' => 'telegram',
-			'url'       => 'https://t.me/PBPropertyGeorgia',
+			'url'       => 'https://t.me/PBPropertyGeorgia?text={template}',
 			'template'  => '{reference_id}',
 		),
 		array(

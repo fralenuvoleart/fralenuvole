@@ -55,26 +55,26 @@ function frl_shortcodes_init() {
 		2
 	);
 
-	// Title and description filters
+	// Title and description filters (accepted_args=1 so apply_shortcodes keeps $ignore_html=false).
 	add_filter(
 		'the_title',
 		'apply_shortcodes',
 		10,
-		2
+		1
 	);
 
 	add_filter(
 		'the_excerpt',
 		'apply_shortcodes',
 		10,
-		2
+		1
 	);
 
 	add_filter(
 		'the_seo_framework_title_from_generation',
 		'apply_shortcodes',
 		10,
-		2
+		1
 	);
 
 	add_filter(
@@ -728,7 +728,8 @@ function frl_shortcode_meta_rel( $atts ) {
 
 	// serialize() is cache-key fingerprinting (pre-lookup), NOT data
 	// serialization for storage — see frl_shortcode_readtime() for rationale.
-	$cache_key = 'meta_rel_' . $target_post_id . '_' . $field . '_' . md5(
+	$anchor_version = $anchor_post > 0 ? frl_get_post_cache_version( $anchor_post ) : 0;
+	$cache_key      = 'meta_rel_' . $target_post_id . '_' . $field . '_' . md5(
 		serialize(
 			array(
 				(string) $a['index'],
@@ -736,6 +737,7 @@ function frl_shortcode_meta_rel( $atts ) {
 				(string) $a['sep'],
 				(string) $a['anchor'],
 				$anchor_post,
+				$anchor_version,
 			)
 		)
 	) . '_v' . frl_get_post_cache_version( $target_post_id );
@@ -1003,12 +1005,14 @@ function frl_shortcode_slug( $atts ) {
 
 	$slug_to_translate = $id_attr_raw;
 
-	// Early return if current language is the default: input slug is already correct
-	$default_lang = frl_get_default_language();
+	// Fast path only in the authored source language; still return only the trailing slug segment.
+	$source_lang  = defined( 'FRL_TRANSLATOR_SOURCE_LANG' ) ? FRL_TRANSLATOR_SOURCE_LANG : 'en';
 	$current_lang = frl_get_language();
 
-	if ( $current_lang === $default_lang ) {
-		return esc_html( $slug_to_translate );
+	if ( $current_lang === $source_lang ) {
+		$trimmed = trim( $slug_to_translate, '/' );
+		$parts   = explode( '/', $trimmed );
+		return esc_html( end( $parts ) );
 	}
 
 	// Use a hash for hierarchical paths to avoid collisions (slashes get stripped by sanitize_key)

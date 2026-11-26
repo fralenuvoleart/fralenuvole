@@ -116,7 +116,7 @@ function frl_render_user_visits_widget() {
 		// --- Process data and generate HTML (using echo internally) ---
 		if ( $is_filtered ) {
 			$filter_username = ! empty( $filter_user ) ? esc_html( $filter_user->user_login ) : __( 'Unknown User', FRL_PREFIX );
-			$back_url        = remove_query_arg( 'frl_visit_user' );
+			$back_url        = admin_url( 'index.php' );
 			echo '<p class="frl-visit-filter-header">';
 			echo '<a href="' . esc_url( $back_url ) . '" class="frl-back-to-all">← ' . __( 'Back to all users', FRL_PREFIX ) . '</a>';
 			echo ' <span class="frl-filtered-user">' . sprintf( __( 'Visits for: %s', FRL_PREFIX ), '<strong>' . $filter_username . '</strong>' ) . '</span>';
@@ -126,40 +126,44 @@ function frl_render_user_visits_widget() {
 		if ( empty( $display_visits ) ) {
 			echo '<p>' . __( 'No recent user activity recorded.', FRL_PREFIX ) . '</p>';
 		} else {
-			// Render as before
+			$site_tz  = wp_timezone();
+			$now_utc  = time();
+			$dash_url = admin_url( 'index.php' );
 			?>
 			<div class="frl-last-visits-list">
 					<?php foreach ( $display_visits as $visit ) : ?>
 						<?php
-						$username          = esc_html( $visit['username'] ?? 'Unknown User' );
-						$raw_page_url      = $visit['page'] ?? '';
-						$page_display_text = esc_html( frl_get_page_title_from_url( $raw_page_url ) ); // Function already handles empty/invalid URLs
-						// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Intentional: $visit['timestamp'] is stored via current_time('mysql') (local-site-time string), so current_time('timestamp') (same local-time basis) is required here to stay consistent with it. Using time() (true UTC) would introduce an offset bug equal to the site's GMT offset.
-						$time_ago      = isset( $visit['timestamp'] ) ? human_time_diff( strtotime( $visit['timestamp'] ), current_time( 'timestamp' ) ) . ' ' . __( 'ago', FRL_PREFIX ) : 'Unknown time';
-						$datetime_attr = isset( $visit['timestamp'] ) ? esc_attr( gmdate( 'c', strtotime( $visit['timestamp'] ) ) ) : '';
+						$raw_username = (string) ( $visit['username'] ?? 'Unknown User' );
+						$raw_page_url = (string) ( $visit['page'] ?? '' );
+						// frl_get_page_title_from_url() already returns esc_html()-escaped output.
+						$page_display_text = frl_get_page_title_from_url( $raw_page_url );
+						$time_ago          = 'Unknown time';
+						$datetime_attr     = '';
+						$is_online         = false;
 
-						// Check if the visit is within the last 5 minutes
-						$is_online = false;
-						if ( isset( $visit['timestamp'] ) ) {
-							$visit_timestamp = strtotime( $visit['timestamp'] );
-							// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Intentional: must match the local-time basis of $visit['timestamp'] (see note above). time() would be off by the site's GMT offset.
-							$current_timestamp = current_time( 'timestamp' );
-							if ( ( $current_timestamp - $visit_timestamp ) < 300 ) { // 5 minutes = 300 seconds
-								$is_online = true;
+						if ( ! empty( $visit['timestamp'] ) ) {
+							$dt = date_create_immutable_from_format( 'Y-m-d H:i:s', (string) $visit['timestamp'], $site_tz );
+							if ( $dt ) {
+								$visit_utc     = $dt->getTimestamp();
+								$time_ago      = human_time_diff( $visit_utc, $now_utc ) . ' ' . __( 'ago', FRL_PREFIX );
+								$datetime_attr = esc_attr( $dt->format( 'c' ) );
+								if ( ( $now_utc - $visit_utc ) < 300 ) {
+									$is_online = true;
+								}
 							}
 						}
 
-						// Build username link for non-filtered mode
+						// Build username link for non-filtered mode (explicit dashboard base URL).
 						$user_id = isset( $visit['user_id'] ) ? (int) $visit['user_id'] : 0;
 						?>
 					<article class="post-item<?php echo $is_online ? ' online' : ''; ?>">
 						<div class="visit-user">
 							<?php if ( ! $is_filtered && $user_id > 0 ) : ?>
-								<a href="<?php echo esc_url( add_query_arg( 'frl_visit_user', $user_id ) ); ?>" title="<?php echo esc_attr( sprintf( __( 'Show all visits for %s', FRL_PREFIX ), $username ) ); ?>">
-									<?php echo $username; ?>
+								<a href="<?php echo esc_url( add_query_arg( 'frl_visit_user', $user_id, $dash_url ) ); ?>" title="<?php echo esc_attr( sprintf( __( 'Show all visits for %s', FRL_PREFIX ), $raw_username ) ); ?>">
+									<?php echo esc_html( $raw_username ); ?>
 								</a>
 							<?php else : ?>
-								<?php echo $username; ?>
+								<?php echo esc_html( $raw_username ); ?>
 							<?php endif; ?>
 						</div>
 						<div class="visit-url">

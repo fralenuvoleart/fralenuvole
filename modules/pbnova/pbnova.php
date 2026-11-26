@@ -71,8 +71,12 @@ function frl_pbnova__acf_update_has_content( $post, $update, $post_before ) {
 		return;
 	}
 
-	// No content change → skip work
-	if ( $update && ( $post_before instanceof WP_Post ) ) {
+	// No content change → skip work (unless transitioning from a previously skipped status).
+	if (
+		$update
+		&& ( $post_before instanceof WP_Post )
+		&& ! in_array( $post_before->post_status, array( 'auto-draft', 'inherit', 'trash' ), true )
+	) {
 		if ( (string) $post->post_content === (string) $post_before->post_content ) {
 			return;
 		}
@@ -154,7 +158,7 @@ function frl_pbnova_breadcrumbs_extra_items( $links, $post, $ancestors ) {
 	if ( $post_type === 'jurisdiction' ) {
 		$pg_title = frl_get_translation( 'Jurisdictions' );
 		$pg_link  = frl_get_translation_permalink( 'jurisdictions' );
-		if ( $pg_link && $pg_title ) {
+		if ( $pg_link && '#' !== $pg_link && $pg_title ) {
 			$links[] = sprintf( '<a href="%s">%s</a>', esc_url( $pg_link ), esc_html( $pg_title ) );
 		}
 	}

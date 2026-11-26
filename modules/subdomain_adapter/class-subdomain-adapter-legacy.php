@@ -368,7 +368,7 @@ class Frl_Subdomain_Adapter_Legacy {
 		// is fully mirrored, so static assets resolve identically on both domains.
 		$pattern = '#\b(href|action)=(["\'])(https?://(?:' . $hosts_pattern . ')(?:/[^"\'>\s]*)?)\2#i';
 
-		return preg_replace_callback(
+		$result = preg_replace_callback(
 			$pattern,
 			function ( $matches ) use ( $adapter ) {
 				$attr_name  = $matches[1]; // attribute name: href or action
@@ -380,6 +380,8 @@ class Frl_Subdomain_Adapter_Legacy {
 			},
 			$html
 		);
+
+		return $result ?? $html;
 	}
 
 	/**
@@ -573,24 +575,18 @@ class Frl_Subdomain_Adapter_Legacy {
 
 			$transformed = null;
 
-			// Best case: menu item points to a post or term — use the object.
-			if ( $item->object === 'post' || $item->object === 'page' || $item->object === 'custom' ) {
-				$object_id = (int) ( $item->object_id ?? 0 );
-				if ( $object_id > 0 && in_array( $item->object, array( 'post', 'page' ), true ) ) {
-					$lang = frl_get_language( $object_id, 'post' );
-					if ( ! empty( $lang ) ) {
-						$transformed = $adapter->transform_url( $url, $lang );
-					}
+			// Best case: menu item points to a post type or taxonomy — resolve language from object_id.
+			$item_type = $item->type ?? '';
+			$object_id = (int) ( $item->object_id ?? 0 );
+			if ( $object_id > 0 && 'post_type' === $item_type ) {
+				$lang = frl_get_language( $object_id, 'post' );
+				if ( ! empty( $lang ) ) {
+					$transformed = $adapter->transform_url( $url, $lang );
 				}
-			}
-
-			if ( $item->object === 'category' || $item->object === 'post_tag' ) {
-				$object_id = (int) ( $item->object_id ?? 0 );
-				if ( $object_id > 0 ) {
-					$lang = frl_get_language( $object_id, 'term' );
-					if ( ! empty( $lang ) ) {
-						$transformed = $adapter->transform_url( $url, $lang );
-					}
+			} elseif ( $object_id > 0 && 'taxonomy' === $item_type ) {
+				$lang = frl_get_language( $object_id, 'term' );
+				if ( ! empty( $lang ) ) {
+					$transformed = $adapter->transform_url( $url, $lang );
 				}
 			}
 

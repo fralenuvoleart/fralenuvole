@@ -23,7 +23,7 @@ add_action(
 add_filter(
 	'wsf_pre_render',
 	'frl_pbs_set_monday_field',
-	10,
+	9,
 	2
 );
 
@@ -71,7 +71,7 @@ function frl_pbs_set_monday_field( $form, $preview ) {
 		/** @disregard P1010 Undefined type */
 		$field = wsf_field_get_object( $form, $object->id );
 
-		if ( ! is_object( $field ) || ! isset( $field->label, $field->meta ) ) {
+		if ( ! is_object( $field ) || ! isset( $field->label, $field->meta ) || ! is_object( $field->meta ) ) {
 			continue;
 		}
 

@@ -44,36 +44,69 @@ function add_cpt_to_pll( $post_types, $is_settings ) {
 
 function frl_pbproperty_redirect_search_by_language() {
 	$current_slug = get_query_var( 'name' ) ?: get_post_field( 'post_name', get_queried_object_id() );
+	if ( ! $current_slug ) {
+		return;
+	}
 
-	if ( $current_slug ) {
-		foreach ( PBP_SEARCH_SLUGS as $lang => $search_slug ) {
-			if ( str_contains( $current_slug, $search_slug . '-' . $lang ) ) {
-				$localized_url = '/' . $lang . '/' . $search_slug;
-				wp_redirect( home_url( $localized_url ), 302 );
-				exit;
+	$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+
+	foreach ( PBP_SEARCH_SLUGS as $lang => $search_slug ) {
+		if ( $current_slug === $search_slug . '-' . $lang ) {
+			$localized_url = '/' . $lang . '/' . $search_slug;
+			$query_string  = wp_parse_url( $request_uri, PHP_URL_QUERY );
+			if ( is_string( $query_string ) && '' !== $query_string ) {
+				$localized_url .= '?' . $query_string;
 			}
+			wp_redirect( home_url( $localized_url ), 302 );
+			exit;
 		}
+	}
 
-		if ( in_array( $current_slug, PBP_SEARCH_SLUGS, true ) ) {
-			$referer     = frl_wp_get_referer();
-			$source_lang = null;
+	if ( ! in_array( $current_slug, PBP_SEARCH_SLUGS, true ) ) {
+		return;
+	}
 
-			if ( $referer ) {
-				foreach ( PBP_SEARCH_SLUGS as $lang => $slug ) {
-					if ( str_contains( $referer, '/' . $lang . '/' ) ) {
-						$source_lang = $lang;
-						break;
-					}
-				}
-			}
+	$referer     = frl_wp_get_referer();
+	$source_lang = null;
 
-			if ( $source_lang && ! str_contains( $_SERVER['REQUEST_URI'], '/' . $source_lang . '/' ) ) {
-				$localized_url = '/' . $source_lang . $_SERVER['REQUEST_URI'];
-				wp_redirect( home_url( $localized_url ), 302 );
-				exit;
+	if ( $referer ) {
+		foreach ( PBP_SEARCH_SLUGS as $lang => $slug ) {
+			if ( str_contains( $referer, '/' . $lang . '/' ) ) {
+				$source_lang = $lang;
+				break;
 			}
 		}
 	}
+
+	if ( $source_lang && '' !== $request_uri && ! str_contains( $request_uri, '/' . $source_lang . '/' ) ) {
+		$localized_url = '/' . $source_lang . $request_uri;
+		wp_redirect( home_url( $localized_url ), 302 );
+		exit;
+	}
+}
+
+/**
+ * Translate configured GeoDirectory/property HTML strings in a single strtr() pass.
+ *
+ * @param string $html Raw HTML string.
+ * @return string Translated HTML string.
+ */
+function frl_pbproperty_translate_html_strings( string $html ): string {
+	static $maps = array();
+	$lang        = frl_get_language();
+
+	if ( ! isset( $maps[ $lang ] ) ) {
+		$map = array();
+		foreach ( PBP_TRANSLATE_STRINGS as $string ) {
+			$translation = frl_get_translation( $string );
+			if ( $translation !== $string ) {
+				$map[ $string ] = $translation;
+			}
+		}
+		$maps[ $lang ] = $map;
+	}
+
+	return ! empty( $maps[ $lang ] ) ? strtr( $html, $maps[ $lang ] ) : $html;
 }
 
 /**
@@ -91,12 +124,5 @@ function frl_pbproperty_block_translation_filter( $content ) {
 		return $content;
 	}
 
-	foreach ( PBP_TRANSLATE_STRINGS as $string ) {
-		$translation = frl_get_translation( $string );
-		if ( $translation !== $string ) {
-			$content = str_replace( $string, $translation, $content );
-		}
-	}
-
-	return $content;
+	return frl_pbproperty_translate_html_strings( (string) $content );
 }

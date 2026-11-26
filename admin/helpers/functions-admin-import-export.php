@@ -263,6 +263,18 @@ function frl_post_ajax_import_settings() {
 			wp_send_json_error( array( 'message' => __( 'Invalid settings file format: No settings found.', FRL_PREFIX ) ) );
 		}
 
+		$known_options = array();
+		if ( function_exists( 'frl_get_all_plugin_options_settings' ) ) {
+			$all_fields = frl_get_all_plugin_options_settings( null );
+			if ( is_array( $all_fields ) ) {
+				foreach ( $all_fields as $field ) {
+					if ( is_array( $field ) && ! empty( $field['id'] ) ) {
+						$known_options[ (string) $field['id'] ] = true;
+					}
+				}
+			}
+		}
+
 		$updates = array();
 
 		// Safe iteration over settings
@@ -277,9 +289,13 @@ function frl_post_ajax_import_settings() {
 			$prefix         = frl_prefix();
 			$unprefixed_key = str_starts_with( $key, $prefix ) ? substr( $key, strlen( $prefix ) ) : $key;
 
-			// Handle newline-separated lists
-			if ( is_string( $setting ) && str_contains( $setting, '\r\n' ) ) {
-				$setting = str_replace( '\r\n', "\n", $setting );
+			if ( ! empty( $known_options ) && ! isset( $known_options[ $unprefixed_key ] ) ) {
+				continue;
+			}
+
+			// Normalize CRLF/CR line endings.
+			if ( is_string( $setting ) ) {
+				$setting = str_replace( array( "\r\n", "\r" ), "\n", $setting );
 			}
 
 			$updates[ $unprefixed_key ] = $setting;
@@ -295,6 +311,9 @@ function frl_post_ajax_import_settings() {
 		if ( $imported === 0 ) {
 			wp_send_json_error( array( 'message' => __( 'No settings were imported.', FRL_PREFIX ) ) );
 		}
+
+		// Fire settings-updated hook so debug/wp-config sync and module listeners run.
+		do_action( 'frl_settings_updated', $updates );
 
 		$message = sprintf( __( '%d plugin options were successfully imported.', FRL_PREFIX ), $imported );
 
@@ -544,10 +563,16 @@ function frl_import_translation_strings( $json ) {
 				continue;
 			}
 
-			// Count changed strings
-			$changed = 0;
+			// Count added, modified, and removed strings so deletions are persisted.
+			$changed      = 0;
+			$existing_arr = is_array( $existing ) ? $existing : array();
 			foreach ( $new_trans as $string_id => $translation ) {
-				if ( ! isset( $existing[ $string_id ] ) || $existing[ $string_id ] !== $translation ) {
+				if ( ! isset( $existing_arr[ $string_id ] ) || $existing_arr[ $string_id ] !== $translation ) {
+					++$changed;
+				}
+			}
+			foreach ( $existing_arr as $string_id => $old_translation ) {
+				if ( ! array_key_exists( $string_id, $new_trans ) ) {
 					++$changed;
 				}
 			}

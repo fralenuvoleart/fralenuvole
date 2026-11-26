@@ -56,6 +56,10 @@ function frl_slug_negative_mark( string $context, string $key ): void {
  * @return int Post ID, or 0 when not found.
  */
 function frl_get_post_id_by_slug( $slug, ?string $lang = null ) {
+	if ( ! is_string( $slug ) || '' === trim( $slug ) ) {
+		return 0;
+	}
+
 	$lang = $lang ?? frl_get_language();
 
 	$context   = 'post';

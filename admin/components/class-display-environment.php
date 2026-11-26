@@ -132,10 +132,10 @@ class Frl_Environment_Display {
 	 */
 	private function render_environment_table( $data ) {
 		$output = '';
-		// Handle empty state case
+		// Handle empty state case (uncached: transient warning state).
 		if ( ! $data['stored_state'] ) {
 			$warning = $this->get_warning_message();
-			$output .= frl_ui_render_widget( 'env-empty-state', $warning, 'Warning' );
+			$output .= frl_ui_render_widget( 'env-empty-state', $warning, 'Warning', '', 0, true );
 			return $output;
 		}
 
@@ -173,19 +173,19 @@ class Frl_Environment_Display {
 			// Uncached: the MU-plugin buttons carry per-user nonces.
 			$output .= frl_ui_render_widget( 'env-mu-plugins', $mu_plugins_status . $mu_plugins_action_rows, 'Managed MU Plugins', '', HOUR_IN_SECONDS, true );
 
-			// Modules Status widget
+			// Modules Status widget (uncached: dashboard overview already caches per session).
 			$modules_status = $this->get_modules_status( $env_config );
-			$output        .= frl_ui_render_widget( 'env-modules', $modules_status, 'Managed Modules' );
+			$output        .= frl_ui_render_widget( 'env-modules', $modules_status, 'Managed Modules', '', 0, true );
 
 			// Plugins Status widget
 			$plugins_status = $this->get_plugins_status( $env_config );
 
-			$output .= frl_ui_render_widget( 'env-plugins', $plugins_status, 'Managed Plugins' );
+			$output .= frl_ui_render_widget( 'env-plugins', $plugins_status, 'Managed Plugins', '', 0, true );
 
-			// State Mismatch Warning
+			// State Mismatch Warning (uncached: transient warning state).
 			$mismatch_warning = $this->get_state_mismatch_warning( $data['stored_state'] );
 			if ( $mismatch_warning ) {
-				$output .= frl_ui_render_widget( 'env-mismatch-warning', $mismatch_warning, 'State Mismatch Warning' );
+				$output .= frl_ui_render_widget( 'env-mismatch-warning', $mismatch_warning, 'State Mismatch Warning', '', 0, true );
 			}
 		}
 

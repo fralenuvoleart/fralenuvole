@@ -69,21 +69,27 @@ function frl_shortcode_acf_calculated( $atts ) {
 	}
 
 	$operation  = strtoupper( trim( (string) $a['operation'] ) );
-	$fields_csv = (string) $a['fields'];
-	if ( $fields_csv === '' && $operation !== 'TEMPLATE' ) {
+	$fields_csv = trim( (string) $a['fields'] );
+	$template   = (string) $a['template'];
+
+	// Explicit template= always enters TEMPLATE mode; otherwise fields= without operation= defaults to CONCAT.
+	$is_template = ( '' !== $template ) || ( 'TEMPLATE' === $operation && '' === $fields_csv );
+	if ( ! $is_template && '' === $fields_csv ) {
 		return '';
+	}
+	if ( ! $is_template && 'TEMPLATE' === $operation ) {
+		$operation = 'CONCAT';
 	}
 
 	// TEMPLATE mode — cached by computation signature; no frontend GET DB writes.
-	if ( $operation === 'TEMPLATE' || $a['template'] !== '' ) {
-		if ( ! function_exists( 'frl_acf_render_template' ) ) {
+	if ( $is_template ) {
+		if ( ! function_exists( 'frl_acf_render_template' ) || '' === $template ) {
 			return '';
 		}
 		$scope = frl_acf_calc_resolve_scope( $source, $id_raw, $target );
 		if ( $scope === null ) {
 			return '';
 		}
-		$template   = (string) $a['template'];
 		$urlencode  = filter_var( $a['urlencode'], FILTER_VALIDATE_BOOLEAN );
 		$sig_hash   = md5( wp_json_encode( array( 'TEMPLATE', $template, $urlencode ) ) );
 		$compute_ck = $scope['cache_key'] . '_tpl_' . $sig_hash;
