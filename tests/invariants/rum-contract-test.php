@@ -144,17 +144,19 @@ frl_test_same( implode( "\t", $columns ), $lines[0] ?? '', 'header equals FRL_RU
 $fields = isset( $lines[1] ) ? explode( "\t", $lines[1] ) : array();
 frl_test_same( count( $columns ), count( $fields ), 'row has exactly one field per column' );
 frl_test_same( 'submit_blocked', $fields[1] ?? '', 'event lands in the event column' );
-frl_test_same( 'build', $columns[ count( $columns ) - 1 ], 'last column is build' );
+frl_test_same( 46, count( $columns ), 'FRL_RUM_COLUMNS has 46 columns (41 original + 5 appended)' );
+frl_test_same( 'build', $columns[40] ?? '', 'column 41 (index 40) remains build' );
+frl_test_same( 'transfer_kb', $columns[ count( $columns ) - 1 ], 'last column is transfer_kb' );
 $field_at = array_search( 'field', $columns, true );
 frl_test_same( 'email', false !== $field_at ? ( $fields[ $field_at ] ?? '' ) : '', 'field value lands in the field column' );
 $ref_at = array_search( 'form_ref', $columns, true );
-frl_test_same( '4HWXV6JB3WVH', false !== $ref_at ? ( $fields[ $ref_at ] ?? '' ) : '', 'form ref lands in the last column' );
+frl_test_same( '4HWXV6JB3WVH', false !== $ref_at ? ( $fields[ $ref_at ] ?? '' ) : '', 'form ref lands in its column' );
 $why_at = array_search( 'submit_why', $columns, true );
 frl_test_same( 'server', false !== $why_at ? ( $fields[ $why_at ] ?? '' ) : '', 'submit verdict lands in its column' );
 $it_at = array_search( 'input_type', $columns, true );
 frl_test_same( 'none', false !== $it_at ? ( $fields[ $it_at ] ?? '' ) : '', 'input type lands in its column' );
 $build_at = array_search( 'build', $columns, true );
-frl_test_same( 'abc123', false !== $build_at ? ( $fields[ $build_at ] ?? '' ) : '', 'build id lands in the last column' );
+frl_test_same( 'abc123', false !== $build_at ? ( $fields[ $build_at ] ?? '' ) : '', 'build id lands in the build column' );
 frl_test_ok( 1 === preg_match( '/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', $fields[0] ?? '' ), 'timestamp column is ISO-8601 UTC' );
 
 // 7. New columns: derived values and the whitelists that keep crafted input out.
@@ -234,6 +236,74 @@ frl_test_same( '', $zero_by['page_age'], 'a zero render time means no page age' 
 // 8. An unlisted event writes nothing.
 $rejected = frl_test_rum_request( $tmp, true, array( 'e' => 'bogus_event' ) );
 frl_test_same( array(), (array) glob( $rejected . '/beacon-*.tsv' ), 'unlisted event is rejected' );
+
+// 9. Appended columns 42-46 (messenger_channel, ready_state, slowest_pending_host, utm_campaign, transfer_kb).
+$ext_logs  = frl_test_rum_request(
+	$tmp,
+	true,
+	array(
+		'e'    => 'messenger_click',
+		'v'    => 'msg01',
+		'p'    => '/ru/services/',
+		'ad'   => '1',
+		'cid'  => 'yclid',
+		'utm'  => 'yandex',
+		'utmc' => 'Грузия_ИП_2026',
+		'mc'   => 'telegram',
+		'tkb'  => '0',
+	)
+);
+$ext_files = (array) glob( $ext_logs . '/beacon-*.tsv' );
+$ext_lines = $ext_files ? file( $ext_files[0], FILE_IGNORE_NEW_LINES ) : array();
+$ext_by    = array_combine( $columns, array_pad( explode( "\t", $ext_lines[1] ?? '' ), count( $columns ), '' ) );
+frl_test_same( 'messenger_click', $ext_by['event'], 'messenger_click event is accepted' );
+frl_test_same( 'yclid', $ext_by['click_id'], 'click_id yclid lands in its column' );
+frl_test_same( 'yandex', $ext_by['utm_source'], 'utm_source lands in its column' );
+frl_test_same( 'Грузия_ИП_2026', $ext_by['utm_campaign'], 'Cyrillic utm_campaign survives UTF-8 cleaning' );
+frl_test_same( 'telegram', $ext_by['messenger_channel'], 'messenger_channel telegram lands in column 42' );
+frl_test_same( '0', $ext_by['transfer_kb'], 'transfer_kb = 0 (cached) is preserved and not blanked' );
+
+$stall_logs  = frl_test_rum_request(
+	$tmp,
+	true,
+	array(
+		'e'   => 'hidden',
+		'v'   => 'stl01',
+		'c'   => '1',
+		'rs'  => 'interactive',
+		'sph' => 'mc.yandex.ru',
+		'tkb' => '24',
+	)
+);
+$stall_files = (array) glob( $stall_logs . '/beacon-*.tsv' );
+$stall_lines = $stall_files ? file( $stall_files[0], FILE_IGNORE_NEW_LINES ) : array();
+$stall_by    = array_combine( $columns, array_pad( explode( "\t", $stall_lines[1] ?? '' ), count( $columns ), '' ) );
+frl_test_same( '1', $stall_by['html_complete'], 'interactive hidden row records html_complete' );
+frl_test_same( 'interactive', $stall_by['ready_state'], 'ready_state lands in column 43' );
+frl_test_same( 'mc.yandex.ru', $stall_by['slowest_pending_host'], 'slowest_pending_host lands in column 44' );
+frl_test_same( '24', $stall_by['transfer_kb'], 'positive transfer_kb lands in column 46' );
+
+$bad_ext_logs  = frl_test_rum_request(
+	$tmp,
+	true,
+	array(
+		'e'    => 'abandoned',
+		'v'    => 'bad02',
+		'mc'   => 'signal',
+		'rs'   => 'bogus',
+		'sph'  => 'https://evil.example/path?q=1',
+		'utmc' => "camp\twith\nbreaks",
+		'tkb'  => '-3',
+	)
+);
+$bad_ext_files = (array) glob( $bad_ext_logs . '/beacon-*.tsv' );
+$bad_ext_lines = $bad_ext_files ? file( $bad_ext_files[0], FILE_IGNORE_NEW_LINES ) : array();
+$bad_ext_by    = array_combine( $columns, array_pad( explode( "\t", $bad_ext_lines[1] ?? '' ), count( $columns ), '' ) );
+frl_test_same( '', $bad_ext_by['messenger_channel'], 'unlisted messenger_channel is rejected' );
+frl_test_same( '', $bad_ext_by['ready_state'], 'unlisted ready_state is rejected' );
+frl_test_same( '', $bad_ext_by['slowest_pending_host'], 'URL with scheme/path in slowest_pending_host is rejected' );
+frl_test_same( 'camp with breaks', $bad_ext_by['utm_campaign'], 'tabs and newlines in utm_campaign cannot break TSV row' );
+frl_test_same( '', $bad_ext_by['transfer_kb'], 'negative transfer_kb is rejected' );
 
 // Cleanup.
 foreach ( (array) glob( $tmp . '/wp-content/uploads/fralenuvole/logs/*' ) as $f ) {

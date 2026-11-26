@@ -27,7 +27,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 
 - Location: `uploads/fralenuvole/logs/beacon-YYYY-MM-DD.tsv` (the folder from `frl_get_uploads_location( 'logs' )`). The receiver works the path out from its own location, so the two must match. File names keep the `beacon-` prefix although the feature is called RUM: existing files and the `kinsta-logs` skill read `beacon-*.tsv`.
 - One file per UTC day, tab-separated, the first row names the columns.
-- New columns are appended at the end, so existing columns never shift. On a deploy day the current file keeps its old header until the next UTC day; read by header name and ignore extra trailing fields. The columns added on 2026-11-19 are `ttfb` to `build` (the last fourteen); `build` stays last because the contract test pins it.
+- New columns are appended at the end, so existing columns never shift. On a deploy day the current file keeps its old header until the next UTC day; read by header name and ignore extra trailing fields. Columns 28 to 41 (`ttfb` to `build`) were added in November 2026, followed by columns 42 to 46 (`messenger_channel` to `transfer_kb`); `transfer_kb` stays last because the contract test pins it.
 - The UTF-8 scrub of `msg`/`src` needs the `mbstring` extension; without it the fallback truncates at the first invalid byte (safe, but lossy).
 - Files older than 30 days are deleted automatically; each file is capped at 20 MB.
 - Contains IP addresses and identifiers: protect the folder.
@@ -49,6 +49,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `submit_blocked` | A submit was attempted and did not go through. `submit_why` says who stopped it: `browser` (the browser's own validation refused to send it, from an `invalid` event or the 900 ms / 2.5 s probes on `.wsf-invalid` / `:invalid`), `client` (WS Form's own client-side validation failed before the request was sent), `server` (the request was sent and the reply re-entered the validation path), `error` (the request itself failed). `field` names the control that failed, when the plugin or the browser reports one. At most 5 per page view. |
 | `submit_failed` | An attempt was recorded but no `submit` event followed within 500 ms. Nothing reached the browser's submit stage: the control was handled by script that posts the form itself, or a multi-step form's "Next" button is a submit control that only moves the form on. Sent once per attempt and it closes that attempt, so it is never paired with `submit_ok` or `submit_blocked`; a submit that fires later than 500 ms produces a second, separate verdict for the same attempt. |
 | `submit_unresolved` | A WS Form submission passed validation but no answer arrived, so it counts neither as submitted nor as failed. `msg=unload`: the visitor left (or the tab was discarded) before the server responded. `msg=timeout`: the page stayed open 15 s after validation with neither `wsf-submit-success` nor `wsf-submit-error`, i.e. a hung request or stalled scripts. `msg=stale`: 20 s passed with no verdict at all, so the submission was dropped and the next one starts clean. |
+| `messenger_click` | Trusted click on a Telegram or WhatsApp CTA (`[data-action="telegram"\|"whatsapp"]`, `[data-cta-url]`, or `<a href>` targeting `t.me`/`telegram.me`/`tg:` or `wa.me`/`whatsapp.com`/`whatsapp:`). Deduplicated to at most one event per `(view_id, messenger_channel)`. |
 
 ### Columns
 
@@ -63,7 +64,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `from_ad_click` | `1` if the page URL carried an ad-click id (`gclid`, `gbraid`, `wbraid`, `yclid`, `fbclid`), else `0`. |
 | `network_estimate` | Chrome's own rough connection estimate (`slow-2g`, `2g`, `3g`, `4g`). Empty in other browsers. Approximate: desktop connections often report `3g`. |
 | `ms_since_page_open` | Milliseconds from when the visitor opened the URL to when the event was sent. On `finished`, this is how long the HTML took. `-1` if the browser cannot tell (this is also what the receiver treats it as: 0). |
-| `html_complete` | Only on `finished`: `1` the whole HTML arrived, `0` the HTML was cut short. Empty on other events. |
+| `html_complete` | On `finished`, and on `hidden`/`abandoned` once `document.readyState !== "loading"`: `1` the whole HTML arrived (`#frl-rum-end` present), `0` the HTML was cut short. Empty while `readyState === "loading"` and on other events. |
 | `path` | Page path, without the query string. |
 | `ip` | Visitor IP (`REMOTE_ADDR`, which on Kinsta is the real visitor IP). |
 | `user_agent` | Full user agent (control characters replaced by spaces, leading `= + - @` escaped). |
@@ -78,7 +79,7 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `cls` | Only on `vitals`: cumulative layout shift, 3 decimals. `0` is a real score, not `unknown`. Empty when the browser does not report layout shifts. |
 | `inp` | Only on `vitals`: worst interaction duration in ms, from interactions only (`interactionId` above 0, so scrolling and hovering do not count). Empty when the view had no interaction, and empty in every browser without the Event Timing API (Safari before 26.2). Never `0`. |
 | `fcp` | Only on `vitals`: first contentful paint, ms from page open. Empty when the browser does not report paint entries. |
-| `utm_source` | Only on `vitals`: `utm_source` of the entry URL, decoded and cleaned to 50 bytes, spaces kept. Empty when the URL had none. |
+| `utm_source` | On `started`, `vitals`, `messenger_click`, and `submit_ok`: `utm_source` of the entry URL, UTF-8 cleaned to 50 bytes, spaces kept. Empty when the URL had none. |
 | `viewport` | Only on `vitals`: `window.innerWidth` in px, to separate phone from desktop LCP/CLS. |
 | `field` | Only on `submit_blocked`: `name` (or `id`) of the field that failed validation, 60 bytes. On WS Form forms the plugin marks the section wrapper rather than the input, so the printer goes down to the `.wsf-invalid` / `:invalid` control inside it; when even that is missing the value is the section id (`wsf-1-section-25`) and the row still says which form. |
 | `ttfb` | Only on `vitals`: ms from the navigation start to the first byte of the page, i.e. the whole server wait including a redirect. Empty on back/forward navigations, when the browser has no navigation timing, or when `responseStart` is 0. |
@@ -95,6 +96,11 @@ Clarity and GA4 load through Tag Manager, which runs late in the page. A page vi
 | `form_ref` | Only on submit events: the WS Form Reference ID the form carried (`field_232`), which is the id saved with the submission and shown in Monday. It joins a row to the item it produced. Empty on pages with no such field. |
 | `input_type` | Only on `form_start`: the `beforeinput` type of the first fill — `insertText` (typing), `insertFromPaste`, `insertReplacementText` (autofill, autocorrect or a suggestion), `insertCompositionText` (IME), `insertFromDrop`, `insertFromYank`, `insertLineBreak`. `none` means no `beforeinput` preceded the event, which is how browser autofill usually arrives (Chrome, Safari) and also how it looks on a browser without the `beforeinput` event. Empty elsewhere. |
 | `build` | Every row: the printer file's modification time in base36, so a row written by a cached page still running an older script can be told from a fresh one. Changes on every upload of `rum.php`, without anyone having to remember to bump it. |
+| `messenger_channel` | Only on `messenger_click`: `telegram` or `whatsapp` (whitelisted). Empty elsewhere. |
+| `ready_state` | Only on `hidden` and `abandoned`: `document.readyState` (`loading`, `interactive`, or `complete`). Empty elsewhere. |
+| `slowest_pending_host` | Only on `hidden` and `abandoned`: hostname (max 60 bytes, no path/query, excluding `rum-receiver.php` and `beacon`/`ping` initiators) of the longest-waiting in-flight resource (`responseEnd === 0`), or if none, the slowest completed resource over 1,000 ms. Empty when none qualifies. |
+| `utm_campaign` | On `started`, `vitals`, `messenger_click`, and `submit_ok`: raw `utm_campaign` query parameter, UTF-8 cleaned to 80 bytes (tabs/newlines stripped, leading formula chars escaped). Empty when absent. |
+| `transfer_kb` | Only on `finished` and `vitals`: integer KB of the document navigation entry (`Math.round(nav.transferSize / 1024)`), `0` when served from browser cache, empty when unsupported. |
 
 ### Reading the log
 

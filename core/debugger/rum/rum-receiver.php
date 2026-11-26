@@ -21,7 +21,7 @@ http_response_code( 204 );
 $frl_in = ! empty( $_POST ) ? $_POST : $_GET; // phpcs:ignore WordPress.Security.NonceVerification -- anonymous telemetry, no state change.
 
 $frl_event = isset( $frl_in['e'] ) && is_string( $frl_in['e'] ) ? $frl_in['e'] : '';
-if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned', 'js_error', 'vitals', 'form_start', 'form_typed', 'submit_attempt', 'submit_ok', 'submit_blocked', 'submit_failed', 'submit_unresolved' ), true ) ) {
+if ( ! in_array( $frl_event, array( 'started', 'finished', 'hidden', 'abandoned', 'js_error', 'vitals', 'form_start', 'form_typed', 'submit_attempt', 'submit_ok', 'submit_blocked', 'submit_failed', 'submit_unresolved', 'messenger_click' ), true ) ) {
 	exit;
 }
 
@@ -93,6 +93,11 @@ const FRL_RUM_COLUMNS = array(
 	'form_ref',
 	'input_type',
 	'build',
+	'messenger_channel',
+	'ready_state',
+	'slowest_pending_host',
+	'utm_campaign',
+	'transfer_kb',
 );
 
 // Hard cap per day so a flood cannot fill the disk.
@@ -217,6 +222,24 @@ if ( ! in_array( $frl_it, array( 'none', 'insertText', 'insertFromPaste', 'inser
 // be told from fresh ones without relying on the deploy time.
 $frl_build = isset( $frl_in['b'] ) && is_string( $frl_in['b'] ) && preg_match( '/^[a-z0-9]{1,8}$/', $frl_in['b'] ) ? $frl_in['b'] : '';
 
+// Messenger conversion channel (whitelisted).
+$frl_mc = isset( $frl_in['mc'] ) && is_string( $frl_in['mc'] ) ? strtolower( $frl_in['mc'] ) : '';
+if ( ! in_array( $frl_mc, array( 'telegram', 'whatsapp' ), true ) ) {
+	$frl_mc = '';
+}
+
+// Document readyState on stall events (whitelisted).
+$frl_rs = isset( $frl_in['rs'] ) && is_string( $frl_in['rs'] ) ? strtolower( $frl_in['rs'] ) : '';
+if ( ! in_array( $frl_rs, array( 'loading', 'interactive', 'complete' ), true ) ) {
+	$frl_rs = '';
+}
+
+// Slowest in-flight (or >1s completed) resource hostname only.
+$frl_sph = isset( $frl_in['sph'] ) && is_string( $frl_in['sph'] ) ? trim( substr( strtolower( trim( $frl_in['sph'] ) ), 0, 60 ), '.- ' ) : '';
+if ( '' !== $frl_sph && ! preg_match( '/^[a-z0-9](?:[a-z0-9.\-]*[a-z0-9])?$/', $frl_sph ) ) {
+	$frl_sph = '';
+}
+
 // Why a submit ended: browser blocked it, the client refused it, the request failed, the server refused it,
 // or a plain form passed the browser's own validation (native).
 $frl_why = isset( $frl_in['why'] ) && is_string( $frl_in['why'] ) ? $frl_in['why'] : '';
@@ -264,7 +287,7 @@ $frl_line = implode(
 		frl_rum_clean( isset( $frl_in['cls'] ) ? $frl_in['cls'] : '', 8 ),
 		frl_rum_int( $frl_in, 'inp', true ),
 		frl_rum_int( $frl_in, 'fcp', true ),
-		frl_rum_clean( isset( $frl_in['utm'] ) ? $frl_in['utm'] : '', 50 ),
+		trim( frl_rum_free_text( isset( $frl_in['utm'] ) ? $frl_in['utm'] : '', 50 ) ),
 		frl_rum_int( $frl_in, 'vw', true ),
 		frl_rum_clean( isset( $frl_in['field'] ) ? $frl_in['field'] : '', 60 ),
 		frl_rum_int( $frl_in, 'ttfb' ),
@@ -281,6 +304,11 @@ $frl_line = implode(
 		frl_rum_clean( isset( $frl_in['ref'] ) ? $frl_in['ref'] : '', 20 ),
 		$frl_it,
 		$frl_build,
+		$frl_mc,
+		$frl_rs,
+		$frl_sph,
+		trim( frl_rum_free_text( isset( $frl_in['utmc'] ) ? $frl_in['utmc'] : '', 80 ) ),
+		frl_rum_int( $frl_in, 'tkb', true ),
 	)
 ) . "\n";
 
