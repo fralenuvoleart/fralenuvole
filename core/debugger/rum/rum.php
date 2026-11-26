@@ -84,7 +84,11 @@ function frl_debug_rum_delete_marker() {
 function frl_debug_rum_is_active(): bool {
 	static $active = null;
 	if ( null === $active ) {
-		$active = frl_get_option( 'debugger_rum' ) && frl_is_valid_frontend_page_request() && ! is_user_logged_in();
+		$active = frl_get_option( 'debugger_rum' )
+			&& frl_is_valid_frontend_page_request()
+			&& ! is_user_logged_in()
+			&& ! ( function_exists( 'is_404' ) && is_404() )
+			&& ! ( function_exists( 'is_attachment' ) && is_attachment() );
 		if ( $active ) {
 			frl_debug_rum_sync_marker( true ); // Recreates the marker if missing without bypassing option cache.
 		}

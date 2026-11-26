@@ -57,7 +57,7 @@ function frl_admin_bar_menu_render() {
 	$user_id = $user->ID;
 	$lang    = frl_get_language();
 
-	$cache_key = "{$lang}_adminbar_uid{$user_id}";
+	$cache_key = "{$lang}_adminbar_uid{$user_id}" . ( $show_custom_menu ? '' : '_removal_only' );
 
 	// Cache menu configuration to avoid repeated processing
 	$menu_data = frl_cache_remember(
@@ -73,12 +73,14 @@ function frl_admin_bar_menu_render() {
 			}
 			$data = frl_admin_bar_remove_menu( $data );
 
-			/**
-			 * Filter the admin bar menu data so modules can contribute items.
-			 *
-			 * @param array $data Menu data keyed by section (menu_primary, menu_secondary, cpt_*).
-			 */
-			$data = apply_filters( 'frl_admin_bar_menu_data', $data );
+			if ( $show_custom_menu ) {
+				/**
+				 * Filter the admin bar menu data so modules can contribute items.
+				 *
+				 * @param array $data Menu data keyed by section (menu_primary, menu_secondary, cpt_*).
+				 */
+				$data = apply_filters( 'frl_admin_bar_menu_data', $data );
+			}
 
 			return $data;
 		}
@@ -457,8 +459,13 @@ function frl_trace_logged_user_visits() {
 		}
 	}
 
-	// Skip invalid page requests OR administrator actions
-	if ( ! frl_is_valid_page_request() || frl_is_administrator_action() ) {
+	// Skip invalid page requests, administrator actions, 404s, or attachment pages.
+	if (
+		! frl_is_valid_page_request() ||
+		frl_is_administrator_action() ||
+		( function_exists( 'is_404' ) && is_404() ) ||
+		( function_exists( 'is_attachment' ) && is_attachment() )
+	) {
 		return;
 	}
 

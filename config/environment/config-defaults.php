@@ -58,6 +58,7 @@ const FRL_ENV_DEFAULT = array(
 		'schema_founder_name'     => '',
 		'schema_founder_url'      => '',
 		'schema_org_sameas'       => '',
+		'enable_custom_robots'    => false,
 		'custom_robots_txt'       => '',
 		'wsform_webhook'          => false,
 		'wsform_use_cron'         => false,

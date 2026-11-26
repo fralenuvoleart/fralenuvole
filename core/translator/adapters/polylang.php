@@ -103,9 +103,9 @@ class Frl_Polylang_Adapter implements Frl_Translation_Adapter_Interface {
 		// so we rely on the specific translation functions.
 		if ( function_exists( 'icl_object_id' ) ) {
 			$translated = icl_object_id( $id, $taxonomy, $fallback, $language );
-			return $translated ? (int) $translated : $id;
+			return $translated ? (int) $translated : ( $fallback ? $id : 0 );
 		}
-		return $id;
+		return $fallback ? $id : 0;
 	}
 
 	// ------------------------------------------------------------------

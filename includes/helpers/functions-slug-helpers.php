@@ -215,24 +215,26 @@ function frl_find_term_by_path( string $path, string $taxonomy ) {
 /**
  * Get a CPT post ID from a slug, with caching.
  *
- * @param string $slug Post slug or path.
- * @param string $cpt  Custom post type.
+ * @param string      $slug Post slug or path.
+ * @param string      $cpt  Custom post type.
+ * @param string|null $lang Optional language override.
  * @return int Post ID, or 0 when not found.
  */
-function frl_get_cpt_id_by_slug( $slug, $cpt ) {
+function frl_get_cpt_id_by_slug( $slug, $cpt, ?string $lang = null ) {
 	if ( empty( $slug ) || empty( $cpt ) ) {
 		return 0;
 	}
 
+	$lang      = ( null !== $lang && '' !== $lang ) ? $lang : frl_get_language();
 	$context   = 'cpt_' . $cpt;
-	$index_key = frl_get_language() . '|' . $slug;
+	$index_key = $lang . '|' . $slug;
 
 	// Known miss: no query, no per-URL key.
 	if ( frl_slug_negative_get( $context, $index_key ) ) {
 		return 0;
 	}
 
-	$cache_key = 'cptslug2id_' . sanitize_key( $cpt ) . '_' . md5( $slug );
+	$cache_key = 'cptslug2id_' . sanitize_key( $lang ) . '_' . sanitize_key( $cpt ) . '_' . md5( $slug );
 	$cached    = frl_cache_get( 'permalinks', $cache_key );
 
 	// Only positive hits are cached per slug; misses go to the bounded index.
@@ -244,7 +246,7 @@ function frl_get_cpt_id_by_slug( $slug, $cpt ) {
 		'post_type'   => $cpt,
 		'post_status' => 'publish',
 		'numberposts' => 1,
-		'lang'        => frl_get_language(),
+		'lang'        => $lang,
 	);
 	// pagename covers hierarchical CPT paths; name covers flat slugs.
 	if ( str_contains( (string) $slug, '/' ) ) {

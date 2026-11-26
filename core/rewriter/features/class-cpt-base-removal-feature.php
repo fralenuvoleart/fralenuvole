@@ -492,11 +492,11 @@ class Frl_CPT_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 		}
 
 		foreach ( $this->cpt_slugs as $cpt ) {
-			$cache_key = $cpt . '|' . $slug;
+			$cache_key = $lang . '|' . $cpt . '|' . $slug;
 			$post      = $slug_hit_map[ $cache_key ] ?? null;
 
 			if ( $post === null ) {
-				$post_id = frl_get_cpt_id_by_slug( $slug, $cpt );
+				$post_id = frl_get_cpt_id_by_slug( $slug, $cpt, $lang );
 				$post    = $post_id ? (object) array(
 					'ID'        => $post_id,
 					'post_name' => basename( $slug ),

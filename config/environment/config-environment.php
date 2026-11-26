@@ -76,7 +76,9 @@ const FRL_ENV_PBS_RU_SUBDOMAIN = array(
 		'blog_public' => 0,
 	),
 	'plugin_options' => array(
-		'footer_html' => '',
+		'footer_html'          => '',
+		'enable_custom_robots' => false,
+		'custom_robots_txt'    => '',
 	),
 );
 

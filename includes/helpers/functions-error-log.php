@@ -54,9 +54,12 @@ function frl_log( $message, $context = array(), $force_email = true ) {
 		if ( $debug_send_email ) {
 			static $emailed_hashes = array();
 			try {
-				$safe_payload = function_exists( 'frl_sanitize_for_serialization' )
-					? frl_sanitize_for_serialization( array( $message, $context ) )
-					: array( is_scalar( $message ) ? $message : gettype( $message ), array_keys( (array) $context ) );
+				if ( function_exists( 'frl_sanitize_for_serialization' ) ) {
+					$safe_payload = array( $message, $context );
+					frl_sanitize_for_serialization( $safe_payload );
+				} else {
+					$safe_payload = array( is_scalar( $message ) ? $message : gettype( $message ), array_keys( (array) $context ) );
+				}
 				$message_hash = md5( serialize( $safe_payload ) );
 			} catch ( \Throwable $e ) {
 				$message_hash = md5( $formatted_message );

@@ -303,7 +303,7 @@ function frl_get_html_option( string $option_name, ?string $php_enabled_option =
  * @return string
  */
 function frl_append_custom_robots( string $output, bool $is_public ): string {
-	if ( ! frl_get_option( 'enable_custom_robots' ) ) {
+	if ( ! $is_public || ! frl_get_option( 'enable_custom_robots' ) ) {
 		return $output;
 	}
 
@@ -326,7 +326,7 @@ function frl_append_custom_robots( string $output, bool $is_public ): string {
 	* @return array
 	*/
 function frl_append_custom_robots_tsf( array $robots_sections, string $site_path ): array {
-	if ( ! frl_get_option( 'enable_custom_robots' ) ) {
+	if ( ! get_option( 'blog_public' ) || ! frl_get_option( 'enable_custom_robots' ) ) {
 		return $robots_sections;
 	}
 

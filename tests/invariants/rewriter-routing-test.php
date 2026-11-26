@@ -330,4 +330,53 @@ frl_test_same(
 	'an unknown /about/ slug is left for WordPress to 404'
 );
 
+// ---------------------------------------------------------------------------
+// 8. S2-2: frl_get_cpt_id_by_slug() honors explicit $lang override and scopes cache/negative index.
+// ---------------------------------------------------------------------------
+$state['cache']    = array();
+$state['language'] = 'en';
+frl_test_same( 0, frl_get_cpt_id_by_slug( 'parent/child-doc', 'service', 'ru' ), 'S2-2: missing hierarchical CPT in ru returns 0' );
+
+$state['pages_by_path']['service|parent/child-doc'] = frl_test_post( 401, 'service', 'child-doc' );
+frl_test_same( 401, frl_get_cpt_id_by_slug( 'parent/child-doc', 'service', 'en' ), 'S2-2: ru negative-index miss does not poison en hierarchical CPT lookup' );
+frl_test_same(
+	401,
+	$state['cache'][ 'permalinks|cptslug2id_en_service_' . md5( 'parent/child-doc' ) ] ?? null,
+	'S2-2: permalinks cache key includes explicit language prefix'
+);
+
+// ---------------------------------------------------------------------------
+// 9. S2-3: Multi-taxonomy base removal generates catch-all prefix rules under translated post bases.
+// ---------------------------------------------------------------------------
+$multi_tax = new Frl_Test_Tax_Feature();
+$multi_tax->seed_slugs( array( 'category', 'post_tag' ) );
+$state['cache'] = array();
+frl_test_same( array(), $multi_tax->generate_rules(), 'S2-3: multi-taxonomy still generates no rules for bare static post base (blog)' );
+
+frl_test_set_option( 'frl_rewriter_translate_post_base', "en|news\nru|novosti" );
+$state['cache'] = array();
+$multi_rules    = $multi_tax->generate_rules();
+frl_test_same(
+	'index.php?frl_tax_base_path=news/$matches[1]',
+	$multi_rules['^news/([^/]+)/?$'] ?? null,
+	'S2-3: multi-taxonomy translated post base rule routes to frl_tax_base_path'
+);
+frl_test_same(
+	'index.php?frl_tax_base_path=ru/novosti/$matches[1]&paged=$matches[2]',
+	$multi_rules['^ru\/novosti/([^/]+)/page/?([0-9]{1,})/?$'] ?? null,
+	'S2-3: multi-taxonomy paginated translated post base rule routes to frl_tax_base_path'
+);
+
+$state['terms_by_slug']['post_tag|my-tag'] = (object) array(
+	'term_id'  => 501,
+	'slug'     => 'my-tag',
+	'name'     => 'My Tag',
+	'parent'   => 0,
+	'taxonomy' => 'post_tag',
+);
+$state['terms_by_id'][501]                 = $state['terms_by_slug']['post_tag|my-tag'];
+$resolved_tag                              = $multi_tax->resolve_request( '/news/my-tag/' );
+frl_test_same( 'my-tag', $resolved_tag['tag'] ?? null, 'S2-3: multi-taxonomy resolves second taxonomy term under translated post base' );
+frl_test_same( 'en', $resolved_tag['lang'] ?? null, 'S2-3: multi-taxonomy preserves resolved language' );
+
 frl_test_done();

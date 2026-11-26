@@ -89,7 +89,16 @@ function frl_acf_process_calc_options( array $calc_options ): void {
 			continue;
 		}
 
-		if ( function_exists( 'get_field_object' ) && ! call_user_func( 'get_field_object', $target, 'option', false ) ) {
+		$target_field = false;
+		if ( function_exists( 'acf_maybe_get_field' ) ) {
+			$target_field = call_user_func( 'acf_maybe_get_field', $target, 'option', false );
+		} elseif ( function_exists( 'get_field_object' ) ) {
+			$target_field = call_user_func( 'get_field_object', $target, 'option', false );
+		} else {
+			$target_field = true;
+		}
+
+		if ( ! $target_field ) {
 			if ( function_exists( 'frl_log' ) ) {
 				frl_log( 'ACF calculated option target field missing: {target}', array( 'target' => $target ), false );
 			}
@@ -256,11 +265,15 @@ function frl_acf_render_template( string $template, string $source = 'option', i
 			return $resolved[ $name ];
 		}
 
-		$val = null;
-		// Reuse get_field_object()['value'] instead of calling both get_field_object() and get_field().
+		$val       = null;
+		$has_value = false;
+		// Reuse get_field_object()['value'] when available; fall back to get_field() when raw meta lacks a field-key reference.
 		if ( function_exists( 'get_field_object' ) ) {
 			$field_obj = call_user_func( 'get_field_object', $name, $pid, false );
-			if ( ! $field_obj && function_exists( 'frl_log' ) ) {
+			if ( is_array( $field_obj ) && array_key_exists( 'value', $field_obj ) ) {
+				$val       = $field_obj['value'];
+				$has_value = true;
+			} elseif ( ! $field_obj && function_exists( 'frl_log' ) ) {
 				frl_log(
 					'ACF placeholder field missing',
 					array(
@@ -268,10 +281,10 @@ function frl_acf_render_template( string $template, string $source = 'option', i
 						'source'      => is_string( $pid ) ? $pid : (string) $pid,
 					)
 				);
-			} elseif ( is_array( $field_obj ) && array_key_exists( 'value', $field_obj ) ) {
-				$val = $field_obj['value'];
 			}
-		} elseif ( function_exists( 'get_field' ) ) {
+		}
+
+		if ( ! $has_value && function_exists( 'get_field' ) ) {
 			$val = get_field( $name, $pid, false );
 		}
 

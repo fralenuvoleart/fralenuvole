@@ -219,46 +219,52 @@ class Frl_Taxonomy_Base_Removal_Feature extends Frl_Rewriter_Feature_Base {
 			return array();
 		}
 
-		// Explicit prefix rules only apply unambiguously when a single taxonomy is configured;
-		// multiple taxonomies route through the catch-all resolver so earlier ones aren't overwritten.
+		// Single taxonomy maps prefixed paths directly to its query_var; multiple taxonomies
+		// route prefixed paths to the catch-all query var so resolve_request() disambiguates without overwriting keys.
 		$rules    = array();
-		$prefixes = ( count( $this->taxonomy_slugs ) === 1 ) ? $this->get_configured_prefixes() : array();
+		$prefixes = $this->get_configured_prefixes();
 
 		if ( ! empty( $prefixes ) ) {
-			foreach ( $this->taxonomy_slugs as $taxonomy ) {
-				foreach ( $prefixes as $prefix ) {
-					$prefix = trim( $prefix, '/' );
-					if ( $prefix === '' ) {
-						continue;
-					}
-					// Avoid adding generic static-base rules (plain or lang-prefixed) that collide with post singles under /blog/%postname%/
-					$static_base = $this->get_static_permalink_base();
-					if ( $static_base !== '' && empty( Frl_Rewriter_Path_Utils::get_post_base_mappings() ) ) {
-						$skip = false;
-						if ( $prefix === $static_base ) {
-							$skip = true;
-						} else {
-							$langs = Frl_Rewriter_Path_Utils::get_active_languages_safe();
-							foreach ( $langs as $lc ) {
-								if ( $prefix === ( $lc . '/' . $static_base ) ) {
-									$skip = true;
-									break;
-								}
+			$single_taxonomy = count( $this->taxonomy_slugs ) === 1;
+			$catch_all_var   = $this->get_catch_all_query_var();
+
+			foreach ( $prefixes as $prefix ) {
+				$prefix = trim( $prefix, '/' );
+				if ( $prefix === '' ) {
+					continue;
+				}
+				// Avoid adding generic static-base rules (plain or lang-prefixed) that collide with post singles under /blog/%postname%/
+				$static_base = $this->get_static_permalink_base();
+				if ( $static_base !== '' && empty( Frl_Rewriter_Path_Utils::get_post_base_mappings() ) ) {
+					$skip = false;
+					if ( $prefix === $static_base ) {
+						$skip = true;
+					} else {
+						$langs = Frl_Rewriter_Path_Utils::get_active_languages_safe();
+						foreach ( $langs as $lc ) {
+							if ( $prefix === ( $lc . '/' . $static_base ) ) {
+								$skip = true;
+								break;
 							}
 						}
-						if ( $skip ) {
-							continue;
-						}
 					}
-					$escaped = Frl_Rewriter_Path_Utils::escape_for_regex( $prefix );
-					// Use taxonomy query var (e.g., category_name for "category") for maximum compatibility.
-					$tax_obj   = get_taxonomy( $taxonomy );
-					$query_var = is_object( $tax_obj ) && ! empty( $tax_obj->query_var ) ? $tax_obj->query_var : $taxonomy;
+					if ( $skip ) {
+						continue;
+					}
+				}
+				$escaped = Frl_Rewriter_Path_Utils::escape_for_regex( $prefix );
+
+				if ( $single_taxonomy ) {
+					$tax_obj   = get_taxonomy( $this->taxonomy_slugs[0] );
+					$query_var = is_object( $tax_obj ) && ! empty( $tax_obj->query_var ) ? $tax_obj->query_var : $this->taxonomy_slugs[0];
 
 					// Match /prefix/term/
 					$rules[ '^' . $escaped . '/([^/]+)/?$' ] = 'index.php?' . $query_var . '=$matches[1]';
 					// Match pagination /prefix/term/page/2/
 					$rules[ '^' . $escaped . '/([^/]+)/page/?([0-9]{1,})/?$' ] = 'index.php?' . $query_var . '=$matches[1]&paged=$matches[2]';
+				} else {
+					$rules[ '^' . $escaped . '/([^/]+)/?$' ]                   = 'index.php?' . $catch_all_var . '=' . $prefix . '/$matches[1]';
+					$rules[ '^' . $escaped . '/([^/]+)/page/?([0-9]{1,})/?$' ] = 'index.php?' . $catch_all_var . '=' . $prefix . '/$matches[1]&paged=$matches[2]';
 				}
 			}
 		}

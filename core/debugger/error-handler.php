@@ -262,16 +262,19 @@ function frl_errors_handle_doing_it_wrong( $function_name, $message, $version ):
 				if (
 					str_ends_with( $frame_file, 'wp-includes/class-wp-hook.php' ) ||
 					str_ends_with( $frame_file, 'wp-includes/plugin.php' ) ||
-					( str_ends_with( $frame_file, 'wp-includes/functions.php' ) && '_doing_it_wrong' === $frame_fn )
+					( str_ends_with( $frame_file, 'wp-includes/functions.php' ) && in_array( $frame_fn, array( 'do_action', '_doing_it_wrong' ), true ) )
 				) {
 					continue;
 				}
-				$file = (string) $frame['file'];
-				$line = (int) $frame['line'];
-				if ( defined( 'FRL_DIR_PATH' ) && str_contains( $file, FRL_DIR_PATH ) ) {
+				if ( '' === $file ) {
+					$file = (string) $frame['file'];
+					$line = (int) $frame['line'];
+				}
+				if ( defined( 'FRL_DIR_PATH' ) && str_contains( (string) $frame['file'], FRL_DIR_PATH ) ) {
+					$file = (string) $frame['file'];
+					$line = (int) $frame['line'];
 					break;
 				}
-				break;
 			}
 			$bt_cache[ $msg_hash ] = array(
 				'file' => $file,

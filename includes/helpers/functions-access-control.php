@@ -536,10 +536,12 @@ function frl_is_valid_environment_host(): bool {
 function frl_is_html_document_request(): bool {
 	global $wp_query;
 	if ( isset( $wp_query ) ) {
-		if ( is_404() ) {
-			return false;
-		}
-		if ( is_attachment() ) {
+		if (
+			( function_exists( 'is_feed' ) && is_feed() ) ||
+			( function_exists( 'is_robots' ) && is_robots() ) ||
+			( function_exists( 'is_favicon' ) && is_favicon() ) ||
+			( function_exists( 'is_trackback' ) && is_trackback() )
+		) {
 			return false;
 		}
 	}
