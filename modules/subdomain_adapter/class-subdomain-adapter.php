@@ -738,10 +738,10 @@ class Frl_Subdomain_Adapter {
 	 */
 	public function filter_home_url( $url, $path, $orig_scheme, $blog_id ): string {
 		if ( ! $this->is_on_subdomain() ) {
-			return $url;
+			return (string) $url;
 		}
 		$scheme = $this->get_scheme();
-		return "{$scheme}://{$this->current_subdomain_host}/" . ltrim( $path, '/' );
+		return "{$scheme}://{$this->current_subdomain_host}/" . ltrim( (string) $path, '/' );
 	}
 
 	// -------------------------------------------------------------------------
@@ -1236,21 +1236,7 @@ class Frl_Subdomain_Adapter {
 	 * @return int Translated page ID in the subdomain's language, or the original.
 	 */
 	public function filter_option_page_on_front( $page_id ): int {
-		// During rewrite-rule generation, return raw DB values unconditionally.
-		// Translating page_on_front on a subdomain request would bake the
-		// subdomain's translated page ID into the global rewrite_rules option,
-		// corrupting routing for all other languages.
-		if (
-			self::$flush_depth > 0 ||
-			! $this->is_on_subdomain() ||
-			self::is_generating_rewrite_rules() ||
-			! function_exists( 'pll_get_post' ) ||
-			! frl_translator_is_enabled()
-		) {
-			return (int) $page_id;
-		}
-		$translation = pll_get_post( (int) $page_id, $this->current_subdomain_lang );
-		return $translation ? (int) $translation : (int) $page_id;
+		return $this->translate_front_page_option( $page_id );
 	}
 
 	/**
@@ -1262,17 +1248,30 @@ class Frl_Subdomain_Adapter {
 	 * @return int Translated page ID in the subdomain's language, or the original.
 	 */
 	public function filter_option_page_for_posts( $page_id ): int {
+		return $this->translate_front_page_option( $page_id );
+	}
+
+	/**
+	 * Shared helper to translate page_on_front / page_for_posts on mapped subdomains.
+	 *
+	 * @param  mixed $page_id Raw option value.
+	 * @return int Translated page ID or original integer value.
+	 */
+	private function translate_front_page_option( $page_id ): int {
+		$id = (int) $page_id;
+		// During rewrite-rule generation or when unset (0), return raw DB value unconditionally.
 		if (
+			$id <= 0 ||
 			self::$flush_depth > 0 ||
 			! $this->is_on_subdomain() ||
 			self::is_generating_rewrite_rules() ||
 			! function_exists( 'pll_get_post' ) ||
 			! frl_translator_is_enabled()
 		) {
-			return (int) $page_id;
+			return $id;
 		}
-		$translation = pll_get_post( (int) $page_id, $this->current_subdomain_lang );
-		return $translation ? (int) $translation : (int) $page_id;
+		$translation = pll_get_post( $id, $this->current_subdomain_lang );
+		return $translation ? (int) $translation : $id;
 	}
 
 	/**

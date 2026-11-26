@@ -95,7 +95,7 @@ function frl_pbnova__acf_update_has_content( $post, $update, $post_before ) {
 
 	// Remove comments only if present (saves regex)
 	if ( strpos( $content, '<!--' ) !== false ) {
-		$content = preg_replace( '/<!--.*?-->/s', '', $content );
+		$content = preg_replace( '/<!--.*?-->/s', '', $content ) ?? $content;
 	}
 	// Remove shortcodes only if present (saves parser)
 	if ( strpos( $content, '[' ) !== false ) {

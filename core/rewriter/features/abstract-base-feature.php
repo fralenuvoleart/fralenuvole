@@ -481,7 +481,7 @@ abstract class Frl_Rewriter_Feature_Base implements Frl_Rewriter_Feature_Interfa
 			return true;
 		}
 
-		$delim = '!'; // unlikely delimiter
+		$delim = "\x01"; // Control-char delimiter avoids colliding with '!' in negative lookaheads.
 
 		$p1_valid = preg_match( "{$delim}{$p1}{$delim}", '' ) !== false;
 		$p2_valid = preg_match( "{$delim}{$p2}{$delim}", '' ) !== false;

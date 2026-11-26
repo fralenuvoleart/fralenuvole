@@ -408,7 +408,7 @@ class Frl_Schema_Orchestrator {
 		// (a version bump invalidates) instead of globbing + including every
 		// definition file on every request.
 		$keys = frl_cache_remember(
-			'html',
+			'staticdata',
 			'schema_toggle_keys_' . FRL_VERSION,
 			function () {
 				$keys  = array();

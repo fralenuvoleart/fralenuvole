@@ -254,6 +254,16 @@ function frl_handle_action_clear_cache_group( $action ) {
 			'message_parts' => $message_parts,
 			'notice_type'   => 'success',
 		);
+	} elseif ( false === $stats ) {
+		$message_parts[] = sprintf(
+			__( 'Failed to clear cache group "%s" (cache manager unavailable).', FRL_PREFIX ),
+			esc_html( $group_to_clear )
+		);
+		return array(
+			'success'       => false,
+			'message_parts' => $message_parts,
+			'notice_type'   => 'error',
+		);
 	} else {
 		$message_parts[] = sprintf(
 			__( 'Cache group "%s" cleared (statistics unavailable).', FRL_PREFIX ),

@@ -168,7 +168,7 @@ function frl_schema_builder_build_person_properties( int $post_id, array $type_m
 			continue;
 		}
 
-		$cache_key = "{$post_id}_{$property}";
+		$cache_key = "{$post_id}_{$property}_" . md5( wp_json_encode( $field_def ) );
 
 		if ( ! isset( $ref_cache[ $cache_key ] ) ) {
 			// _force: always use this value, skip _ref entirely

@@ -1212,8 +1212,8 @@ function frl_shortcode_breadcrumbs( $atts ) {
 				}
 			}
 
-			// Fallback for other views (archives, etc.) – just home
-			if ( count( $links ) <= 1 && $show_home ) {
+			// Fallback for other views (archives, etc.) – skip empty or home-only nav.
+			if ( empty( $links ) || ( count( $links ) <= 1 && $show_home ) ) {
 				return '';
 			}
 

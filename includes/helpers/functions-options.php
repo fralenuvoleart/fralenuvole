@@ -292,16 +292,13 @@ function frl_get_plugin_options_db( $reset = false ) {
 		return $request_cached_options;
 	}
 
-	// Build the option type map once per request if not already built
+	// Build the option type map once per request from the preloaded 'options' defaults map.
 	if ( $option_type_map === null ) {
 		$option_type_map = array();
-		// frl_get_all_plugin_options_settings(null) returns an array of full field definitions
-		$all_default_definitions = frl_get_all_plugin_options_settings( null );
-		if ( frl_is_array_not_empty( $all_default_definitions ) ) {
-			foreach ( $all_default_definitions as $field_def ) {
-				if ( isset( $field_def['id'] ) && isset( $field_def['type'] ) ) {
-					$option_type_map[ $field_def['id'] ] = $field_def['type'];
-				}
+		$defaults_map    = frl_get_options_defaults_map();
+		foreach ( $defaults_map as $opt_key => $meta ) {
+			if ( is_array( $meta ) && isset( $meta['type'] ) ) {
+				$option_type_map[ $opt_key ] = $meta['type'];
 			}
 		}
 	}
@@ -349,46 +346,54 @@ function frl_get_plugin_options_db( $reset = false ) {
 }
 
 /**
- * Get option settings (returns single option metadata, all option defaults, or all field definitions based on parameters)
- * @param string|null $key Optional specific option key to retrieve
- * @param bool $ui_fields Whether to return UI-only fields (includes formatting fields)
+ * Return the merged map of all registered option defaults (key => ['value', 'autoload', 'type']).
+ *
+ * Cached once in the preloaded 'options' group so runtime lookups never build 'adminui' fields.
+ *
+ * @return array<string, array<string, mixed>>
+ */
+function frl_get_options_defaults_map(): array {
+	return frl_cache_remember(
+		'options',
+		'options_defaults_map',
+		function () {
+			$options_defaults         = frl_load_config_options_defaults();
+			$modules_options_defaults = frl_modules_load_options_defaults();
+			$runtime_options_defaults = frl_load_runtime_options_defaults();
+
+			// Rewriter CPT slug options (textlist, autoload no) are registered by slug.
+			$cpt_options_defaults = array();
+			if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
+				foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $slug ) {
+					$cpt_options_defaults[ 'rewriter_translate_cpt_slugs_' . $slug ] = array(
+						'value'    => '',
+						'autoload' => 'no',
+						'type'     => 'textlist',
+					);
+				}
+			}
+
+			return array_merge(
+				$options_defaults,
+				$modules_options_defaults,
+				$runtime_options_defaults,
+				$cpt_options_defaults
+			);
+		}
+	);
+}
+
+/**
+ * Retrieve plugin option settings definitions or a specific option's defaults.
+ *
+ * @param string|null $key       Optional specific option key.
+ * @param bool        $ui_fields Whether to include UI formatting fields.
  * @return mixed Array of all settings or specific setting default
  */
 function frl_get_all_plugin_options_settings( $key = null, $ui_fields = false ) {
-	// For single key lookups, get from the appropriate cached group and use fast array access
+	// For single key lookups, read from the shared 'options_defaults_map' in 'options'.
 	if ( $key !== null ) {
-		// Cache the merged defaults map ONCE (not per key). Caching the full
-		// merged array under 'option_default_{key}' stored N copies of the same
-		// data for N keys; one shared map keeps the object-cache footprint flat.
-		$fields_data = frl_cache_remember(
-			'options',
-			'options_defaults_map',
-			function () {
-				$options_defaults         = frl_load_config_options_defaults();
-				$modules_options_defaults = frl_modules_load_options_defaults();
-				$runtime_options_defaults = frl_load_runtime_options_defaults();
-
-				// Rewriter CPT slug options (textlist, autoload no) are registered by slug.
-				$cpt_options_defaults = array();
-				if ( defined( 'FRL_REWRITER_MULTILINGUAL_CPT' ) && is_array( FRL_REWRITER_MULTILINGUAL_CPT ) ) {
-					foreach ( FRL_REWRITER_MULTILINGUAL_CPT as $slug ) {
-						$cpt_options_defaults[ 'rewriter_translate_cpt_slugs_' . $slug ] = array(
-							'value'    => '',
-							'autoload' => 'no',
-							'type'     => 'textlist',
-						);
-					}
-				}
-
-				return array_merge(
-					$options_defaults,
-					$modules_options_defaults,
-					$runtime_options_defaults,
-					$cpt_options_defaults
-				);
-			}
-		);
-
+		$fields_data = frl_get_options_defaults_map();
 		return $fields_data[ $key ] ?? null;
 	}
 

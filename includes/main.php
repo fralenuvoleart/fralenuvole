@@ -49,7 +49,7 @@ function frl_log_capture() {
  * @param int $expirein Original expiration time in seconds.
  * @return int New expiration time (1 year if enabled, otherwise original).
  */
-function frl_extend_admin_cookie( int $expirein ): int {
+function frl_extend_admin_cookie( $expirein ) {
 	if ( ! frl_get_option( 'extend_admin_cookie' ) ) {
 		return $expirein;
 	}

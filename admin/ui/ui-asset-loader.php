@@ -278,8 +278,7 @@ function frl_add_prism_init_script() {
  * @return void
  */
 function frl_enqueue_codemirror_scripts() {
-	// Explicitly load required CodeMirror scripts
-	wp_enqueue_script( 'wp-theme-plugin-editor' );
+	// wp_enqueue_code_editor() loads CodeMirror assets; wp-theme-plugin-editor is unnecessary here.
 	wp_enqueue_style( 'wp-codemirror' );
 
 	// Enqueue the WordPress code editor with explicit scripts

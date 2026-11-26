@@ -26,7 +26,7 @@ add_action(
 // Register GeoDirectory CPT with Polylang
 add_filter(
 	'pll_get_post_types',
-	'add_cpt_to_pll',
+	'frl_pbproperty_add_cpt_to_pll',
 	10,
 	2
 );
@@ -37,7 +37,7 @@ add_filter(
 	'frl_pbproperty_block_translation_filter'
 );
 
-function add_cpt_to_pll( $post_types, $is_settings ) {
+function frl_pbproperty_add_cpt_to_pll( $post_types, $is_settings ) {
 	$post_types['gd_place'] = 'gd_place';
 	return $post_types;
 }

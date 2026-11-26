@@ -100,8 +100,8 @@ function frl_cta_init() {
 		}
 	);
 
-	// Init webhook subsystem if enabled (mirrors wsform's wsform_webhook toggle pattern)
-	if ( frl_get_option( 'cta_webhook' ) ) {
+	// Init webhook subsystem only on AJAX requests when enabled.
+	if ( wp_doing_ajax() && frl_get_option( 'cta_webhook' ) ) {
 		require_once __DIR__ . '/webhooks-call_to_actions.php';
 		add_action( 'wp_ajax_frl_cta_webhook', 'frl_cta_webhook_handler', 10, 0 );
 		add_action( 'wp_ajax_nopriv_frl_cta_webhook', 'frl_cta_webhook_handler', 10, 0 );

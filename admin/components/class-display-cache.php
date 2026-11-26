@@ -786,7 +786,7 @@ class Frl_Cache_Display {
 			if ( $row->option_name === null ) {
 				continue;
 			}
-			if ( str_contains( $row->option_name, '_timeout_' ) ) {
+			if ( str_starts_with( $row->option_name, $timeout_prefix ) || str_starts_with( $row->option_name, $site_timeout_prefix ) ) {
 				// Extract base key from timeout option name
 				$key              = str_replace( array( $timeout_prefix, $site_timeout_prefix ), '', $row->option_name );
 				$timeouts[ $key ] = (int) $row->option_value;

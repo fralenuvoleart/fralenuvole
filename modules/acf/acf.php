@@ -58,7 +58,7 @@ function frl_acf_process_calc_options( array $calc_options ): void {
 			if ( ! $has_template ) {
 				// fallback: build template dynamically from fields using separator if provided
 				$template = implode(
-					'',
+					(string) ( $cfg['separator'] ?? '' ),
 					array_map(
 						static function ( $f ) {
 							return '{' . $f . '}';

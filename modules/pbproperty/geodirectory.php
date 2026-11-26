@@ -11,6 +11,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 add_action( 'save_post_gd_place', 'frl_clear_places_by_lang_cache', 10, 1 );
+add_action( 'transition_post_status', 'frl_clear_places_by_lang_on_status_change', 10, 3 );
+add_action( 'deleted_post', 'frl_clear_places_by_lang_on_delete', 10, 2 );
 
 /**
  * Purge the blocks group when a GeoDirectory place is saved.
@@ -27,6 +29,36 @@ function frl_clear_places_by_lang_cache( $post_id ) {
 		return;
 	}
 	frl_cache_clear( 'blocks' );
+}
+
+/**
+ * Purge the blocks group when a gd_place enters or leaves 'publish' status (e.g. trash/unpublish).
+ *
+ * @param string  $new_status New post status.
+ * @param string  $old_status Old post status.
+ * @param WP_Post $post       Post object.
+ * @return void
+ */
+function frl_clear_places_by_lang_on_status_change( $new_status, $old_status, $post ): void {
+	if ( $new_status === $old_status || ! ( $post instanceof WP_Post ) || 'gd_place' !== $post->post_type ) {
+		return;
+	}
+	if ( 'publish' === $new_status || 'publish' === $old_status ) {
+		frl_cache_clear( 'blocks' );
+	}
+}
+
+/**
+ * Purge the blocks group when a gd_place is permanently deleted.
+ *
+ * @param int          $post_id Post ID.
+ * @param WP_Post|null $post    Post object.
+ * @return void
+ */
+function frl_clear_places_by_lang_on_delete( $post_id, $post = null ): void {
+	if ( $post instanceof WP_Post && 'gd_place' === $post->post_type ) {
+		frl_cache_clear( 'blocks' );
+	}
 }
 
 /**

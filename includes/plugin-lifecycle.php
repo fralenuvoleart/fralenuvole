@@ -202,10 +202,16 @@ function frl_rename_plugin_option( $old_key, $new_key ): void {
 		$legacy_value = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1", $old_name ) );
 		$wpdb->update( $wpdb->options, array( 'option_value' => $legacy_value ), array( 'option_name' => $new_name ) );
 		$wpdb->delete( $wpdb->options, array( 'option_name' => $old_name ) );
+		wp_cache_delete( $old_name, 'options' );
+		wp_cache_delete( $new_name, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
 		return;
 	}
 
 	$wpdb->update( $wpdb->options, array( 'option_name' => $new_name ), array( 'option_name' => $old_name ) );
+	wp_cache_delete( $old_name, 'options' );
+	wp_cache_delete( $new_name, 'options' );
+	wp_cache_delete( 'notoptions', 'options' );
 }
 
 /**

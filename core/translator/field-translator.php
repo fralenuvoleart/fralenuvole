@@ -643,8 +643,8 @@ function frl_translator_get_cached_meta( string $meta_type, mixed $value, int $o
 		)
 	);
 
-	// If the value was generated, queue its key for tracking on shutdown.
-	if ( $is_cache_miss ) {
+	// Track only when a non-null cacheable value was actually stored.
+	if ( $is_cache_miss && null !== $translated_meta ) {
 		frl_translator_track_cached_meta( $meta_type, $object_id, $meta_key );
 	}
 

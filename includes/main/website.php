@@ -42,8 +42,15 @@ function frl_disable_wp_core_features() {
 	}
 
 	if ( ! frl_is_logged_in() && ! is_login() ) {
-		wp_dequeue_style( 'dashicons' );
-		wp_deregister_style( 'dashicons' );
+		add_action(
+			'wp_enqueue_scripts',
+			static function () {
+				wp_dequeue_style( 'dashicons' );
+				wp_deregister_style( 'dashicons' );
+			},
+			100,
+			0
+		);
 	}
 }
 

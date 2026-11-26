@@ -141,7 +141,8 @@ function frl_normalize_html_content( $content, $for_comparison = false ) {
  * @return string The normalized text for comparison.
  */
 function frl_normalize_text_for_comparison( $content ) {
-	return trim( preg_replace( '/\s+/', ' ', (string) $content ) );
+	$str = (string) $content;
+	return trim( preg_replace( '/\s+/', ' ', $str ) ?? $str );
 }
 
 /**

@@ -502,7 +502,11 @@ function frl_render_block_navigation_tree( $items ) {
 
 	foreach ( $items as $item ) {
 		$output .= '<li>';
-		$output .= '<a href="' . esc_url( $item['url'] ) . '">' . wp_kses_post( $item['label'] ) . '</a>';
+		if ( ! empty( $item['url'] ) ) {
+			$output .= '<a href="' . esc_url( $item['url'] ) . '">' . wp_kses_post( $item['label'] ) . '</a>';
+		} else {
+			$output .= '<span>' . wp_kses_post( $item['label'] ) . '</span>';
+		}
 
 		if ( ! empty( $item['children'] ) ) {
 			$output .= frl_render_block_navigation_tree( $item['children'] );

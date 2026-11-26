@@ -91,9 +91,12 @@ function frl_get_contact_page_url(): string {
 				}
 			}
 		}
-		return get_permalink( $page );
+		$url = get_permalink( $page );
+		if ( is_string( $url ) && '' !== $url ) {
+			return $url;
+		}
 	}
-	return frl_get_home_url() . '/contact/';
+	return trailingslashit( frl_get_home_url() ) . 'contact/';
 }
 
 /**
@@ -534,8 +537,8 @@ function frl_schema_trim_keys( array $array_value ): array {
 	$needs_rebuild = false;
 
 	foreach ( $array_value as $key => $value ) {
-		$trimmed_key = trim( $key );
-		if ( $key !== '' && $key !== $trimmed_key ) {
+		$trimmed_key = is_string( $key ) ? trim( $key ) : $key;
+		if ( is_string( $key ) && $key !== '' && $key !== $trimmed_key ) {
 			$needs_rebuild = true;
 		}
 		if ( is_array( $value ) ) {
