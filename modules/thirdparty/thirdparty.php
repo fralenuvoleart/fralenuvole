@@ -213,9 +213,7 @@ function frl_greenshift_shortcircuit_hidden_blocks( $pre_render, $parsed_block )
 function frl_greenshift_preserve_colliding_head_css( $block_content, $block ) {
 	if (
 		is_admin()
-		|| empty( $block['attrs']['inlineCssStyles'] )
 		|| empty( $block['attrs']['id'] )
-		|| ! empty( $block['attrs']['CSSRender'] )
 		|| ! class_exists( 'GreenShiftStyleStore' )
 		|| ! function_exists( 'greenshift_sanitize_id_key' )
 		|| ! function_exists( 'gspb_get_final_css' )
@@ -224,22 +222,46 @@ function frl_greenshift_preserve_colliding_head_css( $block_content, $block ) {
 		return $block_content;
 	}
 
+	static $seen_raw = array();
+	$key             = greenshift_sanitize_id_key( $block['attrs']['id'] );
+
+	if ( ! empty( $block['attrs']['CSSRender'] ) ) {
+		$seen_raw[ $key ] = '__cssrender__';
+		return $block_content;
+	}
+
+	if ( empty( $block['attrs']['inlineCssStyles'] ) ) {
+		return $block_content;
+	}
+
 	$store       = GreenShiftStyleStore::getInstance();
-	$key         = greenshift_sanitize_id_key( $block['attrs']['id'] );
 	$classstyles = $store->getClassStyles();
 
 	if ( ! isset( $classstyles[ $key ] ) ) {
 		return $block_content;
 	}
 
-	$dynamic_style = gspb_get_final_css( $block['attrs']['inlineCssStyles'] );
+	$raw        = $block['attrs']['inlineCssStyles'];
+	$is_dynamic = ! empty( $block['attrs']['background']['dynamicEnable'] );
+
+	if ( ! $is_dynamic ) {
+		if ( ! isset( $seen_raw[ $key ] ) ) {
+			$seen_raw[ $key ] = $raw;
+			return $block_content;
+		}
+		if ( $seen_raw[ $key ] === $raw ) {
+			return $block_content;
+		}
+	}
+
+	$dynamic_style = gspb_get_final_css( $raw );
 	$dynamic_style = gspb_quick_minify_css( $dynamic_style );
 	$dynamic_style = htmlspecialchars_decode( $dynamic_style );
 	$dynamic_style = wp_strip_all_tags( $dynamic_style );
 
 	if (
-		function_exists( 'GSPB_make_dynamic_image' )
-		&& ! empty( $block['attrs']['background']['dynamicEnable'] )
+		$is_dynamic
+		&& function_exists( 'GSPB_make_dynamic_image' )
 		&& isset( $block['attrs']['background']['image'] )
 	) {
 		$dynamic_style = GSPB_make_dynamic_image(
@@ -260,6 +282,7 @@ function frl_greenshift_preserve_colliding_head_css( $block_content, $block ) {
 
 /**
  * Preserve Greenshift SVG elements and attributes during wp_kses_post() saves.
+ * Note: <style> is intentionally excluded from post KSES (CSS injection risk for non-admins).
  *
  * @param array  $tags    Allowed HTML tags and attributes.
  * @param string $context KSES context name.
@@ -274,6 +297,7 @@ function frl_greenshift_allow_svg_in_kses( $tags, $context ) {
 		'id'                => true,
 		'class'             => true,
 		'style'             => true,
+		'xmlns'             => true,
 		'fill'              => true,
 		'fill-opacity'      => true,
 		'fill-rule'         => true,
@@ -291,7 +315,8 @@ function frl_greenshift_allow_svg_in_kses( $tags, $context ) {
 		'color'             => true,
 		'transform'         => true,
 		'data-*'            => true,
-		'aria-*'            => true,
+		'aria-hidden'       => true,
+		'aria-label'        => true,
 		'role'              => true,
 		'focusable'         => true,
 	);
