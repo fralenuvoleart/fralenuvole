@@ -22,6 +22,12 @@ add_filter( 'emr/feature/background', '__return_false', 10, 0 );
 
 add_filter( 'rest_endpoints', 'frl_greenshift_fix_rest_schemas', 10, 1 );
 
+add_filter( 'pre_render_block', 'frl_greenshift_shortcircuit_hidden_blocks', 10, 2 );
+
+add_filter( 'render_block', 'frl_greenshift_preserve_colliding_head_css', 11, 2 );
+
+add_filter( 'wp_kses_allowed_html', 'frl_greenshift_allow_svg_in_kses', 10, 2 );
+
 add_filter( 'wp_rest_cache/display_clear_cache_button', '__return_false', 10, 1 );
 
 add_filter( 'autoptimize_filter_css_fixurl_newurl', 'frl_thirdparty_autoptimize_absolute_css_urls', 10, 1 );
@@ -168,6 +174,240 @@ function frl_greenshift_fix_rest_schemas( $endpoints ) {
 	}
 
 	return $endpoints;
+}
+
+/**
+ * Short-circuit hidden Greenshift blocks before inner blocks render or push CSS to GreenShiftStyleStore.
+ *
+ * @param string|null $pre_render   Short-circuit return value.
+ * @param array       $parsed_block Parsed block array.
+ * @return string|null Empty string if hidden, otherwise unchanged $pre_render.
+ */
+function frl_greenshift_shortcircuit_hidden_blocks( $pre_render, $parsed_block ) {
+	if ( null !== $pre_render || is_admin() ) {
+		return $pre_render;
+	}
+
+	if (
+		empty( $parsed_block['attrs']['is_visibility_set'] )
+		|| true !== $parsed_block['attrs']['is_visibility_set']
+		|| ! function_exists( 'visibility_conditions_check' )
+	) {
+		return $pre_render;
+	}
+
+	if ( '' === visibility_conditions_check( '1', $parsed_block ) ) {
+		return '';
+	}
+
+	return $pre_render;
+}
+
+/**
+ * Prevent GreenShiftStyleStore from dropping CSS when two blocks on a page share a cloned ID.
+ *
+ * @param string $block_content Rendered block HTML.
+ * @param array  $block         Parsed block array.
+ * @return string Unchanged block HTML.
+ */
+function frl_greenshift_preserve_colliding_head_css( $block_content, $block ) {
+	if (
+		is_admin()
+		|| empty( $block['attrs']['inlineCssStyles'] )
+		|| empty( $block['attrs']['id'] )
+		|| ! empty( $block['attrs']['CSSRender'] )
+		|| ! class_exists( 'GreenShiftStyleStore' )
+		|| ! function_exists( 'greenshift_sanitize_id_key' )
+		|| ! function_exists( 'gspb_get_final_css' )
+		|| ! function_exists( 'gspb_quick_minify_css' )
+	) {
+		return $block_content;
+	}
+
+	$store       = GreenShiftStyleStore::getInstance();
+	$key         = greenshift_sanitize_id_key( $block['attrs']['id'] );
+	$classstyles = $store->getClassStyles();
+
+	if ( ! isset( $classstyles[ $key ] ) ) {
+		return $block_content;
+	}
+
+	$dynamic_style = gspb_get_final_css( $block['attrs']['inlineCssStyles'] );
+	$dynamic_style = gspb_quick_minify_css( $dynamic_style );
+	$dynamic_style = htmlspecialchars_decode( $dynamic_style );
+	$dynamic_style = wp_strip_all_tags( $dynamic_style );
+
+	if (
+		function_exists( 'GSPB_make_dynamic_image' )
+		&& ! empty( $block['attrs']['background']['dynamicEnable'] )
+		&& isset( $block['attrs']['background']['image'] )
+	) {
+		$dynamic_style = GSPB_make_dynamic_image(
+			$dynamic_style,
+			$block['attrs'],
+			$block,
+			$block['attrs']['background'],
+			$block['attrs']['background']['image']
+		);
+	}
+
+	if ( '' !== $dynamic_style && $dynamic_style !== $classstyles[ $key ] ) {
+		$store->addClassStyle( $key . '_' . md5( $dynamic_style ), $dynamic_style );
+	}
+
+	return $block_content;
+}
+
+/**
+ * Preserve Greenshift SVG elements and attributes during wp_kses_post() saves.
+ *
+ * @param array  $tags    Allowed HTML tags and attributes.
+ * @param string $context KSES context name.
+ * @return array Modified allowed HTML map.
+ */
+function frl_greenshift_allow_svg_in_kses( $tags, $context ) {
+	if ( 'post' !== $context ) {
+		return $tags;
+	}
+
+	$common = array(
+		'id'                => true,
+		'class'             => true,
+		'style'             => true,
+		'fill'              => true,
+		'fill-opacity'      => true,
+		'fill-rule'         => true,
+		'clip-rule'         => true,
+		'clip-path'         => true,
+		'stroke'            => true,
+		'stroke-width'      => true,
+		'stroke-linecap'    => true,
+		'stroke-linejoin'   => true,
+		'stroke-dasharray'  => true,
+		'stroke-dashoffset' => true,
+		'stroke-miterlimit' => true,
+		'stroke-opacity'    => true,
+		'opacity'           => true,
+		'color'             => true,
+		'transform'         => true,
+		'data-*'            => true,
+		'aria-*'            => true,
+		'role'              => true,
+		'focusable'         => true,
+	);
+
+	$svg_tags = array(
+		'svg'            => array_merge(
+			$common,
+			array(
+				'xmlns'               => true,
+				'xmlns:xlink'         => true,
+				'xmlns-xlink'         => true,
+				'xml:space'           => true,
+				'version'             => true,
+				'viewbox'             => true,
+				'preserveaspectratio' => true,
+				'width'               => true,
+				'height'              => true,
+				'x'                   => true,
+				'y'                   => true,
+			)
+		),
+		'g'              => $common,
+		'path'           => array_merge( $common, array( 'd' => true ) ),
+		'circle'         => array_merge(
+			$common,
+			array(
+				'cx' => true,
+				'cy' => true,
+				'r'  => true,
+			)
+		),
+		'ellipse'        => array_merge(
+			$common,
+			array(
+				'cx' => true,
+				'cy' => true,
+				'rx' => true,
+				'ry' => true,
+			)
+		),
+		'rect'           => array_merge(
+			$common,
+			array(
+				'x'      => true,
+				'y'      => true,
+				'width'  => true,
+				'height' => true,
+				'rx'     => true,
+				'ry'     => true,
+			)
+		),
+		'line'           => array_merge(
+			$common,
+			array(
+				'x1' => true,
+				'y1' => true,
+				'x2' => true,
+				'y2' => true,
+			)
+		),
+		'polyline'       => array_merge( $common, array( 'points' => true ) ),
+		'polygon'        => array_merge( $common, array( 'points' => true ) ),
+		'defs'           => $common,
+		'lineargradient' => array_merge(
+			$common,
+			array(
+				'x1'                => true,
+				'y1'                => true,
+				'x2'                => true,
+				'y2'                => true,
+				'gradientunits'     => true,
+				'gradienttransform' => true,
+			)
+		),
+		'radialgradient' => array_merge(
+			$common,
+			array(
+				'cx'                => true,
+				'cy'                => true,
+				'r'                 => true,
+				'fx'                => true,
+				'fy'                => true,
+				'gradientunits'     => true,
+				'gradienttransform' => true,
+			)
+		),
+		'stop'           => array_merge(
+			$common,
+			array(
+				'offset'       => true,
+				'stop-color'   => true,
+				'stop-opacity' => true,
+			)
+		),
+		'clippath'       => $common,
+		'mask'           => $common,
+		'use'            => array_merge(
+			$common,
+			array(
+				'href'       => true,
+				'xlink:href' => true,
+				'x'          => true,
+				'y'          => true,
+				'width'      => true,
+				'height'     => true,
+			)
+		),
+		'title'          => $common,
+	);
+
+	foreach ( $svg_tags as $tag => $attrs ) {
+		$existing     = isset( $tags[ $tag ] ) && is_array( $tags[ $tag ] ) ? $tags[ $tag ] : array();
+		$tags[ $tag ] = array_merge( $existing, $attrs );
+	}
+
+	return $tags;
 }
 
 /**
